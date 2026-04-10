@@ -1,0 +1,126 @@
+{
+  "environment_name": "env_5b957add61d3",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM) for Linux Server Troubleshooting.\n- **Core Objective**: Based on the current internal state $s_t$ and the action $a_t$ (terminal commands/system interactions), simulate the Linux environment's evolution and predict the observation $o_{{t+1}}$ (command output, status changes) obtained by the Agent.\n- **Emphasis**: You are a simulator. You do not execute commands on a real server. You maintain a consistent virtual Linux environment internally and return only the resulting observations.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions between the World Model and the Agent must maintain context consistency. Changes made to the file system, running processes, or service statuses must persist across turns until modified by subsequent actions or environment dynamics.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. This JSON contains:\n- `\"name\"`: The name of the action (e.g., `execute_bash`, `reboot_server`).\n- Arguments required by that function.\n\nExample:\n```json\n{{\n \"name\": \"execute_bash\",\n \"arguments\": {{\n    \"command\": \"systemctl status nginx\"\n  }}\n}}\n```\nYou must parse this input, update the internal state (e.g., if a file is deleted, it must be removed from your internal `files` state), and generate the output the command would produce in a real Linux environment.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\n- If an action refers to a non-existent file, return a realistic error (e.g., `ls: cannot access 'file.txt': No such file or directory`).\n- For invalid parameters or undefined actions, return: `{{\"error\": \"Action 'xyz' not found\"}}`.\n- If a command fails due to current state (e.g., restarting a service with a broken config), the observation must reflect that failure (e.g., `Job for nginx.service failed...`).\n\n##### Output Assembly\nFor every action call, return a structured JSON object containing **ONLY** the return fields declared in the action definition. \n\n**CRITICAL CONSTRAINT**: Do **NOT** include the updated internal state, hidden variables, or `new_state` in the output. The Agent only sees the command result (the Observation). \n\n### 4. Key Principles\n- **Format**: Strictly adhere to JSON output for observations.\n- **Factuality**: Simulate realistic Linux behavior (e.g., file permissions, exit codes, standard streams).\n- **Consistency**: If a process is killed in step $t$, it must remain absent in step $t+1$ unless restarted.\n- **Realism**: Latency, resource consumption, and dependency failures should align with real-world server dynamics.\n- **Quality**: Terminal outputs should match the formatting of common Linux distributions (e.g., Ubuntu/Debian).\n- **Encapsulation**: Hide the underlying state JSON from the Agent. Only provide the terminal output or function return value.\n{{initial_state}}: {{\n  \"hostname\": \"hft-node-alpha\",\n  \"os_info\": \"Ubuntu 22.04.3 LTS (5.15.0-89-lowlatency)\",\n  \"services\": {{\n    \"sfptpd\": \"active\",\n    \"ssh\": \"active\",\n    \"collectd\": \"active\"\n  }},\n  \"filesystem\": {{\n    \"/etc/sfptpd.conf\": \"sync_module ptp p2p\\nptp_module_interface eth0\\nptp_module_mode slave\\nstats_log /var/log/sfptpd_stats.log\",\n    \"/sys/devices/system/clocksource/clocksource0/current_clocksource\": \"hpet\",\n    \"/sys/devices/system/clocksource/clocksource0/available_clocksource\": \"tsc hpet acpi_pm\",\n    \"/sys/module/intel_idle/parameters/max_cstate\": \"8\",\n    \"/var/log/sfptpd_stats.log\": \"2023-12-28 08:30:01 offset: 5420ns, freq: -14201ppb\\n2023-12-28 08:30:02 offset: -4810ns, freq: -13850ppb\"\n  }},\n  \"active_processes\": [\n    {{\n      \"pid\": 1,\n      \"user\": \"root\",\n      \"command\": \"/sbin/init\"\n    }},\n    {{\n      \"pid\": 1102,\n      \"user\": \"root\",\n      \"command\": \"/usr/sbin/sfptpd -c /etc/sfptpd.conf\"\n    }}\n  ],\n  \"resource_usage\": {{\n    \"cpu_load_percent\": 2.5,\n    \"memory_used_mb\": 1240,\n    \"disk_used_percent\": 30\n  }},\n  \"network_ports\": [\n    22,\n    319,\n    320\n  ],\n  \"logs\": [\n    \"Dec 28 08:25:10 kernel: clocksource: Switched to clocksource hpet\",\n    \"Dec 28 08:25:10 kernel: thermal_core: CPU0: Above threshold\",\n    \"Dec 28 08:31:45 sfptpd[1102]: warning: clock offset exceeds 1000ns limit\",\n    \"Dec 28 08:31:46 sfptpd[1102]: servo status: SLAVE, current offset: 6105ns\"\n  ]\n}}\n{{state_descriptions}}: {{\n  \"hostname\": \"The network name of the virtual server.\",\n  \"os_info\": \"Operating system distribution and kernel version.\",\n  \"services\": \"A map of service names to their current systemd status (e.g., 'active', 'inactive', 'failed').\",\n  \"filesystem\": \"A representation of critical configuration files and their content strings.\",\n  \"active_processes\": \"A list of currently running processes with PID, user, and command.\",\n  \"resource_usage\": \"Current hardware resource metrics.\",\n  \"network_ports\": \"List of ports currently in a LISTEN state.\",\n  \"logs\": \"Recent entries in system logs (e.g., /var/log/syslog).\"\n}}\n{action_set_definitions}: {\n  \"execute_shell_command\": {\n    \"description\": \"Executes a shell command on the target Linux server and returns the stdout, stderr, and exit code. Use this for general diagnostics and running system tools.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"command\": {\n          \"type\": \"string\",\n          \"description\": \"The full shell command to execute.\"\n        }\n      },\n      \"required\": [\n        \"command\"\n      ]\n    },\n    \"example_output\": {\n      \"stdout\": \"sfptpd[1234]: offset: 5200ns\",\n      \"stderr\": \"\",\n      \"exit_code\": 0\n    }\n  },\n  \"read_system_file\": {\n    \"description\": \"Reads the content of a specific file from the filesystem. Useful for checking system parameters in /sys or configuration files in /etc.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"file_path\": {\n          \"type\": \"string\",\n          \"description\": \"The absolute path to the file to be read.\"\n        }\n      },\n      \"required\": [\n        \"file_path\"\n      ]\n    },\n    \"example_output\": {\n      \"content\": \"hpet\\n\",\n      \"exists\": true\n    }\n  },\n  \"write_to_file\": {\n    \"description\": \"Writes or overwrites a value to a file. This is the primary method for modifying kernel parameters in /sys or updating configuration files without restarting services.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"file_path\": {\n          \"type\": \"string\",\n          \"description\": \"The absolute path to the file to write to.\"\n        },\n        \"content\": {\n          \"type\": \"string\",\n          \"description\": \"The string content to write into the file.\"\n        }\n      },\n      \"required\": [\n        \"file_path\",\n        \"content\"\n      ]\n    },\n    \"example_output\": {\n      \"success\": true,\n      \"bytes_written\": 3\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "execute_shell_command",
+      "description": "Executes a shell command on the target Linux server and returns the stdout, stderr, and exit code. Use this for general diagnostics and running system tools.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "command": {
+            "type": "string",
+            "description": "The full shell command to execute."
+          }
+        },
+        "required": [
+          "command"
+        ]
+      },
+      "example_output": {
+        "stdout": "sfptpd[1234]: offset: 5200ns",
+        "stderr": "",
+        "exit_code": 0
+      }
+    },
+    {
+      "name": "read_system_file",
+      "description": "Reads the content of a specific file from the filesystem. Useful for checking system parameters in /sys or configuration files in /etc.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "file_path": {
+            "type": "string",
+            "description": "The absolute path to the file to be read."
+          }
+        },
+        "required": [
+          "file_path"
+        ]
+      },
+      "example_output": {
+        "content": "hpet\n",
+        "exists": true
+      }
+    },
+    {
+      "name": "write_to_file",
+      "description": "Writes or overwrites a value to a file. This is the primary method for modifying kernel parameters in /sys or updating configuration files without restarting services.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "file_path": {
+            "type": "string",
+            "description": "The absolute path to the file to write to."
+          },
+          "content": {
+            "type": "string",
+            "description": "The string content to write into the file."
+          }
+        },
+        "required": [
+          "file_path",
+          "content"
+        ]
+      },
+      "example_output": {
+        "success": true,
+        "bytes_written": 3
+      }
+    }
+  ],
+  "state_description": {
+    "hostname": "The network name of the virtual server.",
+    "os_info": "Operating system distribution and kernel version.",
+    "services": "A map of service names to their current systemd status (e.g., 'active', 'inactive', 'failed').",
+    "filesystem": "A representation of critical configuration files and their content strings.",
+    "active_processes": "A list of currently running processes with PID, user, and command.",
+    "resource_usage": "Current hardware resource metrics.",
+    "network_ports": "List of ports currently in a LISTEN state.",
+    "logs": "Recent entries in system logs (e.g., /var/log/syslog)."
+  },
+  "task_initial_state": {
+    "hostname": "hft-node-alpha",
+    "os_info": "Ubuntu 22.04.3 LTS (5.15.0-89-lowlatency)",
+    "services": {
+      "sfptpd": "active",
+      "ssh": "active",
+      "collectd": "active"
+    },
+    "filesystem": {
+      "/etc/sfptpd.conf": "sync_module ptp p2p\nptp_module_interface eth0\nptp_module_mode slave\nstats_log /var/log/sfptpd_stats.log",
+      "/sys/devices/system/clocksource/clocksource0/current_clocksource": "hpet",
+      "/sys/devices/system/clocksource/clocksource0/available_clocksource": "tsc hpet acpi_pm",
+      "/sys/module/intel_idle/parameters/max_cstate": "8",
+      "/var/log/sfptpd_stats.log": "2023-12-28 08:30:01 offset: 5420ns, freq: -14201ppb\n2023-12-28 08:30:02 offset: -4810ns, freq: -13850ppb"
+    },
+    "active_processes": [
+      {
+        "pid": 1,
+        "user": "root",
+        "command": "/sbin/init"
+      },
+      {
+        "pid": 1102,
+        "user": "root",
+        "command": "/usr/sbin/sfptpd -c /etc/sfptpd.conf"
+      }
+    ],
+    "resource_usage": {
+      "cpu_load_percent": 2.5,
+      "memory_used_mb": 1240,
+      "disk_used_percent": 30
+    },
+    "network_ports": [
+      22,
+      319,
+      320
+    ],
+    "logs": [
+      "Dec 28 08:25:10 kernel: clocksource: Switched to clocksource hpet",
+      "Dec 28 08:25:10 kernel: thermal_core: CPU0: Above threshold",
+      "Dec 28 08:31:45 sfptpd[1102]: warning: clock offset exceeds 1000ns limit",
+      "Dec 28 08:31:46 sfptpd[1102]: servo status: SLAVE, current offset: 6105ns"
+    ]
+  }
+}

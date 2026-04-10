@@ -1,0 +1,243 @@
+{
+  "environment_name": "env_b53281819cc1",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: You are the simulation engine for an \"Excavation Site Grid Assignment\" environment. Based on the current internal state $s_t$ and the action $a_t$ submitted by the Agent, your task is to simulate the internal evolution of the site and predict the resulting observation $o_{{t+1}}$.\n- **Emphasis**: You do not execute physical operations or provide advice. Your sole purpose is to act as a deterministic or probabilistic environment proxy, generating realistic outcomes and state transitions based on archaeological and logistical logic.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions must maintain rigorous context consistency. Every action must build upon the cumulative changes of previous turns. You must track which grid cells have been surveyed, the depth of excavation, tool wear, resource depletion, and artifact recovery status within your internal memory.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. You must parse this JSON to determine the intended transition. The format will be:\n- `\"name\"`: The specific action (e.g., assign_crew, scan_cell, excavate_layer).\n- `\"arguments\"`: Key-value pairs matching the action's required parameters.\n\nExample Input:\n```json\n{{\n \"name\": \"excavate_grid\",\n \"arguments\": {{\n    \"grid_id\": \"B4\",\n    \"depth_cm\": 20,\n    \"tool_type\": \"trowel\"\n  }}\n}}\n```\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nIf the Agent attempts an action that is logic-breaking (e.g., excavating a cell already at bedrock, assigning more workers than available, or using undefined grid IDs), return a structured error JSON:\n`{{\"error\": \"Description of why the action failed\"}}`\nDo not fabricate successful outcomes for invalid inputs.\n\n##### Output Assembly\nFor every action call, you must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition. \n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the updated internal state `{{initial_state}}`, the state fields, or any hidden system variables. You are an interface; the Agent only receives the specific observation (e.g., soil composition found, artifact detected, or fuel consumed). State maintenance is your internal responsibility and must remain hidden.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to JSON output requirements without conversational filler.\n- **Factuality**: Use the provided state and action definitions as the ground truth. Do not invent new site features.\n- **Consistency**: If a grid cell is marked as \"Rocky Soil,\" subsequent excavation actions in that cell must reflect the difficulty associated with that soil type.\n- **Realism**: Simulate realistic site dynamics, such as equipment failure probabilities, varying artifact density, and resource trade-offs.\n- **Quality**: Ensure all output fields are populated with clear, structured data.\n- **Encapsulation**: Never reveal the \"behind-the-scenes\" state updates. Only provide the defined observation.\n{{initial_state}}: {{\n  \"grid_map\": {{\n    \"N1020/E1020\": {{\n      \"status\": \"surveyed\",\n      \"current_depth\": 5,\n      \"soil_type\": \"disturbed_loam\"\n    }},\n    \"N1020/E1021\": {{\n      \"status\": \"unexplored\",\n      \"current_depth\": 0,\n      \"soil_type\": \"disturbed_loam\"\n    }},\n    \"N1020/E1022\": {{\n      \"status\": \"surveyed\",\n      \"current_depth\": 10,\n      \"soil_type\": \"compacted_clay\"\n    }},\n    \"N1020/E1025\": {{\n      \"status\": \"surveyed\",\n      \"current_depth\": 15,\n      \"soil_type\": \"rocky_fill\"\n    }},\n    \"N1020/E1028\": {{\n      \"status\": \"unexplored\",\n      \"current_depth\": 0,\n      \"soil_type\": \"disturbed_loam\"\n    }},\n    \"N1020.5/E1020.5\": {{\n      \"status\": \"unexplored\",\n      \"current_depth\": 0,\n      \"soil_type\": \"topsoil\"\n    }}\n  }},\n  \"resource_pool\": {{\n    \"available_workers\": 4,\n    \"equipment_integrity\": {{\n      \"Optical_Total_Station\": 92,\n      \"RTK_GNSS_Rover\": 85,\n      \"Power_Station_Alpha_Charge\": 35,\n      \"Power_Station_Beta_Charge\": 40,\n      \"Power_Station_Gamma_Charge\": 30\n    }}\n  }},\n  \"discovered_artifacts\": [\n    {{\n      \"id\": \"FRAG-771\",\n      \"label\": \"FDR-X-109-Casing\",\n      \"grid\": \"N1020/E1020\",\n      \"type\": \"debris\"\n    }},\n    {{\n      \"id\": \"FRAG-772\",\n      \"label\": \"FDR-X-109-Module-B\",\n      \"grid\": \"N1020/E1022\",\n      \"type\": \"component\"\n    }},\n    {{\n      \"id\": \"FRAG-773\",\n      \"label\": \"CVR-Unit-A\",\n      \"grid\": \"N1015/E1010\",\n      \"type\": \"recorder\"\n    }},\n    {{\n      \"id\": \"FRAG-774\",\n      \"label\": \"FDR-X-109-Mounting-Bracket\",\n      \"grid\": \"N1020/E1025\",\n      \"type\": \"debris\"\n    }}\n  ],\n  \"site_conditions\": {{\n    \"weather\": \"light_rain\",\n    \"stability_index\": 0.62,\n    \"PDOP\": 4.2\n  }}\n}}\n{{state_descriptions}}: {{\n  \"grid_map\": \"A collection of grid cells where keys are coordinates (e.g., 'A1') and values include status (unexplored, surveyed, excavated), current_depth, and soil_type.\",\n  \"resource_pool\": \"Available resources for the site including personnel, tools, and budget/energy.\",\n  \"discovered_artifacts\": \"A log of items found during excavation, including grid source and value/rarity.\",\n  \"site_conditions\": \"Environmental factors affecting operations like weather or safety hazard levels.\"\n}}\n{action_set_definitions}: {\n  \"get_site_telemetry\": {\n    \"description\": \"Retrieves real-time environmental data and power system metrics, including site stability index and individual power station redundancy ratios.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"stability_index\": 0.58,\n      \"power_stations\": [\n        {\n          \"station_id\": \"PS-1\",\n          \"redundancy_ratio\": 3.12\n        },\n        {\n          \"station_id\": \"PS-2\",\n          \"redundancy_ratio\": 3.05\n        }\n      ]\n    }\n  },\n  \"identify_sector_cells\": {\n    \"description\": \"Retrieves the specific grid cell identifiers corresponding to the coordinate range provided in the mission parameters.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"start_coord\": {\n          \"type\": \"string\",\n          \"description\": \"The starting grid coordinate (e.g., 'N1020/E1020').\"\n        },\n        \"end_coord\": {\n          \"type\": \"string\",\n          \"description\": \"The ending grid coordinate (e.g., 'N1020/E1030').\"\n        }\n      },\n      \"required\": [\n        \"start_coord\",\n        \"end_coord\"\n      ]\n    },\n    \"example_output\": {\n      \"cell_ids\": [\n        \"G-1020-1020\",\n        \"G-1020-1021\"\n      ]\n    }\n  },\n  \"apply_total_station_survey\": {\n    \"description\": \"Utilizes the optical Total Station to perform high-precision mapping of a cell, ensuring sub-0.03m accuracy required for legal admissibility.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"cell_id\": {\n          \"type\": \"string\",\n          \"description\": \"The identifier of the grid cell to be surveyed.\"\n        }\n      },\n      \"required\": [\n        \"cell_id\"\n      ]\n    },\n    \"example_output\": {\n      \"mapping_accuracy_m\": 0.024,\n      \"provenience_recorded\": true\n    }\n  },\n  \"scan_electronic_signatures\": {\n    \"description\": \"Scans the specified cell for electronic signatures to detect artifacts or fragments buried in the debris.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"cell_id\": {\n          \"type\": \"string\",\n          \"description\": \"The identifier of the cell to scan.\"\n        }\n      },\n      \"required\": [\n        \"cell_id\"\n      ]\n    },\n    \"example_output\": {\n      \"found_signatures\": [\n        {\n          \"sig_id\": \"SIG-882\",\n          \"description\": \"Electronic Signal - High Density\"\n        }\n      ]\n    }\n  },\n  \"verify_artifact_identity\": {\n    \"description\": \"Performs a detailed analysis on a detected signature to identify its specific serial number and verify if it is an intact primary unit.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"sig_id\": {\n          \"type\": \"string\",\n          \"description\": \"The signature identifier to analyze.\"\n        }\n      },\n      \"required\": [\n        \"sig_id\"\n      ]\n    },\n    \"example_output\": {\n      \"serial_number\": \"FDR-X-109\",\n      \"is_intact\": true,\n      \"classification\": \"Primary Flight Data Recorder\"\n    }\n  },\n  \"execute_precision_recovery\": {\n    \"description\": \"Initiates the high-precision extraction process for the identified artifact.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"sig_id\": {\n          \"type\": \"string\",\n          \"description\": \"The signature ID of the validated intact target.\"\n        },\n        \"cell_id\": {\n          \"type\": \"string\",\n          \"description\": \"The cell identifier where the object is located.\"\n        }\n      },\n      \"required\": [\n        \"sig_id\",\n        \"cell_id\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"Success\",\n      \"item_recovered\": \"FDR-X-109\"\n    }\n  },\n  \"log_mission_abort\": {\n    \"description\": \"Terminates the mission and logs the specific safety or procedural reason for the shutdown.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"reason\": {\n          \"type\": \"string\",\n          \"description\": \"Reason for aborting the operation (e.g., 'Safety Violation', 'Target Not Found').\"\n        }\n      },\n      \"required\": [\n        \"reason\"\n      ]\n    },\n    \"example_output\": null\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_site_telemetry",
+      "description": "Retrieves real-time environmental data and power system metrics, including site stability index and individual power station redundancy ratios.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "stability_index": 0.58,
+        "power_stations": [
+          {
+            "station_id": "PS-1",
+            "redundancy_ratio": 3.12
+          },
+          {
+            "station_id": "PS-2",
+            "redundancy_ratio": 3.05
+          }
+        ]
+      }
+    },
+    {
+      "name": "identify_sector_cells",
+      "description": "Retrieves the specific grid cell identifiers corresponding to the coordinate range provided in the mission parameters.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "start_coord": {
+            "type": "string",
+            "description": "The starting grid coordinate (e.g., 'N1020/E1020')."
+          },
+          "end_coord": {
+            "type": "string",
+            "description": "The ending grid coordinate (e.g., 'N1020/E1030')."
+          }
+        },
+        "required": [
+          "start_coord",
+          "end_coord"
+        ]
+      },
+      "example_output": {
+        "cell_ids": [
+          "G-1020-1020",
+          "G-1020-1021"
+        ]
+      }
+    },
+    {
+      "name": "apply_total_station_survey",
+      "description": "Utilizes the optical Total Station to perform high-precision mapping of a cell, ensuring sub-0.03m accuracy required for legal admissibility.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "cell_id": {
+            "type": "string",
+            "description": "The identifier of the grid cell to be surveyed."
+          }
+        },
+        "required": [
+          "cell_id"
+        ]
+      },
+      "example_output": {
+        "mapping_accuracy_m": 0.024,
+        "provenience_recorded": true
+      }
+    },
+    {
+      "name": "scan_electronic_signatures",
+      "description": "Scans the specified cell for electronic signatures to detect artifacts or fragments buried in the debris.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "cell_id": {
+            "type": "string",
+            "description": "The identifier of the cell to scan."
+          }
+        },
+        "required": [
+          "cell_id"
+        ]
+      },
+      "example_output": {
+        "found_signatures": [
+          {
+            "sig_id": "SIG-882",
+            "description": "Electronic Signal - High Density"
+          }
+        ]
+      }
+    },
+    {
+      "name": "verify_artifact_identity",
+      "description": "Performs a detailed analysis on a detected signature to identify its specific serial number and verify if it is an intact primary unit.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "sig_id": {
+            "type": "string",
+            "description": "The signature identifier to analyze."
+          }
+        },
+        "required": [
+          "sig_id"
+        ]
+      },
+      "example_output": {
+        "serial_number": "FDR-X-109",
+        "is_intact": true,
+        "classification": "Primary Flight Data Recorder"
+      }
+    },
+    {
+      "name": "execute_precision_recovery",
+      "description": "Initiates the high-precision extraction process for the identified artifact.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "sig_id": {
+            "type": "string",
+            "description": "The signature ID of the validated intact target."
+          },
+          "cell_id": {
+            "type": "string",
+            "description": "The cell identifier where the object is located."
+          }
+        },
+        "required": [
+          "sig_id",
+          "cell_id"
+        ]
+      },
+      "example_output": {
+        "status": "Success",
+        "item_recovered": "FDR-X-109"
+      }
+    },
+    {
+      "name": "log_mission_abort",
+      "description": "Terminates the mission and logs the specific safety or procedural reason for the shutdown.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "description": "Reason for aborting the operation (e.g., 'Safety Violation', 'Target Not Found')."
+          }
+        },
+        "required": [
+          "reason"
+        ]
+      },
+      "example_output": null
+    }
+  ],
+  "state_description": {
+    "grid_map": "A collection of grid cells where keys are coordinates (e.g., 'A1') and values include status (unexplored, surveyed, excavated), current_depth, and soil_type.",
+    "resource_pool": "Available resources for the site including personnel, tools, and budget/energy.",
+    "discovered_artifacts": "A log of items found during excavation, including grid source and value/rarity.",
+    "site_conditions": "Environmental factors affecting operations like weather or safety hazard levels."
+  },
+  "task_initial_state": {
+    "grid_map": {
+      "N1020/E1020": {
+        "status": "surveyed",
+        "current_depth": 5,
+        "soil_type": "disturbed_loam"
+      },
+      "N1020/E1021": {
+        "status": "unexplored",
+        "current_depth": 0,
+        "soil_type": "disturbed_loam"
+      },
+      "N1020/E1022": {
+        "status": "surveyed",
+        "current_depth": 10,
+        "soil_type": "compacted_clay"
+      },
+      "N1020/E1025": {
+        "status": "surveyed",
+        "current_depth": 15,
+        "soil_type": "rocky_fill"
+      },
+      "N1020/E1028": {
+        "status": "unexplored",
+        "current_depth": 0,
+        "soil_type": "disturbed_loam"
+      },
+      "N1020.5/E1020.5": {
+        "status": "unexplored",
+        "current_depth": 0,
+        "soil_type": "topsoil"
+      }
+    },
+    "resource_pool": {
+      "available_workers": 4,
+      "equipment_integrity": {
+        "Optical_Total_Station": 92,
+        "RTK_GNSS_Rover": 85,
+        "Power_Station_Alpha_Charge": 35,
+        "Power_Station_Beta_Charge": 40,
+        "Power_Station_Gamma_Charge": 30
+      }
+    },
+    "discovered_artifacts": [
+      {
+        "id": "FRAG-771",
+        "label": "FDR-X-109-Casing",
+        "grid": "N1020/E1020",
+        "type": "debris"
+      },
+      {
+        "id": "FRAG-772",
+        "label": "FDR-X-109-Module-B",
+        "grid": "N1020/E1022",
+        "type": "component"
+      },
+      {
+        "id": "FRAG-773",
+        "label": "CVR-Unit-A",
+        "grid": "N1015/E1010",
+        "type": "recorder"
+      },
+      {
+        "id": "FRAG-774",
+        "label": "FDR-X-109-Mounting-Bracket",
+        "grid": "N1020/E1025",
+        "type": "debris"
+      }
+    ],
+    "site_conditions": {
+      "weather": "light_rain",
+      "stability_index": 0.62,
+      "PDOP": 4.2
+    }
+  }
+}

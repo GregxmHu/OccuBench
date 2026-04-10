@@ -1,0 +1,221 @@
+{
+  "environment_name": "env_584b46f3ba4e",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: You act as a high-fidelity vehicle simulator for diagnostic troubleshooting. Based on the current internal state of the vehicle ($s_t$) and the diagnostic action performed by the Agent ($a_t$), you are responsible for simulating the physical and electronic evolution of the environment and predicting the resulting observation ($o_{{t+1}}$) obtained by the Agent.\n- **Emphasis**: As the LWM, you do not perform repairs or diagnostics yourself. Instead, you manage the vehicle's hidden mechanical/electronic health and generate the realistic feedback (sensor data, visual cues, or tool readings) that a mechanic would receive in the real world.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nYou must maintain strict context consistency throughout the troubleshooting session. Every action taken (e.g., replacing a part, clearing a code, or draining a battery through repeated cranking) must result in a logical state transition that persists in the history of the interaction. If a part is replaced, the internal health of that component must reflect its new status in all subsequent steps.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. This JSON contains the following fields:\n- `\"name\"`: Specifies the name of the action function to execute (e.g., \"read_dtc\", \"test_battery\", \"replace_part\").\n- The remaining fields are the parameter names and corresponding values required by that action function.\n\nExample:\n```json\n{{\n \"name\": \"measure_multimeter_voltage\",\n \"arguments\": {{\n    \"component\": \"alternator_output\",\n    \"setting\": \"DC_20V\"\n  }}\n}}\n```\n\nYou must parse these JSON inputs, determine how the internal vehicle state changes, and generate the appropriate tool output or physical observation.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\n- If the Agent attempts an action without the necessary prerequisites (e.g., trying to read OBD codes while the ignition is OFF or the scanner is disconnected), return a structured error: `{{\"error\": \"Communication error: ECU not reachable. Ensure ignition is ON.\"}}`.\n- For undefined actions or invalid parameters (e.g., testing a component that doesn't exist), return `{{\"error\": \"Invalid component specified\"}}`.\n- Do not fabricate positive results for failed components.\n\n##### Output Assembly\nFor every action function call, you must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition. \n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the internal vehicle state fields (like the hidden health percentages or the full `new_state` object). Only expose the specific observation (the `o_{{t+1}}`) that the action is intended to reveal. The maintenance of the vehicle state is internal to your simulation and must remain hidden from the Agent's view.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to specified JSON and text formats.\n- **Factuality**: Do not fabricate tools, engine behaviors, or fault codes that are not logically derived from the current vehicle state.\n- **Consistency**: If a fuel pump is failing, the fuel pressure readings must remain low or erratic until the pump is replaced.\n- **Realism**: Simulate realistic vehicle dynamics (e.g., battery voltage drops slightly during engine cranking; check engine lights appear only for specific fault conditions).\n- **Quality**: Ensure all diagnostic feedback is technically accurate and structurally complete.\n- **Encapsulation**: Strictly hide the internal state structure. The Agent only sees the results of their specific actions (e.g., a multimeter reading), never the underlying state variable.\n{{initial_state}}: {{\n  \"battery_voltage\": 11.4,\n  \"obd_fault_codes\": [\n    \"SPN 3364 FMI 2\",\n    \"SPN 3216 FMI 2\",\n    \"SPN 3216 FMI 20\",\n    \"SPN 168 FMI 18\",\n    \"SPN 3251 FMI 2\",\n    \"SPN 1761 FMI 11\",\n    \"SPN 3226 FMI 2\",\n    \"SPN 5246 FMI 0\"\n  ],\n  \"component_health\": {{\n    \"alternator\": 1.0,\n    \"fuel_pump\": 1.0,\n    \"spark_plugs\": 1.0,\n    \"starter_motor\": 1.0,\n    \"battery_terminals\": 0.55,\n    \"nox_sensor_inlet_module\": 1.0,\n    \"nox_sensor_inlet_element\": 0.35,\n    \"nox_sensor_outlet_module\": 1.0,\n    \"nox_sensor_outlet_element\": 0.96,\n    \"dpf_pressure_sensor_line_a\": 0.62,\n    \"dpf_pressure_sensor_line_b\": 0.98,\n    \"def_dosing_nozzle\": 0.94,\n    \"def_supply_hose\": 1.0\n  }},\n  \"ignition_position\": \"ACC\",\n  \"engine_running\": false,\n  \"fuel_pressure_psi\": 0.0,\n  \"is_obd_scanner_connected\": true\n}}\n{{state_descriptions}}: {{\n  \"battery_voltage\": \"Current voltage of the vehicle battery in Volts.\",\n  \"obd_fault_codes\": \"A list of active and pending Diagnostic Trouble Codes (DTCs) stored in the Engine Control Unit.\",\n  \"component_health\": \"A mapping of mechanical/electronic parts to their health status (0.0 to 1.0).\",\n  \"ignition_position\": \"The current position of the ignition switch: 'OFF', 'ACC', 'ON', or 'START'.\",\n  \"engine_running\": \"Whether the engine is currently idling or running.\",\n  \"fuel_pressure_psi\": \"The current pressure in the fuel rail measured in PSI.\",\n  \"is_obd_scanner_connected\": \"Status of the physical connection between the OBD-II scanner and the vehicle port.\"\n}}\n{action_set_definitions}: {\n  \"get_vehicle_system_status\": {\n    \"description\": \"Retrieves high-level status of the vehicle including scanner connection, ignition position, and battery voltage.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"is_obd_scanner_connected\": true,\n      \"ignition_position\": \"ON\",\n      \"battery_voltage\": 12.4,\n      \"engine_running\": false\n    }\n  },\n  \"scan_diagnostic_trouble_codes\": {\n    \"description\": \"Reads all active, pending, and historical DTCs from the Engine Control Unit.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"codes\": [\n        {\n          \"id\": \"SPN 5246 FMI 15\",\n          \"description\": \"SCR Induction - 5 mph Derate\",\n          \"status\": \"Active\"\n        }\n      ]\n    }\n  },\n  \"read_sensor_telemetry\": {\n    \"description\": \"Retrieves real-time sensor readings for specific systems to isolate primary failures from noise.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"sensors\": {\n          \"type\": \"array\",\n          \"items\": {\n            \"type\": \"string\",\n            \"enum\": [\n              \"nox_inlet_ppm\",\n              \"nox_outlet_ppm\",\n              \"def_concentration_pct\",\n              \"dpf_differential_pressure\",\n              \"scr_inlet_temp\"\n            ]\n          },\n          \"description\": \"List of sensors to query.\"\n        }\n      },\n      \"required\": [\n        \"sensors\"\n      ]\n    },\n    \"example_output\": {\n      \"nox_outlet_ppm\": 450,\n      \"def_concentration_pct\": 32.5\n    }\n  },\n  \"inspect_hardware_component\": {\n    \"description\": \"Performs a detailed health check and physical state verification of a specific mechanical or electrical component.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"component_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID or name of the component (e.g., 'def_injector', 'scr_catalyst', 'nox_sensor_2').\"\n        }\n      },\n      \"required\": [\n        \"component_id\"\n      ]\n    },\n    \"example_output\": {\n      \"component_id\": \"def_injector\",\n      \"health_score\": 0.2,\n      \"notes\": \"Crystallized urea buildup detected at nozzle.\"\n    }\n  },\n  \"set_vehicle_state\": {\n    \"description\": \"Modifies the physical state of the vehicle, such as ignition position or connecting tools.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"action\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"connect_scanner\",\n            \"set_ignition_on\",\n            \"set_ignition_off\",\n            \"start_engine\"\n          ]\n        }\n      },\n      \"required\": [\n        \"action\"\n      ]\n    },\n    \"example_output\": {\n      \"success\": true,\n      \"current_state\": \"ON\"\n    }\n  },\n  \"execute_hardware_intervention\": {\n    \"description\": \"Performs a physical repair, replacement, or cleaning of a identified faulty component.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"component_id\": {\n          \"type\": \"string\",\n          \"description\": \"Target component for intervention.\"\n        },\n        \"intervention_type\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"replace\",\n            \"clean\",\n            \"recalibrate\"\n          ]\n        }\n      },\n      \"required\": [\n        \"component_id\",\n        \"intervention_type\"\n      ]\n    },\n    \"example_output\": {\n      \"intervention_result\": \"Success\",\n      \"new_health_score\": 1.0\n    }\n  },\n  \"perform_system_verification_test\": {\n    \"description\": \"Runs automated service routines like SCR efficiency tests or DPF regenerations to verify the fix.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"test_type\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"scr_efficiency_test\",\n            \"def_doser_pump_test\"\n          ]\n        }\n      },\n      \"required\": [\n        \"test_type\"\n      ]\n    },\n    \"example_output\": {\n      \"nox_conversion_rate\": \"98%\",\n      \"test_status\": \"Passed\"\n    }\n  },\n  \"clear_inducements_and_codes\": {\n    \"description\": \"Clears all diagnostic trouble codes and resets the derate/inducement timers once the root cause is resolved.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"codes_cleared\": true,\n      \"derate_active\": false\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_vehicle_system_status",
+      "description": "Retrieves high-level status of the vehicle including scanner connection, ignition position, and battery voltage.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "is_obd_scanner_connected": true,
+        "ignition_position": "ON",
+        "battery_voltage": 12.4,
+        "engine_running": false
+      }
+    },
+    {
+      "name": "scan_diagnostic_trouble_codes",
+      "description": "Reads all active, pending, and historical DTCs from the Engine Control Unit.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "codes": [
+          {
+            "id": "SPN 5246 FMI 15",
+            "description": "SCR Induction - 5 mph Derate",
+            "status": "Active"
+          }
+        ]
+      }
+    },
+    {
+      "name": "read_sensor_telemetry",
+      "description": "Retrieves real-time sensor readings for specific systems to isolate primary failures from noise.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "sensors": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "nox_inlet_ppm",
+                "nox_outlet_ppm",
+                "def_concentration_pct",
+                "dpf_differential_pressure",
+                "scr_inlet_temp"
+              ]
+            },
+            "description": "List of sensors to query."
+          }
+        },
+        "required": [
+          "sensors"
+        ]
+      },
+      "example_output": {
+        "nox_outlet_ppm": 450,
+        "def_concentration_pct": 32.5
+      }
+    },
+    {
+      "name": "inspect_hardware_component",
+      "description": "Performs a detailed health check and physical state verification of a specific mechanical or electrical component.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "component_id": {
+            "type": "string",
+            "description": "The ID or name of the component (e.g., 'def_injector', 'scr_catalyst', 'nox_sensor_2')."
+          }
+        },
+        "required": [
+          "component_id"
+        ]
+      },
+      "example_output": {
+        "component_id": "def_injector",
+        "health_score": 0.2,
+        "notes": "Crystallized urea buildup detected at nozzle."
+      }
+    },
+    {
+      "name": "set_vehicle_state",
+      "description": "Modifies the physical state of the vehicle, such as ignition position or connecting tools.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": [
+              "connect_scanner",
+              "set_ignition_on",
+              "set_ignition_off",
+              "start_engine"
+            ]
+          }
+        },
+        "required": [
+          "action"
+        ]
+      },
+      "example_output": {
+        "success": true,
+        "current_state": "ON"
+      }
+    },
+    {
+      "name": "execute_hardware_intervention",
+      "description": "Performs a physical repair, replacement, or cleaning of a identified faulty component.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "component_id": {
+            "type": "string",
+            "description": "Target component for intervention."
+          },
+          "intervention_type": {
+            "type": "string",
+            "enum": [
+              "replace",
+              "clean",
+              "recalibrate"
+            ]
+          }
+        },
+        "required": [
+          "component_id",
+          "intervention_type"
+        ]
+      },
+      "example_output": {
+        "intervention_result": "Success",
+        "new_health_score": 1.0
+      }
+    },
+    {
+      "name": "perform_system_verification_test",
+      "description": "Runs automated service routines like SCR efficiency tests or DPF regenerations to verify the fix.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "test_type": {
+            "type": "string",
+            "enum": [
+              "scr_efficiency_test",
+              "def_doser_pump_test"
+            ]
+          }
+        },
+        "required": [
+          "test_type"
+        ]
+      },
+      "example_output": {
+        "nox_conversion_rate": "98%",
+        "test_status": "Passed"
+      }
+    },
+    {
+      "name": "clear_inducements_and_codes",
+      "description": "Clears all diagnostic trouble codes and resets the derate/inducement timers once the root cause is resolved.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "codes_cleared": true,
+        "derate_active": false
+      }
+    }
+  ],
+  "state_description": {
+    "battery_voltage": "Current voltage of the vehicle battery in Volts.",
+    "obd_fault_codes": "A list of active and pending Diagnostic Trouble Codes (DTCs) stored in the Engine Control Unit.",
+    "component_health": "A mapping of mechanical/electronic parts to their health status (0.0 to 1.0).",
+    "ignition_position": "The current position of the ignition switch: 'OFF', 'ACC', 'ON', or 'START'.",
+    "engine_running": "Whether the engine is currently idling or running.",
+    "fuel_pressure_psi": "The current pressure in the fuel rail measured in PSI.",
+    "is_obd_scanner_connected": "Status of the physical connection between the OBD-II scanner and the vehicle port."
+  },
+  "task_initial_state": {
+    "battery_voltage": 11.4,
+    "obd_fault_codes": [
+      "SPN 3364 FMI 2",
+      "SPN 3216 FMI 2",
+      "SPN 3216 FMI 20",
+      "SPN 168 FMI 18",
+      "SPN 3251 FMI 2",
+      "SPN 1761 FMI 11",
+      "SPN 3226 FMI 2",
+      "SPN 5246 FMI 0"
+    ],
+    "component_health": {
+      "alternator": 1.0,
+      "fuel_pump": 1.0,
+      "spark_plugs": 1.0,
+      "starter_motor": 1.0,
+      "battery_terminals": 0.55,
+      "nox_sensor_inlet_module": 1.0,
+      "nox_sensor_inlet_element": 0.35,
+      "nox_sensor_outlet_module": 1.0,
+      "nox_sensor_outlet_element": 0.96,
+      "dpf_pressure_sensor_line_a": 0.62,
+      "dpf_pressure_sensor_line_b": 0.98,
+      "def_dosing_nozzle": 0.94,
+      "def_supply_hose": 1.0
+    },
+    "ignition_position": "ACC",
+    "engine_running": false,
+    "fuel_pressure_psi": 0.0,
+    "is_obd_scanner_connected": true
+  }
+}

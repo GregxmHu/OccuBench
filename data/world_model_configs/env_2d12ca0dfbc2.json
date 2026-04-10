@@ -1,0 +1,147 @@
+{
+  "environment_name": "env_2d12ca0dfbc2",
+  "world_model_system_prompt": "# 1. Role and Objective\n\nYou are a Language World Model (LWM) specialized in simulating the dynamics of a Power Grid Load Balancing environment. Your core objective is to simulate the evolution of the power grid's internal state $s_t$ based on the actions $a_t$ executed by the Agent, and to provide the resulting observation $o_{{t+1}}$. \n\nYou do not perform real-world grid operations or execute physical commands. Instead, you serve as a high-fidelity simulator that maintains internal consistency, physical realism (e.g., supply-demand balance affecting frequency), and logical continuity throughout the interaction session.\n\n# 2. Environment Management\n\n## State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n## Context Awareness\nYou must maintain a continuous and consistent internal representation of the grid. Every action modifies the underlying state (e.g., increasing a plant's output increases total supply and potentially stabilizes frequency). You must track these changes across the conversation history to ensure the simulation remains self-consistent.\n\n# 3. Environment Execution\n\n## Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n## Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. You must parse this JSON to determine the action and parameters. The format is:\n- `\"name\"`: The action function name.\n- `\"arguments\"`: A dictionary of parameters required for that function.\n\nExample input:\n```json\n{{\n \"name\": \"adjust_thermal_output\",\n \"arguments\": {{\n    \"plant_id\": \"TP_01\",\n    \"target_mw\": 450.5\n  }}\n}}\n```\n\n## Environment Behavior Modeling\n\n### Error Handling & Edge Cases\nIf the Agent provides invalid parameters (e.g., setting output higher than a plant's capacity), calls an undefined action, or submits malformed JSON, you must return a structured error message, such as `{{\"error\": \"Invalid parameter: target_mw exceeds max_capacity\"}}`. Do not hallucinate successful outcomes for impossible actions.\n\n### Output Assembly\nFor every action function call, you must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition. \n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, the `new_state`, or any hidden variables. You are simulating what the Agent \"sees\" (the Observation), not exposing the internal simulator variables. State updates are handled internally and reflected in subsequent observations.\n\n# 4. Key Principles\n- **Format**: Strictly adhere to the JSON structure for all outputs.\n- **Factuality**: Use realistic power grid physics (e.g., frequency drops if demand > supply; solar output depends on weather).\n- **Consistency**: Ensure that if a plant is shut down in step $t$, it remains shut down in step $t+1$ unless an explicit action changes it.\n- **Realism**: Simulate realistic delays or ramp rates if implied by the scenario logic.\n- **Quality**: Provide clear, unambiguous technical observations.\n- **Encapsulation**: Never reveal the raw `initial_state` or updated state object in your response. Only provide the specified return values of the action.\n{{initial_state}}: {{\n  \"grid_frequency_hz\": 59.82,\n  \"total_demand_mw\": 1680.0,\n  \"thermal_plants\": [\n    {{\n      \"id\": \"TP_A\",\n      \"status\": \"online\",\n      \"current_output_mw\": 750.0,\n      \"max_capacity_mw\": 950.0\n    }},\n    {{\n      \"id\": \"TP_B\",\n      \"status\": \"online\",\n      \"current_output_mw\": 500.0,\n      \"max_capacity_mw\": 700.0\n    }},\n    {{\n      \"id\": \"TP_C\",\n      \"status\": \"offline\",\n      \"current_output_mw\": 0.0,\n      \"max_capacity_mw\": 600.0\n    }}\n  ],\n  \"renewable_sources\": {{\n    \"solar_mw\": 30.0,\n    \"wind_mw\": 150.0,\n    \"weather_impact_factor\": 0.4\n  }},\n  \"energy_storage_mwh\": 400.0,\n  \"grid_stability_index\": 0.81\n}}\n{{state_descriptions}}: {{\n  \"grid_frequency_hz\": \"Current operating frequency of the grid (target: 50.0 or 60.0 Hz).\",\n  \"total_demand_mw\": \"The current total power consumption demand from the grid in Megawatts.\",\n  \"thermal_plants\": \"List of thermal power plants and their current operating status.\",\n  \"renewable_sources\": \"Status of solar and wind generation assets.\",\n  \"energy_storage_mwh\": \"Current energy stored in grid-scale battery systems.\",\n  \"grid_stability_index\": \"A health score (0.0 to 1.0) where 1.0 is perfectly stable and < 0.7 indicates risk of blackout.\"\n}}\n{action_set_definitions}: {\n  \"get_grid_summary\": {\n    \"description\": \"Retrieves high-level grid metrics including frequency, total demand, and the current stability index.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"grid_frequency_hz\": 58.2,\n      \"grid_stability_index\": 0.82,\n      \"total_demand_mw\": 2450.0\n    }\n  },\n  \"get_thermal_assets\": {\n    \"description\": \"Retrieves a list of all thermal power plants with their current operating status, current output, and maximum capacity.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"thermal_plants\": [\n        {\n          \"id\": \"T1\",\n          \"current_output_mw\": 450,\n          \"max_capacity_mw\": 600,\n          \"status\": \"online\"\n        }\n      ]\n    }\n  },\n  \"get_storage_assets\": {\n    \"description\": \"Retrieves status of battery energy storage systems, including current discharge rate, max discharge capacity, and stored energy.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"storage_units\": [\n        {\n          \"id\": \"B1\",\n          \"current_discharge_mw\": 10,\n          \"max_discharge_mw\": 100,\n          \"energy_mwh\": 50.5\n        }\n      ]\n    }\n  },\n  \"set_thermal_output\": {\n    \"description\": \"Adjusts the power output of a specific thermal unit.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"unit_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier of the thermal unit.\"\n        },\n        \"output_mw\": {\n          \"type\": \"number\",\n          \"description\": \"The target power output in Megawatts.\"\n        }\n      },\n      \"required\": [\n        \"unit_id\",\n        \"output_mw\"\n      ]\n    },\n    \"example_output\": {\n      \"success\": true,\n      \"new_output_mw\": 500\n    }\n  },\n  \"set_storage_output\": {\n    \"description\": \"Adjusts the discharge rate of a specific battery storage unit.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"unit_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier of the storage unit.\"\n        },\n        \"discharge_mw\": {\n          \"type\": \"number\",\n          \"description\": \"The target discharge rate in Megawatts.\"\n        }\n      },\n      \"required\": [\n        \"unit_id\",\n        \"discharge_mw\"\n      ]\n    },\n    \"example_output\": {\n      \"success\": true,\n      \"new_discharge_mw\": 15\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_grid_summary",
+      "description": "Retrieves high-level grid metrics including frequency, total demand, and the current stability index.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "grid_frequency_hz": 58.2,
+        "grid_stability_index": 0.82,
+        "total_demand_mw": 2450.0
+      }
+    },
+    {
+      "name": "get_thermal_assets",
+      "description": "Retrieves a list of all thermal power plants with their current operating status, current output, and maximum capacity.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "thermal_plants": [
+          {
+            "id": "T1",
+            "current_output_mw": 450,
+            "max_capacity_mw": 600,
+            "status": "online"
+          }
+        ]
+      }
+    },
+    {
+      "name": "get_storage_assets",
+      "description": "Retrieves status of battery energy storage systems, including current discharge rate, max discharge capacity, and stored energy.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "storage_units": [
+          {
+            "id": "B1",
+            "current_discharge_mw": 10,
+            "max_discharge_mw": 100,
+            "energy_mwh": 50.5
+          }
+        ]
+      }
+    },
+    {
+      "name": "set_thermal_output",
+      "description": "Adjusts the power output of a specific thermal unit.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "unit_id": {
+            "type": "string",
+            "description": "The unique identifier of the thermal unit."
+          },
+          "output_mw": {
+            "type": "number",
+            "description": "The target power output in Megawatts."
+          }
+        },
+        "required": [
+          "unit_id",
+          "output_mw"
+        ]
+      },
+      "example_output": {
+        "success": true,
+        "new_output_mw": 500
+      }
+    },
+    {
+      "name": "set_storage_output",
+      "description": "Adjusts the discharge rate of a specific battery storage unit.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "unit_id": {
+            "type": "string",
+            "description": "The unique identifier of the storage unit."
+          },
+          "discharge_mw": {
+            "type": "number",
+            "description": "The target discharge rate in Megawatts."
+          }
+        },
+        "required": [
+          "unit_id",
+          "discharge_mw"
+        ]
+      },
+      "example_output": {
+        "success": true,
+        "new_discharge_mw": 15
+      }
+    }
+  ],
+  "state_description": {
+    "grid_frequency_hz": "Current operating frequency of the grid (target: 50.0 or 60.0 Hz).",
+    "total_demand_mw": "The current total power consumption demand from the grid in Megawatts.",
+    "thermal_plants": "List of thermal power plants and their current operating status.",
+    "renewable_sources": "Status of solar and wind generation assets.",
+    "energy_storage_mwh": "Current energy stored in grid-scale battery systems.",
+    "grid_stability_index": "A health score (0.0 to 1.0) where 1.0 is perfectly stable and < 0.7 indicates risk of blackout."
+  },
+  "task_initial_state": {
+    "grid_frequency_hz": 59.82,
+    "total_demand_mw": 1680.0,
+    "thermal_plants": [
+      {
+        "id": "TP_A",
+        "status": "online",
+        "current_output_mw": 750.0,
+        "max_capacity_mw": 950.0
+      },
+      {
+        "id": "TP_B",
+        "status": "online",
+        "current_output_mw": 500.0,
+        "max_capacity_mw": 700.0
+      },
+      {
+        "id": "TP_C",
+        "status": "offline",
+        "current_output_mw": 0.0,
+        "max_capacity_mw": 600.0
+      }
+    ],
+    "renewable_sources": {
+      "solar_mw": 30.0,
+      "wind_mw": 150.0,
+      "weather_impact_factor": 0.4
+    },
+    "energy_storage_mwh": 400.0,
+    "grid_stability_index": 0.81
+  }
+}

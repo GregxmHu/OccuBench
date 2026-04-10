@@ -1,0 +1,221 @@
+{
+  "environment_name": "env_f12cfc9329de",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM) for Linux Server Troubleshooting.\n- **Core Objective**: Based on the current internal server state $s_t$ and the Agent's action $a_t$, simulate the evolution of the server environment and predict the observation $o_{{t+1}}$ (e.g., command output, log changes, or system metrics) obtained by the Agent.\n- **Emphasis**: You are a simulator. You do not execute real bash commands on a physical machine. You maintain a consistent virtual Linux environment where actions like stopping a service or deleting a file have persistent consequences on the internal state.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions between the World Model and the Agent must maintain strict context consistency. If a process is killed in step $t$, it must remain absent in the state at $t+1$ unless a restart action is simulated. File system changes, environment variables, and service statuses must persist across the interaction history.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent submits action requests via a structured JSON object. You must parse these requests and simulate the corresponding Linux system behavior. Actions will follow this format:\n- `\"name\"`: The command or function (e.g., `run_command`, `read_log`, `restart_service`).\n- The remaining fields are parameters (e.g., `command_string`, `file_path`).\n\nExample:\n```json\n{{\n \"name\": \"run_command\",\n \"arguments\": {{\n    \"cmd\": \"systemctl status nginx\"\n  }}\n}}\n```\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nSimulate realistic Linux error behaviors. \n- If a file does not exist: return a standard `stderr` style message within the JSON (e.g., `{{\"exit_code\": 1, \"stderr\": \"ls: cannot access 'file.txt': No such file or directory\"}}`).\n- If a command is not found: return `{{\"exit_code\": 127, \"stderr\": \"command not found\"}}`.\n- For invalid JSON parameters or undefined actions, return: `{{\"error\": \"Action 'xyz' not found\"}}`.\nDo not fabricate fictitious successful responses for failed operations.\n\n##### Output Assembly\nFor every simulated action, return a structured JSON object containing **ONLY** the return fields declared in the action function's definition. Typically, this includes `stdout`, `stderr`, and `exit_code`.\n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, the `new_state`, or hidden system variables. You are the environment; you only show the Agent what a terminal or a tool would show. Do not output the state update process.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to JSON output format for all observations.\n- **Factuality**: Use standard Linux behavior logic (e.g., permissions, signal handling, exit codes).\n- **Consistency**: Ensure that if the internal state $s_t$ shows 100% disk usage, a `write_file` action should fail with \"No space left on device\".\n- **Realism**: Simulate realistic latency or side effects (e.g., high CPU load making command execution slightly \"slower\" in narrative descriptions, if applicable).\n- **Quality**: Provide clear, standard Linux-style diagnostic outputs.\n- **Encapsulation**: Strictly hide the internal state JSON structure from the Agent. Only return the Observation $o_{{t+1}}$.\n{{initial_state}}: {{\n  \"hostname\": \"prod-worker-07\",\n  \"os_info\": \"Ubuntu 22.04.3 LTS (GNU/Linux 5.15.0-generic x86_64)\",\n  \"cpu_load_avg\": [\n    0.21,\n    0.15,\n    0.09\n  ],\n  \"memory_usage\": {{\n    \"total\": 16384,\n    \"used\": 4096,\n    \"free\": 12288\n  }},\n  \"disk_partitions\": [\n    {{\n      \"mount\": \"/\",\n      \"usage_pct\": 42\n    }},\n    {{\n      \"mount\": \"/var/log\",\n      \"usage_pct\": 15\n    }}\n  ],\n  \"active_services\": {{\n    \"nftables\": \"active\",\n    \"systemd-resolved\": \"active\",\n    \"ssh\": \"active\"\n  }},\n  \"process_list\": [\n    {{\n      \"pid\": 1,\n      \"cmd\": \"/sbin/init\",\n      \"cpu_pct\": 0.0,\n      \"mem_pct\": 0.1\n    }},\n    {{\n      \"pid\": 1201,\n      \"cmd\": \"/lib/systemd/systemd-resolved\",\n      \"cpu_pct\": 0.2,\n      \"mem_pct\": 0.5\n    }}\n  ],\n  \"file_system_contents\": {{\n    \"/etc/services/active_profile.txt\": \"PRIMARY_SERVICE=SecureVaultSync\",\n    \"/etc/SecureVaultSync/config.json\": \"{{\\n  \\\"backend_endpoint\\\": \\\"api.internal.vault-prod.net\\\",\\n  \\\"retry_interval\\\": 60,\\n  \\\"log_level\\\": \\\"debug\\\"\\n}}\",\n    \"/etc/nftables.conf\": \"table inet filter {{\\n    chain output {{\\n        type filter hook output priority 0; policy drop;\\n        ct state established,related accept\\n        udp dport 53 accept\\n        tcp dport 443 accept\\n        ip daddr 127.0.0.1 accept\\n    }}\\n}}\",\n    \"/var/log/syslog\": \"Dec 29 09:15:22 prod-worker-07 systemd-resolved[1201]: DNS format error from 10.100.0.1 (UDP/53): truncated response.\\nDec 29 09:15:22 prod-worker-07 systemd-resolved[1201]: Switching to TCP for DNS server 10.100.0.1.\\nDec 29 09:15:25 prod-worker-07 systemd-resolved[1201]: TCP connection to 10.100.0.1:53 failed: Connection timed out.\",\n    \"/etc/systemd/resolved.conf\": \"[Resolve]\\nDNS=10.100.0.1\\nDNSSEC=no\"\n  }},\n  \"open_ports\": [\n    22,\n    53\n  ]\n}}\n{{state_descriptions}}: {{\n  \"hostname\": \"The network name of the server.\",\n  \"os_info\": \"Operating system distribution and kernel version.\",\n  \"cpu_load_avg\": \"System load averages for the past 1, 5, and 15 minutes.\",\n  \"memory_usage\": \"Total, used, and free memory in MB.\",\n  \"disk_partitions\": \"List of disk partitions and their current usage percentages.\",\n  \"active_services\": \"A map of service names to their current systemd status (e.g., active, inactive, failed).\",\n  \"process_list\": \"A list of currently running processes with PID, user, and resource consumption.\",\n  \"file_system_contents\": \"A simplified key-value mapping of file paths to their string content for critical config/log files.\",\n  \"open_ports\": \"List of TCP/UDP ports currently in a LISTEN state.\"\n}}\n{action_set_definitions}: {\n  \"list_directory\": {\n    \"description\": \"Lists files and subdirectories within a specified path to discover configuration files or profile scripts.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"path\": {\n          \"type\": \"string\",\n          \"description\": \"The absolute path to the directory.\"\n        }\n      },\n      \"required\": [\n        \"path\"\n      ]\n    },\n    \"example_output\": {\n      \"contents\": [\n        \"active_env.sh\",\n        \"sys_vars.conf\"\n      ]\n    }\n  },\n  \"read_file\": {\n    \"description\": \"Reads the text content of a specified file.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"path\": {\n          \"type\": \"string\",\n          \"description\": \"The absolute path to the file.\"\n        }\n      },\n      \"required\": [\n        \"path\"\n      ]\n    },\n    \"example_output\": {\n      \"content\": \"ACTIVE_SERVICE=sync-engine\\nBACKEND_URL=192.168.1.50:9000\"\n    }\n  },\n  \"write_file\": {\n    \"description\": \"Writes or overwrites content to a file at a specific path.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"path\": {\n          \"type\": \"string\",\n          \"description\": \"The absolute path to the file.\"\n        },\n        \"content\": {\n          \"type\": \"string\",\n          \"description\": \"The full string content to write to the file.\"\n        }\n      },\n      \"required\": [\n        \"path\",\n        \"content\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"success\",\n      \"bytes_written\": 145\n    }\n  },\n  \"test_connectivity\": {\n    \"description\": \"Attempts a network connection to a host and port to verify reachability.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"host\": {\n          \"type\": \"string\",\n          \"description\": \"IP address or hostname.\"\n        },\n        \"port\": {\n          \"type\": \"number\",\n          \"description\": \"TCP/UDP port number.\"\n        }\n      },\n      \"required\": [\n        \"host\",\n        \"port\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"failed\",\n      \"reason\": \"Connection refused\"\n    }\n  },\n  \"manage_nftables\": {\n    \"description\": \"Commands to interact with the nftables firewall ruleset.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"action\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"list_ruleset\",\n            \"add_rule\",\n            \"save_to_config\"\n          ],\n          \"description\": \"The action to perform: 'list_ruleset' to view rules, 'add_rule' to insert a new rule, 'save_to_config' to make current rules persistent.\"\n        },\n        \"rule_string\": {\n          \"type\": \"string\",\n          \"description\": \"The specific rule definition (required for 'add_rule'). Example: 'add rule inet filter output tcp dport 443 accept'\"\n        }\n      },\n      \"required\": [\n        \"action\"\n      ]\n    },\n    \"example_output\": {\n      \"ruleset\": \"table inet filter { ... }\",\n      \"status\": \"success\"\n    }\n  },\n  \"manage_service\": {\n    \"description\": \"Manages systemd services (check status, reload, or restart).\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"service_name\": {\n          \"type\": \"string\",\n          \"description\": \"The name of the service.\"\n        },\n        \"action\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"status\",\n            \"reload\",\n            \"restart\"\n          ],\n          \"description\": \"Action to perform.\"\n        }\n      },\n      \"required\": [\n        \"service_name\",\n        \"action\"\n      ]\n    },\n    \"example_output\": {\n      \"active_state\": \"active\",\n      \"logs\": \"Started synchronization service...\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "list_directory",
+      "description": "Lists files and subdirectories within a specified path to discover configuration files or profile scripts.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "The absolute path to the directory."
+          }
+        },
+        "required": [
+          "path"
+        ]
+      },
+      "example_output": {
+        "contents": [
+          "active_env.sh",
+          "sys_vars.conf"
+        ]
+      }
+    },
+    {
+      "name": "read_file",
+      "description": "Reads the text content of a specified file.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "The absolute path to the file."
+          }
+        },
+        "required": [
+          "path"
+        ]
+      },
+      "example_output": {
+        "content": "ACTIVE_SERVICE=sync-engine\nBACKEND_URL=192.168.1.50:9000"
+      }
+    },
+    {
+      "name": "write_file",
+      "description": "Writes or overwrites content to a file at a specific path.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "The absolute path to the file."
+          },
+          "content": {
+            "type": "string",
+            "description": "The full string content to write to the file."
+          }
+        },
+        "required": [
+          "path",
+          "content"
+        ]
+      },
+      "example_output": {
+        "status": "success",
+        "bytes_written": 145
+      }
+    },
+    {
+      "name": "test_connectivity",
+      "description": "Attempts a network connection to a host and port to verify reachability.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "host": {
+            "type": "string",
+            "description": "IP address or hostname."
+          },
+          "port": {
+            "type": "number",
+            "description": "TCP/UDP port number."
+          }
+        },
+        "required": [
+          "host",
+          "port"
+        ]
+      },
+      "example_output": {
+        "status": "failed",
+        "reason": "Connection refused"
+      }
+    },
+    {
+      "name": "manage_nftables",
+      "description": "Commands to interact with the nftables firewall ruleset.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": [
+              "list_ruleset",
+              "add_rule",
+              "save_to_config"
+            ],
+            "description": "The action to perform: 'list_ruleset' to view rules, 'add_rule' to insert a new rule, 'save_to_config' to make current rules persistent."
+          },
+          "rule_string": {
+            "type": "string",
+            "description": "The specific rule definition (required for 'add_rule'). Example: 'add rule inet filter output tcp dport 443 accept'"
+          }
+        },
+        "required": [
+          "action"
+        ]
+      },
+      "example_output": {
+        "ruleset": "table inet filter { ... }",
+        "status": "success"
+      }
+    },
+    {
+      "name": "manage_service",
+      "description": "Manages systemd services (check status, reload, or restart).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "service_name": {
+            "type": "string",
+            "description": "The name of the service."
+          },
+          "action": {
+            "type": "string",
+            "enum": [
+              "status",
+              "reload",
+              "restart"
+            ],
+            "description": "Action to perform."
+          }
+        },
+        "required": [
+          "service_name",
+          "action"
+        ]
+      },
+      "example_output": {
+        "active_state": "active",
+        "logs": "Started synchronization service..."
+      }
+    }
+  ],
+  "state_description": {
+    "hostname": "The network name of the server.",
+    "os_info": "Operating system distribution and kernel version.",
+    "cpu_load_avg": "System load averages for the past 1, 5, and 15 minutes.",
+    "memory_usage": "Total, used, and free memory in MB.",
+    "disk_partitions": "List of disk partitions and their current usage percentages.",
+    "active_services": "A map of service names to their current systemd status (e.g., active, inactive, failed).",
+    "process_list": "A list of currently running processes with PID, user, and resource consumption.",
+    "file_system_contents": "A simplified key-value mapping of file paths to their string content for critical config/log files.",
+    "open_ports": "List of TCP/UDP ports currently in a LISTEN state."
+  },
+  "task_initial_state": {
+    "hostname": "prod-worker-07",
+    "os_info": "Ubuntu 22.04.3 LTS (GNU/Linux 5.15.0-generic x86_64)",
+    "cpu_load_avg": [
+      0.21,
+      0.15,
+      0.09
+    ],
+    "memory_usage": {
+      "total": 16384,
+      "used": 4096,
+      "free": 12288
+    },
+    "disk_partitions": [
+      {
+        "mount": "/",
+        "usage_pct": 42
+      },
+      {
+        "mount": "/var/log",
+        "usage_pct": 15
+      }
+    ],
+    "active_services": {
+      "nftables": "active",
+      "systemd-resolved": "active",
+      "ssh": "active"
+    },
+    "process_list": [
+      {
+        "pid": 1,
+        "cmd": "/sbin/init",
+        "cpu_pct": 0.0,
+        "mem_pct": 0.1
+      },
+      {
+        "pid": 1201,
+        "cmd": "/lib/systemd/systemd-resolved",
+        "cpu_pct": 0.2,
+        "mem_pct": 0.5
+      }
+    ],
+    "file_system_contents": {
+      "/etc/services/active_profile.txt": "PRIMARY_SERVICE=SecureVaultSync",
+      "/etc/SecureVaultSync/config.json": "{\n  \"backend_endpoint\": \"api.internal.vault-prod.net\",\n  \"retry_interval\": 60,\n  \"log_level\": \"debug\"\n}",
+      "/etc/nftables.conf": "table inet filter {\n    chain output {\n        type filter hook output priority 0; policy drop;\n        ct state established,related accept\n        udp dport 53 accept\n        tcp dport 443 accept\n        ip daddr 127.0.0.1 accept\n    }\n}",
+      "/var/log/syslog": "Dec 29 09:15:22 prod-worker-07 systemd-resolved[1201]: DNS format error from 10.100.0.1 (UDP/53): truncated response.\nDec 29 09:15:22 prod-worker-07 systemd-resolved[1201]: Switching to TCP for DNS server 10.100.0.1.\nDec 29 09:15:25 prod-worker-07 systemd-resolved[1201]: TCP connection to 10.100.0.1:53 failed: Connection timed out.",
+      "/etc/systemd/resolved.conf": "[Resolve]\nDNS=10.100.0.1\nDNSSEC=no"
+    },
+    "open_ports": [
+      22,
+      53
+    ]
+  }
+}

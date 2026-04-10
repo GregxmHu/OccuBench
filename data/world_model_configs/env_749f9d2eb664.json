@@ -1,0 +1,105 @@
+{
+  "environment_name": "env_749f9d2eb664",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM) for Wastewater Treatment Optimization.\n- **Core Objective**: Based on the current biochemical and physical state $s_t$ of the wastewater treatment plant and the control action $a_t$ taken by the Agent, simulate the evolution of the treatment process and predict the resulting sensor observations $o_{{t+1}}$.\n- **Emphasis**: The LWM does not control the plant; it serves as a high-fidelity simulator that predicts how the water quality, chemical levels, and system efficiency change in response to operational decisions.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions between the World Model and the Agent must maintain temporal and biochemical consistency. The impact of biological processes (e.g., microbial growth, oxygen consumption) and chemical reactions must persist across multiple steps in the interaction history.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will not send actions in the form of function call strings, but will always submit action requests via a structured JSON object. This JSON must contain the following fields:\n- `\"name\"`: Specifies the name of the action function to execute (e.g., \"adjust_aeration_rate\").\n- The remaining fields are the parameter names and corresponding values required by that action function (e.g., \"airflow_velocity\").\n\nExample:\n```json\n{{\n \"name\": \"apply_coagulant\",\n \"arguments\": {{\n    \"dosage_mg_per_l\": 25.5,\n    \"tank_id\": \"primary_clarifier_01\"\n  }}\n}}\n```\n\nThe Language World Model must correctly parse such JSON inputs, calculate the resulting changes in water chemistry and system state, and simulate the execution results.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nFor invalid parameters (e.g., negative flow rates, chemical dosages exceeding tank capacity), undefined actions, or state conflicts, return structured error information (e.g., `{{\"error\": \"Invalid dosage value\"}}`), and do not fabricate states or fictitious responses.\n\n##### Output Assembly\nFor every action function call, the model must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition (the Observation).\n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state $s_t$, the hidden transition variables, or the updated state $s_{{t+1}}$. State maintenance is internal to the model logic. The Agent must only receive the specific observation data (e.g., sensor readings, effluent quality reports) defined in the action.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to specified JSON and text formats.\n- **Factuality**: Do not fabricate sensor data or plant responses that violate the laws of fluid dynamics or environmental chemistry.\n- **Consistency**: Ensure that if oxygen levels are reduced, the biological oxygen demand (BOD) removal rate adjusts realistically in subsequent steps.\n- **Realism**: Simulated behaviors must align with wastewater engineering principles, including lag times in biological systems and mechanical constraints of pumps/blowers.\n- **Quality**: Observations should be precise and structurally complete.\n- **Encapsulation**: Strictly hide the internal state structure from the output. Only expose information that is explicitly returned by the action function.\n{{initial_state}}: {{\n  \"influent_flow_rate\": 520.0,\n  \"dissolved_oxygen_level\": 0.8,\n  \"mixed_liquor_suspended_solids\": 2200.0,\n  \"effluent_cod\": 72.0,\n  \"sludge_settleability_index\": 180.0,\n  \"chemical_tank_level\": 85.0,\n  \"cumulative_energy_consumption\": 0.0\n}}\n{{state_descriptions}}: {{\n  \"influent_flow_rate\": \"Current rate of raw wastewater entering the system (m3/h).\",\n  \"dissolved_oxygen_level\": \"Concentration of oxygen in the aeration tank (mg/L).\",\n  \"mixed_liquor_suspended_solids\": \"Concentration of suspended solids in the aeration tank, representing microbial biomass (mg/L).\",\n  \"effluent_cod\": \"Chemical Oxygen Demand of the treated water leaving the system (mg/L).\",\n  \"sludge_settleability_index\": \"Measure of how well the sludge settles in the clarifier (mL/g).\",\n  \"chemical_tank_level\": \"Remaining percentage of coagulant/flocculant in the storage tank.\",\n  \"cumulative_energy_consumption\": \"Total energy used by pumps and blowers since start of cycle (kWh).\"\n}}\n{action_set_definitions}: {\n  \"get_wastewater_metrics\": {\n    \"description\": \"Retrieves the current operational parameters and sensor readings from the wastewater treatment environment.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"influent_flow_rate\": 125.5,\n      \"dissolved_oxygen_level\": 1.8,\n      \"mixed_liquor_suspended_solids\": 3200.0,\n      \"effluent_cod\": 45.2,\n      \"sludge_settleability_index\": 120.5,\n      \"chemical_tank_level\": 85.0,\n      \"cumulative_energy_consumption\": 310.0\n    }\n  },\n  \"set_aeration_intensity\": {\n    \"description\": \"Adjusts the power output of the aeration blowers. Increasing intensity raises Dissolved Oxygen (DO) levels to lower COD, but increases energy consumption.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"power_level\": {\n          \"type\": \"number\",\n          \"description\": \"The target blower power level as a percentage (0.0 to 100.0).\"\n        }\n      },\n      \"required\": [\n        \"power_level\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"success\",\n      \"new_dissolved_oxygen_level\": 2.2,\n      \"projected_energy_increase\": 5.5\n    }\n  },\n  \"set_wastage_flow_rate\": {\n    \"description\": \"Adjusts the Waste Activated Sludge (WAS) flow rate. Decreasing this rate allows the biological inventory (MLSS) to increase.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"flow_rate_m3h\": {\n          \"type\": \"number\",\n          \"description\": \"The target flow rate for sludge wastage in cubic meters per hour.\"\n        }\n      },\n      \"required\": [\n        \"flow_rate_m3h\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"success\",\n      \"current_wastage_rate\": 10.0,\n      \"mlss_trend\": \"increasing\"\n    }\n  },\n  \"set_return_sludge_flow_rate\": {\n    \"description\": \"Adjusts the Return Activated Sludge (RAS) flow rate. Used to manage the concentration of solids in the aeration tank and optimize the Sludge Settleability Index (SVI) without chemicals.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"flow_rate_m3h\": {\n          \"type\": \"number\",\n          \"description\": \"The target flow rate for returning sludge from the clarifier to the aeration tank.\"\n        }\n      },\n      \"required\": [\n        \"flow_rate_m3h\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"success\",\n      \"current_ras_rate\": 250.0,\n      \"svi_trend\": \"decreasing\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_wastewater_metrics",
+      "description": "Retrieves the current operational parameters and sensor readings from the wastewater treatment environment.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "influent_flow_rate": 125.5,
+        "dissolved_oxygen_level": 1.8,
+        "mixed_liquor_suspended_solids": 3200.0,
+        "effluent_cod": 45.2,
+        "sludge_settleability_index": 120.5,
+        "chemical_tank_level": 85.0,
+        "cumulative_energy_consumption": 310.0
+      }
+    },
+    {
+      "name": "set_aeration_intensity",
+      "description": "Adjusts the power output of the aeration blowers. Increasing intensity raises Dissolved Oxygen (DO) levels to lower COD, but increases energy consumption.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "power_level": {
+            "type": "number",
+            "description": "The target blower power level as a percentage (0.0 to 100.0)."
+          }
+        },
+        "required": [
+          "power_level"
+        ]
+      },
+      "example_output": {
+        "status": "success",
+        "new_dissolved_oxygen_level": 2.2,
+        "projected_energy_increase": 5.5
+      }
+    },
+    {
+      "name": "set_wastage_flow_rate",
+      "description": "Adjusts the Waste Activated Sludge (WAS) flow rate. Decreasing this rate allows the biological inventory (MLSS) to increase.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "flow_rate_m3h": {
+            "type": "number",
+            "description": "The target flow rate for sludge wastage in cubic meters per hour."
+          }
+        },
+        "required": [
+          "flow_rate_m3h"
+        ]
+      },
+      "example_output": {
+        "status": "success",
+        "current_wastage_rate": 10.0,
+        "mlss_trend": "increasing"
+      }
+    },
+    {
+      "name": "set_return_sludge_flow_rate",
+      "description": "Adjusts the Return Activated Sludge (RAS) flow rate. Used to manage the concentration of solids in the aeration tank and optimize the Sludge Settleability Index (SVI) without chemicals.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "flow_rate_m3h": {
+            "type": "number",
+            "description": "The target flow rate for returning sludge from the clarifier to the aeration tank."
+          }
+        },
+        "required": [
+          "flow_rate_m3h"
+        ]
+      },
+      "example_output": {
+        "status": "success",
+        "current_ras_rate": 250.0,
+        "svi_trend": "decreasing"
+      }
+    }
+  ],
+  "state_description": {
+    "influent_flow_rate": "Current rate of raw wastewater entering the system (m3/h).",
+    "dissolved_oxygen_level": "Concentration of oxygen in the aeration tank (mg/L).",
+    "mixed_liquor_suspended_solids": "Concentration of suspended solids in the aeration tank, representing microbial biomass (mg/L).",
+    "effluent_cod": "Chemical Oxygen Demand of the treated water leaving the system (mg/L).",
+    "sludge_settleability_index": "Measure of how well the sludge settles in the clarifier (mL/g).",
+    "chemical_tank_level": "Remaining percentage of coagulant/flocculant in the storage tank.",
+    "cumulative_energy_consumption": "Total energy used by pumps and blowers since start of cycle (kWh)."
+  },
+  "task_initial_state": {
+    "influent_flow_rate": 520.0,
+    "dissolved_oxygen_level": 0.8,
+    "mixed_liquor_suspended_solids": 2200.0,
+    "effluent_cod": 72.0,
+    "sludge_settleability_index": 180.0,
+    "chemical_tank_level": 85.0,
+    "cumulative_energy_consumption": 0.0
+  }
+}

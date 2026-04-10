@@ -1,0 +1,198 @@
+{
+  "environment_name": "env_3a1d60e10102",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: Based on the current internal state $s_t$ and the action $a_t$ performed by the Agent, simulate the physical and chemical evolution of the Mine Ventilation Environment. You will predict the next internal state $s_{{t+1}}$ and generate the specific observation $o_{{t+1}}$ returned to the Agent.\n- **Emphasis**: You are a simulator. You do not control the fans or dampers yourself; you calculate how the airflow, gas concentrations (CH4, CO, CO2), and power consumption change in response to the Agent's commands. \n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions must maintain physical and temporal consistency. For example, gas concentrations should change gradually based on airflow volume, and power consumption must reflect the cumulative work of the ventilation fans over time.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. This JSON must contain the following fields:\n- `\"name\"`: Specifies the name of the action function to execute.\n- The remaining fields are the parameter names and values required by that action function.\n\nExample:\n```json\n{{\n \"name\": \"adjust_fan_speed\",\n \"arguments\": {{\n    \"fan_id\": \"main_intake_01\",\n    \"rpm\": 1500\n  }}\n}}\n```\n\nYou must parse this input, update the internal state of the mine ventilation system (e.g., recalculate air pressure, flow velocity, and gas dilution), and return the specified observation.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\n- If an action refers to a non-existent fan or sensor ID, return: `{{\"error\": \"Device ID not found\"}}`.\n- If a parameter is out of physical bounds (e.g., negative RPM), return an error describing the physical constraint.\n- In case of malformed JSON, return: `{{\"error\": \"Invalid JSON format\"}}`.\n- Do not fabricate data; if the logic cannot determine a result, report a system fault.\n\n##### Output Assembly\nFor every action function call, return a structured JSON object containing **ONLY** the return fields declared in the action function's definition.\n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the internal state `$s_t$`, the updated `new_state`, or hidden variables like global methane distribution unless the action specifically returns them. The Agent must only receive the precise observation (e.g., a sensor reading or an execution confirmation).\n\n### 4. Key Principles\n- **Format**: Strictly adhere to JSON output for observations.\n- **Factuality**: Simulations must follow the principles of fluid dynamics and gas kinetics applicable to underground mining.\n- **Consistency**: If a fan is slowed down, airflow in connected sectors must decrease, and gas levels should logically rise over subsequent steps.\n- **Realism**: Account for the lag in airflow stabilization and the non-linear relationship between fan power and air volume.\n- **Quality**: Provide precise numeric values where applicable.\n- **Encapsulation**: Never reveal the full internal state dictionary. Only expose the specific fields defined as the action's return value.\n{{initial_state}}: {{\n  \"fan_registry\": {{\n    \"fan_north_01\": {{\n      \"status\": \"operational\",\n      \"rpm\": 1200,\n      \"power_kw\": 45.5\n    }},\n    \"fan_south_02\": {{\n      \"status\": \"operational\",\n      \"rpm\": 1100,\n      \"power_kw\": 42.0\n    }}\n  }},\n  \"ventilation_regulators\": {{\n    \"damper_zone_A\": 12,\n    \"damper_zone_B\": 100\n  }},\n  \"atmospheric_sensors\": {{\n    \"sector_primary_intake\": {{\n      \"methane_pct\": 0.01,\n      \"co_ppm\": 0,\n      \"airflow_m3_s\": 150.5,\n      \"temp_c\": 22.5\n    }},\n    \"working_face_01\": {{\n      \"methane_pct\": 0.68,\n      \"co_ppm\": 3,\n      \"airflow_m3_s\": 5.4,\n      \"temp_c\": 28.5\n    }}\n  }},\n  \"cumulative_metrics\": {{\n    \"total_energy_kwh\": 5120.4,\n    \"uptime_minutes\": 3200\n  }},\n  \"alert_status\": [\n    \"LOCAL_MAINTENANCE_LOCK_SECTOR_4200\",\n    \"METHANE_LIMIT_EXCEEDED_WF01\"\n  ]\n}}\n{{state_descriptions}}: {{\n  \"fan_registry\": \"Current operational status and RPM of all ventilation fans in the mine.\",\n  \"ventilation_regulators\": \"Opening percentages of air doors and dampers controlling airflow distribution.\",\n  \"atmospheric_sensors\": \"Real-time readings from gas and airflow sensors across different mine sectors.\",\n  \"cumulative_metrics\": \"Aggregated system metrics such as total energy consumed.\",\n  \"alert_status\": \"Active safety alerts or hardware malfunctions.\"\n}}\n{action_set_definitions}: {\n  \"get_atmospheric_readings\": {\n    \"description\": \"Retrieves real-time methane concentration and airflow volume for a specific location.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"location_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the working face or sector (e.g., 'working_face_01').\"\n        }\n      },\n      \"required\": [\n        \"location_id\"\n      ]\n    },\n    \"example_output\": {\n      \"methane_percentage\": 0.35,\n      \"airflow_m3_s\": 18.5,\n      \"timestamp\": \"2023-10-27T10:00:00Z\"\n    }\n  },\n  \"get_infrastructure_registry\": {\n    \"description\": \"Lists all fans and ventilation regulators associated with a specific sector and their current operational parameters.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"sector_id\": {\n          \"type\": \"string\",\n          \"description\": \"The sector to query (e.g., 'working_face_01').\"\n        }\n      },\n      \"required\": [\n        \"sector_id\"\n      ]\n    },\n    \"example_output\": {\n      \"fans\": [\n        {\n          \"fan_id\": \"F-01\",\n          \"status\": \"on\",\n          \"rpm\": 1200,\n          \"max_rpm\": 3000\n        }\n      ],\n      \"regulators\": [\n        {\n          \"regulator_id\": \"R-12\",\n          \"open_percentage\": 45\n        }\n      ]\n    }\n  },\n  \"get_active_alerts\": {\n    \"description\": \"Queries the SCADA system for active hardware malfunctions or safety protocol locks.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {}\n    },\n    \"example_output\": {\n      \"alerts\": [\n        {\n          \"id\": \"AL-404\",\n          \"severity\": \"CRITICAL\",\n          \"description\": \"Fan F-02 Bearing Overheat\"\n        }\n      ]\n    }\n  },\n  \"set_fan_rpm\": {\n    \"description\": \"Adjusts the RPM of a specific ventilation fan via SCADA.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"fan_id\": {\n          \"type\": \"string\"\n        },\n        \"target_rpm\": {\n          \"type\": \"integer\"\n        }\n      },\n      \"required\": [\n        \"fan_id\",\n        \"target_rpm\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"success\",\n      \"new_rpm\": 1500\n    }\n  },\n  \"set_regulator_position\": {\n    \"description\": \"Adjusts the opening percentage of a ventilation regulator/damper.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"regulator_id\": {\n          \"type\": \"string\"\n        },\n        \"open_percentage\": {\n          \"type\": \"integer\",\n          \"minimum\": 0,\n          \"maximum\": 100\n        }\n      },\n      \"required\": [\n        \"regulator_id\",\n        \"open_percentage\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"success\",\n      \"new_position\": 60\n    }\n  },\n  \"authorize_face_entry\": {\n    \"description\": \"Formalizes the safety clearance for a specific location, allowing equipment entry once conditions are verified.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"location_id\": {\n          \"type\": \"string\"\n        },\n        \"verified_airflow\": {\n          \"type\": \"number\"\n        },\n        \"verified_methane\": {\n          \"type\": \"number\"\n        }\n      },\n      \"required\": [\n        \"location_id\",\n        \"verified_airflow\",\n        \"verified_methane\"\n      ]\n    },\n    \"example_output\": {\n      \"clearance_code\": \"SAFE-2023-XYZ\",\n      \"status\": \"CLEARED\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_atmospheric_readings",
+      "description": "Retrieves real-time methane concentration and airflow volume for a specific location.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "location_id": {
+            "type": "string",
+            "description": "The ID of the working face or sector (e.g., 'working_face_01')."
+          }
+        },
+        "required": [
+          "location_id"
+        ]
+      },
+      "example_output": {
+        "methane_percentage": 0.35,
+        "airflow_m3_s": 18.5,
+        "timestamp": "2023-10-27T10:00:00Z"
+      }
+    },
+    {
+      "name": "get_infrastructure_registry",
+      "description": "Lists all fans and ventilation regulators associated with a specific sector and their current operational parameters.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "sector_id": {
+            "type": "string",
+            "description": "The sector to query (e.g., 'working_face_01')."
+          }
+        },
+        "required": [
+          "sector_id"
+        ]
+      },
+      "example_output": {
+        "fans": [
+          {
+            "fan_id": "F-01",
+            "status": "on",
+            "rpm": 1200,
+            "max_rpm": 3000
+          }
+        ],
+        "regulators": [
+          {
+            "regulator_id": "R-12",
+            "open_percentage": 45
+          }
+        ]
+      }
+    },
+    {
+      "name": "get_active_alerts",
+      "description": "Queries the SCADA system for active hardware malfunctions or safety protocol locks.",
+      "parameters": {
+        "type": "object",
+        "properties": {}
+      },
+      "example_output": {
+        "alerts": [
+          {
+            "id": "AL-404",
+            "severity": "CRITICAL",
+            "description": "Fan F-02 Bearing Overheat"
+          }
+        ]
+      }
+    },
+    {
+      "name": "set_fan_rpm",
+      "description": "Adjusts the RPM of a specific ventilation fan via SCADA.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "fan_id": {
+            "type": "string"
+          },
+          "target_rpm": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "fan_id",
+          "target_rpm"
+        ]
+      },
+      "example_output": {
+        "status": "success",
+        "new_rpm": 1500
+      }
+    },
+    {
+      "name": "set_regulator_position",
+      "description": "Adjusts the opening percentage of a ventilation regulator/damper.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "regulator_id": {
+            "type": "string"
+          },
+          "open_percentage": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100
+          }
+        },
+        "required": [
+          "regulator_id",
+          "open_percentage"
+        ]
+      },
+      "example_output": {
+        "status": "success",
+        "new_position": 60
+      }
+    },
+    {
+      "name": "authorize_face_entry",
+      "description": "Formalizes the safety clearance for a specific location, allowing equipment entry once conditions are verified.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "location_id": {
+            "type": "string"
+          },
+          "verified_airflow": {
+            "type": "number"
+          },
+          "verified_methane": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "location_id",
+          "verified_airflow",
+          "verified_methane"
+        ]
+      },
+      "example_output": {
+        "clearance_code": "SAFE-2023-XYZ",
+        "status": "CLEARED"
+      }
+    }
+  ],
+  "state_description": {
+    "fan_registry": "Current operational status and RPM of all ventilation fans in the mine.",
+    "ventilation_regulators": "Opening percentages of air doors and dampers controlling airflow distribution.",
+    "atmospheric_sensors": "Real-time readings from gas and airflow sensors across different mine sectors.",
+    "cumulative_metrics": "Aggregated system metrics such as total energy consumed.",
+    "alert_status": "Active safety alerts or hardware malfunctions."
+  },
+  "task_initial_state": {
+    "fan_registry": {
+      "fan_north_01": {
+        "status": "operational",
+        "rpm": 1200,
+        "power_kw": 45.5
+      },
+      "fan_south_02": {
+        "status": "operational",
+        "rpm": 1100,
+        "power_kw": 42.0
+      }
+    },
+    "ventilation_regulators": {
+      "damper_zone_A": 12,
+      "damper_zone_B": 100
+    },
+    "atmospheric_sensors": {
+      "sector_primary_intake": {
+        "methane_pct": 0.01,
+        "co_ppm": 0,
+        "airflow_m3_s": 150.5,
+        "temp_c": 22.5
+      },
+      "working_face_01": {
+        "methane_pct": 0.68,
+        "co_ppm": 3,
+        "airflow_m3_s": 5.4,
+        "temp_c": 28.5
+      }
+    },
+    "cumulative_metrics": {
+      "total_energy_kwh": 5120.4,
+      "uptime_minutes": 3200
+    },
+    "alert_status": [
+      "LOCAL_MAINTENANCE_LOCK_SECTOR_4200",
+      "METHANE_LIMIT_EXCEEDED_WF01"
+    ]
+  }
+}

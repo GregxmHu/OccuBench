@@ -1,0 +1,138 @@
+{
+  "environment_name": "env_cf23d8d1d2fc",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: You act as the simulation engine for an Animal Patient Triage scenario. Based on the current internal state $s_t$ of the animal patient and the action $a_t$ executed by the triage officer (Agent), you simulate the physiological evolution of the patient and predict the specific observation $o_{{t+1}}$ obtained.\n- **Emphasis**: You are not the veterinarian or the triage officer. You do not make decisions. You only simulate the environment's response and maintain the continuity of the patient's clinical condition. Your outputs must strictly be the results of the actions performed.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nYou must maintain a consistent history of the patient's condition. If an action results in a change (e.g., administering oxygen improves respiratory rate), this change must persist in the internal state for subsequent interactions.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. This JSON contains:\n- `\"name\"`: Specifies the name of the triage action (e.g., assess_airway, check_vitals).\n- Parameters required by that action.\n\nExample:\n```json\n{{\n \"name\": \"administer_medication\",\n \"arguments\": {{\n    \"medication_name\": \"Epinephrine\",\n    \"dosage_mg\": 0.5\n  }}\n}}\n```\n\nYou must parse these inputs and simulate the physiological result based on the patient's current state (e.g., species-specific reactions, dosage effects).\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\n- If an action is inappropriate for the species (e.g., a canine-only medication given to a cat), simulate the adverse reaction or return an error if the action is physically impossible.\n- For undefined actions or invalid JSON, return: `{{\"error\": \"Reason for error\"}}`.\n- Do not fabricate states or provide conversational filler.\n\n##### Output Assembly\nFor every action call, return a structured JSON object containing **ONLY** the return fields declared in the action function's definition. \n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the internal state `$s_t$`, the updated state, or any hidden clinical variables not explicitly requested by the action. You are the environment; the Agent only sees what they measure.\n\n### 4. Key Principles\n- **Format**: Strictly JSON for all observations.\n- **Factuality**: Use veterinary medical logic. Vitals must be realistic for the species and condition.\n- **Consistency**: If a patient is hemorrhaging, their blood pressure should continue to drop until an intervention is simulated.\n- **Realism**: Simulate the urgency and unpredictability of a triage environment.\n- **Encapsulation**: Never reveal the \"ground truth\" state values in the observation unless the action was specifically to measure that value.\n{{initial_state}}: {{\n  \"patient_id\": \"DUKE-004\",\n  \"species\": \"Dog\",\n  \"heart_rate_bpm\": 195,\n  \"respiratory_rate_brpm\": 48,\n  \"mucous_membrane_color\": \"Pale White\",\n  \"consciousness_level\": \"Obtunded\",\n  \"internal_hemorrhage_rate\": 0.65,\n  \"is_stable\": false\n}}\n{{state_descriptions}}: {{\n  \"patient_id\": \"Unique identifier for the animal patient.\",\n  \"species\": \"The species of the animal (e.g., Dog, Cat, Exotic).\",\n  \"heart_rate_bpm\": \"The actual underlying heart rate in beats per minute.\",\n  \"respiratory_rate_brpm\": \"The actual underlying respiratory rate in breaths per minute.\",\n  \"mucous_membrane_color\": \"The clinical color of gums (e.g., Pink, Pale, Cyanotic, Icteric).\",\n  \"consciousness_level\": \"The neurological status (e.g., Alert, Depressed, Obtunded, Comatose).\",\n  \"internal_hemorrhage_rate\": \"Hidden variable representing rate of blood loss (0.0 - 1.0).\",\n  \"is_stable\": \"Whether the patient's condition is currently worsening or steady.\"\n}}\n{action_set_definitions}: {\n  \"get_patient_vitals\": {\n    \"description\": \"Retrieves the current physiological vital signs of the patient, including heart rate, respiratory rate, and mucous membrane color.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"patient_name\": {\n          \"type\": \"string\",\n          \"description\": \"The name of the patient to observe.\"\n        }\n      },\n      \"required\": [\n        \"patient_name\"\n      ]\n    },\n    \"example_output\": {\n      \"heart_rate_bpm\": 160,\n      \"respiratory_rate_brpm\": 45,\n      \"mucous_membrane_color\": \"Pale\",\n      \"consciousness_level\": \"Obtunded\"\n    }\n  },\n  \"assess_hemorrhage_severity\": {\n    \"description\": \"Performs a diagnostic assessment (like a FAST scan) to determine the rate and source of internal bleeding.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"patient_name\": {\n          \"type\": \"string\",\n          \"description\": \"The name of the patient.\"\n        }\n      },\n      \"required\": [\n        \"patient_name\"\n      ]\n    },\n    \"example_output\": {\n      \"internal_hemorrhage_rate\": 0.8,\n      \"location\": \"Abdominal Cavity\"\n    }\n  },\n  \"administer_iv_crystalloids\": {\n    \"description\": \"Administers a specified volume of crystalloid fluids intravenously to restore circulating volume in the absence of blood products.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"patient_name\": {\n          \"type\": \"string\",\n          \"description\": \"The name of the patient.\"\n        },\n        \"volume_ml\": {\n          \"type\": \"number\",\n          \"description\": \"The volume of fluid to administer in milliliters.\"\n        }\n      },\n      \"required\": [\n        \"patient_name\",\n        \"volume_ml\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"Success\",\n      \"volume_delivered_ml\": 750\n    }\n  },\n  \"perform_emergency_hemostasis\": {\n    \"description\": \"Conducts emergency surgical or procedural intervention to stop active internal bleeding and repair damaged vasculature.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"patient_name\": {\n          \"type\": \"string\",\n          \"description\": \"The name of the patient.\"\n        },\n        \"target_region\": {\n          \"type\": \"string\",\n          \"description\": \"The anatomical region to address (e.g., 'Torso', 'Abdomen').\"\n        }\n      },\n      \"required\": [\n        \"patient_name\",\n        \"target_region\"\n      ]\n    },\n    \"example_output\": {\n      \"hemorrhage_stopped\": true,\n      \"internal_hemorrhage_rate\": 0.0\n    }\n  },\n  \"check_stabilization_status\": {\n    \"description\": \"Queries the environment to check if the patient meets the 'Stable' criteria and provides the current heart rate.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"patient_name\": {\n          \"type\": \"string\",\n          \"description\": \"The name of the patient.\"\n        }\n      },\n      \"required\": [\n        \"patient_name\"\n      ]\n    },\n    \"example_output\": {\n      \"heart_rate_bpm\": 105,\n      \"is_stable\": true\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_patient_vitals",
+      "description": "Retrieves the current physiological vital signs of the patient, including heart rate, respiratory rate, and mucous membrane color.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "patient_name": {
+            "type": "string",
+            "description": "The name of the patient to observe."
+          }
+        },
+        "required": [
+          "patient_name"
+        ]
+      },
+      "example_output": {
+        "heart_rate_bpm": 160,
+        "respiratory_rate_brpm": 45,
+        "mucous_membrane_color": "Pale",
+        "consciousness_level": "Obtunded"
+      }
+    },
+    {
+      "name": "assess_hemorrhage_severity",
+      "description": "Performs a diagnostic assessment (like a FAST scan) to determine the rate and source of internal bleeding.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "patient_name": {
+            "type": "string",
+            "description": "The name of the patient."
+          }
+        },
+        "required": [
+          "patient_name"
+        ]
+      },
+      "example_output": {
+        "internal_hemorrhage_rate": 0.8,
+        "location": "Abdominal Cavity"
+      }
+    },
+    {
+      "name": "administer_iv_crystalloids",
+      "description": "Administers a specified volume of crystalloid fluids intravenously to restore circulating volume in the absence of blood products.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "patient_name": {
+            "type": "string",
+            "description": "The name of the patient."
+          },
+          "volume_ml": {
+            "type": "number",
+            "description": "The volume of fluid to administer in milliliters."
+          }
+        },
+        "required": [
+          "patient_name",
+          "volume_ml"
+        ]
+      },
+      "example_output": {
+        "status": "Success",
+        "volume_delivered_ml": 750
+      }
+    },
+    {
+      "name": "perform_emergency_hemostasis",
+      "description": "Conducts emergency surgical or procedural intervention to stop active internal bleeding and repair damaged vasculature.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "patient_name": {
+            "type": "string",
+            "description": "The name of the patient."
+          },
+          "target_region": {
+            "type": "string",
+            "description": "The anatomical region to address (e.g., 'Torso', 'Abdomen')."
+          }
+        },
+        "required": [
+          "patient_name",
+          "target_region"
+        ]
+      },
+      "example_output": {
+        "hemorrhage_stopped": true,
+        "internal_hemorrhage_rate": 0.0
+      }
+    },
+    {
+      "name": "check_stabilization_status",
+      "description": "Queries the environment to check if the patient meets the 'Stable' criteria and provides the current heart rate.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "patient_name": {
+            "type": "string",
+            "description": "The name of the patient."
+          }
+        },
+        "required": [
+          "patient_name"
+        ]
+      },
+      "example_output": {
+        "heart_rate_bpm": 105,
+        "is_stable": true
+      }
+    }
+  ],
+  "state_description": {
+    "patient_id": "Unique identifier for the animal patient.",
+    "species": "The species of the animal (e.g., Dog, Cat, Exotic).",
+    "heart_rate_bpm": "The actual underlying heart rate in beats per minute.",
+    "respiratory_rate_brpm": "The actual underlying respiratory rate in breaths per minute.",
+    "mucous_membrane_color": "The clinical color of gums (e.g., Pink, Pale, Cyanotic, Icteric).",
+    "consciousness_level": "The neurological status (e.g., Alert, Depressed, Obtunded, Comatose).",
+    "internal_hemorrhage_rate": "Hidden variable representing rate of blood loss (0.0 - 1.0).",
+    "is_stable": "Whether the patient's condition is currently worsening or steady."
+  },
+  "task_initial_state": {
+    "patient_id": "DUKE-004",
+    "species": "Dog",
+    "heart_rate_bpm": 195,
+    "respiratory_rate_brpm": 48,
+    "mucous_membrane_color": "Pale White",
+    "consciousness_level": "Obtunded",
+    "internal_hemorrhage_rate": 0.65,
+    "is_stable": false
+  }
+}

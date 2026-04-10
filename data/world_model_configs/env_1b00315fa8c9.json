@@ -1,0 +1,226 @@
+{
+  "environment_name": "env_1b00315fa8c9",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM) for Network Capacity Planning\n- **Core Objective**: Based on the current network state $s_t$ and the planning action $a_t$ taken by the Agent, simulate the internal evolution of the network infrastructure and predict the observation $o_{{t+1}}$ (e.g., performance metrics, congestion reports, or budget updates). \n- **Emphasis**: The LWM does not execute physical network changes. It serves as a high-fidelity simulator that maintains the ground truth of the network topology, traffic loads, and resource constraints to generate realistic feedback for the Agent.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nEmphasis: All interactions between the World Model and the Agent must maintain context consistency. You must track link utilization, traffic flow rerouting, and cumulative budget consumption across the timeline to ensure that a link upgraded at time $t$ remains upgraded at $t+1$.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. This JSON must contain the following fields:\n- `\"name\"`: Specifies the name of the action function to execute (e.g., \"upgrade_link\", \"reroute_traffic\", \"provision_node\").\n- The remaining fields are the parameter names and corresponding values required by that action function.\n\nExample:\n```json\n{{\n \"name\": \"upgrade_link\",\n \"arguments\": {{\n    \"link_id\": \"L-102\",\n    \"new_bandwidth_gbps\": 100\n  }}\n}}\n```\n\nThe Language World Model must correctly parse such JSON inputs, calculate the resulting network physics (e.g., New utilization = Traffic / New Capacity), and simulate the execution results.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nFor invalid parameters (e.g., non-existent Link IDs), undefined actions, state conflicts (e.g., upgrading a link beyond physical limits), or exceeding the allocated budget, return structured error information (e.g., `{{\"error\": \"Insufficient budget for upgrade\", \"code\": 403}}`), and **do not fabricate states or fictitious responses**.\n\n##### Output Assembly\nFor every action function call, the model must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition. \n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, `new_state`, or hidden variables like the global topology map unless explicitly requested by a \"query\" action. State maintenance is implicit. The Agent must only see the specific return values (Observations) such as `latency`, `packet_loss_ratio`, or `success_status`.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to specified JSON and text formats.\n- **Factuality**: Do not fabricate non-existent network functions, link states, or traffic demands.\n- **Consistency**: Network logic must be self-consistent (e.g., if traffic exceeds capacity, congestion metrics must increase accordingly).\n- **Realism**: Simulated behaviors must align with network engineering principles (e.g., Law of Conservation of Flow, propagation delay based on distance).\n- **Quality**: Language must be clear, technical, and structurally complete.\n- **Encapsulation**: Strictly hide the internal state structure from the output. Only expose information that is explicitly returned by the action function. Do not output the state update text.\n{{initial_state}}: {{\n  \"nodes\": [\n    {{\n      \"id\": \"GNB-North\",\n      \"type\": \"gNodeB\",\n      \"processing_units\": 100,\n      \"supported_sst\": [\n        1,\n        2\n      ],\n      \"prb_status\": \"shared\"\n    }},\n    {{\n      \"id\": \"Edge-Alpha\",\n      \"type\": \"MEC\",\n      \"processing_units\": 200,\n      \"upf_deployed\": false,\n      \"flexe_enabled\": true\n    }},\n    {{\n      \"id\": \"Core-Central\",\n      \"type\": \"RegionalDC\",\n      \"processing_units\": 2000,\n      \"upf_deployed\": true,\n      \"nssf_configured\": true\n    }}\n  ],\n  \"links\": [\n    {{\n      \"id\": \"L-Front-01\",\n      \"source\": \"GNB-North\",\n      \"target\": \"Edge-Alpha\",\n      \"capacity_gbps\": 10,\n      \"current_load_gbps\": 1.2,\n      \"latency_ms\": 3,\n      \"type\": \"fiber\"\n    }},\n    {{\n      \"id\": \"L-Back-01\",\n      \"source\": \"Edge-Alpha\",\n      \"target\": \"Core-Central\",\n      \"capacity_gbps\": 100,\n      \"current_load_gbps\": 15,\n      \"latency_ms\": 12,\n      \"type\": \"fiber\"\n    }}\n  ],\n  \"traffic_demands\": [],\n  \"budget_remaining\": 30000,\n  \"global_performance\": {{\n    \"avg_packet_loss\": 0.0,\n    \"congestion_score\": 0,\n    \"active_slices\": 0\n  }}\n}}\n{{state_descriptions}}: {{\n  \"nodes\": \"List of active network nodes (routers/switches) and their processing capabilities.\",\n  \"links\": \"List of physical links connecting nodes, including source, target, capacity (Gbps), current_load, and latency (ms).\",\n  \"traffic_demands\": \"Current source-to-destination traffic requirements that must be routed through the network.\",\n  \"budget_remaining\": \"The remaining financial resources available for network upgrades and maintenance.\",\n  \"global_performance\": \"Aggregated network health metrics such as average packet loss and total congestion score.\"\n}}\n{action_set_definitions}: {\n  \"get_network_topology\": {\n    \"description\": \"Retrieves the current network inventory, including nodes (gNodeB, Edge, Core) and physical links with their current capacity, load, and latency.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"nodes\": [\n        \"GNB-North\",\n        \"Edge-Alpha\"\n      ],\n      \"links\": [\n        {\n          \"link_id\": \"L-101\",\n          \"source\": \"GNB-North\",\n          \"target\": \"Edge-Alpha\",\n          \"capacity_gbps\": 10,\n          \"current_load_gbps\": 2,\n          \"latency_ms\": 2.5\n        }\n      ]\n    }\n  },\n  \"get_slice_inventory\": {\n    \"description\": \"Queries the status and configuration of all existing network slices (S-NSSAIs).\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"snssai\": {\n          \"type\": \"string\",\n          \"description\": \"Optional specific slice ID to filter results.\"\n        }\n      },\n      \"required\": []\n    },\n    \"example_output\": {\n      \"slices\": [\n        {\n          \"snssai\": \"2-URLLC-01\",\n          \"status\": \"Inactive\",\n          \"latency_target\": 0,\n          \"throughput_guarantee_mbps\": 0\n        }\n      ]\n    }\n  },\n  \"get_budget\": {\n    \"description\": \"Checks the remaining financial credits available for network operations and upgrades.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"remaining_credits\": 30000\n    }\n  },\n  \"configure_slice\": {\n    \"description\": \"Provisions or updates a network slice with specific performance targets. Costs credits if instantiation is required.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"snssai\": {\n          \"type\": \"string\",\n          \"description\": \"The unique slice identifier.\"\n        },\n        \"target_status\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"Active\",\n            \"Deactivated\"\n          ],\n          \"description\": \"The desired state of the slice.\"\n        },\n        \"latency_requirement_ms\": {\n          \"type\": \"number\",\n          \"description\": \"Maximum allowed end-to-end latency.\"\n        },\n        \"throughput_requirement_mbps\": {\n          \"type\": \"number\",\n          \"description\": \"Guaranteed or aggregate bit rate requirement.\"\n        }\n      },\n      \"required\": [\n        \"snssai\",\n        \"target_status\"\n      ]\n    },\n    \"example_output\": {\n      \"success\": true,\n      \"cost\": 500,\n      \"new_status\": \"Active\"\n    }\n  },\n  \"upgrade_link_capacity\": {\n    \"description\": \"Increases the capacity or reduces the latency of a physical link by upgrading hardware. Consumes credits.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"link_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the link to be upgraded.\"\n        },\n        \"upgrade_type\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"Bandwidth Expansion\",\n            \"Fiber Low-Latency\"\n          ],\n          \"description\": \"Type of upgrade to perform.\"\n        }\n      },\n      \"required\": [\n        \"link_id\",\n        \"upgrade_type\"\n      ]\n    },\n    \"example_output\": {\n      \"success\": true,\n      \"cost\": 5000,\n      \"updated_link\": {\n        \"link_id\": \"L-101\",\n        \"capacity_gbps\": 20\n      }\n    }\n  },\n  \"run_network_simulation\": {\n    \"description\": \"Simulates traffic load across the network to validate if slices meet their KPIs under stress. Returns real-time metrics.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"duration_minutes\": {\n          \"type\": \"integer\",\n          \"description\": \"Duration of the simulation.\"\n        }\n      },\n      \"required\": [\n        \"duration_minutes\"\n      ]\n    },\n    \"example_output\": {\n      \"slice_metrics\": [\n        {\n          \"snssai\": \"2-URLLC-01\",\n          \"packet_loss_rate\": 0.0,\n          \"observed_latency_ms\": 8.5,\n          \"congestion_detected\": false\n        }\n      ]\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_network_topology",
+      "description": "Retrieves the current network inventory, including nodes (gNodeB, Edge, Core) and physical links with their current capacity, load, and latency.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "nodes": [
+          "GNB-North",
+          "Edge-Alpha"
+        ],
+        "links": [
+          {
+            "link_id": "L-101",
+            "source": "GNB-North",
+            "target": "Edge-Alpha",
+            "capacity_gbps": 10,
+            "current_load_gbps": 2,
+            "latency_ms": 2.5
+          }
+        ]
+      }
+    },
+    {
+      "name": "get_slice_inventory",
+      "description": "Queries the status and configuration of all existing network slices (S-NSSAIs).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "snssai": {
+            "type": "string",
+            "description": "Optional specific slice ID to filter results."
+          }
+        },
+        "required": []
+      },
+      "example_output": {
+        "slices": [
+          {
+            "snssai": "2-URLLC-01",
+            "status": "Inactive",
+            "latency_target": 0,
+            "throughput_guarantee_mbps": 0
+          }
+        ]
+      }
+    },
+    {
+      "name": "get_budget",
+      "description": "Checks the remaining financial credits available for network operations and upgrades.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "remaining_credits": 30000
+      }
+    },
+    {
+      "name": "configure_slice",
+      "description": "Provisions or updates a network slice with specific performance targets. Costs credits if instantiation is required.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "snssai": {
+            "type": "string",
+            "description": "The unique slice identifier."
+          },
+          "target_status": {
+            "type": "string",
+            "enum": [
+              "Active",
+              "Deactivated"
+            ],
+            "description": "The desired state of the slice."
+          },
+          "latency_requirement_ms": {
+            "type": "number",
+            "description": "Maximum allowed end-to-end latency."
+          },
+          "throughput_requirement_mbps": {
+            "type": "number",
+            "description": "Guaranteed or aggregate bit rate requirement."
+          }
+        },
+        "required": [
+          "snssai",
+          "target_status"
+        ]
+      },
+      "example_output": {
+        "success": true,
+        "cost": 500,
+        "new_status": "Active"
+      }
+    },
+    {
+      "name": "upgrade_link_capacity",
+      "description": "Increases the capacity or reduces the latency of a physical link by upgrading hardware. Consumes credits.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "link_id": {
+            "type": "string",
+            "description": "The ID of the link to be upgraded."
+          },
+          "upgrade_type": {
+            "type": "string",
+            "enum": [
+              "Bandwidth Expansion",
+              "Fiber Low-Latency"
+            ],
+            "description": "Type of upgrade to perform."
+          }
+        },
+        "required": [
+          "link_id",
+          "upgrade_type"
+        ]
+      },
+      "example_output": {
+        "success": true,
+        "cost": 5000,
+        "updated_link": {
+          "link_id": "L-101",
+          "capacity_gbps": 20
+        }
+      }
+    },
+    {
+      "name": "run_network_simulation",
+      "description": "Simulates traffic load across the network to validate if slices meet their KPIs under stress. Returns real-time metrics.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "duration_minutes": {
+            "type": "integer",
+            "description": "Duration of the simulation."
+          }
+        },
+        "required": [
+          "duration_minutes"
+        ]
+      },
+      "example_output": {
+        "slice_metrics": [
+          {
+            "snssai": "2-URLLC-01",
+            "packet_loss_rate": 0.0,
+            "observed_latency_ms": 8.5,
+            "congestion_detected": false
+          }
+        ]
+      }
+    }
+  ],
+  "state_description": {
+    "nodes": "List of active network nodes (routers/switches) and their processing capabilities.",
+    "links": "List of physical links connecting nodes, including source, target, capacity (Gbps), current_load, and latency (ms).",
+    "traffic_demands": "Current source-to-destination traffic requirements that must be routed through the network.",
+    "budget_remaining": "The remaining financial resources available for network upgrades and maintenance.",
+    "global_performance": "Aggregated network health metrics such as average packet loss and total congestion score."
+  },
+  "task_initial_state": {
+    "nodes": [
+      {
+        "id": "GNB-North",
+        "type": "gNodeB",
+        "processing_units": 100,
+        "supported_sst": [
+          1,
+          2
+        ],
+        "prb_status": "shared"
+      },
+      {
+        "id": "Edge-Alpha",
+        "type": "MEC",
+        "processing_units": 200,
+        "upf_deployed": false,
+        "flexe_enabled": true
+      },
+      {
+        "id": "Core-Central",
+        "type": "RegionalDC",
+        "processing_units": 2000,
+        "upf_deployed": true,
+        "nssf_configured": true
+      }
+    ],
+    "links": [
+      {
+        "id": "L-Front-01",
+        "source": "GNB-North",
+        "target": "Edge-Alpha",
+        "capacity_gbps": 10,
+        "current_load_gbps": 1.2,
+        "latency_ms": 3,
+        "type": "fiber"
+      },
+      {
+        "id": "L-Back-01",
+        "source": "Edge-Alpha",
+        "target": "Core-Central",
+        "capacity_gbps": 100,
+        "current_load_gbps": 15,
+        "latency_ms": 12,
+        "type": "fiber"
+      }
+    ],
+    "traffic_demands": [],
+    "budget_remaining": 30000,
+    "global_performance": {
+      "avg_packet_loss": 0.0,
+      "congestion_score": 0,
+      "active_slices": 0
+    }
+  }
+}

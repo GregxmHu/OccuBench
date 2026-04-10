@@ -1,0 +1,205 @@
+{
+  "environment_name": "env_7304a30069c7",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM) for Network Capacity Planning.\n- **Core Objective**: Based on the current network state $s_t$ and the capacity planning action $a_t$ executed by the Agent, simulate the evolution of the network infrastructure and predict the resulting observation $o_{{t+1}}$.\n- **Emphasis**: You are a simulator. You do not perform real-world network configurations. You maintain the internal logic of network topology, traffic engineering, and resource constraints to provide realistic feedback to the Agent.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions must maintain strict context consistency. Any change to the network (e.g., upgrading a link, adding a node) must persist in the internal state and influence all subsequent observations and traffic simulations.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. You must parse this JSON to identify the action and its arguments.\nExample format:\n```json\n{{\n \"name\": \"upgrade_link_capacity\",\n \"arguments\": {{\n    \"link_id\": \"L-101\",\n    \"new_capacity\": 10000\n  }}\n}}\n```\nYou must simulate the execution of these actions based on network logic (e.g., checking if nodes exist before connecting them).\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nIf the Agent attempts an invalid operation—such as referencing a non-existent node, setting negative capacity, creating duplicate links, or providing malformed JSON—return a structured error message:\n- Example: `{{\"error\": \"Node 'NYC-01' not found in current topology.\"}}`\nDo not proceed with state transitions if the action is invalid.\n\n##### Output Assembly\nFor every action, return a structured JSON object containing **ONLY** the return fields declared in the action function's definition (the Observation). \n\n**CRITICAL CONSTRAINT**: You must **NOT** output the full internal state `s_t`, the `new_state`, or any hidden variables. You only provide the specific return values defined in the action's schema. The state update remains internal to your simulation memory.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to JSON and text formats specified. No conversational filler.\n- **Factuality**: Simulate realistic network behaviors. If a link is congested, the observation should reflect increased latency or packet loss if those metrics are part of the observation.\n- **Consistency**: The network topology must remain logically sound. If a node is deleted, all associated links must be simulated as removed.\n- **Realism**: Traffic distribution should follow standard networking principles (e.g., shortest path routing or load balancing) unless otherwise specified.\n- **Quality**: Observations must be precise and structurally complete.\n- **Encapsulation**: Strictly hide the internal state structure. Only expose information explicitly returned by the action function.\n{{initial_state}}: {{\n  \"nodes\": [\n    \"MEC-Site-Omega\",\n    \"Factory-UPF-01\",\n    \"GNB-South-Wing\"\n  ],\n  \"links\": {{\n    \"LINK-RAN-MEC\": {{\n      \"source\": \"GNB-South-Wing\",\n      \"target\": \"MEC-Site-Omega\",\n      \"capacity_gbps\": 10,\n      \"current_load_gbps\": 9.2\n    }},\n    \"LINK-MEC-CORE\": {{\n      \"source\": \"MEC-Site-Omega\",\n      \"target\": \"Factory-UPF-01\",\n      \"capacity_gbps\": 10,\n      \"current_load_gbps\": 1.4\n    }}\n  }},\n  \"traffic_demands\": [\n    {{\n      \"source\": \"GNB-South-Wing\",\n      \"destination\": \"MEC-Site-Omega\",\n      \"demand_gbps\": 1.8,\n      \"type\": \"AGV-Control-URLLC\"\n    }},\n    {{\n      \"source\": \"GNB-South-Wing\",\n      \"destination\": \"MEC-Site-Omega\",\n      \"demand_gbps\": 7.0,\n      \"type\": \"Video-QA-Stream\"\n    }}\n  ],\n  \"network_metrics\": {{\n    \"total_dropped_traffic\": 9840,\n    \"average_utilization\": 0.94,\n    \"jitter_variance_ms\": 12.5,\n    \"vCPU_steal_time_pct\": 14.2,\n    \"thermal_tdp_load_pct\": 65.5,\n    \"orchestration_state\": \"LOCKED_BY_SYNC\",\n    \"maintenance_mode\": \"Inactive\",\n    \"hardware_features\": {{\n      \"sr_iov\": \"Disabled\",\n      \"numa_alignment\": \"Disabled\",\n      \"gpu_allocation\": \"None\"\n    }}\n  }}\n}}\n{{state_descriptions}}: {{\n  \"nodes\": \"A list of strings representing the unique identifiers of active network nodes (e.g., routers, data centers).\",\n  \"links\": \"A map where keys are link IDs and values contain 'source', 'target', 'capacity_gbps', and 'current_load_gbps'.\",\n  \"traffic_demands\": \"A list of objects defining point-to-point traffic requirements, including 'source', 'destination', and 'demand_gbps'.\",\n  \"network_metrics\": \"Internal aggregate counters such as 'total_dropped_traffic' or 'average_latency'.\"\n}}\n{action_set_definitions}: {\n  \"get_node_info\": {\n    \"description\": \"Retrieves the administrative state, current resource allocations, and hardware feature status for a specific network node.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"node_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier of the node to inspect.\"\n        }\n      },\n      \"required\": [\n        \"node_id\"\n      ]\n    },\n    \"example_output\": {\n      \"node_id\": \"MEC-Site-Omega\",\n      \"administrative_state\": \"Locked\",\n      \"current_config\": {\n        \"vCPUs\": 8,\n        \"RAM_GB\": 16,\n        \"sriov_enabled\": false,\n        \"numa_aligned\": false\n      }\n    }\n  },\n  \"get_telemetry_metrics\": {\n    \"description\": \"Fetches real-time performance data including packet drops, jitter, vCPU steal time, and Thermal TDP Load for monitoring.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"node_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier of the node.\"\n        }\n      },\n      \"required\": [\n        \"node_id\"\n      ]\n    },\n    \"example_output\": {\n      \"packet_drop_rate\": 0.12,\n      \"jitter_ms\": 4.5,\n      \"vcpu_steal_time_pct\": 25.0,\n      \"thermal_tdp_load_pct\": 65.0\n    }\n  },\n  \"update_administrative_state\": {\n    \"description\": \"Changes the administrative state of a node to permit infrastructure modifications.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"node_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier of the node.\"\n        },\n        \"target_state\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"Approved\",\n            \"Locked\",\n            \"Maintenance\"\n          ],\n          \"description\": \"The administrative state required for provisioning.\"\n        }\n      },\n      \"required\": [\n        \"node_id\",\n        \"target_state\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"success\",\n      \"new_state\": \"Approved\"\n    }\n  },\n  \"update_node_hardware_config\": {\n    \"description\": \"Enables or disables advanced hardware features like SR-IOV and NUMA alignment to resolve vCPU steal and packet processing bottlenecks.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"node_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier of the node.\"\n        },\n        \"enable_sriov\": {\n          \"type\": \"boolean\",\n          \"description\": \"Whether to enable Single Root I/O Virtualization for low-latency networking.\"\n        },\n        \"enable_numa_alignment\": {\n          \"type\": \"boolean\",\n          \"description\": \"Whether to enforce Non-Uniform Memory Access alignment for processing efficiency.\"\n        }\n      },\n      \"required\": [\n        \"node_id\",\n        \"enable_sriov\",\n        \"enable_numa_alignment\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"success\",\n      \"applied_features\": [\n        \"SR-IOV\",\n        \"NUMA_ALIGN\"\n      ]\n    }\n  },\n  \"reconfigure_node_resources\": {\n    \"description\": \"Scales the vCPU and memory allocation of a node to address resource exhaustion.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"node_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier of the node.\"\n        },\n        \"vcpus\": {\n          \"type\": \"integer\",\n          \"description\": \"The new total number of vCPUs.\"\n        },\n        \"ram_gb\": {\n          \"type\": \"integer\",\n          \"description\": \"The new total amount of RAM in GB.\"\n        }\n      },\n      \"required\": [\n        \"node_id\",\n        \"vcpus\",\n        \"ram_gb\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"success\",\n      \"updated_resources\": {\n        \"vCPUs\": 16,\n        \"RAM_GB\": 32\n      }\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_node_info",
+      "description": "Retrieves the administrative state, current resource allocations, and hardware feature status for a specific network node.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "node_id": {
+            "type": "string",
+            "description": "The unique identifier of the node to inspect."
+          }
+        },
+        "required": [
+          "node_id"
+        ]
+      },
+      "example_output": {
+        "node_id": "MEC-Site-Omega",
+        "administrative_state": "Locked",
+        "current_config": {
+          "vCPUs": 8,
+          "RAM_GB": 16,
+          "sriov_enabled": false,
+          "numa_aligned": false
+        }
+      }
+    },
+    {
+      "name": "get_telemetry_metrics",
+      "description": "Fetches real-time performance data including packet drops, jitter, vCPU steal time, and Thermal TDP Load for monitoring.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "node_id": {
+            "type": "string",
+            "description": "The unique identifier of the node."
+          }
+        },
+        "required": [
+          "node_id"
+        ]
+      },
+      "example_output": {
+        "packet_drop_rate": 0.12,
+        "jitter_ms": 4.5,
+        "vcpu_steal_time_pct": 25.0,
+        "thermal_tdp_load_pct": 65.0
+      }
+    },
+    {
+      "name": "update_administrative_state",
+      "description": "Changes the administrative state of a node to permit infrastructure modifications.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "node_id": {
+            "type": "string",
+            "description": "The unique identifier of the node."
+          },
+          "target_state": {
+            "type": "string",
+            "enum": [
+              "Approved",
+              "Locked",
+              "Maintenance"
+            ],
+            "description": "The administrative state required for provisioning."
+          }
+        },
+        "required": [
+          "node_id",
+          "target_state"
+        ]
+      },
+      "example_output": {
+        "status": "success",
+        "new_state": "Approved"
+      }
+    },
+    {
+      "name": "update_node_hardware_config",
+      "description": "Enables or disables advanced hardware features like SR-IOV and NUMA alignment to resolve vCPU steal and packet processing bottlenecks.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "node_id": {
+            "type": "string",
+            "description": "The unique identifier of the node."
+          },
+          "enable_sriov": {
+            "type": "boolean",
+            "description": "Whether to enable Single Root I/O Virtualization for low-latency networking."
+          },
+          "enable_numa_alignment": {
+            "type": "boolean",
+            "description": "Whether to enforce Non-Uniform Memory Access alignment for processing efficiency."
+          }
+        },
+        "required": [
+          "node_id",
+          "enable_sriov",
+          "enable_numa_alignment"
+        ]
+      },
+      "example_output": {
+        "status": "success",
+        "applied_features": [
+          "SR-IOV",
+          "NUMA_ALIGN"
+        ]
+      }
+    },
+    {
+      "name": "reconfigure_node_resources",
+      "description": "Scales the vCPU and memory allocation of a node to address resource exhaustion.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "node_id": {
+            "type": "string",
+            "description": "The unique identifier of the node."
+          },
+          "vcpus": {
+            "type": "integer",
+            "description": "The new total number of vCPUs."
+          },
+          "ram_gb": {
+            "type": "integer",
+            "description": "The new total amount of RAM in GB."
+          }
+        },
+        "required": [
+          "node_id",
+          "vcpus",
+          "ram_gb"
+        ]
+      },
+      "example_output": {
+        "status": "success",
+        "updated_resources": {
+          "vCPUs": 16,
+          "RAM_GB": 32
+        }
+      }
+    }
+  ],
+  "state_description": {
+    "nodes": "A list of strings representing the unique identifiers of active network nodes (e.g., routers, data centers).",
+    "links": "A map where keys are link IDs and values contain 'source', 'target', 'capacity_gbps', and 'current_load_gbps'.",
+    "traffic_demands": "A list of objects defining point-to-point traffic requirements, including 'source', 'destination', and 'demand_gbps'.",
+    "network_metrics": "Internal aggregate counters such as 'total_dropped_traffic' or 'average_latency'."
+  },
+  "task_initial_state": {
+    "nodes": [
+      "MEC-Site-Omega",
+      "Factory-UPF-01",
+      "GNB-South-Wing"
+    ],
+    "links": {
+      "LINK-RAN-MEC": {
+        "source": "GNB-South-Wing",
+        "target": "MEC-Site-Omega",
+        "capacity_gbps": 10,
+        "current_load_gbps": 9.2
+      },
+      "LINK-MEC-CORE": {
+        "source": "MEC-Site-Omega",
+        "target": "Factory-UPF-01",
+        "capacity_gbps": 10,
+        "current_load_gbps": 1.4
+      }
+    },
+    "traffic_demands": [
+      {
+        "source": "GNB-South-Wing",
+        "destination": "MEC-Site-Omega",
+        "demand_gbps": 1.8,
+        "type": "AGV-Control-URLLC"
+      },
+      {
+        "source": "GNB-South-Wing",
+        "destination": "MEC-Site-Omega",
+        "demand_gbps": 7.0,
+        "type": "Video-QA-Stream"
+      }
+    ],
+    "network_metrics": {
+      "total_dropped_traffic": 9840,
+      "average_utilization": 0.94,
+      "jitter_variance_ms": 12.5,
+      "vCPU_steal_time_pct": 14.2,
+      "thermal_tdp_load_pct": 65.5,
+      "orchestration_state": "LOCKED_BY_SYNC",
+      "maintenance_mode": "Inactive",
+      "hardware_features": {
+        "sr_iov": "Disabled",
+        "numa_alignment": "Disabled",
+        "gpu_allocation": "None"
+      }
+    }
+  }
+}

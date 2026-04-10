@@ -1,0 +1,221 @@
+{
+  "environment_name": "env_258162de4ae2",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM) for Public Transit Schedule Recovery.\n- **Core Objective**: Based on the current internal state $s_t$ of the transit network and the dispatcher's action $a_t$, simulate the evolution of the transit environment (e.g., vehicle movements, delay propagation, schedule adjustments) and predict the observation $o_{{t+1}}$ obtained by the Agent.\n- **Emphasis**: You are the simulation engine. You do not suggest actions; you calculate the consequences of actions on the transit system and report the immediate results. You maintain the ground truth of the schedule and fleet status internally.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions must maintain absolute continuity. If a vehicle is delayed at time $t$, that delay must persist or evolve at time $t+1$ unless a specific recovery action is taken. The World Model must track the cumulative effects of traffic, incidents, and dispatcher interventions over time.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. You must parse this JSON to update the internal transit state. The input format is:\n- `\"name\"`: The specific recovery action (e.g., \"re-route_bus\", \"skip_stop\", \"dispatch_standby\").\n- The remaining fields are the specific parameters (e.g., `vehicle_id`, `stop_id`, `delay_minutes`).\n\nExample:\n```json\n{{\n \"name\": \"adjust_headway\",\n \"arguments\": {{\n    \"route_id\": \"Line_42\",\n    \"new_interval\": 10\n  }}\n}}\n```\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nIf an action is physically or logically impossible (e.g., re-routing a vehicle to a non-existent stop, assigning a driver already on duty), return a structured error: `{{\"error\": \"Description of constraint violation\"}}`. Do not hallucinate a successful outcome if the parameters are invalid.\n\n##### Output Assembly\nFor every action call, return a JSON object containing **ONLY** the return fields specified in the action definition. \n\n**CRITICAL CONSTRAINT**: You must **NOT** include the internal system state (like the entire fleet's coordinates or the full master schedule) in the output. Only return the specific observation data the action is designed to provide (e.g., the new arrival time of a specific bus). State maintenance is your internal responsibility.\n\n### 4. Key Principles\n- **Format**: Output must be strictly valid JSON.\n- **Factuality**: Transit dynamics (like travel time between stops) must remain realistic based on the scenario's physics.\n- **Consistency**: If a bus is removed from service in one step, it cannot reappear in the next step without a \"restore\" action.\n- **Realism**: Simulate the ripple effects of delays (e.g., a delayed lead vehicle causing passenger bunching).\n- **Quality**: Ensure all simulated timestamps and status updates are logically sequential.\n- **Encapsulation**: Strictly hide the internal state structure. The Agent only sees the result of its specific query or command.\n{{initial_state}}: {{\n  \"system_time\": 1215,\n  \"fleet_status\": [\n    {{\n      \"vehicle_id\": \"CR_505\",\n      \"current_route\": \"Commuter_South\",\n      \"current_stop_index\": 8,\n      \"current_delay\": 20,\n      \"operator_id\": \"OP_101\"\n    }},\n    {{\n      \"vehicle_id\": \"BUS_R99\",\n      \"current_route\": \"Regional_99\",\n      \"current_stop_index\": 0,\n      \"current_delay\": 0,\n      \"operator_id\": \"OP_902\"\n    }}\n  ],\n  \"active_disruptions\": [\n    {{\n      \"incident_id\": \"PWR_99\",\n      \"type\": \"Interlocking_Power_Failure\",\n      \"location\": \"South_Sector\",\n      \"impact\": \"20-minute delay for inbound rail services\"\n    }}\n  ],\n  \"schedule_adherence_matrix\": {{\n    \"CR_505\": 20,\n    \"BUS_R99\": 0\n  }},\n  \"passenger_load_data\": {{\n    \"predicted_transfers\": 22,\n    \"transfer_thresholds\": {{\n      \"TVT\": 10,\n      \"MWT\": 25,\n      \"PCT_seconds\": 180\n    }},\n    \"resource_constraints\": {{\n      \"OP_902_HOS_remaining_minutes\": 8,\n      \"standby_pool_location\": \"Southside_Depot\",\n      \"standby_operators_available\": 1\n    }},\n    \"scheduled_departures\": {{\n      \"BUS_R99\": \"20:20\"\n    }}\n  }}\n}}\n{{state_descriptions}}: {{\n  \"system_time\": \"Current simulation time in minutes from the start of the service day (e.g., 480 for 08:00 AM).\",\n  \"fleet_status\": \"A list of objects containing vehicle_id, current_route, current_stop_index, and current_delay in minutes.\",\n  \"active_disruptions\": \"List of current incidents (e.g., road closures, mechanical failures) affecting specific segments or vehicles.\",\n  \"schedule_adherence_matrix\": \"A mapping of Trip IDs to their deviation from the planned timetable (positive for delays, negative for early arrivals).\",\n  \"passenger_load_data\": \"Estimated passenger counts per vehicle and station to calculate the impact of delays.\"\n}}\n{action_set_definitions}: {\n  \"query_fleet_status\": {\n    \"description\": \"Retrieves real-time status for specific vehicles, including their current route, location index, and delay magnitude.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"vehicle_ids\": {\n          \"type\": \"array\",\n          \"items\": {\n            \"type\": \"string\"\n          },\n          \"description\": \"List of vehicle identifiers to check (e.g., ['Train 505', 'Bus 99']).\"\n        }\n      },\n      \"required\": [\n        \"vehicle_ids\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": [\n        {\n          \"vehicle_id\": \"Train 505\",\n          \"current_delay\": 15,\n          \"estimated_arrival_time\": 510,\n          \"route\": \"Feeder-Alpha\"\n        }\n      ]\n    }\n  },\n  \"get_regulatory_constraints\": {\n    \"description\": \"Retrieves the mandatory safety and labor regulations applicable to a specific vehicle or hub, such as maximum hold times and driver rest requirements.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"vehicle_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the vehicle to check constraints for.\"\n        },\n        \"location_id\": {\n          \"type\": \"string\",\n          \"description\": \"The hub or station name.\"\n        }\n      },\n      \"required\": [\n        \"vehicle_id\",\n        \"location_id\"\n      ]\n    },\n    \"example_output\": {\n      \"max_legal_hold_minutes\": 10,\n      \"labor_limit_exceeded\": false,\n      \"safety_protocol_required\": \"Standard-Check-List-A\"\n    }\n  },\n  \"check_operational_barriers\": {\n    \"description\": \"Scans for active disruptions (road closures, mechanical failures) that might prevent a vehicle from safely holding or departing.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"location_id\": {\n          \"type\": \"string\"\n        },\n        \"vehicle_id\": {\n          \"type\": \"string\"\n        }\n      },\n      \"required\": [\n        \"location_id\",\n        \"vehicle_id\"\n      ]\n    },\n    \"example_output\": {\n      \"barriers\": [\n        \"Mechanical inspection due\",\n        \"Road block on Segment 5\"\n      ],\n      \"clearance_status\": \"blocked\"\n    }\n  },\n  \"apply_transfer_protection_hold\": {\n    \"description\": \"Executes a hold order on a distributor vehicle to wait for a feeder vehicle.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"vehicle_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the vehicle to be held.\"\n        },\n        \"hold_duration_minutes\": {\n          \"type\": \"integer\",\n          \"description\": \"Number of minutes to wait.\"\n        },\n        \"reason\": {\n          \"type\": \"string\"\n        }\n      },\n      \"required\": [\n        \"vehicle_id\",\n        \"hold_duration_minutes\",\n        \"reason\"\n      ]\n    },\n    \"example_output\": {\n      \"hold_confirmed\": true,\n      \"new_departure_time\": 520\n    }\n  },\n  \"resolve_labor_barrier\": {\n    \"description\": \"Adjusts crew assignments or extends labor shifts to authorize a hold that would otherwise violate labor standards.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"vehicle_id\": {\n          \"type\": \"string\"\n        },\n        \"action_type\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"extend_shift\",\n            \"crew_swap\",\n            \"overtime_auth\"\n          ]\n        }\n      },\n      \"required\": [\n        \"vehicle_id\",\n        \"action_type\"\n      ]\n    },\n    \"example_output\": {\n      \"labor_compliance_met\": true\n    }\n  },\n  \"authorize_departure\": {\n    \"description\": \"Finalizes the recovery process and issues the legal clearance for the vehicle to depart from the hub.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"vehicle_id\": {\n          \"type\": \"string\"\n        },\n        \"safety_confirmation_code\": {\n          \"type\": \"string\",\n          \"description\": \"Code obtained from safety checks.\"\n        }\n      },\n      \"required\": [\n        \"vehicle_id\",\n        \"safety_confirmation_code\"\n      ]\n    },\n    \"example_output\": {\n      \"departure_status\": \"authorized\",\n      \"timestamp\": 525\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "query_fleet_status",
+      "description": "Retrieves real-time status for specific vehicles, including their current route, location index, and delay magnitude.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "vehicle_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "List of vehicle identifiers to check (e.g., ['Train 505', 'Bus 99'])."
+          }
+        },
+        "required": [
+          "vehicle_ids"
+        ]
+      },
+      "example_output": {
+        "status": [
+          {
+            "vehicle_id": "Train 505",
+            "current_delay": 15,
+            "estimated_arrival_time": 510,
+            "route": "Feeder-Alpha"
+          }
+        ]
+      }
+    },
+    {
+      "name": "get_regulatory_constraints",
+      "description": "Retrieves the mandatory safety and labor regulations applicable to a specific vehicle or hub, such as maximum hold times and driver rest requirements.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "vehicle_id": {
+            "type": "string",
+            "description": "The ID of the vehicle to check constraints for."
+          },
+          "location_id": {
+            "type": "string",
+            "description": "The hub or station name."
+          }
+        },
+        "required": [
+          "vehicle_id",
+          "location_id"
+        ]
+      },
+      "example_output": {
+        "max_legal_hold_minutes": 10,
+        "labor_limit_exceeded": false,
+        "safety_protocol_required": "Standard-Check-List-A"
+      }
+    },
+    {
+      "name": "check_operational_barriers",
+      "description": "Scans for active disruptions (road closures, mechanical failures) that might prevent a vehicle from safely holding or departing.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "location_id": {
+            "type": "string"
+          },
+          "vehicle_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "location_id",
+          "vehicle_id"
+        ]
+      },
+      "example_output": {
+        "barriers": [
+          "Mechanical inspection due",
+          "Road block on Segment 5"
+        ],
+        "clearance_status": "blocked"
+      }
+    },
+    {
+      "name": "apply_transfer_protection_hold",
+      "description": "Executes a hold order on a distributor vehicle to wait for a feeder vehicle.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "vehicle_id": {
+            "type": "string",
+            "description": "The ID of the vehicle to be held."
+          },
+          "hold_duration_minutes": {
+            "type": "integer",
+            "description": "Number of minutes to wait."
+          },
+          "reason": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "vehicle_id",
+          "hold_duration_minutes",
+          "reason"
+        ]
+      },
+      "example_output": {
+        "hold_confirmed": true,
+        "new_departure_time": 520
+      }
+    },
+    {
+      "name": "resolve_labor_barrier",
+      "description": "Adjusts crew assignments or extends labor shifts to authorize a hold that would otherwise violate labor standards.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "vehicle_id": {
+            "type": "string"
+          },
+          "action_type": {
+            "type": "string",
+            "enum": [
+              "extend_shift",
+              "crew_swap",
+              "overtime_auth"
+            ]
+          }
+        },
+        "required": [
+          "vehicle_id",
+          "action_type"
+        ]
+      },
+      "example_output": {
+        "labor_compliance_met": true
+      }
+    },
+    {
+      "name": "authorize_departure",
+      "description": "Finalizes the recovery process and issues the legal clearance for the vehicle to depart from the hub.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "vehicle_id": {
+            "type": "string"
+          },
+          "safety_confirmation_code": {
+            "type": "string",
+            "description": "Code obtained from safety checks."
+          }
+        },
+        "required": [
+          "vehicle_id",
+          "safety_confirmation_code"
+        ]
+      },
+      "example_output": {
+        "departure_status": "authorized",
+        "timestamp": 525
+      }
+    }
+  ],
+  "state_description": {
+    "system_time": "Current simulation time in minutes from the start of the service day (e.g., 480 for 08:00 AM).",
+    "fleet_status": "A list of objects containing vehicle_id, current_route, current_stop_index, and current_delay in minutes.",
+    "active_disruptions": "List of current incidents (e.g., road closures, mechanical failures) affecting specific segments or vehicles.",
+    "schedule_adherence_matrix": "A mapping of Trip IDs to their deviation from the planned timetable (positive for delays, negative for early arrivals).",
+    "passenger_load_data": "Estimated passenger counts per vehicle and station to calculate the impact of delays."
+  },
+  "task_initial_state": {
+    "system_time": 1215,
+    "fleet_status": [
+      {
+        "vehicle_id": "CR_505",
+        "current_route": "Commuter_South",
+        "current_stop_index": 8,
+        "current_delay": 20,
+        "operator_id": "OP_101"
+      },
+      {
+        "vehicle_id": "BUS_R99",
+        "current_route": "Regional_99",
+        "current_stop_index": 0,
+        "current_delay": 0,
+        "operator_id": "OP_902"
+      }
+    ],
+    "active_disruptions": [
+      {
+        "incident_id": "PWR_99",
+        "type": "Interlocking_Power_Failure",
+        "location": "South_Sector",
+        "impact": "20-minute delay for inbound rail services"
+      }
+    ],
+    "schedule_adherence_matrix": {
+      "CR_505": 20,
+      "BUS_R99": 0
+    },
+    "passenger_load_data": {
+      "predicted_transfers": 22,
+      "transfer_thresholds": {
+        "TVT": 10,
+        "MWT": 25,
+        "PCT_seconds": 180
+      },
+      "resource_constraints": {
+        "OP_902_HOS_remaining_minutes": 8,
+        "standby_pool_location": "Southside_Depot",
+        "standby_operators_available": 1
+      },
+      "scheduled_departures": {
+        "BUS_R99": "20:20"
+      }
+    }
+  }
+}

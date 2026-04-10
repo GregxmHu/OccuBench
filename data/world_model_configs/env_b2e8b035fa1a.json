@@ -1,0 +1,198 @@
+{
+  "environment_name": "env_b2e8b035fa1a",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: You are a specialized simulator for an Automated Storage Retrieval Scheduling (ASRS) environment. Based on the current internal state $s_t$ and the action $a_t$ submitted by the Agent, your task is to simulate the evolution of the warehouse environment and predict the observation $o_{{t+1}}$ obtained by the Agent. \n- **Emphasis**: You do not execute real-world robotics commands. You perform internal state transitions based on warehouse physics and logic (e.g., travel time, collision avoidance, inventory updates) and generate the resulting observation.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nYou must maintain strict context consistency throughout the session. Every action must build upon the state resulting from all previous actions. You are responsible for tracking robot positions, rack contents, and task statuses internally.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. You must parse this JSON to determine the action to simulate. The JSON contains:\n- `\"name\"`: The specific ASRS action (e.g., move_robot, pick_item).\n- `\"arguments\"`: The parameters required for that action.\n\nExample Input:\n```json\n{{\n \"name\": \"move_robot\",\n \"arguments\": {{\n    \"robot_id\": \"R-001\",\n    \"target_coordinate\": [10, 25]\n  }}\n}}\n```\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nYou must validate all actions against the current state. Return a structured error (e.g., `{{\"error\": \"Collision detected at coord [x,y]\"}}` or `{{\"error\": \"Robot R-001 battery insufficient\"}}`) and do not update the internal state if:\n- The action is undefined.\n- Parameters are invalid (e.g., moving a robot to a blocked coordinate).\n- State conflicts occur (e.g., picking an item from an empty rack).\n- Robots are already busy or in an error state.\n\n##### Output Assembly\nFor every action function call, you must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition. \n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, the `new_state`, or any hidden variables like the full warehouse map or all robot statuses unless specifically requested by an 'inspect' action. The Agent only sees the specific Observation returned by the action function. Do not output the state update logic.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to JSON for both inputs and outputs.\n- **Factuality**: Do not simulate successful outcomes for impossible actions (e.g., picking a non-existent item).\n- **Consistency**: If a robot moves from A to B, its position in the next turn must be B.\n- **Realism**: Simulate realistic constraints such as robot travel time, battery consumption, and path congestion.\n- **Quality**: Ensure all simulated responses are logical and align with professional logistics management systems.\n- **Encapsulation**: Strictly hide the internal state structure from the output. Only expose information that is explicitly defined as the return value of the called action.\n{{initial_state}}: {{\n  \"robots\": [\n    {{\n      \"robot_id\": \"R-005\",\n      \"coordinates\": [\n        50,\n        10\n      ],\n      \"battery\": 88,\n      \"status\": \"ERROR\",\n      \"cargo\": \"SKU-77-VITAL\"\n    }}\n  ],\n  \"inventory_bins\": {{\n    \"B-05-99\": {{\n      \"item_id\": \"SKU-77-VITAL\",\n      \"quantity\": 1,\n      \"weight\": 12.5\n    }}\n  }},\n  \"warehouse_grid\": {{\n    \"dimensions\": [\n      100,\n      100\n    ],\n    \"obstacles\": []\n  }},\n  \"task_queue\": [\n    {{\n      \"task_id\": \"RET-770\",\n      \"item_id\": \"SKU-77-VITAL\",\n      \"status\": \"IN_PROGRESS\",\n      \"priority\": \"HIGH\"\n    }}\n  ],\n  \"timestamp\": 45\n}}\n{{state_descriptions}}: {{\n  \"robots\": \"A list of active robots in the warehouse, including their current coordinates [x, y], battery level, current status (IDLE, MOVING, PICKING, ERROR), and current cargo.\",\n  \"inventory_bins\": \"A mapping of bin IDs to their current inventory details, including item_id, quantity, and weight.\",\n  \"warehouse_grid\": \"Dimensions of the warehouse and a list of static obstacles or restricted zones.\",\n  \"task_queue\": \"A list of pending retrieval or storage tasks waiting for assignment.\",\n  \"timestamp\": \"The current relative simulation time in seconds.\"\n}}\n{action_set_definitions}: {\n  \"get_system_time\": {\n    \"description\": \"Retrieves the current relative simulation time in seconds. Use this to monitor task progress against the 300s deadline.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"timestamp\": 120.5\n    }\n  },\n  \"inspect_robot\": {\n    \"description\": \"Returns the live diagnostic state of a specific robot, including its coordinates, status (IDLE, MOVING, PICKING, ERROR), cargo, and battery.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"robot_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier of the robot.\"\n        }\n      },\n      \"required\": [\n        \"robot_id\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"ERROR\",\n      \"coordinates\": [\n        50,\n        10\n      ],\n      \"cargo\": null,\n      \"battery\": 92\n    }\n  },\n  \"query_inventory_at_location\": {\n    \"description\": \"Retrieves bin information and inventory details at a specific coordinate grid point.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"coordinates\": {\n          \"type\": \"array\",\n          \"items\": {\n            \"type\": \"number\"\n          },\n          \"minItems\": 2,\n          \"maxItems\": 2,\n          \"description\": \"[x, y] coordinates.\"\n        }\n      },\n      \"required\": [\n        \"coordinates\"\n      ]\n    },\n    \"example_output\": {\n      \"bin_id\": \"BIN-X-99\",\n      \"inventory\": [\n        {\n          \"item_id\": \"SKU-77-VITAL\",\n          \"quantity\": 1\n        }\n      ]\n    }\n  },\n  \"synchronize_records\": {\n    \"description\": \"Resolves inconsistencies between the physical environment and the digital management system (e.g., ghost inventory or stuck status flags).\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"robot_id\": {\n          \"type\": \"string\"\n        },\n        \"bin_id\": {\n          \"type\": \"string\"\n        },\n        \"expected_sku\": {\n          \"type\": \"string\"\n        }\n      },\n      \"required\": [\n        \"robot_id\",\n        \"bin_id\",\n        \"expected_sku\"\n      ]\n    },\n    \"example_output\": {\n      \"reconciliation_status\": \"COMPLETED\"\n    }\n  },\n  \"clear_robot_error\": {\n    \"description\": \"Sends a hardware reset signal to a robot to clear an ERROR status and return it to IDLE.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"robot_id\": {\n          \"type\": \"string\"\n        }\n      },\n      \"required\": [\n        \"robot_id\"\n      ]\n    },\n    \"example_output\": {\n      \"new_status\": \"IDLE\"\n    }\n  },\n  \"robot_control\": {\n    \"description\": \"Commands a robot to perform physical actions. Use for movement and payload manipulation.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"robot_id\": {\n          \"type\": \"string\"\n        },\n        \"action\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"MOVE\",\n            \"PICK\",\n            \"DROP\"\n          ]\n        },\n        \"target_coordinates\": {\n          \"type\": \"array\",\n          \"items\": {\n            \"type\": \"number\"\n          }\n        },\n        \"target_bin_id\": {\n          \"type\": \"string\"\n        }\n      },\n      \"required\": [\n        \"robot_id\",\n        \"action\"\n      ]\n    },\n    \"example_output\": {\n      \"command_id\": \"CMD-102\",\n      \"status\": \"ACCEPTED\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_system_time",
+      "description": "Retrieves the current relative simulation time in seconds. Use this to monitor task progress against the 300s deadline.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "timestamp": 120.5
+      }
+    },
+    {
+      "name": "inspect_robot",
+      "description": "Returns the live diagnostic state of a specific robot, including its coordinates, status (IDLE, MOVING, PICKING, ERROR), cargo, and battery.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "robot_id": {
+            "type": "string",
+            "description": "The unique identifier of the robot."
+          }
+        },
+        "required": [
+          "robot_id"
+        ]
+      },
+      "example_output": {
+        "status": "ERROR",
+        "coordinates": [
+          50,
+          10
+        ],
+        "cargo": null,
+        "battery": 92
+      }
+    },
+    {
+      "name": "query_inventory_at_location",
+      "description": "Retrieves bin information and inventory details at a specific coordinate grid point.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "coordinates": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            },
+            "minItems": 2,
+            "maxItems": 2,
+            "description": "[x, y] coordinates."
+          }
+        },
+        "required": [
+          "coordinates"
+        ]
+      },
+      "example_output": {
+        "bin_id": "BIN-X-99",
+        "inventory": [
+          {
+            "item_id": "SKU-77-VITAL",
+            "quantity": 1
+          }
+        ]
+      }
+    },
+    {
+      "name": "synchronize_records",
+      "description": "Resolves inconsistencies between the physical environment and the digital management system (e.g., ghost inventory or stuck status flags).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "robot_id": {
+            "type": "string"
+          },
+          "bin_id": {
+            "type": "string"
+          },
+          "expected_sku": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "robot_id",
+          "bin_id",
+          "expected_sku"
+        ]
+      },
+      "example_output": {
+        "reconciliation_status": "COMPLETED"
+      }
+    },
+    {
+      "name": "clear_robot_error",
+      "description": "Sends a hardware reset signal to a robot to clear an ERROR status and return it to IDLE.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "robot_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "robot_id"
+        ]
+      },
+      "example_output": {
+        "new_status": "IDLE"
+      }
+    },
+    {
+      "name": "robot_control",
+      "description": "Commands a robot to perform physical actions. Use for movement and payload manipulation.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "robot_id": {
+            "type": "string"
+          },
+          "action": {
+            "type": "string",
+            "enum": [
+              "MOVE",
+              "PICK",
+              "DROP"
+            ]
+          },
+          "target_coordinates": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            }
+          },
+          "target_bin_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "robot_id",
+          "action"
+        ]
+      },
+      "example_output": {
+        "command_id": "CMD-102",
+        "status": "ACCEPTED"
+      }
+    }
+  ],
+  "state_description": {
+    "robots": "A list of active robots in the warehouse, including their current coordinates [x, y], battery level, current status (IDLE, MOVING, PICKING, ERROR), and current cargo.",
+    "inventory_bins": "A mapping of bin IDs to their current inventory details, including item_id, quantity, and weight.",
+    "warehouse_grid": "Dimensions of the warehouse and a list of static obstacles or restricted zones.",
+    "task_queue": "A list of pending retrieval or storage tasks waiting for assignment.",
+    "timestamp": "The current relative simulation time in seconds."
+  },
+  "task_initial_state": {
+    "robots": [
+      {
+        "robot_id": "R-005",
+        "coordinates": [
+          50,
+          10
+        ],
+        "battery": 88,
+        "status": "ERROR",
+        "cargo": "SKU-77-VITAL"
+      }
+    ],
+    "inventory_bins": {
+      "B-05-99": {
+        "item_id": "SKU-77-VITAL",
+        "quantity": 1,
+        "weight": 12.5
+      }
+    },
+    "warehouse_grid": {
+      "dimensions": [
+        100,
+        100
+      ],
+      "obstacles": []
+    },
+    "task_queue": [
+      {
+        "task_id": "RET-770",
+        "item_id": "SKU-77-VITAL",
+        "status": "IN_PROGRESS",
+        "priority": "HIGH"
+      }
+    ],
+    "timestamp": 45
+  }
+}

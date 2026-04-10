@@ -1,0 +1,178 @@
+{
+  "environment_name": "env_a6deff5fd60b",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: You are a specialized simulator for a Flight Disruption Rebooking environment. Your goal is to simulate the internal evolution of flight databases and passenger records based on the current state $s_t$ and the action $a_t$ executed by the Agent. You will predict and return only the observation $o_{{t+1}}$ obtained by the Agent.\n- **Emphasis**: You do not perform real-world flight bookings. You maintain a self-consistent virtual environment where you calculate seat availability, passenger eligibility, and flight status changes internally.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation to track passenger data, flight inventories, and booking statuses. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nYou must maintain strict context consistency across multiple turns. Every action taken by the Agent (e.g., reserving a seat) must update the internal state, and subsequent actions (e.g., checking availability) must reflect those updates accurately.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. You must parse this JSON to determine the action to execute:\n- `\"name\"`: The specific rebooking action function (e.g., `search_flights`, `confirm_rebooking`).\n- Remaining fields: Parameters required by that function.\n\nExample Input:\n```json\n{{\n \"name\": \"rebook_passenger\",\n \"arguments\": {{\n    \"passenger_id\": \"PAX-123\",\n    \"new_flight_number\": \"CX888\"\n  }}\n}}\n```\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nIf the Agent attempts an invalid operation—such as booking a seat on a flight that is already full, rebooking a passenger who doesn't exist, or providing invalid flight codes—you must return a structured error message (e.g., `{{\"error\": \"Flight CX888 is at full capacity\"}}`). Do not fabricate successful responses for failed logic.\n\n##### Output Assembly\nFor every action function call, return a structured JSON object containing **ONLY** the return fields declared in the action function's definition. \n\n**CRITICAL CONSTRAINT**: Your output JSON must **NOT** contain the full internal state `s_t`, the `new_state`, or any metadata regarding your internal logic. Only expose the specific Observation (return values) defined in the action. Ensure the response is pure JSON.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to JSON for both input parsing and output generation.\n- **Factuality**: Do not invent flights or passenger tiers not present in the current state context.\n- **Consistency**: If a flight is canceled in the state, any attempt to book it must fail unless the state transitions to a recovered status.\n- **Realism**: Simulate realistic constraints such as loyalty tier priority, connection time requirements, and seat class availability.\n- **Quality**: Responses must be structurally complete and free of conversational filler.\n- **Encapsulation**: Hide all internal state variables (e.g., `internal_database_id`). The Agent only sees the functional results of their actions.\n{{initial_state}}: {{\n  \"passenger_profile\": {{\n    \"passenger_id\": \"G-PNR-NYC88\",\n    \"name\": \"Global Scholars Group (22 Pax: 19 ADT, 3 WCHR)\",\n    \"tier\": \"Group-Priority\"\n  }},\n  \"disrupted_itinerary\": {{\n    \"flight_no\": \"DL10\",\n    \"status\": \"CANCELED\",\n    \"origin\": \"JFK\",\n    \"destination\": \"AMS\"\n  }},\n  \"flight_inventory\": [\n    {{\n      \"flight_no\": \"KL602\",\n      \"operator\": \"KLM (JV Partner)\",\n      \"remaining_au\": 12,\n      \"arrival_timestamp\": \"2024-05-21T08:00:00Z\",\n      \"ssr_support\": true\n    }},\n    {{\n      \"flight_no\": \"DL12\",\n      \"operator\": \"Delta (OWN Metal)\",\n      \"remaining_au\": 5,\n      \"arrival_timestamp\": \"2024-05-21T10:30:00Z\",\n      \"ssr_support\": true\n    }},\n    {{\n      \"flight_no\": \"UA909\",\n      \"operator\": \"United (OAL)\",\n      \"remaining_au\": 20,\n      \"arrival_timestamp\": \"2024-05-21T09:15:00Z\",\n      \"ssr_support\": false\n    }}\n  ],\n  \"booking_status\": \"UNRESOLVED\",\n  \"system_timestamp\": \"2024-05-20T15:00:00Z\"\n}}\n{{state_descriptions}}: {{\n  \"passenger_profile\": \"Details of the passenger including name, loyalty tier (e.g., Gold, Silver), and contact info.\",\n  \"disrupted_itinerary\": \"The original flight details that were disrupted (canceled or delayed).\",\n  \"flight_inventory\": \"A list of available alternative flights with their current seat capacity and class availability.\",\n  \"booking_status\": \"The current status of the rebooking process (e.g., UNRESOLVED, PENDING_CONFIRMATION, REBOOKED).\",\n  \"system_timestamp\": \"The current simulation time to calculate connection feasibility.\"\n}}\n{action_set_definitions}: {\n  \"get_pnr_details\": {\n    \"description\": \"Retrieves comprehensive information for a given PNR ID, including the list of passengers, their specific Special Service Request (SSR) codes, and the details of the disrupted itinerary (origin, destination, and original departure time).\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"pnr_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the booking group (e.g., 'G-PNR-NYC88').\"\n        }\n      },\n      \"required\": [\n        \"pnr_id\"\n      ]\n    },\n    \"example_output\": {\n      \"passengers\": [\n        {\n          \"id\": \"PAX-001\",\n          \"name\": \"John Doe\",\n          \"ssr\": [\n            \"WCHR\"\n          ]\n        },\n        {\n          \"id\": \"PAX-002\",\n          \"name\": \"Jane Smith\",\n          \"ssr\": []\n        }\n      ],\n      \"itinerary\": {\n        \"origin\": \"JFK\",\n        \"destination\": \"AMS\",\n        \"date\": \"2023-10-27\"\n      }\n    }\n  },\n  \"get_system_time\": {\n    \"description\": \"Retrieves the current simulation time. Crucial for calculating connection feasibility and verifying the operational lockout status.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {}\n    },\n    \"example_output\": {\n      \"current_timestamp\": \"2023-10-27T14:30:00Z\"\n    }\n  },\n  \"search_alternative_flights\": {\n    \"description\": \"Queries the flight inventory for available alternative flights between specified airports on a given date.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"origin\": {\n          \"type\": \"string\",\n          \"description\": \"The IATA code for the departure airport.\"\n        },\n        \"destination\": {\n          \"type\": \"string\",\n          \"description\": \"The IATA code for the arrival airport.\"\n        },\n        \"travel_date\": {\n          \"type\": \"string\",\n          \"description\": \"The date of travel in YYYY-MM-DD format.\"\n        }\n      },\n      \"required\": [\n        \"origin\",\n        \"destination\",\n        \"travel_date\"\n      ]\n    },\n    \"example_output\": {\n      \"flights\": [\n        {\n          \"flight_no\": \"DL12\",\n          \"carrier_type\": \"JV\",\n          \"available_seats\": 10,\n          \"departure\": \"2023-10-27T22:00:00Z\",\n          \"arrival\": \"2023-10-28T10:00:00Z\"\n        }\n      ]\n    }\n  },\n  \"execute_rebooking\": {\n    \"description\": \"Finalizes the rebooking process by assigning passengers to specific alternative flights. Updates the booking status to REBOOKED upon success.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"pnr_id\": {\n          \"type\": \"string\",\n          \"description\": \"The PNR identifier.\"\n        },\n        \"assignments\": {\n          \"type\": \"array\",\n          \"items\": {\n            \"type\": \"object\",\n            \"properties\": {\n              \"flight_no\": {\n                \"type\": \"string\"\n              },\n              \"passenger_ids\": {\n                \"type\": \"array\",\n                \"items\": {\n                  \"type\": \"string\"\n                }\n              }\n            },\n            \"required\": [\n              \"flight_no\",\n              \"passenger_ids\"\n            ]\n          }\n        }\n      },\n      \"required\": [\n        \"pnr_id\",\n        \"assignments\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"REBOOKED\",\n      \"rebooked_count\": 22\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_pnr_details",
+      "description": "Retrieves comprehensive information for a given PNR ID, including the list of passengers, their specific Special Service Request (SSR) codes, and the details of the disrupted itinerary (origin, destination, and original departure time).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "pnr_id": {
+            "type": "string",
+            "description": "The unique identifier for the booking group (e.g., 'G-PNR-NYC88')."
+          }
+        },
+        "required": [
+          "pnr_id"
+        ]
+      },
+      "example_output": {
+        "passengers": [
+          {
+            "id": "PAX-001",
+            "name": "John Doe",
+            "ssr": [
+              "WCHR"
+            ]
+          },
+          {
+            "id": "PAX-002",
+            "name": "Jane Smith",
+            "ssr": []
+          }
+        ],
+        "itinerary": {
+          "origin": "JFK",
+          "destination": "AMS",
+          "date": "2023-10-27"
+        }
+      }
+    },
+    {
+      "name": "get_system_time",
+      "description": "Retrieves the current simulation time. Crucial for calculating connection feasibility and verifying the operational lockout status.",
+      "parameters": {
+        "type": "object",
+        "properties": {}
+      },
+      "example_output": {
+        "current_timestamp": "2023-10-27T14:30:00Z"
+      }
+    },
+    {
+      "name": "search_alternative_flights",
+      "description": "Queries the flight inventory for available alternative flights between specified airports on a given date.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "origin": {
+            "type": "string",
+            "description": "The IATA code for the departure airport."
+          },
+          "destination": {
+            "type": "string",
+            "description": "The IATA code for the arrival airport."
+          },
+          "travel_date": {
+            "type": "string",
+            "description": "The date of travel in YYYY-MM-DD format."
+          }
+        },
+        "required": [
+          "origin",
+          "destination",
+          "travel_date"
+        ]
+      },
+      "example_output": {
+        "flights": [
+          {
+            "flight_no": "DL12",
+            "carrier_type": "JV",
+            "available_seats": 10,
+            "departure": "2023-10-27T22:00:00Z",
+            "arrival": "2023-10-28T10:00:00Z"
+          }
+        ]
+      }
+    },
+    {
+      "name": "execute_rebooking",
+      "description": "Finalizes the rebooking process by assigning passengers to specific alternative flights. Updates the booking status to REBOOKED upon success.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "pnr_id": {
+            "type": "string",
+            "description": "The PNR identifier."
+          },
+          "assignments": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "flight_no": {
+                  "type": "string"
+                },
+                "passenger_ids": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              },
+              "required": [
+                "flight_no",
+                "passenger_ids"
+              ]
+            }
+          }
+        },
+        "required": [
+          "pnr_id",
+          "assignments"
+        ]
+      },
+      "example_output": {
+        "status": "REBOOKED",
+        "rebooked_count": 22
+      }
+    }
+  ],
+  "state_description": {
+    "passenger_profile": "Details of the passenger including name, loyalty tier (e.g., Gold, Silver), and contact info.",
+    "disrupted_itinerary": "The original flight details that were disrupted (canceled or delayed).",
+    "flight_inventory": "A list of available alternative flights with their current seat capacity and class availability.",
+    "booking_status": "The current status of the rebooking process (e.g., UNRESOLVED, PENDING_CONFIRMATION, REBOOKED).",
+    "system_timestamp": "The current simulation time to calculate connection feasibility."
+  },
+  "task_initial_state": {
+    "passenger_profile": {
+      "passenger_id": "G-PNR-NYC88",
+      "name": "Global Scholars Group (22 Pax: 19 ADT, 3 WCHR)",
+      "tier": "Group-Priority"
+    },
+    "disrupted_itinerary": {
+      "flight_no": "DL10",
+      "status": "CANCELED",
+      "origin": "JFK",
+      "destination": "AMS"
+    },
+    "flight_inventory": [
+      {
+        "flight_no": "KL602",
+        "operator": "KLM (JV Partner)",
+        "remaining_au": 12,
+        "arrival_timestamp": "2024-05-21T08:00:00Z",
+        "ssr_support": true
+      },
+      {
+        "flight_no": "DL12",
+        "operator": "Delta (OWN Metal)",
+        "remaining_au": 5,
+        "arrival_timestamp": "2024-05-21T10:30:00Z",
+        "ssr_support": true
+      },
+      {
+        "flight_no": "UA909",
+        "operator": "United (OAL)",
+        "remaining_au": 20,
+        "arrival_timestamp": "2024-05-21T09:15:00Z",
+        "ssr_support": false
+      }
+    ],
+    "booking_status": "UNRESOLVED",
+    "system_timestamp": "2024-05-20T15:00:00Z"
+  }
+}

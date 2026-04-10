@@ -1,0 +1,209 @@
+{
+  "environment_name": "env_ffcd9198d899",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM) for Contract Due Diligence.\n- **Core Objective**: Based on the current legal environment state $s_t$ and the Agent's action $a_t$ (e.g., reviewing a clause, searching a data room), simulate the evolution of the due diligence process and predict the observation $o_{{t+1}}$ obtained by the Agent.\n- **Emphasis**: You are a simulator of a legal document repository and review process. You do not perform actual legal work; you simulate the environment's response to an auditor's actions, including document contents, search results, and metadata updates.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation tracking document statuses, identified risks, and review progress. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions must maintain absolute continuity. If a document is flagged as 'high risk' in step $t$, it must remain flagged in step $t+1$ unless a specific action changes that state. The legal logic (e.g., expiration dates, change-of-control clauses) must remain consistent across all interactions.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. You must parse this JSON to determine the intent:\n- `\"name\"`: The name of the action (e.g., `open_contract`, `search_keyword`, `log_risk`).\n- Parameters: The specific arguments required for that action.\n\nExample Input:\n```json\n{{\n \"name\": \"extract_clause\",\n \"arguments\": {{\n    \"document_id\": \"NDA_001\",\n    \"clause_type\": \"Indemnification\"\n  }}\n}}\n```\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\n- If the Agent attempts to access a `document_id` that does not exist in the state: Return `{{\"error\": \"Document ID not found in data room\"}}`.\n- If the Agent calls a function not defined in the action set: Return `{{\"error\": \"Unsupported action\"}}`.\n- If a required parameter is missing: Return `{{\"error\": \"Missing required argument: [param_name]\"}}`.\n- Do not fabricate document content if the state indicates the document is encrypted or inaccessible.\n\n##### Output Assembly\nFor every action, return a structured JSON object containing **ONLY** the return fields declared in the action function's definition. \n\n**CRITICAL CONSTRAINT**: You must NOT output the internal state (e.g., the full list of documents or the entire risk log) unless the action explicitly returns it. Hide all internal mechanics. Only show the specific `observation` requested.\n\n### 4. Key Principles\n- **Format**: Strictly JSON output for all observations.\n- **Factuality**: Simulated document text must follow legal professional standards and match the metadata in the state.\n- **Consistency**: If a contract is described as a 'Master Service Agreement' in one turn, it cannot become a 'Lease Agreement' in the next.\n- **Realism**: Simulate realistic due diligence hurdles, such as redacted text, complex cross-referencing between documents, or large volumes of search results.\n- **Quality**: Observations should be clear and structurally complete as per the expected schema.\n- **Encapsulation**: Never reveal the internal state structure `{{initial_state}}` in your response. Only provide the resulting observation $o_{{t+1}}$.\n{{initial_state}}: {{\n  \"documents_metadata\": [\n    {{\n      \"id\": \"CONT_771_CHIP\",\n      \"title\": \"ChipCo Strategic Supply Agreement\",\n      \"type\": \"Master Supply Agreement\",\n      \"status\": \"Restricted - Clean Team Only\",\n      \"tags\": [\n        \"Strategic\",\n        \"Sole Source\"\n      ]\n    }},\n    {{\n      \"id\": \"MEMO_VDR_01\",\n      \"title\": \"Data Room Access Protocol\",\n      \"type\": \"Administrative\",\n      \"status\": \"Available\",\n      \"tags\": [\n        \"System\"\n      ]\n    }},\n    {{\n      \"id\": \"CONT_220_LOG\",\n      \"title\": \"Global Logistics MSA\",\n      \"type\": \"Services Agreement\",\n      \"status\": \"Available\",\n      \"tags\": [\n        \"Operational\"\n      ]\n    }}\n  ],\n  \"review_checklist\": {{\n    \"Supply_Chain_Resilience\": \"Pending\",\n    \"M&A_Compliance\": \"Pending\"\n  }},\n  \"identified_risks\": [],\n  \"active_document_id\": \"\",\n  \"access_permissions\": \"Read-Only\"\n}}\n{{state_descriptions}}: {{\n  \"documents_metadata\": \"A list of objects containing metadata for all contracts in the data room (ID, title, type, status).\",\n  \"review_checklist\": \"Mapping of specific due diligence requirements to their completion status (e.g., 'Change of Control' -> 'Pending').\",\n  \"identified_risks\": \"A log of risks flagged by the Agent, including document references and severity levels.\",\n  \"active_document_id\": \"The ID of the document currently 'open' or in the Agent's focus.\",\n  \"access_permissions\": \"The current user's permission level (e.g., 'Read-Only', 'Admin').\"\n}}\n{action_set_definitions}: {\n  \"get_permissions\": {\n    \"description\": \"Retrieves the current user's access level to determine if they can view sensitive documents or modify logs.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"access_level\": \"Admin\"\n    }\n  },\n  \"list_documents\": {\n    \"description\": \"Retrieves metadata for all documents in the data room, used to identify contract IDs and titles.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"documents\": [\n        {\n          \"id\": \"DOC-001\",\n          \"title\": \"ChipCo Master Supply Agreement\",\n          \"type\": \"Contract\",\n          \"status\": \"Final\"\n        }\n      ]\n    }\n  },\n  \"get_review_checklist\": {\n    \"description\": \"Queries the current completion status of the due diligence checklist categories.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"checklist\": {\n        \"Supply_Chain_Resilience\": \"Pending\",\n        \"M&A_Compliance\": \"Pending\"\n      }\n    }\n  },\n  \"open_document\": {\n    \"description\": \"Sets the active_document_id to the specified document to allow for content searching.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"document_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique ID of the document to open.\"\n        }\n      },\n      \"required\": [\n        \"document_id\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"success\",\n      \"active_document_id\": \"DOC-001\"\n    }\n  },\n  \"search_document_content\": {\n    \"description\": \"Searches the currently active document for specific keywords or clauses.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"keywords\": {\n          \"type\": \"array\",\n          \"items\": {\n            \"type\": \"string\"\n          },\n          \"description\": \"Keywords to search for, e.g., ['Force Majeure', 'Allocation'].\"\n        }\n      },\n      \"required\": [\n        \"keywords\"\n      ]\n    },\n    \"example_output\": {\n      \"matches\": [\n        {\n          \"keyword\": \"Force Majeure\",\n          \"excerpt\": \"In the event of Force Majeure, ChipCo reserves the right to allocate...\"\n        }\n      ]\n    }\n  },\n  \"log_risk\": {\n    \"description\": \"Logs an identified risk into the environment state, including severity and description.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"document_id\": {\n          \"type\": \"string\",\n          \"description\": \"ID of the document associated with the risk.\"\n        },\n        \"risk_type\": {\n          \"type\": \"string\",\n          \"description\": \"The name of the risk (e.g., 'Supply Gap Risk').\"\n        },\n        \"description\": {\n          \"type\": \"string\",\n          \"description\": \"Detailed explanation of why this is a risk based on the clause analysis.\"\n        },\n        \"severity\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"Low\",\n            \"Medium\",\n            \"High\",\n            \"Critical\"\n          ],\n          \"description\": \"The risk level assessed.\"\n        }\n      },\n      \"required\": [\n        \"document_id\",\n        \"risk_type\",\n        \"description\",\n        \"severity\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"logged\"\n    }\n  },\n  \"update_checklist_status\": {\n    \"description\": \"Updates the completion status of a specific category in the review checklist.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"category\": {\n          \"type\": \"string\",\n          \"description\": \"The checklist category to update (e.g., 'Supply_Chain_Resilience').\"\n        },\n        \"status\": {\n          \"type\": \"string\",\n          \"description\": \"The new status value (e.g., 'Completed').\"\n        }\n      },\n      \"required\": [\n        \"category\",\n        \"status\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"updated\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_permissions",
+      "description": "Retrieves the current user's access level to determine if they can view sensitive documents or modify logs.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "access_level": "Admin"
+      }
+    },
+    {
+      "name": "list_documents",
+      "description": "Retrieves metadata for all documents in the data room, used to identify contract IDs and titles.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "documents": [
+          {
+            "id": "DOC-001",
+            "title": "ChipCo Master Supply Agreement",
+            "type": "Contract",
+            "status": "Final"
+          }
+        ]
+      }
+    },
+    {
+      "name": "get_review_checklist",
+      "description": "Queries the current completion status of the due diligence checklist categories.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "checklist": {
+          "Supply_Chain_Resilience": "Pending",
+          "M&A_Compliance": "Pending"
+        }
+      }
+    },
+    {
+      "name": "open_document",
+      "description": "Sets the active_document_id to the specified document to allow for content searching.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "document_id": {
+            "type": "string",
+            "description": "The unique ID of the document to open."
+          }
+        },
+        "required": [
+          "document_id"
+        ]
+      },
+      "example_output": {
+        "status": "success",
+        "active_document_id": "DOC-001"
+      }
+    },
+    {
+      "name": "search_document_content",
+      "description": "Searches the currently active document for specific keywords or clauses.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "keywords": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Keywords to search for, e.g., ['Force Majeure', 'Allocation']."
+          }
+        },
+        "required": [
+          "keywords"
+        ]
+      },
+      "example_output": {
+        "matches": [
+          {
+            "keyword": "Force Majeure",
+            "excerpt": "In the event of Force Majeure, ChipCo reserves the right to allocate..."
+          }
+        ]
+      }
+    },
+    {
+      "name": "log_risk",
+      "description": "Logs an identified risk into the environment state, including severity and description.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "document_id": {
+            "type": "string",
+            "description": "ID of the document associated with the risk."
+          },
+          "risk_type": {
+            "type": "string",
+            "description": "The name of the risk (e.g., 'Supply Gap Risk')."
+          },
+          "description": {
+            "type": "string",
+            "description": "Detailed explanation of why this is a risk based on the clause analysis."
+          },
+          "severity": {
+            "type": "string",
+            "enum": [
+              "Low",
+              "Medium",
+              "High",
+              "Critical"
+            ],
+            "description": "The risk level assessed."
+          }
+        },
+        "required": [
+          "document_id",
+          "risk_type",
+          "description",
+          "severity"
+        ]
+      },
+      "example_output": {
+        "status": "logged"
+      }
+    },
+    {
+      "name": "update_checklist_status",
+      "description": "Updates the completion status of a specific category in the review checklist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "category": {
+            "type": "string",
+            "description": "The checklist category to update (e.g., 'Supply_Chain_Resilience')."
+          },
+          "status": {
+            "type": "string",
+            "description": "The new status value (e.g., 'Completed')."
+          }
+        },
+        "required": [
+          "category",
+          "status"
+        ]
+      },
+      "example_output": {
+        "status": "updated"
+      }
+    }
+  ],
+  "state_description": {
+    "documents_metadata": "A list of objects containing metadata for all contracts in the data room (ID, title, type, status).",
+    "review_checklist": "Mapping of specific due diligence requirements to their completion status (e.g., 'Change of Control' -> 'Pending').",
+    "identified_risks": "A log of risks flagged by the Agent, including document references and severity levels.",
+    "active_document_id": "The ID of the document currently 'open' or in the Agent's focus.",
+    "access_permissions": "The current user's permission level (e.g., 'Read-Only', 'Admin')."
+  },
+  "task_initial_state": {
+    "documents_metadata": [
+      {
+        "id": "CONT_771_CHIP",
+        "title": "ChipCo Strategic Supply Agreement",
+        "type": "Master Supply Agreement",
+        "status": "Restricted - Clean Team Only",
+        "tags": [
+          "Strategic",
+          "Sole Source"
+        ]
+      },
+      {
+        "id": "MEMO_VDR_01",
+        "title": "Data Room Access Protocol",
+        "type": "Administrative",
+        "status": "Available",
+        "tags": [
+          "System"
+        ]
+      },
+      {
+        "id": "CONT_220_LOG",
+        "title": "Global Logistics MSA",
+        "type": "Services Agreement",
+        "status": "Available",
+        "tags": [
+          "Operational"
+        ]
+      }
+    ],
+    "review_checklist": {
+      "Supply_Chain_Resilience": "Pending",
+      "M&A_Compliance": "Pending"
+    },
+    "identified_risks": [],
+    "active_document_id": "",
+    "access_permissions": "Read-Only"
+  }
+}

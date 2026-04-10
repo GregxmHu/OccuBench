@@ -1,0 +1,164 @@
+{
+  "environment_name": "env_95db569d0528",
+  "world_model_system_prompt": "## 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: Based on the current internal state $s_t$ of the Anti-Money Laundering (AML) alert review and the action $a_t$ performed by the investigator (Agent), simulate the environment's response and predict the observation $o_{{t+1}}$.\n- **Emphasis**: You are the simulation engine for a banking compliance environment. You do not perform real-world database queries or freeze actual accounts; instead, you maintain the internal logic of the alert status, customer profiles, and transaction histories to provide realistic feedback to the Agent.\n\n## 2. Environment Management\n\n### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n### Context Awareness\nAll interactions between the World Model and the Agent must maintain context consistency. You must ensure that if an investigator flags a transaction in step T, that transaction remains flagged in the internal state for all subsequent steps until explicitly modified. The evolution of the alert status must follow a logical investigative workflow.\n\n## 3. Environment Execution\n\n### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. You must parse this JSON to determine the simulated outcome. The input format is:\n- `\"name\"`: The name of the action function (e.g., `get_transaction_history`, `escalate_case`).\n- `\"arguments\"`: A dictionary of parameters required for the action.\n\nExample input:\n```json\n{{\n \"name\": \"review_customer_kyc\",\n \"arguments\": {{\n    \"customer_id\": \"CUST-9982\",\n    \"detail_level\": \"full\"\n  }}\n}}\n```\n\n### Environment Behavior Modeling\n\n#### Error Handling & Edge Cases\n- If the Agent attempts an action on a non-existent `transaction_id` or `customer_id`, return an error observation: `{{\"error\": \"Entity not found\"}}`.\n- If an action is attempted that is logically impossible (e.g., closing an alert that hasn't been reviewed), return a descriptive error: `{{\"error\": \"Pre-requisites for closing alert not met\"}}`.\n- Do not fabricate data outside the scope of the provided state and action definitions.\n\n#### Output Assembly\nFor every action function call, you must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition.\n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, `new_state`, or hidden state variables. The Agent must only receive the specific `observation` (the return values) resulting from their action. For example, if the agent calls `get_risk_score`, only return the score, not the entire customer profile.\n\n## 4. Key Principles\n- **Format**: Strictly adhere to JSON output for observations.\n- **Factuality**: Simulate data (like transaction timestamps or merchant names) that is realistic for banking scenarios, but remain consistent with previous turns.\n- **Consistency**: If a customer's `risk_level` is updated via an action, subsequent observations regarding that customer must reflect the change.\n- **Realism**: Simulated behaviors must align with AML compliance standards (e.g., SAR filings require specific information).\n- **Quality**: Ensure all simulated data is clear, unambiguous, and formatted correctly.\n- **Encapsulation**: Strictly hide the internal state structure from the output. Only expose information that is explicitly returned by the action function. Do not output the state update text.\n{{initial_state}}: {{\n  \"alert_metadata\": {{\n    \"alert_id\": \"AML-1024\",\n    \"status\": \"RESOLVED\",\n    \"priority\": \"Low\"\n  }},\n  \"customer_context\": {{\n    \"customer_id\": \"CUST-NS-77\",\n    \"risk_rating\": 12,\n    \"kyc_verified\": false\n  }},\n  \"investigation_history\": [\n    \"ML model (v2.1) auto-resolved alert as 'Low Risk' via hibernation logic.\",\n    \"Internal audit flagged this entity for potential 'Structuring' bypass due to $9,950 deposit patterns.\",\n    \"Quality Assurance marked the automated resolution as a 'False Negative' requiring manual override.\"\n  ],\n  \"pending_actions\": [\n    \"Document high-volume wire transfers for the last 30 days\",\n    \"Identify and verify Ultimate Beneficial Owner (UBO)\",\n    \"Perform SAR escalation for detected layering activity\"\n  ]\n}}\n{{state_descriptions}}: {{\n  \"alert_metadata\": \"General information about the AML alert.\",\n  \"customer_context\": \"Information about the primary subject of the alert.\",\n  \"investigation_history\": \"Log of steps taken by the investigator in the current session.\",\n  \"pending_actions\": \"List of required steps before the alert can be closed.\"\n}}\n{action_set_definitions}: {\n  \"get_alert_summary\": {\n    \"description\": \"Retrieves the core metadata and the list of pending investigative requirements for a specific AML alert.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"alert_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier of the AML alert (e.g., AML-1024).\"\n        }\n      },\n      \"required\": [\n        \"alert_id\"\n      ]\n    },\n    \"example_output\": {\n      \"alert_metadata\": \"Alert triggered by high-volume wire transfers.\",\n      \"pending_actions\": [\n        {\n          \"action_id\": \"REQ-01\",\n          \"description\": \"Verify Beneficial Ownership\"\n        },\n        {\n          \"action_id\": \"REQ-02\",\n          \"description\": \"Verify Source of Funds\"\n        }\n      ],\n      \"current_status\": \"OPEN\"\n    }\n  },\n  \"get_entity_context\": {\n    \"description\": \"Retrieves detailed information about the customer or entity associated with the alert, including KYC details and risk factors.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"entity_name\": {\n          \"type\": \"string\",\n          \"description\": \"The name of the company or individual (e.g., 'Northstar Global').\"\n        }\n      },\n      \"required\": [\n        \"entity_name\"\n      ]\n    },\n    \"example_output\": {\n      \"industry\": \"Import/Export\",\n      \"jurisdiction\": \"High Risk\",\n      \"incorporation_date\": \"2021-05-10\"\n    }\n  },\n  \"resolve_pending_action\": {\n    \"description\": \"Clears a specific mandatory requirement from the pending actions queue of an investigation.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"alert_id\": {\n          \"type\": \"string\",\n          \"description\": \"The alert ID.\"\n        },\n        \"action_id\": {\n          \"type\": \"string\",\n          \"description\": \"The specific ID of the action item to resolve.\"\n        },\n        \"resolution_note\": {\n          \"type\": \"string\",\n          \"description\": \"A brief explanation of how the requirement was satisfied.\"\n        }\n      },\n      \"required\": [\n        \"alert_id\",\n        \"action_id\",\n        \"resolution_note\"\n      ]\n    },\n    \"example_output\": {\n      \"success\": true,\n      \"remaining_actions\": 1\n    }\n  },\n  \"submit_sar_escalation\": {\n    \"description\": \"Finalizes the review, sets the risk rating and typology, and moves the alert to 'ESCALATED' status as a Suspicious Activity Report (SAR).\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"alert_id\": {\n          \"type\": \"string\",\n          \"description\": \"The alert ID.\"\n        },\n        \"risk_rating\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"Low\",\n            \"Medium\",\n            \"High\"\n          ],\n          \"description\": \"The determined risk level.\"\n        },\n        \"typology\": {\n          \"type\": \"string\",\n          \"description\": \"The identified criminal typology (e.g., 'Shell Company', 'Layering').\"\n        },\n        \"priority\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"Standard\",\n            \"High\"\n          ],\n          \"description\": \"Priority level for the SAR filing.\"\n        },\n        \"final_justification\": {\n          \"type\": \"string\",\n          \"description\": \"Comprehensive summary of findings for regulatory submission.\"\n        }\n      },\n      \"required\": [\n        \"alert_id\",\n        \"risk_rating\",\n        \"typology\",\n        \"priority\",\n        \"final_justification\"\n      ]\n    },\n    \"example_output\": {\n      \"new_status\": \"ESCALATED\",\n      \"case_closed\": true\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_alert_summary",
+      "description": "Retrieves the core metadata and the list of pending investigative requirements for a specific AML alert.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "alert_id": {
+            "type": "string",
+            "description": "The unique identifier of the AML alert (e.g., AML-1024)."
+          }
+        },
+        "required": [
+          "alert_id"
+        ]
+      },
+      "example_output": {
+        "alert_metadata": "Alert triggered by high-volume wire transfers.",
+        "pending_actions": [
+          {
+            "action_id": "REQ-01",
+            "description": "Verify Beneficial Ownership"
+          },
+          {
+            "action_id": "REQ-02",
+            "description": "Verify Source of Funds"
+          }
+        ],
+        "current_status": "OPEN"
+      }
+    },
+    {
+      "name": "get_entity_context",
+      "description": "Retrieves detailed information about the customer or entity associated with the alert, including KYC details and risk factors.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "entity_name": {
+            "type": "string",
+            "description": "The name of the company or individual (e.g., 'Northstar Global')."
+          }
+        },
+        "required": [
+          "entity_name"
+        ]
+      },
+      "example_output": {
+        "industry": "Import/Export",
+        "jurisdiction": "High Risk",
+        "incorporation_date": "2021-05-10"
+      }
+    },
+    {
+      "name": "resolve_pending_action",
+      "description": "Clears a specific mandatory requirement from the pending actions queue of an investigation.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "alert_id": {
+            "type": "string",
+            "description": "The alert ID."
+          },
+          "action_id": {
+            "type": "string",
+            "description": "The specific ID of the action item to resolve."
+          },
+          "resolution_note": {
+            "type": "string",
+            "description": "A brief explanation of how the requirement was satisfied."
+          }
+        },
+        "required": [
+          "alert_id",
+          "action_id",
+          "resolution_note"
+        ]
+      },
+      "example_output": {
+        "success": true,
+        "remaining_actions": 1
+      }
+    },
+    {
+      "name": "submit_sar_escalation",
+      "description": "Finalizes the review, sets the risk rating and typology, and moves the alert to 'ESCALATED' status as a Suspicious Activity Report (SAR).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "alert_id": {
+            "type": "string",
+            "description": "The alert ID."
+          },
+          "risk_rating": {
+            "type": "string",
+            "enum": [
+              "Low",
+              "Medium",
+              "High"
+            ],
+            "description": "The determined risk level."
+          },
+          "typology": {
+            "type": "string",
+            "description": "The identified criminal typology (e.g., 'Shell Company', 'Layering')."
+          },
+          "priority": {
+            "type": "string",
+            "enum": [
+              "Standard",
+              "High"
+            ],
+            "description": "Priority level for the SAR filing."
+          },
+          "final_justification": {
+            "type": "string",
+            "description": "Comprehensive summary of findings for regulatory submission."
+          }
+        },
+        "required": [
+          "alert_id",
+          "risk_rating",
+          "typology",
+          "priority",
+          "final_justification"
+        ]
+      },
+      "example_output": {
+        "new_status": "ESCALATED",
+        "case_closed": true
+      }
+    }
+  ],
+  "state_description": {
+    "alert_metadata": "General information about the AML alert.",
+    "customer_context": "Information about the primary subject of the alert.",
+    "investigation_history": "Log of steps taken by the investigator in the current session.",
+    "pending_actions": "List of required steps before the alert can be closed."
+  },
+  "task_initial_state": {
+    "alert_metadata": {
+      "alert_id": "AML-1024",
+      "status": "RESOLVED",
+      "priority": "Low"
+    },
+    "customer_context": {
+      "customer_id": "CUST-NS-77",
+      "risk_rating": 12,
+      "kyc_verified": false
+    },
+    "investigation_history": [
+      "ML model (v2.1) auto-resolved alert as 'Low Risk' via hibernation logic.",
+      "Internal audit flagged this entity for potential 'Structuring' bypass due to $9,950 deposit patterns.",
+      "Quality Assurance marked the automated resolution as a 'False Negative' requiring manual override."
+    ],
+    "pending_actions": [
+      "Document high-volume wire transfers for the last 30 days",
+      "Identify and verify Ultimate Beneficial Owner (UBO)",
+      "Perform SAR escalation for detected layering activity"
+    ]
+  }
+}

@@ -1,0 +1,153 @@
+{
+  "environment_name": "env_863ac79a8263",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: You act as the simulation engine for a Policy Underwriting Review environment. Based on the current internal state $s_t$ and the action $a_t$ submitted by the Agent (Underwriter/AI Auditor), you must simulate the evolution of the underwriting case and predict the observation $o_{{t+1}}$ that the Agent would receive.\n- **Emphasis**: You are not the Agent making decisions. You are the environment itself. Your task is to perform internal state evolution and generate the resulting observations while maintaining logic, consistency, and realism within the insurance domain.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\n\nSemantic description of fields:\n```json\n{{initial_state_schema}}\n```\n\n#### Context Awareness\nYou must maintain perfect continuity across interactions. Every action taken by the Agent (e.g., requesting a medical report or flagging a discrepancy) must reflect in the environment's internal state. Subsequent observations must be consistent with all previous state transitions and historical data.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. You must parse this JSON to determine the evolution of the environment. The format is:\n- `\"name\"`: The name of the action function.\n- Other fields: Arguments required by the function.\n\nExample Input:\n```json\n{{\n \"name\": \"review_medical_history\",\n \"arguments\": {{\n    \"application_id\": \"POL-77821\",\n    \"focus_area\": \"cardiovascular\"\n  }}\n}}\n```\n\nYou must simulate the outcome of such inputs based on the current state.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nIf the Agent provides invalid parameters (e.g., an ID that doesn't match the state), calls undefined actions, or attempts actions logically impossible in the current state (e.g., approving a policy that has already been declined), return a structured error message:\n`{{\"error\": \"Description of why the action failed\"}}`.\nDo not fabricate fictitious data or hallucinate states that do not exist.\n\n##### Output Assembly\nFor every action function call, you must return a structured JSON object containing **ONLY** the return fields (the Observation) declared in that action function's definition. \n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state $s_{{t+1}}$, `new_state`, or any metadata regarding your internal variables. The Agent must only see the specific observation values. State maintenance is implicit.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to the specified JSON structure. No conversational filler.\n- **Factuality**: Simulated data (e.g., risk scores, document contents) must be logically grounded in the scenario.\n- **Consistency**: The status of the underwriting file must not contradict previous observations (e.g., once a document is marked 'Verified', it remains so unless a specific 'Invalidate' action is called).\n- **Realism**: Simulate the dynamics of insurance underwriting realistically (e.g., risk scores should reflect the applicant's profile).\n- **Encapsulation**: Strictly hide the internal state structure from the output. Only expose information that is explicitly returned by the action function.\n{{initial_state}}: {{\n  \"application_id\": \"APP-2024-APEX-XLR8\",\n  \"applicant_profile\": {{\n    \"name\": \"Apex Thermoforming Inc.\",\n    \"age\": 15,\n    \"occupation\": \"High-Density Plastic Manufacturing\",\n    \"annual_income\": 52000000\n  }},\n  \"underwriting_status\": \"PENDING\",\n  \"risk_factors\": [\n    \"Inadequate ESFR Sprinkler Coverage\",\n    \"Minor Oil Leak in Employee Parking (South)\",\n    \"Pump Log Deficiency (Main Site)\",\n    \"Non-compliant Smoking Policy (South Annex)\",\n    \"High-Challenge Fire Load (North Warehouse)\"\n  ],\n  \"document_inventory\": {{\n    \"rcr_apex_thermal_solutions_2023_v1\": \"Verified\",\n    \"rcr_apex_thermoforming_2023_v1\": \"Archived\",\n    \"rcr_apex_thermoforming_2023_v2_FINAL\": \"Archived\",\n    \"rcr_apex_thermoforming_2023_v2_FINAL_AMENDED_CORRECTED\": \"Received\",\n    \"pump_logs_south_annex_2023\": \"Verified\",\n    \"pump_logs_north_warehouse_2023_PARTIAL\": \"Verified\",\n    \"fire_pump_test_logs_apex_thermal_solutions\": \"Verified\"\n  }},\n  \"internal_risk_score\": 68,\n  \"audit_trail\": [\n    \"2021-08-10: Risk Engineering Survey conducted at North Warehouse. Rec #A-101 (Type A - Physical) issued: 'Upgrade overhead sprinkler density to 0.60 gpm/3000 sq ft'. MFL Impact: 70%.\",\n    \"2021-08-12: Survey at South Annex. Rec #SA-01 issued regarding smoking controls.\",\n    \"2022-09-15: Renewal Review: Broker claims Rec #A-101 is 'Closed' based on verbal update from plant manager. System status updated to 'Closed - Verified'.\",\n    \"2022-11-20: South Annex facility officially decommissioned. All Recs (SA-01) moved to 'Void - Property Sold'.\",\n    \"2023-01-05: Site Visit (Main Site): Inspector identifies Rec #A-101 was never started; 2022 closure was an error. Status reverted to 'Outstanding'. New Rec #H-202 (Human Element) issued: 'No logs for fire pump churn tests for 6 months'.\",\n    \"2023-06-12: Apex Thermal Solutions (Subsidiary) completes their 2023 survey. All subsidiary recs marked 'Closed'.\",\n    \"2023-10-28: Received rcr_apex_thermoforming_2023_v2_FINAL_AMENDED_CORRECTED. Report confirms North Warehouse storage has increased to 22ft, and Rec #A-101 remains unaddressed. Pump logs (Rec #H-202) still missing for North Warehouse.\",\n    \"2023-11-10: Current Evaluation Date. System pending final underwriter disposition.\"\n  ]\n}}\n{{state_descriptions}}: {{\n  \"application_id\": \"Unique identifier for the insurance policy application.\",\n  \"applicant_profile\": \"Demographic and professional information of the applicant.\",\n  \"underwriting_status\": \"The current phase of the application (e.g., PENDING, IN_PROGRESS, FLAGGED, APPROVED, DECLINED).\",\n  \"risk_factors\": \"A list of identified risks associated with the applicant (e.g., 'High BMI', 'Dangerous Hobby').\",\n  \"document_inventory\": \"Mapping of required documents to their current status (e.g., 'Received', 'Missing', 'Verified').\",\n  \"internal_risk_score\": \"Internal numeric score (0-100) representing the calculated risk level.\",\n  \"audit_trail\": \"Chronological log of internal transitions and actions applied to this case.\"\n}}\n{action_set_definitions}: {\n  \"get_application_context\": {\n    \"description\": \"Retrieves the current underwriting state for a specific application, including the applicant profile, existing underwriting status, and a list of all documents in the inventory with their current statuses.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"application_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the application (e.g., APP-2024-APEX-XLR8).\"\n        }\n      },\n      \"required\": [\n        \"application_id\"\n      ]\n    },\n    \"example_output\": {\n      \"underwriting_status\": \"PENDING\",\n      \"applicant_profile\": {\n        \"primary_name\": \"Apex Thermoforming Inc.\",\n        \"subsidiaries\": [\n          \"Apex Thermal Solutions\"\n        ]\n      },\n      \"document_inventory\": [\n        {\n          \"doc_id\": \"DOC-RC-001\",\n          \"type\": \"Risk Control Report\",\n          \"status\": \"Received\",\n          \"version\": \"v1.0\",\n          \"date_received\": \"2023-10-01\"\n        }\n      ]\n    }\n  },\n  \"fetch_risk_report_data\": {\n    \"description\": \"Extracts granular risk recommendation data from a specific Risk Control Report. This tool is capable of processing documents in both 'Verified' and 'Received' statuses to ensure the most recent data is available for review.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"document_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique ID of the Risk Control Report to be parsed.\"\n        }\n      },\n      \"required\": [\n        \"document_id\"\n      ]\n    },\n    \"example_output\": {\n      \"report_metadata\": {\n        \"version\": \"v1.0\",\n        \"status\": \"Received\"\n      },\n      \"recommendations\": [\n        {\n          \"rec_id\": \"REC-77\",\n          \"site\": \"North Warehouse\",\n          \"entity\": \"Apex Thermoforming Inc.\",\n          \"type\": \"Human Element\",\n          \"status\": \"Open\",\n          \"created_date\": \"2023-08-15\"\n        }\n      ]\n    }\n  },\n  \"update_underwriting_disposition\": {\n    \"description\": \"Submits the final renewal decision and updates the application state. It requires a detailed audit log entry justifying the decision based on specific recommendation ages and report versions.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"application_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the application.\"\n        },\n        \"terminal_status\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"APPROVED (with warranties)\",\n            \"FLAGGED\",\n            \"DECLINED\"\n          ],\n          \"description\": \"The final state of the underwriting process.\"\n        },\n        \"audit_trail_comment\": {\n          \"type\": \"string\",\n          \"description\": \"A comprehensive log of the decision logic, including age calculations (relative to 2023-11-10) and document versioning.\"\n        }\n      },\n      \"required\": [\n        \"application_id\",\n        \"terminal_status\",\n        \"audit_trail_comment\"\n      ]\n    },\n    \"example_output\": {\n      \"success\": true,\n      \"new_status\": \"DECLINED\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_application_context",
+      "description": "Retrieves the current underwriting state for a specific application, including the applicant profile, existing underwriting status, and a list of all documents in the inventory with their current statuses.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "application_id": {
+            "type": "string",
+            "description": "The unique identifier for the application (e.g., APP-2024-APEX-XLR8)."
+          }
+        },
+        "required": [
+          "application_id"
+        ]
+      },
+      "example_output": {
+        "underwriting_status": "PENDING",
+        "applicant_profile": {
+          "primary_name": "Apex Thermoforming Inc.",
+          "subsidiaries": [
+            "Apex Thermal Solutions"
+          ]
+        },
+        "document_inventory": [
+          {
+            "doc_id": "DOC-RC-001",
+            "type": "Risk Control Report",
+            "status": "Received",
+            "version": "v1.0",
+            "date_received": "2023-10-01"
+          }
+        ]
+      }
+    },
+    {
+      "name": "fetch_risk_report_data",
+      "description": "Extracts granular risk recommendation data from a specific Risk Control Report. This tool is capable of processing documents in both 'Verified' and 'Received' statuses to ensure the most recent data is available for review.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "document_id": {
+            "type": "string",
+            "description": "The unique ID of the Risk Control Report to be parsed."
+          }
+        },
+        "required": [
+          "document_id"
+        ]
+      },
+      "example_output": {
+        "report_metadata": {
+          "version": "v1.0",
+          "status": "Received"
+        },
+        "recommendations": [
+          {
+            "rec_id": "REC-77",
+            "site": "North Warehouse",
+            "entity": "Apex Thermoforming Inc.",
+            "type": "Human Element",
+            "status": "Open",
+            "created_date": "2023-08-15"
+          }
+        ]
+      }
+    },
+    {
+      "name": "update_underwriting_disposition",
+      "description": "Submits the final renewal decision and updates the application state. It requires a detailed audit log entry justifying the decision based on specific recommendation ages and report versions.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "application_id": {
+            "type": "string",
+            "description": "The unique identifier for the application."
+          },
+          "terminal_status": {
+            "type": "string",
+            "enum": [
+              "APPROVED (with warranties)",
+              "FLAGGED",
+              "DECLINED"
+            ],
+            "description": "The final state of the underwriting process."
+          },
+          "audit_trail_comment": {
+            "type": "string",
+            "description": "A comprehensive log of the decision logic, including age calculations (relative to 2023-11-10) and document versioning."
+          }
+        },
+        "required": [
+          "application_id",
+          "terminal_status",
+          "audit_trail_comment"
+        ]
+      },
+      "example_output": {
+        "success": true,
+        "new_status": "DECLINED"
+      }
+    }
+  ],
+  "state_description": {
+    "application_id": "Unique identifier for the insurance policy application.",
+    "applicant_profile": "Demographic and professional information of the applicant.",
+    "underwriting_status": "The current phase of the application (e.g., PENDING, IN_PROGRESS, FLAGGED, APPROVED, DECLINED).",
+    "risk_factors": "A list of identified risks associated with the applicant (e.g., 'High BMI', 'Dangerous Hobby').",
+    "document_inventory": "Mapping of required documents to their current status (e.g., 'Received', 'Missing', 'Verified').",
+    "internal_risk_score": "Internal numeric score (0-100) representing the calculated risk level.",
+    "audit_trail": "Chronological log of internal transitions and actions applied to this case."
+  },
+  "task_initial_state": {
+    "application_id": "APP-2024-APEX-XLR8",
+    "applicant_profile": {
+      "name": "Apex Thermoforming Inc.",
+      "age": 15,
+      "occupation": "High-Density Plastic Manufacturing",
+      "annual_income": 52000000
+    },
+    "underwriting_status": "PENDING",
+    "risk_factors": [
+      "Inadequate ESFR Sprinkler Coverage",
+      "Minor Oil Leak in Employee Parking (South)",
+      "Pump Log Deficiency (Main Site)",
+      "Non-compliant Smoking Policy (South Annex)",
+      "High-Challenge Fire Load (North Warehouse)"
+    ],
+    "document_inventory": {
+      "rcr_apex_thermal_solutions_2023_v1": "Verified",
+      "rcr_apex_thermoforming_2023_v1": "Archived",
+      "rcr_apex_thermoforming_2023_v2_FINAL": "Archived",
+      "rcr_apex_thermoforming_2023_v2_FINAL_AMENDED_CORRECTED": "Received",
+      "pump_logs_south_annex_2023": "Verified",
+      "pump_logs_north_warehouse_2023_PARTIAL": "Verified",
+      "fire_pump_test_logs_apex_thermal_solutions": "Verified"
+    },
+    "internal_risk_score": 68,
+    "audit_trail": [
+      "2021-08-10: Risk Engineering Survey conducted at North Warehouse. Rec #A-101 (Type A - Physical) issued: 'Upgrade overhead sprinkler density to 0.60 gpm/3000 sq ft'. MFL Impact: 70%.",
+      "2021-08-12: Survey at South Annex. Rec #SA-01 issued regarding smoking controls.",
+      "2022-09-15: Renewal Review: Broker claims Rec #A-101 is 'Closed' based on verbal update from plant manager. System status updated to 'Closed - Verified'.",
+      "2022-11-20: South Annex facility officially decommissioned. All Recs (SA-01) moved to 'Void - Property Sold'.",
+      "2023-01-05: Site Visit (Main Site): Inspector identifies Rec #A-101 was never started; 2022 closure was an error. Status reverted to 'Outstanding'. New Rec #H-202 (Human Element) issued: 'No logs for fire pump churn tests for 6 months'.",
+      "2023-06-12: Apex Thermal Solutions (Subsidiary) completes their 2023 survey. All subsidiary recs marked 'Closed'.",
+      "2023-10-28: Received rcr_apex_thermoforming_2023_v2_FINAL_AMENDED_CORRECTED. Report confirms North Warehouse storage has increased to 22ft, and Rec #A-101 remains unaddressed. Pump logs (Rec #H-202) still missing for North Warehouse.",
+      "2023-11-10: Current Evaluation Date. System pending final underwriter disposition."
+    ]
+  }
+}

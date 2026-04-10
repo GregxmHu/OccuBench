@@ -1,0 +1,202 @@
+{
+  "environment_name": "env_7e25a266902c",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: Based on the current internal state $s_t$ and the action $a_t$ provided by the Agent, simulate the evolution of the Candidate Resume Screening environment and predict the resulting observation $o_{{t+1}}$.\n- **Emphasis**: You are not a resume screener or an assistant; you are the simulation engine. You do not perform real-world actions but model the logic, data transitions, and feedback of a resume management system.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions must maintain absolute context consistency. Every action must build upon the cumulative state of the candidate pool, current filters, and previous screening decisions. Ensure that if a candidate is marked as 'rejected', subsequent queries reflect that status correctly.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. You must parse this JSON to determine the transition. The JSON contains:\n- `\"name\"`: The specific screening action to execute (e.g., filtering, viewing details, or making a decision).\n- `\"arguments\"`: The parameters for the action.\n\nExample Input:\n```json\n{{\n \"name\": \"screen_candidate\",\n \"arguments\": {{\n    \"candidate_id\": \"RESUME_001\",\n    \"decision\": \"shortlist\"\n  }}\n}}\n```\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\n- If an Agent attempts to screen a non-existent `candidate_id`, return: `{{\"error\": \"Candidate ID not found\"}}`.\n- If an action is missing required arguments, return a specific error indicating the missing field.\n- Do not fabricate resumes or states if the data does not exist in the internal state.\n\n##### Output Assembly\nFor every action call, return a structured JSON object containing **ONLY** the return fields defined for that specific action. \n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, the updated state, or any hidden variables like the full candidate database. Only expose the specific `observation` (e.g., the resume content or a success confirmation) as defined in the action function.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to specified JSON formats without conversational filler.\n- **Factuality**: Only provide data consistent with the provided state; do not hallucinate candidate qualifications.\n- **Consistency**: Maintain a logical flow (e.g., once a candidate is moved to a 'hired' state, they should not appear in 'new' candidate searches).\n- **Realism**: Simulate system behavior realistically (e.g., search results should match the provided filters).\n- **Quality**: Observations must be structured, clear, and professional.\n- **Encapsulation**: Strictly hide the internal state structure from the output. The Agent only sees the result of its specific action.\n{{initial_state}}: {{\n  \"candidate_database\": [\n    {{\n      \"id\": \"CP_INTAKE_SAMPLE_A\",\n      \"metadata\": {{\n        \"type\": \"Calibration Profile\",\n        \"hm_feedback\": \"REJECTED: While this profile has strong Java skills, we are pivoting. For this specific requisition, Go (Golang) is now a non-negotiable Must-Have. Do not advance anyone without Go.\"\n      }},\n      \"resume_text\": \"Calibration Sample 1: Java/Spring Expert. 10 years experience.\"\n    }},\n    {{\n      \"id\": \"CP_INTAKE_SAMPLE_B\",\n      \"metadata\": {{\n        \"type\": \"Calibration Profile\",\n        \"hm_feedback\": \"HOLD: This profile is a 'Bullseye' technically, but the $185k expectation is $25k over our absolute hard cap for this role. We must keep all candidates at or below $160k.\"\n      }},\n      \"resume_text\": \"Calibration Sample 2: Golang/Cloud Native. $185,000 expectation.\"\n    }},\n    {{\n      \"id\": \"RES_9901_LEGACY\",\n      \"metadata\": {{\n        \"years_experience\": 6,\n        \"salary_expectation\": 145000,\n        \"tags\": [\n          \"Legacy_Import\",\n          \"Duplicate\"\n        ],\n        \"status\": \"Archived\"\n      }},\n      \"resume_text\": \"Senior Developer. Skills: Golang, Docker, Kubernetes. $145k.\"\n    }},\n    {{\n      \"id\": \"RES_9901_ACTIVE\",\n      \"metadata\": {{\n        \"years_experience\": 6,\n        \"salary_expectation\": 145000,\n        \"tags\": [\n          \"Current_Pipeline\"\n        ],\n        \"status\": \"New\"\n      }},\n      \"resume_text\": \"Senior Developer. Skills: Golang, Docker, Kubernetes. $145k.\"\n    }},\n    {{\n      \"id\": \"RES_9902_S_MEDAL\",\n      \"metadata\": {{\n        \"years_experience\": 8,\n        \"salary_expectation\": 155000,\n        \"tags\": [\n          \"Silver_Medalist_2022\"\n        ],\n        \"status\": \"Re-engaged\"\n      }},\n      \"resume_text\": \"Backend Engineer. Expert in Golang and SQL. $155k.\"\n    }},\n    {{\n      \"id\": \"RES_9903_ACTIVE\",\n      \"metadata\": {{\n        \"years_experience\": 4,\n        \"salary_expectation\": 158000,\n        \"tags\": [\n          \"Current_Pipeline\"\n        ],\n        \"status\": \"New\"\n      }},\n      \"resume_text\": \"Developer. Skills: Java, Python, AWS. $158k.\"\n    }},\n    {{\n      \"id\": \"RES_9904_ACTIVE\",\n      \"metadata\": {{\n        \"years_experience\": 12,\n        \"salary_expectation\": 175000,\n        \"tags\": [\n          \"Current_Pipeline\"\n        ],\n        \"status\": \"New\"\n      }},\n      \"resume_text\": \"Principal Architect. Expert in Golang. $175k.\"\n    }}\n  ],\n  \"active_filters\": {{\n    \"requisition_id\": \"REQ-774\",\n    \"position\": \"Senior Backend Engineer\"\n  }},\n  \"current_view_pointer\": 0,\n  \"screening_history\": {{\n    \"CP_INTAKE_SAMPLE_A\": \"rejected\",\n    \"CP_INTAKE_SAMPLE_B\": \"hold\"\n  }}\n}}\n{{state_descriptions}}: {{\n  \"candidate_database\": \"The complete list of candidate objects, each containing metadata, resume text, and unique IDs.\",\n  \"active_filters\": \"Current criteria applied to the candidate pool, such as minimum experience or required keywords.\",\n  \"current_view_pointer\": \"The index or ID representing the current candidate being examined in the interface.\",\n  \"screening_history\": \"A mapping of candidate IDs to their current status: 'pending', 'shortlisted', or 'rejected'.\"\n}}\n{action_set_definitions}: {\n  \"get_intake_strategy_notes\": {\n    \"description\": \"Retrieves the text feedback and notes from the recent Intake Strategy Session regarding Calibration Profiles (CPs).\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"notes\": \"Discussion on CPs: Need Python/AWS expertise. Max salary capped at 150k. Avoid previous runners-up.\"\n    }\n  },\n  \"search_candidates\": {\n    \"description\": \"Filters the candidate database based on specific technical skills and a compensation ceiling.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"required_skills\": {\n          \"type\": \"array\",\n          \"items\": {\n            \"type\": \"string\"\n          },\n          \"description\": \"List of must-have technical skills.\"\n        },\n        \"max_compensation\": {\n          \"type\": \"number\",\n          \"description\": \"The maximum annual compensation ceiling.\"\n        }\n      },\n      \"required\": [\n        \"required_skills\",\n        \"max_compensation\"\n      ]\n    },\n    \"example_output\": {\n      \"matching_candidates\": [\n        {\n          \"candidate_id\": \"CAND-001\",\n          \"name\": \"Jane Doe\"\n        },\n        {\n          \"candidate_id\": \"CAND-042\",\n          \"name\": \"John Smith\"\n        }\n      ]\n    }\n  },\n  \"get_candidate_metadata\": {\n    \"description\": \"Retrieves detailed metadata for a specific candidate, including their history and record status.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"candidate_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the candidate.\"\n        }\n      },\n      \"required\": [\n        \"candidate_id\"\n      ]\n    },\n    \"example_output\": {\n      \"is_silver_medalist\": false,\n      \"is_duplicate_legacy\": true,\n      \"current_status\": \"pending\",\n      \"years_experience\": 8\n    }\n  },\n  \"update_candidate_status\": {\n    \"description\": \"Updates the recruitment status of a specific candidate in the screening history.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"candidate_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the candidate.\"\n        },\n        \"new_status\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"pending\",\n            \"shortlisted\",\n            \"rejected\"\n          ],\n          \"description\": \"The new status to assign to the candidate.\"\n        }\n      },\n      \"required\": [\n        \"candidate_id\",\n        \"new_status\"\n      ]\n    },\n    \"example_output\": {\n      \"success\": true,\n      \"updated_id\": \"CAND-001\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_intake_strategy_notes",
+      "description": "Retrieves the text feedback and notes from the recent Intake Strategy Session regarding Calibration Profiles (CPs).",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "notes": "Discussion on CPs: Need Python/AWS expertise. Max salary capped at 150k. Avoid previous runners-up."
+      }
+    },
+    {
+      "name": "search_candidates",
+      "description": "Filters the candidate database based on specific technical skills and a compensation ceiling.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "required_skills": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "List of must-have technical skills."
+          },
+          "max_compensation": {
+            "type": "number",
+            "description": "The maximum annual compensation ceiling."
+          }
+        },
+        "required": [
+          "required_skills",
+          "max_compensation"
+        ]
+      },
+      "example_output": {
+        "matching_candidates": [
+          {
+            "candidate_id": "CAND-001",
+            "name": "Jane Doe"
+          },
+          {
+            "candidate_id": "CAND-042",
+            "name": "John Smith"
+          }
+        ]
+      }
+    },
+    {
+      "name": "get_candidate_metadata",
+      "description": "Retrieves detailed metadata for a specific candidate, including their history and record status.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "candidate_id": {
+            "type": "string",
+            "description": "The unique identifier for the candidate."
+          }
+        },
+        "required": [
+          "candidate_id"
+        ]
+      },
+      "example_output": {
+        "is_silver_medalist": false,
+        "is_duplicate_legacy": true,
+        "current_status": "pending",
+        "years_experience": 8
+      }
+    },
+    {
+      "name": "update_candidate_status",
+      "description": "Updates the recruitment status of a specific candidate in the screening history.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "candidate_id": {
+            "type": "string",
+            "description": "The unique identifier for the candidate."
+          },
+          "new_status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "shortlisted",
+              "rejected"
+            ],
+            "description": "The new status to assign to the candidate."
+          }
+        },
+        "required": [
+          "candidate_id",
+          "new_status"
+        ]
+      },
+      "example_output": {
+        "success": true,
+        "updated_id": "CAND-001"
+      }
+    }
+  ],
+  "state_description": {
+    "candidate_database": "The complete list of candidate objects, each containing metadata, resume text, and unique IDs.",
+    "active_filters": "Current criteria applied to the candidate pool, such as minimum experience or required keywords.",
+    "current_view_pointer": "The index or ID representing the current candidate being examined in the interface.",
+    "screening_history": "A mapping of candidate IDs to their current status: 'pending', 'shortlisted', or 'rejected'."
+  },
+  "task_initial_state": {
+    "candidate_database": [
+      {
+        "id": "CP_INTAKE_SAMPLE_A",
+        "metadata": {
+          "type": "Calibration Profile",
+          "hm_feedback": "REJECTED: While this profile has strong Java skills, we are pivoting. For this specific requisition, Go (Golang) is now a non-negotiable Must-Have. Do not advance anyone without Go."
+        },
+        "resume_text": "Calibration Sample 1: Java/Spring Expert. 10 years experience."
+      },
+      {
+        "id": "CP_INTAKE_SAMPLE_B",
+        "metadata": {
+          "type": "Calibration Profile",
+          "hm_feedback": "HOLD: This profile is a 'Bullseye' technically, but the $185k expectation is $25k over our absolute hard cap for this role. We must keep all candidates at or below $160k."
+        },
+        "resume_text": "Calibration Sample 2: Golang/Cloud Native. $185,000 expectation."
+      },
+      {
+        "id": "RES_9901_LEGACY",
+        "metadata": {
+          "years_experience": 6,
+          "salary_expectation": 145000,
+          "tags": [
+            "Legacy_Import",
+            "Duplicate"
+          ],
+          "status": "Archived"
+        },
+        "resume_text": "Senior Developer. Skills: Golang, Docker, Kubernetes. $145k."
+      },
+      {
+        "id": "RES_9901_ACTIVE",
+        "metadata": {
+          "years_experience": 6,
+          "salary_expectation": 145000,
+          "tags": [
+            "Current_Pipeline"
+          ],
+          "status": "New"
+        },
+        "resume_text": "Senior Developer. Skills: Golang, Docker, Kubernetes. $145k."
+      },
+      {
+        "id": "RES_9902_S_MEDAL",
+        "metadata": {
+          "years_experience": 8,
+          "salary_expectation": 155000,
+          "tags": [
+            "Silver_Medalist_2022"
+          ],
+          "status": "Re-engaged"
+        },
+        "resume_text": "Backend Engineer. Expert in Golang and SQL. $155k."
+      },
+      {
+        "id": "RES_9903_ACTIVE",
+        "metadata": {
+          "years_experience": 4,
+          "salary_expectation": 158000,
+          "tags": [
+            "Current_Pipeline"
+          ],
+          "status": "New"
+        },
+        "resume_text": "Developer. Skills: Java, Python, AWS. $158k."
+      },
+      {
+        "id": "RES_9904_ACTIVE",
+        "metadata": {
+          "years_experience": 12,
+          "salary_expectation": 175000,
+          "tags": [
+            "Current_Pipeline"
+          ],
+          "status": "New"
+        },
+        "resume_text": "Principal Architect. Expert in Golang. $175k."
+      }
+    ],
+    "active_filters": {
+      "requisition_id": "REQ-774",
+      "position": "Senior Backend Engineer"
+    },
+    "current_view_pointer": 0,
+    "screening_history": {
+      "CP_INTAKE_SAMPLE_A": "rejected",
+      "CP_INTAKE_SAMPLE_B": "hold"
+    }
+  }
+}

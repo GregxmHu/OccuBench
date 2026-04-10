@@ -1,0 +1,149 @@
+{
+  "environment_name": "env_d348b518fc8b",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM) for Adaptive Curriculum Sequencing.\n- **Core Objective**: Based on the current internal state $s_t$ (representing the student's knowledge profile and learning history) and the action $a_t$ (curriculum decisions), simulate the evolution of the student's state and generate the resulting observation $o_{{t+1}}$ (performance metrics, feedback, or content).\n- **Emphasis**: You are a simulator of the learning environment. You do not provide tutoring directly to a user; instead, you simulate how a student/environment responds to the Agent's pedagogical actions. You perform internal state evolution and generate observations based on educational logic.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation tracking student progress and proficiency. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions between the World Model and the Agent must maintain context consistency. The student's learning trajectory, past errors, and improvements must be logically consistent throughout the session. If a student masters a prerequisite in $t$, their performance in a dependent subject at $t+1$ should reflect that growth.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions (e.g., assigning lessons, quizzes, or interventions). The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object containing:\n- `\"name\"`: The name of the action function to execute.\n- Parameters required by that function.\n\nExample input:\n```json\n{{\n \"name\": \"deliver_lesson\",\n \"arguments\": {{\n    \"lesson_id\": \"ALGEBRA_101\",\n    \"difficulty_level\": 2\n  }}\n}}\n```\n\nYou must parse this JSON, simulate the student's engagement and comprehension based on their current `mastery_levels`, and update the internal state accordingly.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nIf the Agent attempts to assign a non-existent lesson ID, skips mandatory prerequisites, or submits malformed JSON, return structured error information: `{{\"error\": \"Description of the specific violation\"}}`. Do not fabricate successful learning outcomes for invalid actions.\n\n##### Output Assembly\nFor every action, return a structured JSON object containing **ONLY** the return fields declared in the action function's definition (the Observation). \n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state $s_t$, the updated `new_state`, or any hidden variables like internal probability distributions. The Agent must only see the specific results (e.g., quiz scores, completion status) defined in the action's observation schema.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to specified JSON and text formats.\n- **Factuality**: Do not fabricate student responses that contradict the established mastery levels.\n- **Consistency**: The student's progress must follow a realistic learning curve (e.g., performance shouldn't jump from 0% to 100% mastery in a single repetitive action without cause).\n- **Realism**: Simulate realistic behaviors such as forgetting over time, fatigue, or the positive impact of well-sequenced content.\n- **Quality**: Observations should be clear and provide the Agent with enough information to make the next curriculum decision.\n- **Encapsulation**: Strictly hide the internal state structure from the output. Only expose information explicitly returned by the action function.\n{{initial_state}}: {{\n  \"student_proficiency\": {{\n    \"Isolating_Variables_KC\": 0.42,\n    \"Photosynthesis_Concepts\": 0.88,\n    \"Scientific_Hypothesis_Formulation\": 0.75\n  }},\n  \"completed_modules\": [\n    \"L_PHOTO_01_INTRO\",\n    \"K_SCIENTIFIC_METHOD_BASICS\"\n  ],\n  \"engagement_level\": 0.85,\n  \"session_history\": [\n    {{\n      \"action\": \"view_intro_video\",\n      \"score\": 1.0,\n      \"kc\": \"Photosynthesis_Concepts\"\n    }},\n    {{\n      \"action\": \"pre_test_assessment\",\n      \"score\": 0.45,\n      \"kc\": \"Isolating_Variables_KC\"\n    }}\n  ]\n}}\n{{state_descriptions}}: {{\n  \"student_proficiency\": \"A mapping of curriculum topics to a float (0.0 to 1.0) representing the student's current mastery level.\",\n  \"completed_modules\": \"A list of unique identifiers for lessons or modules the student has already finished.\",\n  \"engagement_level\": \"A value between 0.0 and 1.0 representing the student's current motivation and focus; affects the probability of learning success.\",\n  \"session_history\": \"A log of the last 5 actions and student scores used to model short-term trends like fatigue or momentum.\"\n}}\n{action_set_definitions}: {\n  \"get_student_current_state\": {\n    \"description\": \"Retrieves the current proficiency metrics, engagement level, and completed modules for the student to initialize the session context.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"student_id\": {\n          \"type\": \"string\",\n          \"description\": \"Unique identifier for the student.\"\n        }\n      },\n      \"required\": [\n        \"student_id\"\n      ]\n    },\n    \"example_output\": {\n      \"student_proficiency\": {\n        \"isolating_variables\": 0.4\n      },\n      \"engagement_level\": 0.75,\n      \"completed_modules\": [\n        \"photosynthesis_intro\"\n      ]\n    }\n  },\n  \"get_recent_session_history\": {\n    \"description\": \"Retrieves the log of the last N actions and student scores to identify trends in fatigue, momentum, or wheel-spinning.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"student_id\": {\n          \"type\": \"string\",\n          \"description\": \"Unique identifier for the student.\"\n        },\n        \"limit\": {\n          \"type\": \"integer\",\n          \"description\": \"Number of recent logs to retrieve.\"\n        }\n      },\n      \"required\": [\n        \"student_id\",\n        \"limit\"\n      ]\n    },\n    \"example_output\": {\n      \"history\": [\n        {\n          \"action_level\": 2,\n          \"score\": 0.6,\n          \"engagement\": 0.65\n        },\n        {\n          \"action_level\": 2,\n          \"score\": 0.62,\n          \"engagement\": 0.62\n        }\n      ]\n    }\n  },\n  \"execute_learning_interaction\": {\n    \"description\": \"Delivers an instructional task at a specific scaffold level and observes the resulting student performance and engagement.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"scaffold_level\": {\n          \"type\": \"integer\",\n          \"description\": \"Scaffold level to apply: 3 (heavy guidance), 2 (moderate), 1 (light prompts), 0 (autonomous).\"\n        },\n        \"module_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the curriculum module (e.g., 'photosynthesis_light_intensity').\"\n        }\n      },\n      \"required\": [\n        \"scaffold_level\",\n        \"module_id\"\n      ]\n    },\n    \"example_output\": {\n      \"performance_score\": 0.85,\n      \"new_engagement_level\": 0.72,\n      \"status\": \"success\"\n    }\n  },\n  \"log_session_conclusion\": {\n    \"description\": \"Finalizes the session by recording the final outcome (e.g., Mastery Achieved, Session Suspended).\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"status\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"Mastery Achieved\",\n            \"Session Suspended\",\n            \"In Progress\"\n          ],\n          \"description\": \"The final state of the learning session.\"\n        },\n        \"reason\": {\n          \"type\": \"string\",\n          \"description\": \"Detailed explanation for why the session was concluded or suspended.\"\n        }\n      },\n      \"required\": [\n        \"status\",\n        \"reason\"\n      ]\n    },\n    \"example_output\": null\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_student_current_state",
+      "description": "Retrieves the current proficiency metrics, engagement level, and completed modules for the student to initialize the session context.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "student_id": {
+            "type": "string",
+            "description": "Unique identifier for the student."
+          }
+        },
+        "required": [
+          "student_id"
+        ]
+      },
+      "example_output": {
+        "student_proficiency": {
+          "isolating_variables": 0.4
+        },
+        "engagement_level": 0.75,
+        "completed_modules": [
+          "photosynthesis_intro"
+        ]
+      }
+    },
+    {
+      "name": "get_recent_session_history",
+      "description": "Retrieves the log of the last N actions and student scores to identify trends in fatigue, momentum, or wheel-spinning.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "student_id": {
+            "type": "string",
+            "description": "Unique identifier for the student."
+          },
+          "limit": {
+            "type": "integer",
+            "description": "Number of recent logs to retrieve."
+          }
+        },
+        "required": [
+          "student_id",
+          "limit"
+        ]
+      },
+      "example_output": {
+        "history": [
+          {
+            "action_level": 2,
+            "score": 0.6,
+            "engagement": 0.65
+          },
+          {
+            "action_level": 2,
+            "score": 0.62,
+            "engagement": 0.62
+          }
+        ]
+      }
+    },
+    {
+      "name": "execute_learning_interaction",
+      "description": "Delivers an instructional task at a specific scaffold level and observes the resulting student performance and engagement.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "scaffold_level": {
+            "type": "integer",
+            "description": "Scaffold level to apply: 3 (heavy guidance), 2 (moderate), 1 (light prompts), 0 (autonomous)."
+          },
+          "module_id": {
+            "type": "string",
+            "description": "The ID of the curriculum module (e.g., 'photosynthesis_light_intensity')."
+          }
+        },
+        "required": [
+          "scaffold_level",
+          "module_id"
+        ]
+      },
+      "example_output": {
+        "performance_score": 0.85,
+        "new_engagement_level": 0.72,
+        "status": "success"
+      }
+    },
+    {
+      "name": "log_session_conclusion",
+      "description": "Finalizes the session by recording the final outcome (e.g., Mastery Achieved, Session Suspended).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "Mastery Achieved",
+              "Session Suspended",
+              "In Progress"
+            ],
+            "description": "The final state of the learning session."
+          },
+          "reason": {
+            "type": "string",
+            "description": "Detailed explanation for why the session was concluded or suspended."
+          }
+        },
+        "required": [
+          "status",
+          "reason"
+        ]
+      },
+      "example_output": null
+    }
+  ],
+  "state_description": {
+    "student_proficiency": "A mapping of curriculum topics to a float (0.0 to 1.0) representing the student's current mastery level.",
+    "completed_modules": "A list of unique identifiers for lessons or modules the student has already finished.",
+    "engagement_level": "A value between 0.0 and 1.0 representing the student's current motivation and focus; affects the probability of learning success.",
+    "session_history": "A log of the last 5 actions and student scores used to model short-term trends like fatigue or momentum."
+  },
+  "task_initial_state": {
+    "student_proficiency": {
+      "Isolating_Variables_KC": 0.42,
+      "Photosynthesis_Concepts": 0.88,
+      "Scientific_Hypothesis_Formulation": 0.75
+    },
+    "completed_modules": [
+      "L_PHOTO_01_INTRO",
+      "K_SCIENTIFIC_METHOD_BASICS"
+    ],
+    "engagement_level": 0.85,
+    "session_history": [
+      {
+        "action": "view_intro_video",
+        "score": 1.0,
+        "kc": "Photosynthesis_Concepts"
+      },
+      {
+        "action": "pre_test_assessment",
+        "score": 0.45,
+        "kc": "Isolating_Variables_KC"
+      }
+    ]
+  }
+}

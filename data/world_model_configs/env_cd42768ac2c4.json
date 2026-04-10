@@ -1,0 +1,141 @@
+{
+  "environment_name": "env_cd42768ac2c4",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: Based on the current internal state $s_t$ of the learner and the pedagogical action $a_t$ taken by the Agent, simulate the evolution of the learner's knowledge and engagement, and predict the resulting observation $o_{{t+1}}$ (e.g., test scores, time spent, or student feedback).\n- **Emphasis**: You are a simulator of a student's learning process. You do not recommend actions; you only simulate the internal state transitions and generate the specific observations resulting from the Agent's curriculum decisions.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation tracking the learner's proficiency and status. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nYou must maintain continuity in the learner's progress. If a learner masters a concept in step $t$, that mastery must persist and influence results in step $t+1$. The learner's performance should be a logical consequence of their mastery levels and the difficulty/type of the content provided.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the curriculum environment by calling action functions (e.g., providing a lesson, a quiz, or a review). The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. You must parse this JSON to determine the next step in the simulation.\n\nExample Input:\n```json\n{{\n \"name\": \"deliver_content\",\n \"arguments\": {{\n    \"content_id\": \"math_101_calculus\",\n    \"type\": \"lecture\",\n    \"difficulty\": 0.8\n  }}\n}}\n```\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\n- If the Agent attempts to access non-existent `content_id` or uses undefined action names, return: `{{\"error\": \"Invalid action or content reference\"}}`.\n- If parameters are out of range (e.g., negative difficulty), return a structured error and do not update the state.\n\n##### Output Assembly\nFor every action executed, you must return a structured JSON object containing **ONLY** the return fields declared in the action function's definition (the Observation $o_{{t+1}}$).\n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the internal state (e.g., the hidden mastery levels or fatigue variables). You must only expose the specific data points a teacher or system would realistically observe, such as `quiz_score`, `completion_status`, or `time_on_task`. Do not output the state update process.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to the specified JSON structure.\n- **Factuality**: Simulate realistic learner responses based on the provided state; do not invent features not supported by the schema.\n- **Consistency**: Mastery should generally increase with appropriate content and decrease (or plateau) with mismatching difficulty or lack of practice.\n- **Realism**: A learner with low mastery in a prerequisite topic should perform poorly on an advanced quiz. Simulate probabilistic elements (e.g., minor fluctuations in performance) to reflect real-world learning variance.\n- **Quality**: Ensure the feedback (if any) provided in the observation is clear and aligns with the simulated performance.\n- **Encapsulation**: Strictly hide the internal state structure from the output. Only expose information explicitly defined as return values for the action.\n{{initial_state}}: {{\n  \"learner_id\": \"STUDENT_001\",\n  \"mastery_map\": {{\n    \"fundamentals\": 0.9,\n    \"advanced_logic\": 0.1,\n    \"application\": 0.0\n  }},\n  \"engagement_score\": 0.55,\n  \"fatigue_level\": 0.15,\n  \"attempt_history\": [\n    {{\n      \"content_id\": \"intro_diagnostic_01\",\n      \"result\": \"failed\",\n      \"score\": 0.22\n    }},\n    {{\n      \"content_id\": \"intro_diagnostic_02\",\n      \"result\": \"failed\",\n      \"score\": 0.18\n    }}\n  ]\n}}\n{{state_descriptions}}: {{\n  \"learner_id\": \"Unique identifier for the student.\",\n  \"mastery_map\": \"A mapping of topic names to mastery levels (0.0 to 1.0).\",\n  \"engagement_score\": \"Current level of learner motivation and focus (0.0 to 1.0).\",\n  \"fatigue_level\": \"Accumulated mental exhaustion; affects performance probability (0.0 to 1.0).\",\n  \"attempt_history\": \"List of the last 5 content IDs encountered and the results.\"\n}}\n{action_set_definitions}: {\n  \"get_learner_profile\": {\n    \"description\": \"Retrieves the current state of a student, providing mastery levels, engagement score, and fatigue level.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"learner_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the student.\"\n        }\n      },\n      \"required\": [\n        \"learner_id\"\n      ]\n    },\n    \"example_output\": {\n      \"mastery_map\": {\n        \"fundamentals\": 0.9,\n        \"application\": 0.35\n      },\n      \"engagement_score\": 0.72,\n      \"fatigue_level\": 0.15\n    }\n  },\n  \"search_curriculum_modules\": {\n    \"description\": \"Queries available content based on category and a specific difficulty range to ensure a gradual learning curve.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"category\": {\n          \"type\": \"string\",\n          \"description\": \"The topic category (e.g., 'application').\"\n        },\n        \"min_difficulty\": {\n          \"type\": \"number\",\n          \"description\": \"The lower bound of difficulty (0.0 to 1.0).\"\n        },\n        \"max_difficulty\": {\n          \"type\": \"number\",\n          \"description\": \"The upper bound of difficulty (0.0 to 1.0) to prevent over-challenging.\"\n        }\n      },\n      \"required\": [\n        \"category\",\n        \"min_difficulty\",\n        \"max_difficulty\"\n      ]\n    },\n    \"example_output\": {\n      \"available_modules\": [\n        {\n          \"content_id\": \"MOD_APP_042\",\n          \"difficulty\": 0.55,\n          \"estimated_engagement_impact\": 0.05\n        }\n      ]\n    }\n  },\n  \"execute_lesson\": {\n    \"description\": \"Assigns the curriculum module to the student and updates the environment state based on the interaction.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"learner_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the student.\"\n        },\n        \"content_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the module to be executed.\"\n        }\n      },\n      \"required\": [\n        \"learner_id\",\n        \"content_id\"\n      ]\n    },\n    \"example_output\": {\n      \"new_state\": {\n        \"application_mastery\": 0.42,\n        \"engagement_score\": 0.68,\n        \"fatigue_level\": 0.22\n      }\n    }\n  },\n  \"trigger_rest_recovery\": {\n    \"description\": \"Initiates a rest period to reduce the student's fatigue level.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"learner_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the student.\"\n        }\n      },\n      \"required\": [\n        \"learner_id\"\n      ]\n    },\n    \"example_output\": {\n      \"updated_fatigue\": 0.05\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_learner_profile",
+      "description": "Retrieves the current state of a student, providing mastery levels, engagement score, and fatigue level.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "learner_id": {
+            "type": "string",
+            "description": "The unique identifier for the student."
+          }
+        },
+        "required": [
+          "learner_id"
+        ]
+      },
+      "example_output": {
+        "mastery_map": {
+          "fundamentals": 0.9,
+          "application": 0.35
+        },
+        "engagement_score": 0.72,
+        "fatigue_level": 0.15
+      }
+    },
+    {
+      "name": "search_curriculum_modules",
+      "description": "Queries available content based on category and a specific difficulty range to ensure a gradual learning curve.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "category": {
+            "type": "string",
+            "description": "The topic category (e.g., 'application')."
+          },
+          "min_difficulty": {
+            "type": "number",
+            "description": "The lower bound of difficulty (0.0 to 1.0)."
+          },
+          "max_difficulty": {
+            "type": "number",
+            "description": "The upper bound of difficulty (0.0 to 1.0) to prevent over-challenging."
+          }
+        },
+        "required": [
+          "category",
+          "min_difficulty",
+          "max_difficulty"
+        ]
+      },
+      "example_output": {
+        "available_modules": [
+          {
+            "content_id": "MOD_APP_042",
+            "difficulty": 0.55,
+            "estimated_engagement_impact": 0.05
+          }
+        ]
+      }
+    },
+    {
+      "name": "execute_lesson",
+      "description": "Assigns the curriculum module to the student and updates the environment state based on the interaction.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "learner_id": {
+            "type": "string",
+            "description": "The unique identifier for the student."
+          },
+          "content_id": {
+            "type": "string",
+            "description": "The ID of the module to be executed."
+          }
+        },
+        "required": [
+          "learner_id",
+          "content_id"
+        ]
+      },
+      "example_output": {
+        "new_state": {
+          "application_mastery": 0.42,
+          "engagement_score": 0.68,
+          "fatigue_level": 0.22
+        }
+      }
+    },
+    {
+      "name": "trigger_rest_recovery",
+      "description": "Initiates a rest period to reduce the student's fatigue level.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "learner_id": {
+            "type": "string",
+            "description": "The unique identifier for the student."
+          }
+        },
+        "required": [
+          "learner_id"
+        ]
+      },
+      "example_output": {
+        "updated_fatigue": 0.05
+      }
+    }
+  ],
+  "state_description": {
+    "learner_id": "Unique identifier for the student.",
+    "mastery_map": "A mapping of topic names to mastery levels (0.0 to 1.0).",
+    "engagement_score": "Current level of learner motivation and focus (0.0 to 1.0).",
+    "fatigue_level": "Accumulated mental exhaustion; affects performance probability (0.0 to 1.0).",
+    "attempt_history": "List of the last 5 content IDs encountered and the results."
+  },
+  "task_initial_state": {
+    "learner_id": "STUDENT_001",
+    "mastery_map": {
+      "fundamentals": 0.9,
+      "advanced_logic": 0.1,
+      "application": 0.0
+    },
+    "engagement_score": 0.55,
+    "fatigue_level": 0.15,
+    "attempt_history": [
+      {
+        "content_id": "intro_diagnostic_01",
+        "result": "failed",
+        "score": 0.22
+      },
+      {
+        "content_id": "intro_diagnostic_02",
+        "result": "failed",
+        "score": 0.18
+      }
+    ]
+  }
+}

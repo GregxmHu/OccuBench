@@ -1,0 +1,143 @@
+{
+  "environment_name": "env_911c175e9f19",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: You act as a high-fidelity clinical simulation environment for Treatment Plan Sequencing. Based on the current patient state $s_t$ and the clinical action $a_t$ chosen by the Agent, you simulate the physiological and pathological evolution of the patient ($s_{{t+1}}$) and provide the resulting clinical observation $o_{{t+1}}$ (e.g., lab results, vital sign changes, or symptomatic responses).\n- **Emphasis**: You are a simulator, not a clinician. You do not recommend treatments; you only predict how the environment (the patient's health) changes and what the Agent observes after an action is taken.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation tracking the patient's underlying health status. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions must maintain strict medical and temporal consistency. The patient's response to a treatment must depend on their previous state and the cumulative effect of the treatment history. If a treatment has a delayed effect or a contraindication based on previous actions, the model must reflect this in the state transition and subsequent observations.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions (e.g., administering medication, ordering tests, or performing procedures). The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` returned for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. This JSON contains:\n- `\"name\"`: The clinical action function to execute.\n- Parameters required by that function.\n\nExample:\n```json\n{{\n \"name\": \"administer_medication\",\n \"arguments\": {{\n    \"drug_name\": \"Lisinopril\",\n    \"dosage\": \"10mg\"\n  }}\n}}\n```\n\nYou must parse this input, calculate the internal state transition according to clinical logic, and generate the corresponding observation.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\n- If the Agent attempts an undefined action, provides invalid dosages/parameters, or interacts with a deceased or discharged patient state, return a structured error: `{{\"error\": \"Description of clinical or logical error\"}}`.\n- Do not fabricate clinical data that contradicts the internal state.\n\n##### Output Assembly\nFor every action, you must return a structured JSON object containing **ONLY** the return fields defined in the action's observation schema.\n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the internal patient state `s_t`, the updated `new_state`, or any underlying physiological variables not explicitly returned by the action. State maintenance is handled internally by your memory of the conversation. The Agent must only see the specific Observation (e.g., the result of the blood test or the patient's reported pain level).\n\n### 4. Key Principles\n- **Format**: Strictly adhere to JSON for all outputs.\n- **Factuality**: Simulations must align with established medical knowledge and the provided state definitions.\n- **Consistency**: The patient's health trajectory must be logical (e.g., a patient cannot suddenly recover from a chronic condition without intervention).\n- **Realism**: Account for treatment side effects, recovery times, and varying patient responses.\n- **Quality**: Use precise clinical terminology.\n- **Encapsulation**: Never reveal the \"behind-the-scenes\" state updates. Only provide the observation produced by the action.\n{{initial_state}}: {{\n  \"patient_vitals\": {{\n    \"heart_rate\": 82,\n    \"blood_pressure\": \"105/65\",\n    \"oxygen_saturation\": 100,\n    \"temperature\": 36.7\n  }},\n  \"pathology_status\": {{\n    \"infection_level\": \"None\",\n    \"organ_function\": \"Mixed dentition; Arch Length Deficiency (ALD): -11.5mm; Nolla Stage P1: 7; IMPA: 97 degrees; Overbite: 55%; Molar Relationship: Class I.\"\n  }},\n  \"treatment_history\": [\n    \"Initial orthodontic screening completed\",\n    \"Panoramic radiograph confirms presence of all permanent tooth buds\",\n    \"Lateral cephalometric analysis confirms Class I skeletal pattern\"\n  ],\n  \"symptom_severity\": {{\n    \"pain_level\": 0,\n    \"consciousness\": \"Alert\"\n  }},\n  \"active_medications\": []\n}}\n{{state_descriptions}}: {{\n  \"patient_vitals\": \"Current physiological measurements of the patient.\",\n  \"pathology_status\": \"Internal status of specific diseases or conditions.\",\n  \"treatment_history\": \"List of all actions previously performed on this patient.\",\n  \"symptom_severity\": \"Subjective or observable symptoms experienced by the patient.\",\n  \"active_medications\": \"Medications currently circulating in the patient's system and their remaining duration.\"\n}}\n{action_set_definitions}: {\n  \"get_comprehensive_patient_status\": {\n    \"description\": \"Retrieves the current state of the patient, including vitals, pathology status (current dentition and eruption stages), treatment history, and symptom severity.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"patient_vitals\": \"stable\",\n      \"pathology_status\": \"Mixed dentition; severe crowding in mandibular anterior segment.\",\n      \"treatment_history\": [],\n      \"symptom_severity\": \"Moderate gingival irritation\",\n      \"active_medications\": \"None\"\n    }\n  },\n  \"assess_dental_development_radiographic\": {\n    \"description\": \"Analyzes radiographic data (X-rays) to determine root development stages of unerupted permanent teeth and identify dental age.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"target_teeth\": {\n          \"type\": \"array\",\n          \"items\": {\n            \"type\": \"string\"\n          },\n          \"description\": \"List of teeth to assess (e.g., ['first premolars', 'canines']).\"\n        }\n      },\n      \"required\": [\n        \"target_teeth\"\n      ]\n    },\n    \"example_output\": {\n      \"root_development_status\": \"First premolars at Nolla Stage 7 (1/2 root formed).\",\n      \"positioning\": \"Canines positioned superior to first premolars.\"\n    }\n  },\n  \"perform_dental_extraction\": {\n    \"description\": \"Executes the surgical removal of specific deciduous or permanent teeth to facilitate the serial extraction sequence.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"tooth_identifiers\": {\n          \"type\": \"array\",\n          \"items\": {\n            \"type\": \"string\"\n          },\n          \"description\": \"Names or IDs of teeth to extract (e.g., ['deciduous mandibular canines', 'deciduous first molars']).\"\n        },\n        \"justification\": {\n          \"type\": \"string\",\n          \"description\": \"Clinical reasoning for the extraction stage.\"\n        }\n      },\n      \"required\": [\n        \"tooth_identifiers\",\n        \"justification\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"success\",\n      \"extracted_teeth\": [\n        \"primary mandibular canines\"\n      ]\n    }\n  },\n  \"place_orthodontic_appliance\": {\n    \"description\": \"Installs an appliance to maintain arch integrity or preserve posterior anchorage.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"appliance_type\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"lingual_arch\",\n            \"nance_button\",\n            \"space_maintainer\"\n          ],\n          \"description\": \"The type of orthodontic appliance to be placed.\"\n        }\n      },\n      \"required\": [\n        \"appliance_type\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"applied\",\n      \"appliance\": \"lingual_arch\"\n    }\n  },\n  \"evaluate_occlusion_and_soft_tissue\": {\n    \"description\": \"Checks the vertical overlap of incisors (overbite) and evaluates for potential soft tissue impingement or loss of anchorage.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"overbite_depth_mm\": 4.5,\n      \"tissue_impingement\": false,\n      \"anchorage_status\": \"stable\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_comprehensive_patient_status",
+      "description": "Retrieves the current state of the patient, including vitals, pathology status (current dentition and eruption stages), treatment history, and symptom severity.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "patient_vitals": "stable",
+        "pathology_status": "Mixed dentition; severe crowding in mandibular anterior segment.",
+        "treatment_history": [],
+        "symptom_severity": "Moderate gingival irritation",
+        "active_medications": "None"
+      }
+    },
+    {
+      "name": "assess_dental_development_radiographic",
+      "description": "Analyzes radiographic data (X-rays) to determine root development stages of unerupted permanent teeth and identify dental age.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "target_teeth": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "List of teeth to assess (e.g., ['first premolars', 'canines'])."
+          }
+        },
+        "required": [
+          "target_teeth"
+        ]
+      },
+      "example_output": {
+        "root_development_status": "First premolars at Nolla Stage 7 (1/2 root formed).",
+        "positioning": "Canines positioned superior to first premolars."
+      }
+    },
+    {
+      "name": "perform_dental_extraction",
+      "description": "Executes the surgical removal of specific deciduous or permanent teeth to facilitate the serial extraction sequence.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "tooth_identifiers": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Names or IDs of teeth to extract (e.g., ['deciduous mandibular canines', 'deciduous first molars'])."
+          },
+          "justification": {
+            "type": "string",
+            "description": "Clinical reasoning for the extraction stage."
+          }
+        },
+        "required": [
+          "tooth_identifiers",
+          "justification"
+        ]
+      },
+      "example_output": {
+        "status": "success",
+        "extracted_teeth": [
+          "primary mandibular canines"
+        ]
+      }
+    },
+    {
+      "name": "place_orthodontic_appliance",
+      "description": "Installs an appliance to maintain arch integrity or preserve posterior anchorage.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "appliance_type": {
+            "type": "string",
+            "enum": [
+              "lingual_arch",
+              "nance_button",
+              "space_maintainer"
+            ],
+            "description": "The type of orthodontic appliance to be placed."
+          }
+        },
+        "required": [
+          "appliance_type"
+        ]
+      },
+      "example_output": {
+        "status": "applied",
+        "appliance": "lingual_arch"
+      }
+    },
+    {
+      "name": "evaluate_occlusion_and_soft_tissue",
+      "description": "Checks the vertical overlap of incisors (overbite) and evaluates for potential soft tissue impingement or loss of anchorage.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "overbite_depth_mm": 4.5,
+        "tissue_impingement": false,
+        "anchorage_status": "stable"
+      }
+    }
+  ],
+  "state_description": {
+    "patient_vitals": "Current physiological measurements of the patient.",
+    "pathology_status": "Internal status of specific diseases or conditions.",
+    "treatment_history": "List of all actions previously performed on this patient.",
+    "symptom_severity": "Subjective or observable symptoms experienced by the patient.",
+    "active_medications": "Medications currently circulating in the patient's system and their remaining duration."
+  },
+  "task_initial_state": {
+    "patient_vitals": {
+      "heart_rate": 82,
+      "blood_pressure": "105/65",
+      "oxygen_saturation": 100,
+      "temperature": 36.7
+    },
+    "pathology_status": {
+      "infection_level": "None",
+      "organ_function": "Mixed dentition; Arch Length Deficiency (ALD): -11.5mm; Nolla Stage P1: 7; IMPA: 97 degrees; Overbite: 55%; Molar Relationship: Class I."
+    },
+    "treatment_history": [
+      "Initial orthodontic screening completed",
+      "Panoramic radiograph confirms presence of all permanent tooth buds",
+      "Lateral cephalometric analysis confirms Class I skeletal pattern"
+    ],
+    "symptom_severity": {
+      "pain_level": 0,
+      "consciousness": "Alert"
+    },
+    "active_medications": []
+  }
+}

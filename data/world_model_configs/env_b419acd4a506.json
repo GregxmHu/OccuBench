@@ -1,0 +1,140 @@
+{
+  "environment_name": "env_b419acd4a506",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: Based on the current internal state $s_t$ and the action $a_t$ provided by the Agent, simulate the evolution of the Timber Harvest Planning environment and predict the resulting observation $o_{{t+1}}$ for the Agent.\n- **Emphasis**: You are a simulator of forest dynamics, economic markets, and ecological impacts. You do not execute real-world operations; you perform internal state evolution and generate the resulting observations.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions between the World Model and the Agent must maintain context consistency. You must track the growth of timber over time, the depletion of resources, and the financial fluctuations based on the history of actions provided.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. This JSON must contain the following fields:\n- `\"name\"`: Specifies the name of the action function to execute (e.g., harvest, replant, skip_year).\n- The remaining fields are the parameter names and corresponding values required by that action function.\n\nExample:\n```json\n{{\n \"name\": \"harvest_stand\",\n \"arguments\": {{\n    \"stand_id\": \"stand_001\",\n    \"percentage\": 0.5\n  }}\n}}\n```\n\nYou must correctly parse such JSON inputs, update the internal state of the forest stands and accounts, and simulate the resulting observation.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nFor invalid parameters (e.g., harvesting a non-existent stand), undefined actions, state conflicts (e.g., harvesting more than available biomass), or empty inputs, return structured error information (e.g., `{{\"error\": \"Stand ID not found\"}}`). Do not fabricate states or fictitious responses.\n\n##### Output Assembly\nFor every action function call, you must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition (the Observation $o_{{t+1}}$).\n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state $s_t$, the `new_state`, or any hidden variables like internal growth multipliers. The Agent must only see the specific return values (e.g., harvest yield, revenue generated, or stand status) defined in the action. Do not output the state update process.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to specified JSON and text formats.\n- **Factuality**: Do not fabricate non-existent functions or impossible forest data.\n- **Consistency**: Ensure timber growth logic (e.g., trees getting older each year) is self-consistent and logical.\n- **Realism**: Simulated behaviors must align with forestry dynamics, including maturation rates and market price volatility.\n- **Quality**: Language must be clear, unambiguous, and structurally complete.\n- **Encapsulation**: Strictly hide the internal state structure from the output. Only expose information explicitly returned by the action function.\n{{initial_state}}: {{\n  \"stands\": {{\n    \"stand_alpha\": {{\n      \"species\": \"Pine\",\n      \"age_years\": 45,\n      \"biomass_m3\": 4200,\n      \"soil_quality\": 0.85\n    }},\n    \"stand_beta\": {{\n      \"species\": \"Douglas-fir\",\n      \"age_years\": 5,\n      \"biomass_m3\": 150,\n      \"soil_quality\": 0.95\n    }}\n  }},\n  \"current_year\": 0,\n  \"available_funds\": 60000.0,\n  \"market_price_per_m3\": 55.0,\n  \"environmental_stability_index\": 0.92\n}}\n{{state_descriptions}}: {{\n  \"stands\": \"A collection of forest parcels indexed by ID, containing tree species, age, and biomass density.\",\n  \"current_year\": \"The current year of the simulation timeline.\",\n  \"available_funds\": \"The liquid capital available for replanting and maintenance operations.\",\n  \"market_price_per_m3\": \"The current market selling price for harvested timber.\",\n  \"environmental_stability_index\": \"A score from 0.0 to 1.0 representing the ecological health of the managed area.\"\n}}\n{action_set_definitions}: {\n  \"get_environment_status\": {\n    \"description\": \"Retrieves the current year, total liquid funds, current timber market price, and the environmental stability index.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"current_year\": 1,\n      \"available_funds\": 150000,\n      \"market_price_per_m3\": 60,\n      \"environmental_stability_index\": 0.95\n    }\n  },\n  \"get_stand_data\": {\n    \"description\": \"Provides a list of all forest stands with their ID, tree species, and current biomass density.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"stands\": [\n        {\n          \"id\": \"stand_A\",\n          \"species\": \"Pine\",\n          \"biomass_density\": 3200\n        }\n      ]\n    }\n  },\n  \"get_policy_parameters\": {\n    \"description\": \"Returns the exact values for the High-Conservation subsidy, the Carbon Reversal penalty, and the cost required to increase the stability index by 0.01.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"annual_subsidy\": 20000,\n      \"carbon_penalty\": 75000,\n      \"restoration_cost_per_0.01_stability\": 3000\n    }\n  },\n  \"harvest_timber\": {\n    \"description\": \"Harvests biomass from a stand. Increases funds based on market price and volume, but reduces biomass and stability index.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"stand_id\": {\n          \"type\": \"string\",\n          \"description\": \"ID of the stand to harvest.\"\n        },\n        \"volume\": {\n          \"type\": \"number\",\n          \"description\": \"Amount of biomass to harvest.\"\n        }\n      },\n      \"required\": [\n        \"stand_id\",\n        \"volume\"\n      ]\n    },\n    \"example_output\": {\n      \"gross_revenue\": 45000,\n      \"stability_reduction\": 0.05,\n      \"remaining_biomass\": 2800\n    }\n  },\n  \"invest_in_restoration\": {\n    \"description\": \"Spends capital to increase the environmental stability index.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"amount\": {\n          \"type\": \"number\",\n          \"description\": \"Amount of funds to spend on stability improvement.\"\n        }\n      },\n      \"required\": [\n        \"amount\"\n      ]\n    },\n    \"example_output\": {\n      \"new_stability_index\": 0.98,\n      \"remaining_funds\": 355000\n    }\n  },\n  \"next_year\": {\n    \"description\": \"Advances the simulation to the next year, applying tree growth, subsidies, and penalties.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"year\": 2,\n      \"subsidy_earned\": 20000,\n      \"penalty_deducted\": 0\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_environment_status",
+      "description": "Retrieves the current year, total liquid funds, current timber market price, and the environmental stability index.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "current_year": 1,
+        "available_funds": 150000,
+        "market_price_per_m3": 60,
+        "environmental_stability_index": 0.95
+      }
+    },
+    {
+      "name": "get_stand_data",
+      "description": "Provides a list of all forest stands with their ID, tree species, and current biomass density.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "stands": [
+          {
+            "id": "stand_A",
+            "species": "Pine",
+            "biomass_density": 3200
+          }
+        ]
+      }
+    },
+    {
+      "name": "get_policy_parameters",
+      "description": "Returns the exact values for the High-Conservation subsidy, the Carbon Reversal penalty, and the cost required to increase the stability index by 0.01.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "annual_subsidy": 20000,
+        "carbon_penalty": 75000,
+        "restoration_cost_per_0.01_stability": 3000
+      }
+    },
+    {
+      "name": "harvest_timber",
+      "description": "Harvests biomass from a stand. Increases funds based on market price and volume, but reduces biomass and stability index.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "stand_id": {
+            "type": "string",
+            "description": "ID of the stand to harvest."
+          },
+          "volume": {
+            "type": "number",
+            "description": "Amount of biomass to harvest."
+          }
+        },
+        "required": [
+          "stand_id",
+          "volume"
+        ]
+      },
+      "example_output": {
+        "gross_revenue": 45000,
+        "stability_reduction": 0.05,
+        "remaining_biomass": 2800
+      }
+    },
+    {
+      "name": "invest_in_restoration",
+      "description": "Spends capital to increase the environmental stability index.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "amount": {
+            "type": "number",
+            "description": "Amount of funds to spend on stability improvement."
+          }
+        },
+        "required": [
+          "amount"
+        ]
+      },
+      "example_output": {
+        "new_stability_index": 0.98,
+        "remaining_funds": 355000
+      }
+    },
+    {
+      "name": "next_year",
+      "description": "Advances the simulation to the next year, applying tree growth, subsidies, and penalties.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "year": 2,
+        "subsidy_earned": 20000,
+        "penalty_deducted": 0
+      }
+    }
+  ],
+  "state_description": {
+    "stands": "A collection of forest parcels indexed by ID, containing tree species, age, and biomass density.",
+    "current_year": "The current year of the simulation timeline.",
+    "available_funds": "The liquid capital available for replanting and maintenance operations.",
+    "market_price_per_m3": "The current market selling price for harvested timber.",
+    "environmental_stability_index": "A score from 0.0 to 1.0 representing the ecological health of the managed area."
+  },
+  "task_initial_state": {
+    "stands": {
+      "stand_alpha": {
+        "species": "Pine",
+        "age_years": 45,
+        "biomass_m3": 4200,
+        "soil_quality": 0.85
+      },
+      "stand_beta": {
+        "species": "Douglas-fir",
+        "age_years": 5,
+        "biomass_m3": 150,
+        "soil_quality": 0.95
+      }
+    },
+    "current_year": 0,
+    "available_funds": 60000.0,
+    "market_price_per_m3": 55.0,
+    "environmental_stability_index": 0.92
+  }
+}

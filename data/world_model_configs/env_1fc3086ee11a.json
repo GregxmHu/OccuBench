@@ -1,0 +1,157 @@
+{
+  "environment_name": "env_1fc3086ee11a",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM) for Timber Harvest Planning\n- **Core Objective**: Based on the current internal state $s_t$ of the timber forest and economic environment, and the harvest or management action $a_t$ executed by the Agent, simulate the evolution of the environment and predict the resulting observation $o_{{t+1}}$.\n- **Emphasis**: You are the engine of the environment. You do not suggest actions; you simulate the biological growth of forest plots, the logistical outcomes of harvesting, and the fluctuations of the timber market. You maintain the continuity of forest density, tree maturity, and financial balances.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions must maintain absolute context consistency. Changes to tree growth stages, plot depletion, equipment wear, or budget must persist across the simulation history. The LWM must ensure that a harvested plot remains empty until a replanting action is simulated.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. You must parse these requests to update the internal state and generate the appropriate observation. \n\nExample Input:\n```json\n{{\n \"name\": \"harvest_plot\",\n \"arguments\": {{\n    \"plot_id\": \"A-101\",\n    \"technique\": \"clear_cutting\"\n  }}\n}}\n```\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\n- If an action targets a non-existent plot_id: return `{{\"error\": \"Plot ID not found\"}}`.\n- If a harvest is attempted on immature trees: return a result reflecting low yield or regulatory fines as per scenario logic.\n- For undefined actions or invalid parameters, return structured error information and do not alter the internal state.\n\n##### Output Assembly\nFor every action function call, you must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition. \n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, `new_state`, or any hidden variables like the specific growth percentage of every tree unless the action explicitly returns it. The Agent must only see the specific Observation (e.g., `yield_volume`, `revenue_generated`, `current_market_price`).\n\n### 4. Key Principles\n- **Format**: Strictly adhere to specified JSON and text formats.\n- **Factuality**: Do not fabricate non-existent plots, species, or financial data.\n- **Consistency**: Biological growth must follow a logical timeline (trees cannot grow to maturity in one simulation step unless the step represents years).\n- **Realism**: Simulated yields should vary based on plot health, species, and environmental conditions defined in the state.\n- **Quality**: Language must be clear and structurally complete.\n- **Encapsulation**: Strictly hide the internal state structure from the output. Only expose information that is explicitly returned by the action function.\n{{initial_state}}: {{\n  \"forest_plots\": [\n    {{\n      \"plot_id\": \"T-8812-DF\",\n      \"species\": \"Douglas-fir\",\n      \"growth_stage\": 0.97,\n      \"estimated_volume\": 5300.0,\n      \"last_harvest_date\": \"1954-08-12\"\n    }},\n    {{\n      \"plot_id\": \"T-4409-PP\",\n      \"species\": \"Ponderosa Pine\",\n      \"growth_stage\": 0.95,\n      \"estimated_volume\": 4900.0,\n      \"last_harvest_date\": \"1959-11-03\"\n    }},\n    {{\n      \"plot_id\": \"T-1102-DF\",\n      \"species\": \"Douglas-fir\",\n      \"growth_stage\": 0.48,\n      \"estimated_volume\": 2200.0,\n      \"last_harvest_date\": \"2001-05-20\"\n    }}\n  ],\n  \"inventory\": {{\n    \"softwood_m3\": 0,\n    \"hardwood_m3\": 0\n  }},\n  \"financials\": {{\n    \"available_budget\": 30000.0,\n    \"market_price_index\": {{\n      \"Douglas-fir\": 480.0,\n      \"Ponderosa Pine\": 320.0\n    }}\n  }},\n  \"simulation_time\": {{\n    \"current_year\": 2024,\n    \"season\": \"Autumn\"\n  }}\n}}\n{{state_descriptions}}: {{\n  \"forest_plots\": \"List of all manageable forest parcels containing tree data.\",\n  \"inventory\": \"Stored timber awaiting sale.\",\n  \"financials\": \"Operational budget and market conditions.\",\n  \"simulation_time\": \"Current time context within the model.\"\n}}\n{action_set_definitions}: {\n  \"get_financial_status\": {\n    \"description\": \"Retrieves the current available operational budget for forestry projects.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {}\n    },\n    \"example_output\": {\n      \"budget_limit\": 30000\n    }\n  },\n  \"search_forest_plots\": {\n    \"description\": \"Retrieves a list of forest parcels based on species and location data.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"viewshed\": {\n          \"type\": \"string\",\n          \"description\": \"The visual category, e.g., 'middleground'.\"\n        },\n        \"species\": {\n          \"type\": \"string\",\n          \"description\": \"The target timber species, e.g., 'Douglas-fir'.\"\n        }\n      },\n      \"required\": [\n        \"viewshed\",\n        \"species\"\n      ]\n    },\n    \"example_output\": {\n      \"plots\": [\n        {\n          \"plot_id\": \"DF-502\",\n          \"maturity_score\": 92,\n          \"slope_percent\": 40.5,\n          \"available_volume_m3\": 5500\n        }\n      ]\n    }\n  },\n  \"simulate_harvest_impact\": {\n    \"description\": \"Calculates projected visual magnitude (VM), cost, and actual yield for a specific harvest plan on a specific plot.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"plot_id\": {\n          \"type\": \"string\"\n        },\n        \"target_volume\": {\n          \"type\": \"number\",\n          \"description\": \"Target extraction in m3.\"\n        },\n        \"method\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"Standard-Thinning\",\n            \"Selective-Retention\",\n            \"Strip-Cut\"\n          ],\n          \"description\": \"The silvicultural method.\"\n        }\n      },\n      \"required\": [\n        \"plot_id\",\n        \"target_volume\",\n        \"method\"\n      ]\n    },\n    \"example_output\": {\n      \"vm_percent\": 4.8,\n      \"estimated_cost\": 27500,\n      \"predicted_yield\": 4100\n    }\n  },\n  \"execute_harvest_operation\": {\n    \"description\": \"Finalizes the timber harvest for a specific plot and records the resource extraction.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"plot_id\": {\n          \"type\": \"string\"\n        },\n        \"volume_to_extract\": {\n          \"type\": \"number\"\n        },\n        \"method\": {\n          \"type\": \"string\"\n        }\n      },\n      \"required\": [\n        \"plot_id\",\n        \"volume_to_extract\",\n        \"method\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"Operation Completed\",\n      \"final_yield\": 4050,\n      \"total_cost\": 27800\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_financial_status",
+      "description": "Retrieves the current available operational budget for forestry projects.",
+      "parameters": {
+        "type": "object",
+        "properties": {}
+      },
+      "example_output": {
+        "budget_limit": 30000
+      }
+    },
+    {
+      "name": "search_forest_plots",
+      "description": "Retrieves a list of forest parcels based on species and location data.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "viewshed": {
+            "type": "string",
+            "description": "The visual category, e.g., 'middleground'."
+          },
+          "species": {
+            "type": "string",
+            "description": "The target timber species, e.g., 'Douglas-fir'."
+          }
+        },
+        "required": [
+          "viewshed",
+          "species"
+        ]
+      },
+      "example_output": {
+        "plots": [
+          {
+            "plot_id": "DF-502",
+            "maturity_score": 92,
+            "slope_percent": 40.5,
+            "available_volume_m3": 5500
+          }
+        ]
+      }
+    },
+    {
+      "name": "simulate_harvest_impact",
+      "description": "Calculates projected visual magnitude (VM), cost, and actual yield for a specific harvest plan on a specific plot.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "plot_id": {
+            "type": "string"
+          },
+          "target_volume": {
+            "type": "number",
+            "description": "Target extraction in m3."
+          },
+          "method": {
+            "type": "string",
+            "enum": [
+              "Standard-Thinning",
+              "Selective-Retention",
+              "Strip-Cut"
+            ],
+            "description": "The silvicultural method."
+          }
+        },
+        "required": [
+          "plot_id",
+          "target_volume",
+          "method"
+        ]
+      },
+      "example_output": {
+        "vm_percent": 4.8,
+        "estimated_cost": 27500,
+        "predicted_yield": 4100
+      }
+    },
+    {
+      "name": "execute_harvest_operation",
+      "description": "Finalizes the timber harvest for a specific plot and records the resource extraction.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "plot_id": {
+            "type": "string"
+          },
+          "volume_to_extract": {
+            "type": "number"
+          },
+          "method": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "plot_id",
+          "volume_to_extract",
+          "method"
+        ]
+      },
+      "example_output": {
+        "status": "Operation Completed",
+        "final_yield": 4050,
+        "total_cost": 27800
+      }
+    }
+  ],
+  "state_description": {
+    "forest_plots": "List of all manageable forest parcels containing tree data.",
+    "inventory": "Stored timber awaiting sale.",
+    "financials": "Operational budget and market conditions.",
+    "simulation_time": "Current time context within the model."
+  },
+  "task_initial_state": {
+    "forest_plots": [
+      {
+        "plot_id": "T-8812-DF",
+        "species": "Douglas-fir",
+        "growth_stage": 0.97,
+        "estimated_volume": 5300.0,
+        "last_harvest_date": "1954-08-12"
+      },
+      {
+        "plot_id": "T-4409-PP",
+        "species": "Ponderosa Pine",
+        "growth_stage": 0.95,
+        "estimated_volume": 4900.0,
+        "last_harvest_date": "1959-11-03"
+      },
+      {
+        "plot_id": "T-1102-DF",
+        "species": "Douglas-fir",
+        "growth_stage": 0.48,
+        "estimated_volume": 2200.0,
+        "last_harvest_date": "2001-05-20"
+      }
+    ],
+    "inventory": {
+      "softwood_m3": 0,
+      "hardwood_m3": 0
+    },
+    "financials": {
+      "available_budget": 30000.0,
+      "market_price_index": {
+        "Douglas-fir": 480.0,
+        "Ponderosa Pine": 320.0
+      }
+    },
+    "simulation_time": {
+      "current_year": 2024,
+      "season": "Autumn"
+    }
+  }
+}

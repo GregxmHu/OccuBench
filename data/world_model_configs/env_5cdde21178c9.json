@@ -1,0 +1,170 @@
+{
+  "environment_name": "env_5cdde21178c9",
+  "world_model_system_prompt": "## 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: Based on the current factory state $s_t$ and the scheduling action $a_t$ provided by the Agent, simulate the internal production evolution and predict the observation $o_{{t+1}}$.\n- **Emphasis**: The LWM acts as a simulation engine. It does not perform actual manufacturing operations but calculates state transitions (e.g., machine progress, inventory consumption, time advancement) and generates structured observations for the Agent.\n\n## 2. Environment Management\n\n### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n### Context Awareness\nAll interactions between the World Model and the Agent must maintain context consistency. The model must track the progression of time, machine availability, and order completion status across the conversation history to ensure the factory logic remains self-consistent.\n\n## 3. Environment Execution\n\n### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. This JSON must contain the following fields:\n- `\"name\"`: Specifies the name of the action function to execute (e.g., assign_task, maintenance_check).\n- The remaining fields are the parameter names and corresponding values required by that action function.\n\nExample:\n```json\n{{\n \"name\": \"assign_task\",\n \"arguments\": {{\n    \"machine_id\": \"M01\",\n    \"order_id\": \"ORD-552\"\n  }}\n}}\n```\n\nThe Language World Model must correctly parse such JSON inputs, simulate the internal factory dynamics (e.g., marking a machine as 'busy'), and return the result.\n\n### Environment Behavior Modeling\n\n#### Error Handling & Edge Cases\nFor invalid parameters (e.g., non-existent machine ID), undefined actions, state conflicts (e.g., assigning a task to a machine currently in maintenance), or empty inputs, return structured error information: `{{\"error\": \"Reason for failure\"}}`. Do not fabricate states or fictitious successful responses if the logic dictates a failure.\n\n#### Output Assembly\nFor every action function call, the model must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition.\n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, `new_state`, or any hidden variables like global counters. The Agent must only see the specific return values (Observations) defined in the action. State maintenance is handled internally by the LWM's memory.\n\n## 4. Key Principles\n- **Format**: Strictly adhere to specified JSON and text formats.\n- **Factuality**: Do not simulate production results that violate the laws of the factory (e.g., producing goods without raw materials).\n- **Consistency**: If a machine is busy at time $t$, it must remain busy until the calculated completion time.\n- **Realism**: Simulated behaviors must align with factory dynamics, including processing delays and potential downtime.\n- **Quality**: Language must be clear, unambiguous, and structurally complete.\n- **Encapsulation**: Strictly hide the internal state structure. Only expose information explicitly returned by the action function. Do not output the state update process.\n{{initial_state}}: {{\n  \"current_simulation_time\": 100,\n  \"machines\": [\n    {{\n      \"id\": \"M-14\",\n      \"status\": \"busy\",\n      \"remaining_time\": 15,\n      \"current_task\": \"ORD-B-00\"\n    }}\n  ],\n  \"order_queue\": [\n    {{\n      \"order_id\": \"ORD-B-00\",\n      \"priority\": 1,\n      \"required_ticks\": 40,\n      \"status\": \"completed\"\n    }},\n    {{\n      \"order_id\": \"ORD-EV-01\",\n      \"priority\": 2,\n      \"required_ticks\": 85,\n      \"status\": \"pending\"\n    }},\n    {{\n      \"order_id\": \"ORD-B-01\",\n      \"priority\": 3,\n      \"required_ticks\": 40,\n      \"status\": \"pending\"\n    }},\n    {{\n      \"order_id\": \"ORD-B-02\",\n      \"priority\": 4,\n      \"required_ticks\": 40,\n      \"status\": \"pending\"\n    }}\n  ],\n  \"inventory\": {{\n    \"raw_materials\": 3,\n    \"finished_goods\": 1\n  }}\n}}\n{{state_descriptions}}: {{\n  \"current_simulation_time\": \"The current clock tick or timestamp in the factory simulation.\",\n  \"machines\": \"List of production machines and their current statuses.\",\n  \"order_queue\": \"Pending production orders waiting to be assigned.\",\n  \"inventory\": \"Current stock of raw materials and finished products.\"\n}}\n{action_set_definitions}: {\n  \"get_factory_state\": {\n    \"description\": \"Retrieves the complete current state of the factory environment, including time, machine availability, pending order details, and inventory counts.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"current_simulation_time\": 100,\n      \"machines\": [\n        {\n          \"machine_id\": \"M-14\",\n          \"status\": \"idle\",\n          \"current_order\": null,\n          \"remaining_time\": 0\n        }\n      ],\n      \"order_queue\": [\n        {\n          \"order_id\": \"ORD-EV-99\",\n          \"type\": \"ORD-EV\",\n          \"required_materials\": {\n            \"steel\": 5,\n            \"battery\": 1\n          }\n        }\n      ],\n      \"inventory\": {\n        \"raw_materials\": {\n          \"steel\": 50,\n          \"battery\": 10\n        },\n        \"finished_goods\": {\n          \"ORD-EV\": 5,\n          \"ORD-B\": 10\n        }\n      }\n    }\n  },\n  \"get_machine_history\": {\n    \"description\": \"Returns the production history for a specific machine to determine the sequence of recently completed models.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"machine_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the machine to query.\"\n        }\n      },\n      \"required\": [\n        \"machine_id\"\n      ]\n    },\n    \"example_output\": {\n      \"last_completed_orders\": [\n        {\n          \"order_id\": \"ORD-B-10\",\n          \"type\": \"ORD-B\"\n        },\n        {\n          \"order_id\": \"ORD-EV-02\",\n          \"type\": \"ORD-EV\"\n        }\n      ]\n    }\n  },\n  \"assign_order_to_machine\": {\n    \"description\": \"Assigns a specific order to a machine and begins processing. This operation consumes materials immediately.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"machine_id\": {\n          \"type\": \"string\",\n          \"description\": \"The target machine ID.\"\n        },\n        \"order_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the order to process.\"\n        }\n      },\n      \"required\": [\n        \"machine_id\",\n        \"order_id\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"processing\",\n      \"estimated_completion_ticks\": 15\n    }\n  },\n  \"advance_time\": {\n    \"description\": \"Advances the simulation's internal clock. This updates machine statuses from 'busy' to 'idle' once their remaining time reaches zero and updates the order status to 'completed'.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"ticks\": {\n          \"type\": \"integer\",\n          \"description\": \"Number of time units to advance.\"\n        },\n        \"until_idle\": {\n          \"type\": \"boolean\",\n          \"description\": \"If true, advances time until the machines have finished their current tasks.\"\n        }\n      },\n      \"required\": []\n    },\n    \"example_output\": {\n      \"new_simulation_time\": 115,\n      \"completed_during_interval\": [\n        \"ORD-EV-99\"\n      ]\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_factory_state",
+      "description": "Retrieves the complete current state of the factory environment, including time, machine availability, pending order details, and inventory counts.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "current_simulation_time": 100,
+        "machines": [
+          {
+            "machine_id": "M-14",
+            "status": "idle",
+            "current_order": null,
+            "remaining_time": 0
+          }
+        ],
+        "order_queue": [
+          {
+            "order_id": "ORD-EV-99",
+            "type": "ORD-EV",
+            "required_materials": {
+              "steel": 5,
+              "battery": 1
+            }
+          }
+        ],
+        "inventory": {
+          "raw_materials": {
+            "steel": 50,
+            "battery": 10
+          },
+          "finished_goods": {
+            "ORD-EV": 5,
+            "ORD-B": 10
+          }
+        }
+      }
+    },
+    {
+      "name": "get_machine_history",
+      "description": "Returns the production history for a specific machine to determine the sequence of recently completed models.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "machine_id": {
+            "type": "string",
+            "description": "The ID of the machine to query."
+          }
+        },
+        "required": [
+          "machine_id"
+        ]
+      },
+      "example_output": {
+        "last_completed_orders": [
+          {
+            "order_id": "ORD-B-10",
+            "type": "ORD-B"
+          },
+          {
+            "order_id": "ORD-EV-02",
+            "type": "ORD-EV"
+          }
+        ]
+      }
+    },
+    {
+      "name": "assign_order_to_machine",
+      "description": "Assigns a specific order to a machine and begins processing. This operation consumes materials immediately.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "machine_id": {
+            "type": "string",
+            "description": "The target machine ID."
+          },
+          "order_id": {
+            "type": "string",
+            "description": "The ID of the order to process."
+          }
+        },
+        "required": [
+          "machine_id",
+          "order_id"
+        ]
+      },
+      "example_output": {
+        "status": "processing",
+        "estimated_completion_ticks": 15
+      }
+    },
+    {
+      "name": "advance_time",
+      "description": "Advances the simulation's internal clock. This updates machine statuses from 'busy' to 'idle' once their remaining time reaches zero and updates the order status to 'completed'.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "ticks": {
+            "type": "integer",
+            "description": "Number of time units to advance."
+          },
+          "until_idle": {
+            "type": "boolean",
+            "description": "If true, advances time until the machines have finished their current tasks."
+          }
+        },
+        "required": []
+      },
+      "example_output": {
+        "new_simulation_time": 115,
+        "completed_during_interval": [
+          "ORD-EV-99"
+        ]
+      }
+    }
+  ],
+  "state_description": {
+    "current_simulation_time": "The current clock tick or timestamp in the factory simulation.",
+    "machines": "List of production machines and their current statuses.",
+    "order_queue": "Pending production orders waiting to be assigned.",
+    "inventory": "Current stock of raw materials and finished products."
+  },
+  "task_initial_state": {
+    "current_simulation_time": 100,
+    "machines": [
+      {
+        "id": "M-14",
+        "status": "busy",
+        "remaining_time": 15,
+        "current_task": "ORD-B-00"
+      }
+    ],
+    "order_queue": [
+      {
+        "order_id": "ORD-B-00",
+        "priority": 1,
+        "required_ticks": 40,
+        "status": "completed"
+      },
+      {
+        "order_id": "ORD-EV-01",
+        "priority": 2,
+        "required_ticks": 85,
+        "status": "pending"
+      },
+      {
+        "order_id": "ORD-B-01",
+        "priority": 3,
+        "required_ticks": 40,
+        "status": "pending"
+      },
+      {
+        "order_id": "ORD-B-02",
+        "priority": 4,
+        "required_ticks": 40,
+        "status": "pending"
+      }
+    ],
+    "inventory": {
+      "raw_materials": 3,
+      "finished_goods": 1
+    }
+  }
+}

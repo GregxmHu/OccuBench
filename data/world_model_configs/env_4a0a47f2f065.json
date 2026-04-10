@@ -1,0 +1,239 @@
+{
+  "environment_name": "env_4a0a47f2f065",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM) for Content Recommendation Curation.\n- **Core Objective**: Based on the current state $s_t$ and the action $a_t$ executed by the Agent, simulate the evolution of the recommendation environment and predict the observation $o_{{t+1}}$ obtained by the Agent. \n- **Emphasis**: You are the environment simulator. You do not provide advice or execute real-world web operations; you calculate/determine the logical consequences of actions within the curation context and generate the resulting observation.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nYou must maintain internal consistency across the interaction history. Every action changes the internal state (e.g., adding an item to a list, changing the target segment), and subsequent observations must reflect these changes accurately.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. You must parse this JSON to determine the intended transition. The format is:\n- `\"name\"`: The name of the action to execute.\n- `\"arguments\"`: A dictionary of parameters required for the action.\n\nExample Input:\n```json\n{{\n \"name\": \"add_to_curation\",\n \"arguments\": {{\n    \"content_id\": \"article_456\",\n    \"position\": 1\n  }}\n}}\n```\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\n- If an action refers to a non-existent `content_id`, return an error observation: `{{\"error\": \"Content ID not found in inventory\"}}`.\n- If the curation list exceeds its maximum capacity, return: `{{\"error\": \"Curation slot limit reached\"}}`.\n- For any malformed JSON or undefined action names, return: `{{\"error\": \"Invalid action or parameters\"}}`.\n- Do not fabricate content or data that is not logically present in the state.\n\n##### Output Assembly\nFor every action function call, return a structured JSON object containing **ONLY** the return fields declared in that action function's definition. \n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, the updated `new_state`, or any metadata not specified in the action's return signature. The Agent only sees the Observation.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to JSON output for observations.\n- **Factuality**: Use only the provided content pool and platform trends defined in the state.\n- **Consistency**: If an item is removed from the curation, it should no longer appear in subsequent observations of the list until re-added.\n- **Realism**: Engagement metrics or feedback returned in observations should logically follow from the alignment between content attributes and the `target_audience` or `platform_trends`.\n- **Quality**: Ensure all simulated responses are structurally complete and unambiguous.\n- **Encapsulation**: Strictly hide the internal state structure from the output. Only expose information that is explicitly returned by the action function.\n{{initial_state}}: {{\n  \"active_curation_list\": [\n    \"item_fr_101\",\n    \"item_fr_202\",\n    \"item_fr_303\",\n    \"item_fr_404\",\n    \"item_fr_505\"\n  ],\n  \"target_audience\": \"Intermediate_B1_French\",\n  \"platform_trends\": [\n    \"Grammar_Focus\",\n    \"Retention_Recovery\"\n  ],\n  \"content_inventory\": {{\n    \"item_fr_101\": {{\n      \"lemma\": \"souvenir\",\n      \"category\": \"Reflexive_Verbs\",\n      \"mastery_level\": 2,\n      \"failure_count\": 1\n    }},\n    \"item_fr_202\": {{\n      \"lemma\": \"dont\",\n      \"category\": \"Relative_Pronouns\",\n      \"mastery_level\": 3,\n      \"failure_count\": 2\n    }},\n    \"item_fr_303\": {{\n      \"lemma\": \"bien_que\",\n      \"category\": \"Conjunctions\",\n      \"mastery_level\": 1,\n      \"failure_count\": 7\n    }},\n    \"item_fr_404\": {{\n      \"lemma\": \"pourtant\",\n      \"category\": \"Adverbs\",\n      \"mastery_level\": 2,\n      \"failure_count\": 0\n    }},\n    \"item_fr_505\": {{\n      \"lemma\": \"embouteillage\",\n      \"category\": \"Nouns\",\n      \"mastery_level\": 0,\n      \"failure_count\": 0\n    }},\n    \"item_fr_606\": {{\n      \"lemma\": \"Conjunctions_Remedial_Lesson\",\n      \"category\": \"Conjunctions\",\n      \"mastery_level\": 1,\n      \"failure_count\": 0,\n      \"is_remedial\": true\n    }},\n    \"item_fr_707\": {{\n      \"lemma\": \"malgré\",\n      \"category\": \"Prepositions\",\n      \"mastery_level\": 0,\n      \"failure_count\": 0\n    }}\n  }},\n  \"session_metrics\": {{\n    \"predicted_ctr\": 0.45,\n    \"diversity_score\": 0.5\n  }}\n}}\n{{state_descriptions}}: {{\n  \"active_curation_list\": \"An ordered list of content IDs currently selected for the recommendation feed.\",\n  \"target_audience\": \"The demographic or user segment currently being targeted (e.g., 'tech_enthusiasts', 'general_news_readers').\",\n  \"platform_trends\": \"A list of topics or tags currently trending on the platform that influence engagement.\",\n  \"content_inventory\": \"A collection of available content items indexed by ID, including their metadata (category, quality score, etc.).\",\n  \"session_metrics\": \"Accumulated engagement data for the current curation session (e.g., total predicted CTR).\"\n}}\n{action_set_definitions}: {\n  \"get_current_session_state\": {\n    \"description\": \"Retrieves the active curation list and session context for a specific user.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"user_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the user (e.g., 'Elias').\"\n        }\n      },\n      \"required\": [\n        \"user_id\"\n      ]\n    },\n    \"example_output\": {\n      \"active_curation_list\": [\n        \"item_101\",\n        \"item_202\"\n      ],\n      \"target_audience\": \"general\",\n      \"session_metrics\": {\n        \"current_ctr\": 0.15\n      }\n    }\n  },\n  \"get_pedagogical_thresholds\": {\n    \"description\": \"Retrieves technical reference data for pedagogical rules, including 'Leech' failure thresholds and remedial lesson mappings.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {}\n    },\n    \"example_output\": {\n      \"leech_failure_threshold\": 5,\n      \"remedial_mapping\": {\n        \"grammar\": \"lesson_grammar_remedial_01\",\n        \"vocabulary\": \"lesson_vocab_remedial_01\"\n      }\n    }\n  },\n  \"get_content_metadata\": {\n    \"description\": \"Retrieves detailed metadata for a specific set of content IDs, including category, mastery level, and user-specific performance (failure counts).\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"content_ids\": {\n          \"type\": \"array\",\n          \"items\": {\n            \"type\": \"string\"\n          },\n          \"description\": \"List of content IDs to query.\"\n        },\n        \"user_id\": {\n          \"type\": \"string\",\n          \"description\": \"The user ID to fetch personalized mastery data for.\"\n        }\n      },\n      \"required\": [\n        \"content_ids\",\n        \"user_id\"\n      ]\n    },\n    \"example_output\": [\n      {\n        \"content_id\": \"item_101\",\n        \"category\": \"syntax\",\n        \"mastery_level\": 0,\n        \"failure_count\": 6\n      }\n    ]\n  },\n  \"search_inventory\": {\n    \"description\": \"Searches the content inventory for items matching specific pedagogical and categorical criteria.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"mastery_level\": {\n          \"type\": \"integer\",\n          \"description\": \"The required mastery level (0 for New, 1+ for Review).\"\n        },\n        \"include_categories\": {\n          \"type\": \"array\",\n          \"items\": {\n            \"type\": \"string\"\n          },\n          \"description\": \"Categories to search within.\"\n        },\n        \"exclude_ids\": {\n          \"type\": \"array\",\n          \"items\": {\n            \"type\": \"string\"\n          },\n          \"description\": \"IDs to exclude from results.\"\n        },\n        \"limit\": {\n          \"type\": \"integer\",\n          \"default\": 10\n        }\n      }\n    },\n    \"example_output\": [\n      {\n        \"content_id\": \"item_505\",\n        \"category\": \"phonetics\",\n        \"mastery_level\": 1\n      }\n    ]\n  },\n  \"calculate_curation_metrics\": {\n    \"description\": \"Calculates diversity scores and validates cognitive load budget for a proposed list of items.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"content_ids\": {\n          \"type\": \"array\",\n          \"items\": {\n            \"type\": \"string\"\n          },\n          \"description\": \"The list of 5 item IDs to evaluate.\"\n        }\n      },\n      \"required\": [\n        \"content_ids\"\n      ]\n    },\n    \"example_output\": {\n      \"diversity_score\": 0.75,\n      \"new_material_count\": 1,\n      \"review_item_count\": 4,\n      \"is_valid_budget\": true\n    }\n  },\n  \"update_active_curation\": {\n    \"description\": \"Submits and saves the finalized curation list for the user.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"user_id\": {\n          \"type\": \"string\"\n        },\n        \"final_list\": {\n          \"type\": \"array\",\n          \"items\": {\n            \"type\": \"string\"\n          },\n          \"description\": \"Ordered list of exactly 5 content IDs.\"\n        }\n      },\n      \"required\": [\n        \"user_id\",\n        \"final_list\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"success\",\n      \"timestamp\": \"2023-10-27T10:00:00Z\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_current_session_state",
+      "description": "Retrieves the active curation list and session context for a specific user.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string",
+            "description": "The unique identifier for the user (e.g., 'Elias')."
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      },
+      "example_output": {
+        "active_curation_list": [
+          "item_101",
+          "item_202"
+        ],
+        "target_audience": "general",
+        "session_metrics": {
+          "current_ctr": 0.15
+        }
+      }
+    },
+    {
+      "name": "get_pedagogical_thresholds",
+      "description": "Retrieves technical reference data for pedagogical rules, including 'Leech' failure thresholds and remedial lesson mappings.",
+      "parameters": {
+        "type": "object",
+        "properties": {}
+      },
+      "example_output": {
+        "leech_failure_threshold": 5,
+        "remedial_mapping": {
+          "grammar": "lesson_grammar_remedial_01",
+          "vocabulary": "lesson_vocab_remedial_01"
+        }
+      }
+    },
+    {
+      "name": "get_content_metadata",
+      "description": "Retrieves detailed metadata for a specific set of content IDs, including category, mastery level, and user-specific performance (failure counts).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "content_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "List of content IDs to query."
+          },
+          "user_id": {
+            "type": "string",
+            "description": "The user ID to fetch personalized mastery data for."
+          }
+        },
+        "required": [
+          "content_ids",
+          "user_id"
+        ]
+      },
+      "example_output": [
+        {
+          "content_id": "item_101",
+          "category": "syntax",
+          "mastery_level": 0,
+          "failure_count": 6
+        }
+      ]
+    },
+    {
+      "name": "search_inventory",
+      "description": "Searches the content inventory for items matching specific pedagogical and categorical criteria.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "mastery_level": {
+            "type": "integer",
+            "description": "The required mastery level (0 for New, 1+ for Review)."
+          },
+          "include_categories": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Categories to search within."
+          },
+          "exclude_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "IDs to exclude from results."
+          },
+          "limit": {
+            "type": "integer",
+            "default": 10
+          }
+        }
+      },
+      "example_output": [
+        {
+          "content_id": "item_505",
+          "category": "phonetics",
+          "mastery_level": 1
+        }
+      ]
+    },
+    {
+      "name": "calculate_curation_metrics",
+      "description": "Calculates diversity scores and validates cognitive load budget for a proposed list of items.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "content_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "The list of 5 item IDs to evaluate."
+          }
+        },
+        "required": [
+          "content_ids"
+        ]
+      },
+      "example_output": {
+        "diversity_score": 0.75,
+        "new_material_count": 1,
+        "review_item_count": 4,
+        "is_valid_budget": true
+      }
+    },
+    {
+      "name": "update_active_curation",
+      "description": "Submits and saves the finalized curation list for the user.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "final_list": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Ordered list of exactly 5 content IDs."
+          }
+        },
+        "required": [
+          "user_id",
+          "final_list"
+        ]
+      },
+      "example_output": {
+        "status": "success",
+        "timestamp": "2023-10-27T10:00:00Z"
+      }
+    }
+  ],
+  "state_description": {
+    "active_curation_list": "An ordered list of content IDs currently selected for the recommendation feed.",
+    "target_audience": "The demographic or user segment currently being targeted (e.g., 'tech_enthusiasts', 'general_news_readers').",
+    "platform_trends": "A list of topics or tags currently trending on the platform that influence engagement.",
+    "content_inventory": "A collection of available content items indexed by ID, including their metadata (category, quality score, etc.).",
+    "session_metrics": "Accumulated engagement data for the current curation session (e.g., total predicted CTR)."
+  },
+  "task_initial_state": {
+    "active_curation_list": [
+      "item_fr_101",
+      "item_fr_202",
+      "item_fr_303",
+      "item_fr_404",
+      "item_fr_505"
+    ],
+    "target_audience": "Intermediate_B1_French",
+    "platform_trends": [
+      "Grammar_Focus",
+      "Retention_Recovery"
+    ],
+    "content_inventory": {
+      "item_fr_101": {
+        "lemma": "souvenir",
+        "category": "Reflexive_Verbs",
+        "mastery_level": 2,
+        "failure_count": 1
+      },
+      "item_fr_202": {
+        "lemma": "dont",
+        "category": "Relative_Pronouns",
+        "mastery_level": 3,
+        "failure_count": 2
+      },
+      "item_fr_303": {
+        "lemma": "bien_que",
+        "category": "Conjunctions",
+        "mastery_level": 1,
+        "failure_count": 7
+      },
+      "item_fr_404": {
+        "lemma": "pourtant",
+        "category": "Adverbs",
+        "mastery_level": 2,
+        "failure_count": 0
+      },
+      "item_fr_505": {
+        "lemma": "embouteillage",
+        "category": "Nouns",
+        "mastery_level": 0,
+        "failure_count": 0
+      },
+      "item_fr_606": {
+        "lemma": "Conjunctions_Remedial_Lesson",
+        "category": "Conjunctions",
+        "mastery_level": 1,
+        "failure_count": 0,
+        "is_remedial": true
+      },
+      "item_fr_707": {
+        "lemma": "malgré",
+        "category": "Prepositions",
+        "mastery_level": 0,
+        "failure_count": 0
+      }
+    },
+    "session_metrics": {
+      "predicted_ctr": 0.45,
+      "diversity_score": 0.5
+    }
+  }
+}

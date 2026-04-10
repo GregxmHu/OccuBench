@@ -1,0 +1,126 @@
+{
+  "environment_name": "env_153c260a856a",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Clear Role**: Language World Model (LWM)\n- **Core Objective**: Based on the current property context ($s_t$) and the valuation action performed ($a_t$), simulate the evolution of the property assessment environment and predict the resulting observation ($o_{{t+1}}$). \n- **Emphasis**: You are the simulation engine for a Property Valuation Assessment environment. You do not perform real-world appraisals; you simulate the data responses, market fluctuations, and record updates within a consistent virtual environment.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation to maintain consistency across the appraisal process. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions between the World Model and the Agent must maintain rigorous context consistency. Changes to property features, market trends, or comparable data must persist logically throughout the session.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. You must parse the following fields:\n- `\"name\"`: The specific valuation or data retrieval function name.\n- The remaining fields are the parameters for that function.\n\nExample:\n```json\n{{\n \"name\": \"get_comparable_sales\",\n \"arguments\": {{\n    \"radius_miles\": 0.5,\n    \"lookback_months\": 6\n  }}\n}}\n```\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nIf the agent requests data for a non-existent property ID, uses invalid valuation parameters, or calls undefined actions, return a structured error message (e.g., `{{\"error\": \"Property record not found\"}}`). Do not fabricate data outside the logical bounds of the current state.\n\n##### Output Assembly\nFor every action call, return a structured JSON object containing **ONLY** the return fields declared in that action function's definition.\n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, `new_state`, or hidden variables like market coefficients or private owner data unless explicitly requested by the action's return signature. State maintenance is handled internally; the Agent only sees the Observation.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to JSON for all inputs and outputs.\n- **Factuality**: Do not simulate outcomes that contradict the defined property state or market logic.\n- **Consistency**: If a property's condition is updated, subsequent valuation actions must reflect that change.\n- **Realism**: Simulated valuation adjustments (e.g., price per square foot) must align with realistic real estate dynamics.\n- **Quality**: Responses must be clear and technically accurate within the domain of real estate appraisal.\n- **Encapsulation**: Hide the internal state structure. Only expose information explicitly defined as return values for the given action.\n{{initial_state}}: {{\n  \"property_id\": \"OAK-88\",\n  \"physical_characteristics\": {{\n    \"sq_ft\": 14500,\n    \"bedrooms\": 30,\n    \"bathrooms\": 15,\n    \"year_built\": 1940\n  }},\n  \"property_condition_score\": 6,\n  \"neighborhood_context\": {{\n    \"school_rating\": 7,\n    \"zoning\": \"Multi-Family-Rent-Controlled\",\n    \"annual_debt_service\": 210000,\n    \"dscr_threshold\": 1.2\n  }},\n  \"market_indices\": {{\n    \"annual_appreciation_rate\": 0.03,\n    \"inventory_levels\": \"medium\",\n    \"fixed_opex\": 142000\n  }},\n  \"comparable_database\": [\n    {{\n      \"unit_id\": \"Group-A\",\n      \"unit_count\": 5,\n      \"base_rent_per_unit\": 2800,\n      \"surcharge_per_unit\": 0,\n      \"surcharge_expiry_months\": null,\n      \"status\": \"Market-Rate\"\n    }},\n    {{\n      \"unit_id\": \"Group-B\",\n      \"unit_count\": 5,\n      \"base_rent_per_unit\": 2100,\n      \"surcharge_per_unit\": 0,\n      \"surcharge_expiry_months\": null,\n      \"status\": \"Rent-Stabilized\"\n    }},\n    {{\n      \"unit_id\": \"Group-C\",\n      \"unit_count\": 5,\n      \"base_rent_per_unit\": 1450,\n      \"surcharge_per_unit\": 550,\n      \"surcharge_expiry_months\": 4,\n      \"status\": \"MCI-Surcharge-Active\"\n    }}\n  ]\n}}\n{{state_descriptions}}: {{\n  \"property_id\": \"Unique identifier for the subject property.\",\n  \"physical_characteristics\": \"Core physical attributes including square footage, room count, and lot size.\",\n  \"property_condition_score\": \"A score from 1-10 representing the internal and external maintenance state.\",\n  \"neighborhood_context\": \"Data regarding the immediate area, school ratings, and local amenities.\",\n  \"market_indices\": \"Current economic indicators affecting the local area (e.g., price trends).\",\n  \"comparable_database\": \"A list of recent sales records used for the Sales Comparison Approach.\"\n}}\n{action_set_definitions}: {\n  \"get_current_date\": {\n    \"description\": \"Retrieves the current system date. Necessary for determining the duration of remaining MCI surcharges within the 12-month projection window.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"current_date\": \"2023-10-27\"\n    }\n  },\n  \"fetch_unit_level_records\": {\n    \"description\": \"Queries the database for detailed unit-by-unit financial data for a specific property, including base rents and Major Capital Improvement (MCI) details.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"property_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the property (e.g., 'OAK-88').\"\n        }\n      },\n      \"required\": [\n        \"property_id\"\n      ]\n    },\n    \"example_output\": {\n      \"units\": [\n        {\n          \"unit_id\": \"1A\",\n          \"monthly_base_rent\": 1200,\n          \"mci_surcharge\": 50,\n          \"mci_expiration_date\": \"2024-03-01\"\n        },\n        {\n          \"unit_id\": \"1B\",\n          \"monthly_base_rent\": 1350,\n          \"mci_surcharge\": 0,\n          \"mci_expiration_date\": null\n        }\n      ]\n    }\n  },\n  \"get_property_metadata\": {\n    \"description\": \"Retrieves general metadata about the property to confirm its identity and basic characteristics from the environment state.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"property_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the property.\"\n        }\n      },\n      \"required\": [\n        \"property_id\"\n      ]\n    },\n    \"example_output\": {\n      \"property_name\": \"Oakwood Gardens\",\n      \"total_units\": 20,\n      \"status\": \"Active\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_current_date",
+      "description": "Retrieves the current system date. Necessary for determining the duration of remaining MCI surcharges within the 12-month projection window.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "current_date": "2023-10-27"
+      }
+    },
+    {
+      "name": "fetch_unit_level_records",
+      "description": "Queries the database for detailed unit-by-unit financial data for a specific property, including base rents and Major Capital Improvement (MCI) details.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "property_id": {
+            "type": "string",
+            "description": "The unique identifier for the property (e.g., 'OAK-88')."
+          }
+        },
+        "required": [
+          "property_id"
+        ]
+      },
+      "example_output": {
+        "units": [
+          {
+            "unit_id": "1A",
+            "monthly_base_rent": 1200,
+            "mci_surcharge": 50,
+            "mci_expiration_date": "2024-03-01"
+          },
+          {
+            "unit_id": "1B",
+            "monthly_base_rent": 1350,
+            "mci_surcharge": 0,
+            "mci_expiration_date": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "get_property_metadata",
+      "description": "Retrieves general metadata about the property to confirm its identity and basic characteristics from the environment state.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "property_id": {
+            "type": "string",
+            "description": "The unique identifier for the property."
+          }
+        },
+        "required": [
+          "property_id"
+        ]
+      },
+      "example_output": {
+        "property_name": "Oakwood Gardens",
+        "total_units": 20,
+        "status": "Active"
+      }
+    }
+  ],
+  "state_description": {
+    "property_id": "Unique identifier for the subject property.",
+    "physical_characteristics": "Core physical attributes including square footage, room count, and lot size.",
+    "property_condition_score": "A score from 1-10 representing the internal and external maintenance state.",
+    "neighborhood_context": "Data regarding the immediate area, school ratings, and local amenities.",
+    "market_indices": "Current economic indicators affecting the local area (e.g., price trends).",
+    "comparable_database": "A list of recent sales records used for the Sales Comparison Approach."
+  },
+  "task_initial_state": {
+    "property_id": "OAK-88",
+    "physical_characteristics": {
+      "sq_ft": 14500,
+      "bedrooms": 30,
+      "bathrooms": 15,
+      "year_built": 1940
+    },
+    "property_condition_score": 6,
+    "neighborhood_context": {
+      "school_rating": 7,
+      "zoning": "Multi-Family-Rent-Controlled",
+      "annual_debt_service": 210000,
+      "dscr_threshold": 1.2
+    },
+    "market_indices": {
+      "annual_appreciation_rate": 0.03,
+      "inventory_levels": "medium",
+      "fixed_opex": 142000
+    },
+    "comparable_database": [
+      {
+        "unit_id": "Group-A",
+        "unit_count": 5,
+        "base_rent_per_unit": 2800,
+        "surcharge_per_unit": 0,
+        "surcharge_expiry_months": null,
+        "status": "Market-Rate"
+      },
+      {
+        "unit_id": "Group-B",
+        "unit_count": 5,
+        "base_rent_per_unit": 2100,
+        "surcharge_per_unit": 0,
+        "surcharge_expiry_months": null,
+        "status": "Rent-Stabilized"
+      },
+      {
+        "unit_id": "Group-C",
+        "unit_count": 5,
+        "base_rent_per_unit": 1450,
+        "surcharge_per_unit": 550,
+        "surcharge_expiry_months": 4,
+        "status": "MCI-Surcharge-Active"
+      }
+    ]
+  }
+}

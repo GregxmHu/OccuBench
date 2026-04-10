@@ -1,0 +1,181 @@
+{
+  "environment_name": "env_a57df26dbcca",
+  "world_model_system_prompt": "# 1. Role and Objective\n\n- **Role**: Language World Model (LWM) for Runway Arrival Sequencing.\n- **Core Objective**: Based on the current internal state $s_t$ of the airspace and runways, and the action $a_t$ executed by the Air Traffic Control (ATC) Agent, simulate the evolution of the environment and predict the next observation $o_{{t+1}}$.\n- **Emphasis**: The LWM acts as a high-fidelity simulator. It does not control the aircraft but calculates their movement, fuel consumption, and sequencing logic internally, providing only the resulting sensor data or status reports to the Agent.\n\n# 2. Environment Management\n\n## State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n## Context Awareness\nAll interactions between the World Model and the Agent must maintain strict context consistency. Each action updates the internal timeline and physical positions of the aircraft. Subsequent observations must reflect the cumulative effects of all previous actions and the passage of time.\n\n# 3. Environment Execution\n\n## Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n## Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. This JSON must contain the following fields:\n- `\"name\"`: Specifies the name of the action function to execute (e.g., \"assign_runway\", \"adjust_speed\").\n- The remaining fields are the parameter names and corresponding values required by that action function.\n\nExample:\n```json\n{{\n \"name\": \"adjust_approach_speed\",\n \"arguments\": {{\n    \"aircraft_id\": \"BA123\",\n    \"target_speed\": 180\n  }}\n}}\n```\n\nThe Language World Model must parse these JSON inputs, update the internal state (e.g., recalculate Estimated Time of Arrival), and generate the resulting observation.\n\n## Environment Behavior Modeling\n\n### Error Handling & Edge Cases\nIf the Agent provides invalid parameters (e.g., a non-existent aircraft ID), undefined actions, or commands that violate physical safety (e.g., speed below stall velocity), return structured error information: `{{\"error\": \"Description of the issue\"}}`. Do not fabricate state updates for invalid inputs.\n\n### Output Assembly\nFor every action function call, the model must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition.\n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, `new_state`, or any hidden variables. The state maintenance is implicit in the simulation history. The Agent must only see the specific return values (Observations) defined in the action function.\n\n# 4. Key Principles\n\n- **Format**: Strictly adhere to specified JSON and text formats.\n- **Factuality**: Do not fabricate non-existent aircraft, runways, or sensor readings.\n- **Consistency**: The physics of flight (speed, distance, time) and runway occupancy logic must remain self-consistent throughout the session.\n- **Realism**: Aircraft must follow realistic approach dynamics. If an action advances time, all aircraft in the state must have their positions and fuel levels updated accordingly.\n- **Quality**: Language must be clear, professional (ATC terminology), and structurally complete.\n- **Encapsulation**: Strictly hide the internal state structure. Only expose information that is explicitly returned by the action function as an observation.\n{{initial_state}}: {{\n  \"simulation_clock\": 1200,\n  \"aircraft_queue\": [\n    {{\n      \"callsign\": \"AAL123\",\n      \"distance_to_threshold\": 8.5,\n      \"current_speed\": 165,\n      \"altitude\": 2500,\n      \"fuel_reserve_minutes\": 35,\n      \"assigned_runway\": \"28L\",\n      \"status\": \"final_approach\"\n    }},\n    {{\n      \"callsign\": \"BAW456\",\n      \"distance_to_threshold\": 17.0,\n      \"current_speed\": 220,\n      \"altitude\": 4000,\n      \"fuel_reserve_minutes\": 50,\n      \"assigned_runway\": \"\",\n      \"status\": \"approaching\"\n    }},\n    {{\n      \"callsign\": \"RYR789\",\n      \"distance_to_threshold\": 21.5,\n      \"current_speed\": 220,\n      \"altitude\": 5000,\n      \"fuel_reserve_minutes\": 14,\n      \"assigned_runway\": \"\",\n      \"status\": \"approaching\"\n    }}\n  ],\n  \"runway_status\": [\n    {{\n      \"runway_id\": \"28L\",\n      \"is_occupied\": true,\n      \"clear_time\": 1400\n    }}\n  ]\n}}\n{{state_descriptions}}: {{\n  \"simulation_clock\": \"Current simulation time in seconds from start.\",\n  \"aircraft_queue\": \"List of all aircraft currently under sector control.\",\n  \"runway_status\": \"The current availability and schedule of the airport runways.\"\n}}\n{action_set_definitions}: {\n  \"get_simulation_status\": {\n    \"description\": \"Retrieves the current simulation clock, active runway configuration, and a list of aircraft currently in the sector.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"simulation_clock\": 150,\n      \"runway_status\": \"28L Active\",\n      \"aircraft_list\": [\n        \"AAL123\",\n        \"BAW456\",\n        \"RYR789\"\n      ]\n    }\n  },\n  \"get_aircraft_details\": {\n    \"description\": \"Retrieves the comprehensive state of a specific aircraft, including its wake category, ground speed (GS), distance to the MERGE waypoint, fuel level, and flight status.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"callsign\": {\n          \"type\": \"string\",\n          \"description\": \"The unique callsign of the aircraft.\"\n        }\n      },\n      \"required\": [\n        \"callsign\"\n      ]\n    },\n    \"example_output\": {\n      \"callsign\": \"AAL123\",\n      \"wake_category\": \"Medium\",\n      \"ground_speed\": 220,\n      \"distance_to_merge\": 12.4,\n      \"fuel_reserve_minutes\": 40,\n      \"status\": \"sequencing\"\n    }\n  },\n  \"set_aircraft_speed\": {\n    \"description\": \"Adjusts the ground speed of a specific aircraft to manage spacing and prevent speed convergence.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"callsign\": {\n          \"type\": \"string\",\n          \"description\": \"The callsign of the aircraft.\"\n        },\n        \"target_gs\": {\n          \"type\": \"number\",\n          \"description\": \"The target ground speed in knots.\"\n        }\n      },\n      \"required\": [\n        \"callsign\",\n        \"target_gs\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"Speed update commanded\",\n      \"new_target_gs\": 180\n    }\n  },\n  \"calculate_distance\": {\n    \"description\": \"Calculates the current distance in nautical miles between two aircraft.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"lead_callsign\": {\n          \"type\": \"string\",\n          \"description\": \"The preceding aircraft.\"\n        },\n        \"trail_callsign\": {\n          \"type\": \"string\",\n          \"description\": \"The following aircraft.\"\n        }\n      },\n      \"required\": [\n        \"lead_callsign\",\n        \"trail_callsign\"\n      ]\n    },\n    \"example_output\": {\n      \"separation_nm\": 4.5\n    }\n  },\n  \"issue_merge_clearance\": {\n    \"description\": \"Commands an aircraft to exit its sequencing leg and turn directly toward the MERGE waypoint.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"callsign\": {\n          \"type\": \"string\",\n          \"description\": \"The callsign of the aircraft.\"\n        }\n      },\n      \"required\": [\n        \"callsign\"\n      ]\n    },\n    \"example_output\": {\n      \"instruction\": \"Direct MERGE\",\n      \"status\": \"acknowledged\"\n    }\n  },\n  \"advance_time\": {\n    \"description\": \"Progresses the simulation by a specified number of seconds, updating all aircraft positions and environmental variables.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"seconds\": {\n          \"type\": \"number\",\n          \"description\": \"Duration to advance the simulation.\"\n        }\n      },\n      \"required\": [\n        \"seconds\"\n      ]\n    },\n    \"example_output\": {\n      \"new_clock\": 210,\n      \"update\": \"Positions recalculated\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_simulation_status",
+      "description": "Retrieves the current simulation clock, active runway configuration, and a list of aircraft currently in the sector.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "simulation_clock": 150,
+        "runway_status": "28L Active",
+        "aircraft_list": [
+          "AAL123",
+          "BAW456",
+          "RYR789"
+        ]
+      }
+    },
+    {
+      "name": "get_aircraft_details",
+      "description": "Retrieves the comprehensive state of a specific aircraft, including its wake category, ground speed (GS), distance to the MERGE waypoint, fuel level, and flight status.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "callsign": {
+            "type": "string",
+            "description": "The unique callsign of the aircraft."
+          }
+        },
+        "required": [
+          "callsign"
+        ]
+      },
+      "example_output": {
+        "callsign": "AAL123",
+        "wake_category": "Medium",
+        "ground_speed": 220,
+        "distance_to_merge": 12.4,
+        "fuel_reserve_minutes": 40,
+        "status": "sequencing"
+      }
+    },
+    {
+      "name": "set_aircraft_speed",
+      "description": "Adjusts the ground speed of a specific aircraft to manage spacing and prevent speed convergence.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "callsign": {
+            "type": "string",
+            "description": "The callsign of the aircraft."
+          },
+          "target_gs": {
+            "type": "number",
+            "description": "The target ground speed in knots."
+          }
+        },
+        "required": [
+          "callsign",
+          "target_gs"
+        ]
+      },
+      "example_output": {
+        "status": "Speed update commanded",
+        "new_target_gs": 180
+      }
+    },
+    {
+      "name": "calculate_distance",
+      "description": "Calculates the current distance in nautical miles between two aircraft.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "lead_callsign": {
+            "type": "string",
+            "description": "The preceding aircraft."
+          },
+          "trail_callsign": {
+            "type": "string",
+            "description": "The following aircraft."
+          }
+        },
+        "required": [
+          "lead_callsign",
+          "trail_callsign"
+        ]
+      },
+      "example_output": {
+        "separation_nm": 4.5
+      }
+    },
+    {
+      "name": "issue_merge_clearance",
+      "description": "Commands an aircraft to exit its sequencing leg and turn directly toward the MERGE waypoint.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "callsign": {
+            "type": "string",
+            "description": "The callsign of the aircraft."
+          }
+        },
+        "required": [
+          "callsign"
+        ]
+      },
+      "example_output": {
+        "instruction": "Direct MERGE",
+        "status": "acknowledged"
+      }
+    },
+    {
+      "name": "advance_time",
+      "description": "Progresses the simulation by a specified number of seconds, updating all aircraft positions and environmental variables.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "seconds": {
+            "type": "number",
+            "description": "Duration to advance the simulation."
+          }
+        },
+        "required": [
+          "seconds"
+        ]
+      },
+      "example_output": {
+        "new_clock": 210,
+        "update": "Positions recalculated"
+      }
+    }
+  ],
+  "state_description": {
+    "simulation_clock": "Current simulation time in seconds from start.",
+    "aircraft_queue": "List of all aircraft currently under sector control.",
+    "runway_status": "The current availability and schedule of the airport runways."
+  },
+  "task_initial_state": {
+    "simulation_clock": 1200,
+    "aircraft_queue": [
+      {
+        "callsign": "AAL123",
+        "distance_to_threshold": 8.5,
+        "current_speed": 165,
+        "altitude": 2500,
+        "fuel_reserve_minutes": 35,
+        "assigned_runway": "28L",
+        "status": "final_approach"
+      },
+      {
+        "callsign": "BAW456",
+        "distance_to_threshold": 17.0,
+        "current_speed": 220,
+        "altitude": 4000,
+        "fuel_reserve_minutes": 50,
+        "assigned_runway": "",
+        "status": "approaching"
+      },
+      {
+        "callsign": "RYR789",
+        "distance_to_threshold": 21.5,
+        "current_speed": 220,
+        "altitude": 5000,
+        "fuel_reserve_minutes": 14,
+        "assigned_runway": "",
+        "status": "approaching"
+      }
+    ],
+    "runway_status": [
+      {
+        "runway_id": "28L",
+        "is_occupied": true,
+        "clear_time": 1400
+      }
+    ]
+  }
+}

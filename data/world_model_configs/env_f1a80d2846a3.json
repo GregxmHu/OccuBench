@@ -1,0 +1,123 @@
+{
+  "environment_name": "env_f1a80d2846a3",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: Based on the current repository state $s_t$ and the Git action $a_t$ performed by the Agent, simulate the evolution of the Git environment and predict the observation $o_{{t+1}}$ (command output/file content) obtained by the Agent. \n- **Emphasis**: The LWM does not execute real shell commands or Git binaries. It performs internal state evolution (tracking file contents, staging area, and conflict status) and generates realistic observations based on Git's logic.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions between the World Model and the Agent must maintain strict context consistency. The LWM must track changes to the working tree, the index (staging area), and the resolution status of merge conflicts over time.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. This JSON will contain:\n- `\"name\"`: The Git action to execute (e.g., `git_add`, `git_commit`, `edit_file`).\n- Additional fields for parameters (e.g., `path`, `content`, `message`).\n\nExample:\n```json\n{{\n \"name\": \"git_commit\",\n \"arguments\": {{\n    \"message\": \"Fixed merge conflict in main.py\"\n  }}\n}}\n```\n\nThe Language World Model must parse these JSON inputs and simulate the resulting change in the Git state.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nFor invalid operations (e.g., committing while conflicts exist, editing a non-existent file, staging a file already in the index), return structured error information. \nExample: `{{\"error\": \"Unaligned merge: conflict in 'main.py' must be resolved before committing.\"}}`\nDo not fabricate successful responses for failed Git logic.\n\n##### Output Assembly\nFor every action, return a structured JSON object containing **ONLY** the return fields declared in the action function's definition. \n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, the `new_state`, or any metadata about the hidden repository structure. The Agent must only see the Observation (e.g., standard output, error messages, or file read results).\n\n### 4. Key Principles\n- **Format**: Strictly adhere to specified JSON and text formats.\n- **Factuality**: Do not fabricate Git commands or file states not supported by the environment.\n- **Consistency**: The working directory, index, and commit history must remain logically consistent (e.g., once a conflict marker is removed via `edit_file`, it remains removed).\n- **Realism**: Simulated behaviors must align with standard Git behavior and the logic of merge conflict resolution (e.g., `<<<<<<< HEAD`).\n- **Quality**: Language must be clear and technical, mimicking a terminal or Git interface.\n- **Encapsulation**: Strictly hide the internal state structure. Only expose the specific `observation` returned by the action function.\n{{initial_state}}: {{\n  \"working_tree\": {{\n    \"src/services/AssetLedger.java\": \"package com.fintech.services;\\n\\npublic class AssetLedger {{\\n<<<<<<< HEAD\\n    /**\\n     * Executes a movement with local session validation.\\n     */\\n    public void executeMovement(String txId, double amount) {{\\n        SecurityGateway.verifySession();\\n        System.out.println(\\\"Moving: \\\" + amount);\\n    }}\\n=======\\n    /**\\n     * Executes a movement with international currency support.\\n     */\\n    public void executeMovement(String txId, double amount, String currency) {{\\n        System.out.println(\\\"Moving: \\\" + amount + \\\" \\\" + currency);\\n    }}\\n>>>>>>> trunk\\n}}\",\n    \"src/services/ReportingService.java\": \"package com.fintech.services;\\n\\npublic class ReportingService {{\\n    public void generateReport() {{\\n        System.out.println(\\\"Report generated.\\\");\\n    }}\\n}}\",\n    \"src/auth/SecurityGateway.java\": \"package com.fintech.auth;\\n\\npublic class SecurityGateway {{\\n    public static void verifySession() {{\\n        // Logic for session verification\\n    }}\\n}}\",\n    \"docs/ARCHITECTURE.md\": \"Documentation for the fintech monorepo architecture.\"\n  }},\n  \"staging_area\": [],\n  \"current_branch\": \"security-hardening\",\n  \"conflicts\": [\n    \"src/services/AssetLedger.java\"\n  ],\n  \"merge_head\": \"trunk\"\n}}\n{{state_descriptions}}: {{\n  \"working_tree\": \"A map of file paths to their current text content, including conflict markers if the file is in a conflicted state.\",\n  \"staging_area\": \"A list of file paths that have been staged using 'git add'.\",\n  \"current_branch\": \"The name of the branch currently checked out (e.g., 'main' or 'feature-branch').\",\n  \"conflicts\": \"A list of file paths that currently contain unresolved merge conflicts.\",\n  \"merge_head\": \"The name of the branch or commit hash being merged into the current branch.\"\n}}\n{action_set_definitions}: {\n  \"list_conflicts\": {\n    \"description\": \"Returns a list of all files in the repository that currently have unresolved merge conflicts.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"conflicts\": [\n        \"src/services/asset-manager.ts\"\n      ]\n    }\n  },\n  \"read_file_content\": {\n    \"description\": \"Reads the content of a specific file, including any merge conflict markers if present.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"file_path\": {\n          \"type\": \"string\",\n          \"description\": \"The path to the file to be read.\"\n        }\n      },\n      \"required\": [\n        \"file_path\"\n      ]\n    },\n    \"example_output\": {\n      \"content\": \"<<<<<<< HEAD\\nlocal_code()\\n=======\\nupstream_code()\\n>>>>>>> trunk\"\n    }\n  },\n  \"write_file_content\": {\n    \"description\": \"Overwrites the content of a file. Used to save the resolved version of a file after removing conflict markers.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"file_path\": {\n          \"type\": \"string\",\n          \"description\": \"The path to the file.\"\n        },\n        \"content\": {\n          \"type\": \"string\",\n          \"description\": \"The full text content to be written to the file.\"\n        }\n      },\n      \"required\": [\n        \"file_path\",\n        \"content\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"success\"\n    }\n  },\n  \"stage_file\": {\n    \"description\": \"Stages a file for the next commit, signaling that conflicts in this file have been resolved.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"file_path\": {\n          \"type\": \"string\",\n          \"description\": \"The path of the file to stage.\"\n        }\n      },\n      \"required\": [\n        \"file_path\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"staged\"\n    }\n  },\n  \"commit_merge\": {\n    \"description\": \"Finalizes the current merge process by creating a merge commit.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"commit_message\": {\n          \"type\": \"string\",\n          \"description\": \"The commit message for the merge.\"\n        }\n      },\n      \"required\": [\n        \"commit_message\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"merged\",\n      \"commit_hash\": \"b2c3d4e5\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "list_conflicts",
+      "description": "Returns a list of all files in the repository that currently have unresolved merge conflicts.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "conflicts": [
+          "src/services/asset-manager.ts"
+        ]
+      }
+    },
+    {
+      "name": "read_file_content",
+      "description": "Reads the content of a specific file, including any merge conflict markers if present.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "file_path": {
+            "type": "string",
+            "description": "The path to the file to be read."
+          }
+        },
+        "required": [
+          "file_path"
+        ]
+      },
+      "example_output": {
+        "content": "<<<<<<< HEAD\nlocal_code()\n=======\nupstream_code()\n>>>>>>> trunk"
+      }
+    },
+    {
+      "name": "write_file_content",
+      "description": "Overwrites the content of a file. Used to save the resolved version of a file after removing conflict markers.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "file_path": {
+            "type": "string",
+            "description": "The path to the file."
+          },
+          "content": {
+            "type": "string",
+            "description": "The full text content to be written to the file."
+          }
+        },
+        "required": [
+          "file_path",
+          "content"
+        ]
+      },
+      "example_output": {
+        "status": "success"
+      }
+    },
+    {
+      "name": "stage_file",
+      "description": "Stages a file for the next commit, signaling that conflicts in this file have been resolved.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "file_path": {
+            "type": "string",
+            "description": "The path of the file to stage."
+          }
+        },
+        "required": [
+          "file_path"
+        ]
+      },
+      "example_output": {
+        "status": "staged"
+      }
+    },
+    {
+      "name": "commit_merge",
+      "description": "Finalizes the current merge process by creating a merge commit.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "commit_message": {
+            "type": "string",
+            "description": "The commit message for the merge."
+          }
+        },
+        "required": [
+          "commit_message"
+        ]
+      },
+      "example_output": {
+        "status": "merged",
+        "commit_hash": "b2c3d4e5"
+      }
+    }
+  ],
+  "state_description": {
+    "working_tree": "A map of file paths to their current text content, including conflict markers if the file is in a conflicted state.",
+    "staging_area": "A list of file paths that have been staged using 'git add'.",
+    "current_branch": "The name of the branch currently checked out (e.g., 'main' or 'feature-branch').",
+    "conflicts": "A list of file paths that currently contain unresolved merge conflicts.",
+    "merge_head": "The name of the branch or commit hash being merged into the current branch."
+  },
+  "task_initial_state": {
+    "working_tree": {
+      "src/services/AssetLedger.java": "package com.fintech.services;\n\npublic class AssetLedger {\n<<<<<<< HEAD\n    /**\n     * Executes a movement with local session validation.\n     */\n    public void executeMovement(String txId, double amount) {\n        SecurityGateway.verifySession();\n        System.out.println(\"Moving: \" + amount);\n    }\n=======\n    /**\n     * Executes a movement with international currency support.\n     */\n    public void executeMovement(String txId, double amount, String currency) {\n        System.out.println(\"Moving: \" + amount + \" \" + currency);\n    }\n>>>>>>> trunk\n}",
+      "src/services/ReportingService.java": "package com.fintech.services;\n\npublic class ReportingService {\n    public void generateReport() {\n        System.out.println(\"Report generated.\");\n    }\n}",
+      "src/auth/SecurityGateway.java": "package com.fintech.auth;\n\npublic class SecurityGateway {\n    public static void verifySession() {\n        // Logic for session verification\n    }\n}",
+      "docs/ARCHITECTURE.md": "Documentation for the fintech monorepo architecture."
+    },
+    "staging_area": [],
+    "current_branch": "security-hardening",
+    "conflicts": [
+      "src/services/AssetLedger.java"
+    ],
+    "merge_head": "trunk"
+  }
+}

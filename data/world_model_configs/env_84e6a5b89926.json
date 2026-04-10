@@ -1,0 +1,86 @@
+{
+  "environment_name": "env_84e6a5b89926",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM) for Hotel Room Revenue Management.\n- **Core Objective**: Based on the current hotel state $s_t$ and the pricing or inventory action $a_t$ taken by the Revenue Manager (Agent), simulate the transition to the next state $s_{{t+1}}$ (e.g., changes in occupancy and revenue) and generate the corresponding observation $o_{{t+1}}$ for the Agent.\n- **Emphasis**: You are a simulator of market demand and hotel operations. You do not suggest actions; you calculate the mathematical and logical consequences of actions within the environment and provide the resulting data.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nYou must maintain the continuity of the simulation. Every booking, price change, and date progression must be consistent with the history of the current session. Occupancy cannot exceed total capacity, and revenue must be calculated based on the price set and the resulting demand.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. This JSON must contain the following fields:\n- `\"name\"`: Specifies the name of the action function to execute (e.g., `set_daily_price`, `close_inventory`).\n- Additional fields: Parameter names and values required by that action function.\n\nExample:\n```json\n{{\n \"name\": \"set_daily_price\",\n \"arguments\": {{\n    \"room_type\": \"standard\",\n    \"new_price\": 185.50\n  }}\n}}\n```\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\n- If the Agent attempts to set a negative price or a price exceeding reasonable market bounds, return: `{{\"error\": \"Invalid price value\"}}`.\n- If an undefined room type or action is called, return: `{{\"error\": \"Action/Parameter not found\"}}`.\n- If the simulation date exceeds the defined period, return an end-of-simulation signal.\n- Do not fabricate data; if an input is invalid, the state remains unchanged.\n\n##### Output Assembly\nFor every action function call, you must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition (the Observation).\n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state $s_t$, the hidden `market_demand_factor`, or any other internal variables. The Agent must only see the specific return values (Observations) such as `bookings_received`, `daily_revenue`, or `current_occupancy_rate` as defined in the action's output schema.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to the JSON format for all outputs.\n- **Factuality**: Demand simulation should follow a logical price-elasticity curve (higher prices generally lead to lower demand unless the market demand factor is high).\n- **Consistency**: The number of rooms booked must be subtracted from available inventory for the next step.\n- **Realism**: Simulate realistic variance in customer behavior (stochastic demand) based on the current market conditions provided in the state.\n- **Encapsulation**: Strictly hide the internal state structure and update logic. Only expose the observation $o_{{t+1}}$.\n{{initial_state}}: {{\n  \"current_date\": \"2024-08-08\",\n  \"total_inventory\": 88,\n  \"rooms_occupied\": 80,\n  \"current_price_set\": 188.88,\n  \"cumulative_revenue\": 11888.8,\n  \"market_demand_index\": 0.88,\n  \"competitor_avg_price\": 188.8\n}}\n{{state_descriptions}}: {{\n  \"current_date\": \"The current date in the simulation (YYYY-MM-DD format).\",\n  \"total_inventory\": \"Total number of rooms available in the hotel.\",\n  \"rooms_occupied\": \"Number of rooms currently booked/occupied for the current date.\",\n  \"current_price_set\": \"The room price currently active in the market.\",\n  \"cumulative_revenue\": \"Total revenue generated since the start of the simulation.\",\n  \"market_demand_index\": \"A hidden multiplier (1.0 = baseline) representing seasonal or event-based demand strength.\",\n  \"competitor_avg_price\": \"The average price currently offered by local competitors.\"\n}}\n{action_set_definitions}: {\n  \"get_hotel_performance_metrics\": {\n    \"description\": \"Retrieves the current cumulative revenue and available room inventory from the hotel management system.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"cumulative_revenue\": 11888.8,\n      \"available_rooms\": 8,\n      \"current_date\": \"2023-10-27\"\n    }\n  },\n  \"get_crs_request_parameters\": {\n    \"description\": \"Retrieves the specific data (room count, rate, and checkout time) for a list of micro-stay request IDs from the Central Reservation System.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"request_ids\": {\n          \"type\": \"array\",\n          \"items\": {\n            \"type\": \"string\"\n          },\n          \"description\": \"The specific micro-stay request IDs to investigate (e.g., SL-808).\"\n        }\n      },\n      \"required\": [\n        \"request_ids\"\n      ]\n    },\n    \"example_output\": [\n      {\n        \"request_id\": \"SL-808\",\n        \"room_count\": 8,\n        \"quoted_rate\": 150.0,\n        \"checkout_time\": \"17:15\"\n      }\n    ]\n  },\n  \"accept_reservation_block\": {\n    \"description\": \"Accepts a specific room block request, committing it to the system and updating revenue and inventory.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"request_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the block to be accepted.\"\n        }\n      },\n      \"required\": [\n        \"request_id\"\n      ]\n    },\n    \"example_output\": {\n      \"transaction_id\": \"TX-9921\",\n      \"status\": \"confirmed\",\n      \"final_revenue\": 13088.8\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_hotel_performance_metrics",
+      "description": "Retrieves the current cumulative revenue and available room inventory from the hotel management system.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "cumulative_revenue": 11888.8,
+        "available_rooms": 8,
+        "current_date": "2023-10-27"
+      }
+    },
+    {
+      "name": "get_crs_request_parameters",
+      "description": "Retrieves the specific data (room count, rate, and checkout time) for a list of micro-stay request IDs from the Central Reservation System.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "request_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "The specific micro-stay request IDs to investigate (e.g., SL-808)."
+          }
+        },
+        "required": [
+          "request_ids"
+        ]
+      },
+      "example_output": [
+        {
+          "request_id": "SL-808",
+          "room_count": 8,
+          "quoted_rate": 150.0,
+          "checkout_time": "17:15"
+        }
+      ]
+    },
+    {
+      "name": "accept_reservation_block",
+      "description": "Accepts a specific room block request, committing it to the system and updating revenue and inventory.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "request_id": {
+            "type": "string",
+            "description": "The ID of the block to be accepted."
+          }
+        },
+        "required": [
+          "request_id"
+        ]
+      },
+      "example_output": {
+        "transaction_id": "TX-9921",
+        "status": "confirmed",
+        "final_revenue": 13088.8
+      }
+    }
+  ],
+  "state_description": {
+    "current_date": "The current date in the simulation (YYYY-MM-DD format).",
+    "total_inventory": "Total number of rooms available in the hotel.",
+    "rooms_occupied": "Number of rooms currently booked/occupied for the current date.",
+    "current_price_set": "The room price currently active in the market.",
+    "cumulative_revenue": "Total revenue generated since the start of the simulation.",
+    "market_demand_index": "A hidden multiplier (1.0 = baseline) representing seasonal or event-based demand strength.",
+    "competitor_avg_price": "The average price currently offered by local competitors."
+  },
+  "task_initial_state": {
+    "current_date": "2024-08-08",
+    "total_inventory": 88,
+    "rooms_occupied": 80,
+    "current_price_set": 188.88,
+    "cumulative_revenue": 11888.8,
+    "market_demand_index": 0.88,
+    "competitor_avg_price": 188.8
+  }
+}

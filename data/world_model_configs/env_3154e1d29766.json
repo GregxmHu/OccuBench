@@ -1,0 +1,237 @@
+{
+  "environment_name": "env_3154e1d29766",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM) for SQL Query Optimization.\n- **Core Objective**: Based on the current database state $s_t$ (schema, statistics, indexes) and the optimization action $a_t$ (e.g., adding an index, rewriting a hint), simulate the environment's internal state transition and predict the observation $o_{{t+1}}$ (e.g., query execution plan, estimated cost, index impact) obtained by the Agent.\n- **Emphasis**: The LWM does not execute SQL on a real database engine. It simulates the behavior of a query optimizer and database engine internally to provide consistent feedback on optimization strategies.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions between the World Model and the Agent must maintain context consistency. The model must track which indexes have been created, which statistics have been updated, and how these changes cumulatively affect the query execution plan and cost estimates over time.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will not send actions in the form of function call strings, but will always submit action requests via a structured JSON object. This JSON must contain the following fields:\n- `\"name\"`: Specifies the name of the action function to execute (must be defined in the action set).\n- The remaining fields are the parameter names and corresponding values required by that action function.\n\nExample:\n```json\n{{\n \"name\": \"create_index\",\n \"arguments\": {{\n    \"table_name\": \"orders\",\n    \"column_name\": \"customer_id\",\n    \"index_name\": \"idx_cust_id\"\n  }}\n}}\n```\n\nThe Language World Model must correctly parse such JSON inputs and simulate the execution results based on the current internal state.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nFor invalid parameters (e.g., referencing a non-existent table), undefined actions, state conflicts (e.g., creating an index that already exists), or empty inputs, return structured error information (e.g., `{{\"error\": \"Table 'users' not found in schema\"}}`), and do not fabricate states or fictitious responses.\n\n##### Output Assembly\nFor every action function call, the model must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition.\n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, the `new_state`, or any hidden variables. The state maintenance is implicit in the interaction history. The Agent must only see the specific return values (Observations) defined in the action.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to specified JSON and text formats.\n- **Factuality**: Do not fabricate non-existent database functions, schema metadata, or statistics. Use realistic database optimization logic (e.g., B-Tree index effects on range scans).\n- **Consistency**: State evolution logic must be self-consistent. If an index is added, subsequent `get_execution_plan` calls must reflect the usage of that index if applicable.\n- **Realism**: Simulated behaviors must align with reasonable dynamics of a relational database query optimizer (e.g., cost-based optimization principles).\n- **Quality**: Language must be clear, unambiguous, and structurally complete.\n- **Encapsulation**: Strictly hide the internal state structure from the output. Only expose information explicitly returned by the action function.\n{{initial_state}}: {{\n  \"database_schema\": {{\n    \"deliveries\": {{\n      \"columns\": {{\n        \"id\": \"INTEGER\",\n        \"location\": \"GEOMETRY(Point, 4326)\",\n        \"zone_id\": \"INTEGER\"\n      }},\n      \"primary_key\": \"id\"\n    }},\n    \"service_zones\": {{\n      \"columns\": {{\n        \"id\": \"INTEGER\",\n        \"boundary\": \"GEOMETRY(Polygon, 4326)\"\n      }},\n      \"primary_key\": \"id\"\n    }}\n  }},\n  \"table_statistics\": {{\n    \"deliveries\": {{\n      \"row_count\": 5000000,\n      \"physical_correlation\": 0.02,\n      \"location_srid\": 4326\n    }},\n    \"service_zones\": {{\n      \"row_count\": 2500,\n      \"avg_vertices_per_polygon\": 85000,\n      \"box_efficiency_avg\": 0.08,\n      \"boundary_srid\": 4326,\n      \"toast_pages\": 45000\n    }}\n  }},\n  \"active_indexes\": [\n    {{\n      \"index_name\": \"idx_zones_gist\",\n      \"table_name\": \"service_zones\",\n      \"column\": \"boundary\",\n      \"type\": \"GiST\",\n      \"index_depth\": 7,\n      \"hit_ratio\": 0.42\n    }}\n  ],\n  \"target_query\": \"UPDATE deliveries d SET zone_id = z.id FROM service_zones z WHERE ST_Intersects(d.location, z.boundary);\",\n  \"optimizer_config\": {{\n    \"cpu_cost_weight\": 0.15,\n    \"io_cost_weight\": 1.0,\n    \"random_page_cost\": 4.0\n  }}\n}}\n{{state_descriptions}}: {{\n  \"database_schema\": \"The DDL or structured definition of tables, columns, and data types in the environment.\",\n  \"table_statistics\": \"Metadata regarding data distribution, including row counts, page counts, and column cardinality.\",\n  \"active_indexes\": \"A list of currently existing indexes on the database tables.\",\n  \"target_query\": \"The SQL query string that the agent is currently tasked to optimize.\",\n  \"optimizer_config\": \"Settings for the simulated query optimizer, such as cost weights for I/O vs CPU.\"\n}}\n{action_set_definitions}: {\n  \"get_system_context\": {\n    \"description\": \"Retrieves the initial environment state including the target SQL query, table schemas, and existing index configurations.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"target_query\": \"UPDATE delivery_points SET zone_id = ...\",\n      \"database_schema\": \"CREATE TABLE delivery_points (id INT, geom GEOMETRY...)\",\n      \"active_indexes\": [\n        \"idx_spatial_01\"\n      ],\n      \"optimizer_config\": {\n        \"cpu_tuple_cost\": 0.01,\n        \"random_page_cost\": 4.0\n      }\n    }\n  },\n  \"get_query_cost\": {\n    \"description\": \"Explains the provided SQL query and returns the total estimated execution cost and execution plan breakdown.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"query\": {\n          \"type\": \"string\",\n          \"description\": \"The SQL query to be analyzed by the query optimizer.\"\n        }\n      },\n      \"required\": [\n        \"query\"\n      ]\n    },\n    \"example_output\": {\n      \"total_estimated_cost\": 85400.5,\n      \"plan_nodes\": [\n        {\n          \"node_type\": \"Nested Loop\",\n          \"cost\": 85400.5\n        }\n      ]\n    }\n  },\n  \"analyze_spatial_diagnostics\": {\n    \"description\": \"Analyzes specific geometric columns for complexity (vertex count) and disk-level spatial correlation (clustering status).\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"table_name\": {\n          \"type\": \"string\",\n          \"description\": \"Name of the table to inspect.\"\n        },\n        \"column_name\": {\n          \"type\": \"string\",\n          \"description\": \"Name of the spatial column.\"\n        }\n      },\n      \"required\": [\n        \"table_name\",\n        \"column_name\"\n      ]\n    },\n    \"example_output\": {\n      \"avg_vertex_count\": 450,\n      \"spatial_correlation_score\": 0.12,\n      \"is_clustered\": false\n    }\n  },\n  \"apply_spatial_index\": {\n    \"description\": \"Creates a high-performance spatial index (e.g., GiST or SP-GiST) on a specific column to facilitate pruning.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"table_name\": {\n          \"type\": \"string\",\n          \"description\": \"Table to index.\"\n        },\n        \"column_name\": {\n          \"type\": \"string\",\n          \"description\": \"Column to index.\"\n        },\n        \"index_type\": {\n          \"type\": \"string\",\n          \"description\": \"Type of spatial index (e.g., 'gist', 'spgist').\"\n        }\n      },\n      \"required\": [\n        \"table_name\",\n        \"column_name\",\n        \"index_type\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"success\",\n      \"index_name\": \"idx_geom_spatial_v2\"\n    }\n  },\n  \"optimize_geometry_complexity\": {\n    \"description\": \"Reduces the internal vertex count of geometric objects using a simplification algorithm while maintaining topological accuracy.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"table_name\": {\n          \"type\": \"string\",\n          \"description\": \"Table containing geometries to simplify.\"\n        },\n        \"column_name\": {\n          \"type\": \"string\",\n          \"description\": \"Geometry column name.\"\n        },\n        \"tolerance\": {\n          \"type\": \"number\",\n          \"description\": \"Distance tolerance for simplification (e.g., 0.001).\"\n        }\n      },\n      \"required\": [\n        \"table_name\",\n        \"column_name\",\n        \"tolerance\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"success\",\n      \"vertices_removed\": 154000\n    }\n  },\n  \"reorganize_physical_storage\": {\n    \"description\": \"Reorders the data on disk (clustering) based on a spatial index to minimize I/O during range searches.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"table_name\": {\n          \"type\": \"string\",\n          \"description\": \"Table to reorder.\"\n        },\n        \"index_name\": {\n          \"type\": \"string\",\n          \"description\": \"The spatial index to use as the template for disk ordering.\"\n        }\n      },\n      \"required\": [\n        \"table_name\",\n        \"index_name\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"success\",\n      \"io_latency_reduction_est\": \"30%\"\n    }\n  },\n  \"refresh_optimizer_stats\": {\n    \"description\": \"Updates the database's internal statistics to ensure the optimizer correctly recognizes new data distributions and index availability.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"table_name\": {\n          \"type\": \"string\",\n          \"description\": \"Table to analyze.\"\n        }\n      },\n      \"required\": [\n        \"table_name\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"success\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_system_context",
+      "description": "Retrieves the initial environment state including the target SQL query, table schemas, and existing index configurations.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "target_query": "UPDATE delivery_points SET zone_id = ...",
+        "database_schema": "CREATE TABLE delivery_points (id INT, geom GEOMETRY...)",
+        "active_indexes": [
+          "idx_spatial_01"
+        ],
+        "optimizer_config": {
+          "cpu_tuple_cost": 0.01,
+          "random_page_cost": 4.0
+        }
+      }
+    },
+    {
+      "name": "get_query_cost",
+      "description": "Explains the provided SQL query and returns the total estimated execution cost and execution plan breakdown.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "description": "The SQL query to be analyzed by the query optimizer."
+          }
+        },
+        "required": [
+          "query"
+        ]
+      },
+      "example_output": {
+        "total_estimated_cost": 85400.5,
+        "plan_nodes": [
+          {
+            "node_type": "Nested Loop",
+            "cost": 85400.5
+          }
+        ]
+      }
+    },
+    {
+      "name": "analyze_spatial_diagnostics",
+      "description": "Analyzes specific geometric columns for complexity (vertex count) and disk-level spatial correlation (clustering status).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "table_name": {
+            "type": "string",
+            "description": "Name of the table to inspect."
+          },
+          "column_name": {
+            "type": "string",
+            "description": "Name of the spatial column."
+          }
+        },
+        "required": [
+          "table_name",
+          "column_name"
+        ]
+      },
+      "example_output": {
+        "avg_vertex_count": 450,
+        "spatial_correlation_score": 0.12,
+        "is_clustered": false
+      }
+    },
+    {
+      "name": "apply_spatial_index",
+      "description": "Creates a high-performance spatial index (e.g., GiST or SP-GiST) on a specific column to facilitate pruning.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "table_name": {
+            "type": "string",
+            "description": "Table to index."
+          },
+          "column_name": {
+            "type": "string",
+            "description": "Column to index."
+          },
+          "index_type": {
+            "type": "string",
+            "description": "Type of spatial index (e.g., 'gist', 'spgist')."
+          }
+        },
+        "required": [
+          "table_name",
+          "column_name",
+          "index_type"
+        ]
+      },
+      "example_output": {
+        "status": "success",
+        "index_name": "idx_geom_spatial_v2"
+      }
+    },
+    {
+      "name": "optimize_geometry_complexity",
+      "description": "Reduces the internal vertex count of geometric objects using a simplification algorithm while maintaining topological accuracy.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "table_name": {
+            "type": "string",
+            "description": "Table containing geometries to simplify."
+          },
+          "column_name": {
+            "type": "string",
+            "description": "Geometry column name."
+          },
+          "tolerance": {
+            "type": "number",
+            "description": "Distance tolerance for simplification (e.g., 0.001)."
+          }
+        },
+        "required": [
+          "table_name",
+          "column_name",
+          "tolerance"
+        ]
+      },
+      "example_output": {
+        "status": "success",
+        "vertices_removed": 154000
+      }
+    },
+    {
+      "name": "reorganize_physical_storage",
+      "description": "Reorders the data on disk (clustering) based on a spatial index to minimize I/O during range searches.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "table_name": {
+            "type": "string",
+            "description": "Table to reorder."
+          },
+          "index_name": {
+            "type": "string",
+            "description": "The spatial index to use as the template for disk ordering."
+          }
+        },
+        "required": [
+          "table_name",
+          "index_name"
+        ]
+      },
+      "example_output": {
+        "status": "success",
+        "io_latency_reduction_est": "30%"
+      }
+    },
+    {
+      "name": "refresh_optimizer_stats",
+      "description": "Updates the database's internal statistics to ensure the optimizer correctly recognizes new data distributions and index availability.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "table_name": {
+            "type": "string",
+            "description": "Table to analyze."
+          }
+        },
+        "required": [
+          "table_name"
+        ]
+      },
+      "example_output": {
+        "status": "success"
+      }
+    }
+  ],
+  "state_description": {
+    "database_schema": "The DDL or structured definition of tables, columns, and data types in the environment.",
+    "table_statistics": "Metadata regarding data distribution, including row counts, page counts, and column cardinality.",
+    "active_indexes": "A list of currently existing indexes on the database tables.",
+    "target_query": "The SQL query string that the agent is currently tasked to optimize.",
+    "optimizer_config": "Settings for the simulated query optimizer, such as cost weights for I/O vs CPU."
+  },
+  "task_initial_state": {
+    "database_schema": {
+      "deliveries": {
+        "columns": {
+          "id": "INTEGER",
+          "location": "GEOMETRY(Point, 4326)",
+          "zone_id": "INTEGER"
+        },
+        "primary_key": "id"
+      },
+      "service_zones": {
+        "columns": {
+          "id": "INTEGER",
+          "boundary": "GEOMETRY(Polygon, 4326)"
+        },
+        "primary_key": "id"
+      }
+    },
+    "table_statistics": {
+      "deliveries": {
+        "row_count": 5000000,
+        "physical_correlation": 0.02,
+        "location_srid": 4326
+      },
+      "service_zones": {
+        "row_count": 2500,
+        "avg_vertices_per_polygon": 85000,
+        "box_efficiency_avg": 0.08,
+        "boundary_srid": 4326,
+        "toast_pages": 45000
+      }
+    },
+    "active_indexes": [
+      {
+        "index_name": "idx_zones_gist",
+        "table_name": "service_zones",
+        "column": "boundary",
+        "type": "GiST",
+        "index_depth": 7,
+        "hit_ratio": 0.42
+      }
+    ],
+    "target_query": "UPDATE deliveries d SET zone_id = z.id FROM service_zones z WHERE ST_Intersects(d.location, z.boundary);",
+    "optimizer_config": {
+      "cpu_cost_weight": 0.15,
+      "io_cost_weight": 1.0,
+      "random_page_cost": 4.0
+    }
+  }
+}

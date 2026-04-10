@@ -1,0 +1,149 @@
+{
+  "environment_name": "env_f7089c9189d0",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: Based on the current state $s_t$ and action $a_t$, simulate the environment changes of a Git repository during a merge conflict resolution process and predict the observation $o_{{t+1}}$ obtained by the Agent.\n- **Emphasis**: The LWM does not execute real shell commands or Git binaries. It performs internal state evolution (tracking file contents, staging areas, and Git metadata) and generates realistic observations (command outputs, file diffs, or status messages).\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions between the World Model and the Agent must maintain strict context consistency. Any changes made to the working directory, index, or Git metadata must persist across subsequent turns. The World Model must track the resolution progress of merge markers within files.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. This JSON must contain the following fields:\n- `\"name\"`: Specifies the name of the action function to execute.\n- The remaining fields are the parameter names and corresponding values required by that action function.\n\nExample:\n```json\n{{\n \"name\": \"read_file\",\n \"arguments\": {{\n    \"file_path\": \"src/main.py\"\n  }}\n}}\n```\n\nThe Language World Model must correctly parse such JSON inputs, update the internal repository state (e.g., updating file content after an edit), and simulate the execution results.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nFor invalid parameters (e.g., path not found), undefined actions, state conflicts (e.g., committing while conflicts exist), or empty inputs, return structured error information (e.g., `{{\"error\": \"CONFLICT (content): Merge conflict in file.txt. Automatic merge failed; fix conflicts and then commit the result.\"}}`), and do not fabricate states or fictitious responses.\n\n##### Output Assembly\nFor every action function call, the model must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition.\n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state $s_t$, `new_state`, or any hidden variables. The state maintenance is implicit in the history. The Agent must only see the specific return values defined in the action (the Observation), such as standard output (`stdout`), standard error (`stderr`), or the content of a file.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to specified JSON and text formats.\n- **Factuality**: Do not fabricate non-existent Git functions, repository states, or commit hashes.\n- **Consistency**: State evolution logic must be self-consistent. If a file is edited to remove conflict markers, the `git status` simulation must reflect that the file is no longer in a conflicted state once staged.\n- **Realism**: Simulated behaviors must align with standard Git behavior (e.g., the format of conflict markers `<<<<<<< HEAD`, `=======`, `>>>>>>> branch_name`).\n- **Quality**: Language must be clear, unambiguous, and structurally complete.\n- **Encapsulation**: Strictly hide the internal state structure from the output. Only expose information that is explicitly returned by the action function. Do not output the state update.\n{{initial_state}}: {{\n  \"working_tree\": {{\n    \"src/auth.js\": \"import {{ getEnv }} from './env';\\n<<<<<<< HEAD\\nconst API_KEY = getEnv('PROD_KEY');\\n=======\\nconst API_KEY = getEnv('LEGACY_KEY');\\n>>>>>>> feature/secure-login\\n\\nexport const init = () => {{ /* ... */ }};\",\n    \"src/utils/crypto.js\": \"import {{ AES }} from 'crypto-js';\\n<<<<<<< HEAD\\n// Upstream: use platform-native crypto\\nexport const encrypt = (val) => window.crypto.subtle.encrypt('AES-GCM', val);\\n=======\\n// Feature: use crypto-js for cross-platform support\\nexport const encrypt = (val) => AES.encrypt(val, process.env.SECRET);\\n>>>>>>> feature/secure-login\",\n    \"README.md\": \"# Project\\nSecure login feature implementation.\"\n  }},\n  \"index\": [\n    \"src/auth.js\"\n  ],\n  \"current_branch\": \"feature/secure-login\",\n  \"conflicted_files\": [\n    \"src/utils/crypto.js\"\n  ],\n  \"git_dir_state\": \"REBASING\",\n  \"merge_head\": \"f3a2b1c0\"\n}}\n{{state_descriptions}}: {{\n  \"working_tree\": \"A mapping of file paths to their current string content in the local working directory, including merge conflict markers if applicable.\",\n  \"index\": \"A list of file paths that have been staged (equivalent to git add).\",\n  \"current_branch\": \"The name of the branch currently checked out.\",\n  \"conflicted_files\": \"A list of filenames that currently contain unresolved git merge conflicts.\",\n  \"git_dir_state\": \"The current mode of the git repository (e.g., 'IDLE', 'MERGING', 'REBASING').\",\n  \"merge_head\": \"The identifier of the commit or branch that is being merged into the current branch.\"\n}}\n{action_set_definitions}: {\n  \"get_git_status\": {\n    \"description\": \"Retrieves the current status of the git repository, including the current branch, the state of the git directory (e.g., REBASING, IDLE), the list of staged files (index), and the list of files with merge conflicts.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"current_branch\": \"feature/secure-login\",\n      \"git_dir_state\": \"REBASING\",\n      \"conflicted_files\": [\n        \"src/auth.js\"\n      ],\n      \"index\": [\n        \"config/app.json\"\n      ]\n    }\n  },\n  \"read_file\": {\n    \"description\": \"Reads the content of a file to inspect its source code and check for the presence of git merge conflict markers (<<<<<<<, =======, >>>>>>>).\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"file_path\": {\n          \"type\": \"string\",\n          \"description\": \"The path of the file to read.\"\n        }\n      },\n      \"required\": [\n        \"file_path\"\n      ]\n    },\n    \"example_output\": {\n      \"content\": \"string content\"\n    }\n  },\n  \"write_file\": {\n    \"description\": \"Writes resolved content to a file in the working directory, effectively removing conflict markers and applying the correct logic.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"file_path\": {\n          \"type\": \"string\",\n          \"description\": \"The path of the file to write.\"\n        },\n        \"content\": {\n          \"type\": \"string\",\n          \"description\": \"The full content of the file to be saved.\"\n        }\n      },\n      \"required\": [\n        \"file_path\",\n        \"content\"\n      ]\n    },\n    \"example_output\": {\n      \"success\": true\n    }\n  },\n  \"git_add\": {\n    \"description\": \"Stages a file to the git index. This must be called after resolving a conflict in a file.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"file_path\": {\n          \"type\": \"string\",\n          \"description\": \"The path of the file to stage.\"\n        }\n      },\n      \"required\": [\n        \"file_path\"\n      ]\n    },\n    \"example_output\": {\n      \"success\": true\n    }\n  },\n  \"git_rebase_action\": {\n    \"description\": \"Executes rebase control commands. Use 'continue' to proceed after resolving conflicts.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"command\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"continue\",\n            \"abort\",\n            \"skip\"\n          ],\n          \"description\": \"The command to run for the current rebase process.\"\n        }\n      },\n      \"required\": [\n        \"command\"\n      ]\n    },\n    \"example_output\": {\n      \"new_state\": \"IDLE\",\n      \"message\": \"Successfully rebased and updated refs/heads/feature/secure-login.\"\n    }\n  },\n  \"run_verification_tests\": {\n    \"description\": \"Runs the project's test suite to verify that the merge resolution preserves security logic and adheres to architectural patterns.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"status\": \"passed\",\n      \"failures\": 0\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_git_status",
+      "description": "Retrieves the current status of the git repository, including the current branch, the state of the git directory (e.g., REBASING, IDLE), the list of staged files (index), and the list of files with merge conflicts.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "current_branch": "feature/secure-login",
+        "git_dir_state": "REBASING",
+        "conflicted_files": [
+          "src/auth.js"
+        ],
+        "index": [
+          "config/app.json"
+        ]
+      }
+    },
+    {
+      "name": "read_file",
+      "description": "Reads the content of a file to inspect its source code and check for the presence of git merge conflict markers (<<<<<<<, =======, >>>>>>>).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "file_path": {
+            "type": "string",
+            "description": "The path of the file to read."
+          }
+        },
+        "required": [
+          "file_path"
+        ]
+      },
+      "example_output": {
+        "content": "string content"
+      }
+    },
+    {
+      "name": "write_file",
+      "description": "Writes resolved content to a file in the working directory, effectively removing conflict markers and applying the correct logic.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "file_path": {
+            "type": "string",
+            "description": "The path of the file to write."
+          },
+          "content": {
+            "type": "string",
+            "description": "The full content of the file to be saved."
+          }
+        },
+        "required": [
+          "file_path",
+          "content"
+        ]
+      },
+      "example_output": {
+        "success": true
+      }
+    },
+    {
+      "name": "git_add",
+      "description": "Stages a file to the git index. This must be called after resolving a conflict in a file.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "file_path": {
+            "type": "string",
+            "description": "The path of the file to stage."
+          }
+        },
+        "required": [
+          "file_path"
+        ]
+      },
+      "example_output": {
+        "success": true
+      }
+    },
+    {
+      "name": "git_rebase_action",
+      "description": "Executes rebase control commands. Use 'continue' to proceed after resolving conflicts.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "command": {
+            "type": "string",
+            "enum": [
+              "continue",
+              "abort",
+              "skip"
+            ],
+            "description": "The command to run for the current rebase process."
+          }
+        },
+        "required": [
+          "command"
+        ]
+      },
+      "example_output": {
+        "new_state": "IDLE",
+        "message": "Successfully rebased and updated refs/heads/feature/secure-login."
+      }
+    },
+    {
+      "name": "run_verification_tests",
+      "description": "Runs the project's test suite to verify that the merge resolution preserves security logic and adheres to architectural patterns.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "status": "passed",
+        "failures": 0
+      }
+    }
+  ],
+  "state_description": {
+    "working_tree": "A mapping of file paths to their current string content in the local working directory, including merge conflict markers if applicable.",
+    "index": "A list of file paths that have been staged (equivalent to git add).",
+    "current_branch": "The name of the branch currently checked out.",
+    "conflicted_files": "A list of filenames that currently contain unresolved git merge conflicts.",
+    "git_dir_state": "The current mode of the git repository (e.g., 'IDLE', 'MERGING', 'REBASING').",
+    "merge_head": "The identifier of the commit or branch that is being merged into the current branch."
+  },
+  "task_initial_state": {
+    "working_tree": {
+      "src/auth.js": "import { getEnv } from './env';\n<<<<<<< HEAD\nconst API_KEY = getEnv('PROD_KEY');\n=======\nconst API_KEY = getEnv('LEGACY_KEY');\n>>>>>>> feature/secure-login\n\nexport const init = () => { /* ... */ };",
+      "src/utils/crypto.js": "import { AES } from 'crypto-js';\n<<<<<<< HEAD\n// Upstream: use platform-native crypto\nexport const encrypt = (val) => window.crypto.subtle.encrypt('AES-GCM', val);\n=======\n// Feature: use crypto-js for cross-platform support\nexport const encrypt = (val) => AES.encrypt(val, process.env.SECRET);\n>>>>>>> feature/secure-login",
+      "README.md": "# Project\nSecure login feature implementation."
+    },
+    "index": [
+      "src/auth.js"
+    ],
+    "current_branch": "feature/secure-login",
+    "conflicted_files": [
+      "src/utils/crypto.js"
+    ],
+    "git_dir_state": "REBASING",
+    "merge_head": "f3a2b1c0"
+  }
+}

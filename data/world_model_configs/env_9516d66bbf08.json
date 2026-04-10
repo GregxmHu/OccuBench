@@ -1,0 +1,202 @@
+{
+  "environment_name": "env_9516d66bbf08",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM) for Product Listing Moderation.\n- **Core Objective**: Based on the current internal state $s_t$ and the action $a_t$ taken by the Agent (Moderator), simulate the environment's state transition and predict the observation $o_{{t+1}}$ the Agent receives. \n- **Emphasis**: You are the simulation engine. You do not perform real-world moderation but maintain the logic and consistency of a product moderation platform, including the listing queue, database updates, and policy enforcement simulations.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation tracking the moderation queue and processed records. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nYou must maintain perfect temporal and logical consistency. If a listing is marked as 'Approved' in step $t$, it must remain 'Approved' in the internal state for all future steps unless a specific action changes it. The history of all interactions dictates the current internal state.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the moderation environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` returned for each action must be a structured JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object containing:\n- `\"name\"`: The name of the moderation action (e.g., fetch_listing, submit_decision).\n- `\"arguments\"`: The parameters required for the action.\n\nYou must parse this JSON, update the internal state $s_t \\rightarrow s_{{t+1}}$ (e.g., moving a listing from 'pending' to 'reviewed'), and generate the resulting observation.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\n- If the Agent attempts to moderate a `listing_id` that does not exist: Return `{{\"error\": \"Listing ID [ID] not found\"}}`.\n- If the Agent submits an invalid decision string (e.g., 'Delete' instead of 'Reject'): Return `{{\"error\": \"Invalid decision value\"}}`.\n- If the Agent attempts to fetch from an empty queue: Return `{{\"status\": \"empty\", \"message\": \"No more listings to review\"}}`.\n- Do not fabricate data; if an action is invalid, the internal state remains unchanged.\n\n##### Output Assembly\nFor every action function call, return a structured JSON object containing **ONLY** the return fields declared in the action function's definition. \n\n**CRITICAL CONSTRAINT**: Your response must **NOT** include the internal state object, state summaries, or any hidden variables. You are only to output the `observation` (the direct result of the action).\n\n### 4. Key Principles\n- **Format**: Strictly adhere to JSON output for observations.\n- **Factuality**: Use the provided state and policy logic; do not invent product details or moderation rules not present in the context.\n- **Consistency**: Ensure that once a listing is processed, its status is updated internally and reflected in subsequent queue-related actions.\n- **Realism**: Simulate the delay or feedback typical of a database-backed moderation system.\n- **Quality**: Ensure error messages are helpful and structured.\n- **Encapsulation**: Strictly hide the internal state structure. The Agent must only see the specific return values (Observations) of their function calls.\n{{initial_state}}: {{\n  \"listing_queue\": [\n    {{\n      \"id\": \"LST_4401\",\n      \"title\": \"Graphic Card Packaging - RTX 4080\",\n      \"description\": \"This is the original BOX ONLY for collectors. No hardware included. Mint condition.\",\n      \"category\": \"Electronics > Components\",\n      \"price\": 350.0,\n      \"seller_trust_tier\": \"New\",\n      \"attributes\": {{\n        \"seller_age_days\": 2,\n        \"nlp_prob_score\": 0.55,\n        \"cv_prob_score\": 0.2,\n        \"risk_vector\": {{\n          \"scam\": 0.92,\n          \"weapon\": 0.0,\n          \"counterfeit\": 0.0\n        }}\n      }}\n    }},\n    {{\n      \"id\": \"LST_4402\",\n      \"title\": \"Brand New Replica Sneaker - 1:1 Quality\",\n      \"description\": \"Highest grade replica available. All logos present. Shipping worldwide.\",\n      \"category\": \"Apparel > Shoes\",\n      \"price\": 85.0,\n      \"seller_trust_tier\": \"Strategic\",\n      \"attributes\": {{\n        \"seller_age_days\": 840,\n        \"nlp_prob_score\": 0.98,\n        \"cv_prob_score\": 0.95,\n        \"risk_vector\": {{\n          \"scam\": 0.1,\n          \"weapon\": 0.0,\n          \"counterfeit\": 0.99\n        }}\n      }}\n    }},\n    {{\n      \"id\": \"LST_4403\",\n      \"title\": \"Tactical Deployment Blade\",\n      \"description\": \"Spring-loaded for emergency use. 4-inch reinforced steel.\",\n      \"category\": \"Outdoors > Tools\",\n      \"price\": 55.0,\n      \"seller_trust_tier\": \"Verified\",\n      \"attributes\": {{\n        \"seller_age_days\": 120,\n        \"nlp_prob_score\": 0.7,\n        \"cv_prob_score\": 0.97,\n        \"risk_vector\": {{\n          \"scam\": 0.0,\n          \"weapon\": 0.98,\n          \"counterfeit\": 0.0\n        }}\n      }}\n    }},\n    {{\n      \"id\": \"LST_4404\",\n      \"title\": \"Industrial Grade Pipe Connector\",\n      \"description\": \"Heavy-duty steel pipe segment for specialized hydraulic systems.\",\n      \"category\": \"Home Improvement\",\n      \"price\": 25.0,\n      \"seller_trust_tier\": \"Verified\",\n      \"attributes\": {{\n        \"seller_age_days\": 45,\n        \"nlp_prob_score\": 0.05,\n        \"cv_prob_score\": 0.88,\n        \"risk_vector\": {{\n          \"scam\": 0.0,\n          \"weapon\": 0.85,\n          \"counterfeit\": 0.0\n        }}\n      }}\n    }}\n  ],\n  \"moderation_history\": {{}},\n  \"system_stats\": {{\n    \"total_processed\": 0,\n    \"remaining_in_queue\": 4\n  }},\n  \"active_listing_id\": null\n}}\n{{state_descriptions}}: {{\n  \"listing_queue\": \"An ordered list of product objects currently awaiting moderation, each containing id, title, description, and category.\",\n  \"moderation_history\": \"A mapping of listing_ids to their final moderation status (e.g., 'approved', 'rejected', 'escalated') and the reason provided.\",\n  \"system_stats\": \"Counters for the session, including total_processed and remaining_in_queue.\",\n  \"active_listing_id\": \"The ID of the listing currently being viewed or locked by the moderator.\"\n}}\n{action_set_definitions}: {\n  \"get_listing_queue\": {\n    \"description\": \"Retrieves the current list of pending product listings from the environment.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"listings\": [\n        {\n          \"id\": \"PROD-001\",\n          \"title\": \"Graphics Card - Box Only\",\n          \"category\": \"Electronics\"\n        }\n      ]\n    }\n  },\n  \"get_seller_profile\": {\n    \"description\": \"Retrieves information about the seller of a specific listing, including their tier and trust multiplier.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"listing_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the listing to check.\"\n        }\n      },\n      \"required\": [\n        \"listing_id\"\n      ]\n    },\n    \"example_output\": {\n      \"seller_id\": \"S-9982\",\n      \"tier\": \"Strategic\",\n      \"trust_multiplier\": 0.85\n    }\n  },\n  \"run_risk_assessment\": {\n    \"description\": \"Executes multi-modal ensemble scoring to detect risk vectors (weapons, box-only scams) and returns the baseline risk score and category-specific overrides.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"listing_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the listing to analyze.\"\n        }\n      },\n      \"required\": [\n        \"listing_id\"\n      ]\n    },\n    \"example_output\": {\n      \"baseline_risk_score\": 72.5,\n      \"is_weapon_violation\": false,\n      \"is_box_only_scam\": true,\n      \"category_override_factor\": 1.1\n    }\n  },\n  \"get_operational_thresholds\": {\n    \"description\": \"Retrieves the current risk threshold values from the Operational Handbook.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"standard_risk_threshold\": 50.0\n    }\n  },\n  \"submit_moderation_decision\": {\n    \"description\": \"Updates the status of a listing in the system and moves it out of the queue.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"listing_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the listing to moderate.\"\n        },\n        \"status\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"Published\",\n            \"Rejected\",\n            \"Pending_Review\"\n          ],\n          \"description\": \"The final status to apply.\"\n        },\n        \"reason\": {\n          \"type\": \"string\",\n          \"description\": \"Explanation for the decision.\"\n        }\n      },\n      \"required\": [\n        \"listing_id\",\n        \"status\",\n        \"reason\"\n      ]\n    },\n    \"example_output\": {\n      \"success\": true,\n      \"listing_id\": \"PROD-001\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_listing_queue",
+      "description": "Retrieves the current list of pending product listings from the environment.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "listings": [
+          {
+            "id": "PROD-001",
+            "title": "Graphics Card - Box Only",
+            "category": "Electronics"
+          }
+        ]
+      }
+    },
+    {
+      "name": "get_seller_profile",
+      "description": "Retrieves information about the seller of a specific listing, including their tier and trust multiplier.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "listing_id": {
+            "type": "string",
+            "description": "The ID of the listing to check."
+          }
+        },
+        "required": [
+          "listing_id"
+        ]
+      },
+      "example_output": {
+        "seller_id": "S-9982",
+        "tier": "Strategic",
+        "trust_multiplier": 0.85
+      }
+    },
+    {
+      "name": "run_risk_assessment",
+      "description": "Executes multi-modal ensemble scoring to detect risk vectors (weapons, box-only scams) and returns the baseline risk score and category-specific overrides.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "listing_id": {
+            "type": "string",
+            "description": "The ID of the listing to analyze."
+          }
+        },
+        "required": [
+          "listing_id"
+        ]
+      },
+      "example_output": {
+        "baseline_risk_score": 72.5,
+        "is_weapon_violation": false,
+        "is_box_only_scam": true,
+        "category_override_factor": 1.1
+      }
+    },
+    {
+      "name": "get_operational_thresholds",
+      "description": "Retrieves the current risk threshold values from the Operational Handbook.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "standard_risk_threshold": 50.0
+      }
+    },
+    {
+      "name": "submit_moderation_decision",
+      "description": "Updates the status of a listing in the system and moves it out of the queue.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "listing_id": {
+            "type": "string",
+            "description": "The ID of the listing to moderate."
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "Published",
+              "Rejected",
+              "Pending_Review"
+            ],
+            "description": "The final status to apply."
+          },
+          "reason": {
+            "type": "string",
+            "description": "Explanation for the decision."
+          }
+        },
+        "required": [
+          "listing_id",
+          "status",
+          "reason"
+        ]
+      },
+      "example_output": {
+        "success": true,
+        "listing_id": "PROD-001"
+      }
+    }
+  ],
+  "state_description": {
+    "listing_queue": "An ordered list of product objects currently awaiting moderation, each containing id, title, description, and category.",
+    "moderation_history": "A mapping of listing_ids to their final moderation status (e.g., 'approved', 'rejected', 'escalated') and the reason provided.",
+    "system_stats": "Counters for the session, including total_processed and remaining_in_queue.",
+    "active_listing_id": "The ID of the listing currently being viewed or locked by the moderator."
+  },
+  "task_initial_state": {
+    "listing_queue": [
+      {
+        "id": "LST_4401",
+        "title": "Graphic Card Packaging - RTX 4080",
+        "description": "This is the original BOX ONLY for collectors. No hardware included. Mint condition.",
+        "category": "Electronics > Components",
+        "price": 350.0,
+        "seller_trust_tier": "New",
+        "attributes": {
+          "seller_age_days": 2,
+          "nlp_prob_score": 0.55,
+          "cv_prob_score": 0.2,
+          "risk_vector": {
+            "scam": 0.92,
+            "weapon": 0.0,
+            "counterfeit": 0.0
+          }
+        }
+      },
+      {
+        "id": "LST_4402",
+        "title": "Brand New Replica Sneaker - 1:1 Quality",
+        "description": "Highest grade replica available. All logos present. Shipping worldwide.",
+        "category": "Apparel > Shoes",
+        "price": 85.0,
+        "seller_trust_tier": "Strategic",
+        "attributes": {
+          "seller_age_days": 840,
+          "nlp_prob_score": 0.98,
+          "cv_prob_score": 0.95,
+          "risk_vector": {
+            "scam": 0.1,
+            "weapon": 0.0,
+            "counterfeit": 0.99
+          }
+        }
+      },
+      {
+        "id": "LST_4403",
+        "title": "Tactical Deployment Blade",
+        "description": "Spring-loaded for emergency use. 4-inch reinforced steel.",
+        "category": "Outdoors > Tools",
+        "price": 55.0,
+        "seller_trust_tier": "Verified",
+        "attributes": {
+          "seller_age_days": 120,
+          "nlp_prob_score": 0.7,
+          "cv_prob_score": 0.97,
+          "risk_vector": {
+            "scam": 0.0,
+            "weapon": 0.98,
+            "counterfeit": 0.0
+          }
+        }
+      },
+      {
+        "id": "LST_4404",
+        "title": "Industrial Grade Pipe Connector",
+        "description": "Heavy-duty steel pipe segment for specialized hydraulic systems.",
+        "category": "Home Improvement",
+        "price": 25.0,
+        "seller_trust_tier": "Verified",
+        "attributes": {
+          "seller_age_days": 45,
+          "nlp_prob_score": 0.05,
+          "cv_prob_score": 0.88,
+          "risk_vector": {
+            "scam": 0.0,
+            "weapon": 0.85,
+            "counterfeit": 0.0
+          }
+        }
+      }
+    ],
+    "moderation_history": {},
+    "system_stats": {
+      "total_processed": 0,
+      "remaining_in_queue": 4
+    },
+    "active_listing_id": null
+  }
+}

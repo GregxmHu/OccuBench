@@ -1,0 +1,197 @@
+{
+  "environment_name": "env_a4e019b5ba9e",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: Based on the current game state $s_t$ and the strategy action $a_t$ executed by the Agent, simulate the internal evolution of the game world and predict the observation $o_{{t+1}}$ obtained by the Agent. \n- **Emphasis**: The LWM acts as the game engine's logic layer. It does not play the game; it calculates the consequences of actions, updates hidden state variables, and generates the resulting sensory or data feedback (Observation) for the Agent.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation tracking player stats, world variables, and progress. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions must maintain strict logical consistency with the history of the game. If an item is consumed in a previous turn, it remains unavailable; if a character's health reaches zero, the environment must reflect the consequences of defeat in all subsequent turns.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the game world by calling strategy-related action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent submits action requests via a structured JSON object. You must parse this JSON to determine the intended transition. The input format is:\n- `\"name\"`: The specific strategy action (e.g., move, attack, trade, craft).\n- `\"arguments\"`: A dictionary of parameters required for that action.\n\nExample:\n```json\n{{\n \"name\": \"move_to_location\",\n \"arguments\": {{\n    \"destination\": \"Enchanted Forest\",\n    \"travel_mode\": \"stealth\"\n  }}\n}}\n```\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nIf the Agent attempts an impossible action (e.g., moving to a locked area, using an item not in inventory, or providing invalid parameters), you must return a structured error message:\n- `{{\"error\": \"Reason for failure\"}}`\nDo not proceed with state updates if the action is invalid. Do not fabricate successful outcomes for failed logic.\n\n##### Output Assembly\nFor every action function call, return a structured JSON object containing **ONLY** the observation fields defined in the action's specific return schema.\n\n**CRITICAL CONSTRAINT**: You must **NOT** include the updated internal state `{{new_state}}`, hidden global variables, or the full state dump in the output. The Agent only receives the observation. State tracking is handled internally by your context window; do not expose the \"backend\" variables to the Agent.\n\n### 4. Key Principles\n- **Format**: Strictly output valid JSON for all observations.\n- **Factuality**: Adhere to the mechanics defined in the action set. Do not invent new game rules or items.\n- **Consistency**: Ensure the world's reaction is persistent. If a building is destroyed, it stays destroyed.\n- **Realism**: Strategy outcomes (e.g., combat damage, trade prices, resource depletion) should follow a logical and balanced progression consistent with the game's theme.\n- **Quality**: Descriptive text within observations should be clear and facilitate strategic decision-making.\n- **Encapsulation**: Maintain a strict \"Black Box\" environment. The Agent sees the results of their action, not the updated state JSON.\n{{initial_state}}: {{\n  \"player_stats\": {{\n    \"hp\": 95,\n    \"max_hp\": 100,\n    \"stamina\": 15,\n    \"level\": 8\n  }},\n  \"resources\": {{\n    \"gold\": 450,\n    \"wood\": 0,\n    \"stone\": 0\n  }},\n  \"current_location\": \"Sideline_Scuffle_Zone\",\n  \"inventory\": [\n    \"League_Manual_v2022_Final\",\n    \"League_Manual_v2023_Revised\",\n    \"League_Manual_v2024_Current\",\n    \"Draft_Proposals_2025\",\n    \"Standard_Whistle\",\n    \"Water_Bottle_Empty\"\n  ],\n  \"world_clock\": 310,\n  \"quest_log\": {{\n    \"active\": [\n      \"Manage_Multi_Player_Conflict\"\n    ],\n    \"completed\": []\n  }},\n  \"environment_entities\": [\n    {{\n      \"id\": \"player_blue_11\",\n      \"name\": \"Guard_A\",\n      \"status\": \"Aggressive\",\n      \"last_action\": \"Shouting_At_Referee\",\n      \"role\": \"Follower\"\n    }},\n    {{\n      \"id\": \"player_blue_05\",\n      \"name\": \"Forward_B\",\n      \"status\": \"Aggressive\",\n      \"last_action\": \"Initial_Contact_Push\",\n      \"role\": \"Instigator\"\n    }},\n    {{\n      \"id\": \"player_blue_22\",\n      \"name\": \"Center_C\",\n      \"status\": \"Neutral\",\n      \"last_action\": \"Standing_Still\",\n      \"role\": \"Bystander\"\n    }},\n    {{\n      \"id\": \"ref_alpha\",\n      \"name\": \"Official_Miller\",\n      \"status\": \"Distracted\",\n      \"position\": \"Trail\",\n      \"focus\": \"Scoreboard\"\n    }},\n    {{\n      \"id\": \"ref_beta\",\n      \"name\": \"Official_Davis\",\n      \"status\": \"Observing\",\n      \"position\": \"Lead\",\n      \"focus\": \"Scuffle_Center\"\n    }},\n    {{\n      \"id\": \"ref_gamma\",\n      \"name\": \"Official_Wilson\",\n      \"status\": \"Observing\",\n      \"position\": \"Sideline\",\n      \"focus\": \"Crowd_Control\"\n    }},\n    {{\n      \"id\": \"ref_delta\",\n      \"name\": \"Official_Thompson\",\n      \"status\": \"Distracted\",\n      \"position\": \"Lead\",\n      \"focus\": \"Injured_Player\"\n    }}\n  ]\n}}\n{{state_descriptions}}: {{\n  \"player_stats\": \"Current status of the player character including health, energy, and level.\",\n  \"resources\": \"Quantity of different currencies and raw materials owned.\",\n  \"current_location\": \"The name of the current region or coordinate where the agent is located.\",\n  \"inventory\": \"List of items currently held by the agent.\",\n  \"world_clock\": \"Total number of turns or time units elapsed since start.\",\n  \"quest_log\": \"Tracking of active and completed mission objectives.\",\n  \"environment_entities\": \"Status of NPCs, enemies, or interactable objects in the immediate vicinity.\"\n}}\n{action_set_definitions}: {\n  \"get_comprehensive_state\": {\n    \"description\": \"Retrieves the full current environment state, including player stats, resources, world clock, and entity statuses (NPCs and officials) in one call to minimize time units.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"player_stats\": {\n        \"retaliation_index\": 0\n      },\n      \"resources\": {\n        \"gold\": 450\n      },\n      \"world_clock\": 12,\n      \"environment_entities\": [\n        {\n          \"id\": \"player_opp_72\",\n          \"role\": \"Opponent\",\n          \"last_action\": \"physical_contact_dead_ball\"\n        },\n        {\n          \"id\": \"ref_lead_01\",\n          \"role\": \"Lead\",\n          \"state\": \"Observing\"\n        }\n      ]\n    }\n  },\n  \"fetch_rule_citation\": {\n    \"description\": \"Retrieves the 'Rule_Reference_Accuracy' citation from the current season's official manual for a specific incident type.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"incident_type\": {\n          \"type\": \"string\",\n          \"description\": \"The specific type of incident to look up in the manual (e.g., 'dead-ball contact').\"\n        }\n      },\n      \"required\": [\n        \"incident_type\"\n      ]\n    },\n    \"example_output\": {\n      \"citation\": \"Rule 12, Section II, Paragraph 4: Dead-ball Physicality\"\n    }\n  },\n  \"apply_behavioral_protocol\": {\n    \"description\": \"Executes a psychological or social protocol (e.g., 'Gray Rock') on a target player to neutralize hostility.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"target_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique ID of the player to target.\"\n        },\n        \"protocol_name\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"Gray Rock\"\n          ],\n          \"description\": \"The name of the protocol to apply.\"\n        }\n      },\n      \"required\": [\n        \"target_id\",\n        \"protocol_name\"\n      ]\n    },\n    \"example_output\": {\n      \"success\": true,\n      \"new_hostility_level\": \"Neutral\"\n    }\n  },\n  \"submit_official_citation\": {\n    \"description\": \"Provides a formal rule citation to a specific member of the officiating crew.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"official_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the official receiving the citation.\"\n        },\n        \"citation_text\": {\n          \"type\": \"string\",\n          \"description\": \"The formal 'Rule_Reference_Accuracy' text.\"\n        }\n      },\n      \"required\": [\n        \"official_id\",\n        \"citation_text\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"Citation Accepted\",\n      \"penalty_avoided\": \"Bystander Effect\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_comprehensive_state",
+      "description": "Retrieves the full current environment state, including player stats, resources, world clock, and entity statuses (NPCs and officials) in one call to minimize time units.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "player_stats": {
+          "retaliation_index": 0
+        },
+        "resources": {
+          "gold": 450
+        },
+        "world_clock": 12,
+        "environment_entities": [
+          {
+            "id": "player_opp_72",
+            "role": "Opponent",
+            "last_action": "physical_contact_dead_ball"
+          },
+          {
+            "id": "ref_lead_01",
+            "role": "Lead",
+            "state": "Observing"
+          }
+        ]
+      }
+    },
+    {
+      "name": "fetch_rule_citation",
+      "description": "Retrieves the 'Rule_Reference_Accuracy' citation from the current season's official manual for a specific incident type.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "incident_type": {
+            "type": "string",
+            "description": "The specific type of incident to look up in the manual (e.g., 'dead-ball contact')."
+          }
+        },
+        "required": [
+          "incident_type"
+        ]
+      },
+      "example_output": {
+        "citation": "Rule 12, Section II, Paragraph 4: Dead-ball Physicality"
+      }
+    },
+    {
+      "name": "apply_behavioral_protocol",
+      "description": "Executes a psychological or social protocol (e.g., 'Gray Rock') on a target player to neutralize hostility.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "target_id": {
+            "type": "string",
+            "description": "The unique ID of the player to target."
+          },
+          "protocol_name": {
+            "type": "string",
+            "enum": [
+              "Gray Rock"
+            ],
+            "description": "The name of the protocol to apply."
+          }
+        },
+        "required": [
+          "target_id",
+          "protocol_name"
+        ]
+      },
+      "example_output": {
+        "success": true,
+        "new_hostility_level": "Neutral"
+      }
+    },
+    {
+      "name": "submit_official_citation",
+      "description": "Provides a formal rule citation to a specific member of the officiating crew.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "official_id": {
+            "type": "string",
+            "description": "The ID of the official receiving the citation."
+          },
+          "citation_text": {
+            "type": "string",
+            "description": "The formal 'Rule_Reference_Accuracy' text."
+          }
+        },
+        "required": [
+          "official_id",
+          "citation_text"
+        ]
+      },
+      "example_output": {
+        "status": "Citation Accepted",
+        "penalty_avoided": "Bystander Effect"
+      }
+    }
+  ],
+  "state_description": {
+    "player_stats": "Current status of the player character including health, energy, and level.",
+    "resources": "Quantity of different currencies and raw materials owned.",
+    "current_location": "The name of the current region or coordinate where the agent is located.",
+    "inventory": "List of items currently held by the agent.",
+    "world_clock": "Total number of turns or time units elapsed since start.",
+    "quest_log": "Tracking of active and completed mission objectives.",
+    "environment_entities": "Status of NPCs, enemies, or interactable objects in the immediate vicinity."
+  },
+  "task_initial_state": {
+    "player_stats": {
+      "hp": 95,
+      "max_hp": 100,
+      "stamina": 15,
+      "level": 8
+    },
+    "resources": {
+      "gold": 450,
+      "wood": 0,
+      "stone": 0
+    },
+    "current_location": "Sideline_Scuffle_Zone",
+    "inventory": [
+      "League_Manual_v2022_Final",
+      "League_Manual_v2023_Revised",
+      "League_Manual_v2024_Current",
+      "Draft_Proposals_2025",
+      "Standard_Whistle",
+      "Water_Bottle_Empty"
+    ],
+    "world_clock": 310,
+    "quest_log": {
+      "active": [
+        "Manage_Multi_Player_Conflict"
+      ],
+      "completed": []
+    },
+    "environment_entities": [
+      {
+        "id": "player_blue_11",
+        "name": "Guard_A",
+        "status": "Aggressive",
+        "last_action": "Shouting_At_Referee",
+        "role": "Follower"
+      },
+      {
+        "id": "player_blue_05",
+        "name": "Forward_B",
+        "status": "Aggressive",
+        "last_action": "Initial_Contact_Push",
+        "role": "Instigator"
+      },
+      {
+        "id": "player_blue_22",
+        "name": "Center_C",
+        "status": "Neutral",
+        "last_action": "Standing_Still",
+        "role": "Bystander"
+      },
+      {
+        "id": "ref_alpha",
+        "name": "Official_Miller",
+        "status": "Distracted",
+        "position": "Trail",
+        "focus": "Scoreboard"
+      },
+      {
+        "id": "ref_beta",
+        "name": "Official_Davis",
+        "status": "Observing",
+        "position": "Lead",
+        "focus": "Scuffle_Center"
+      },
+      {
+        "id": "ref_gamma",
+        "name": "Official_Wilson",
+        "status": "Observing",
+        "position": "Sideline",
+        "focus": "Crowd_Control"
+      },
+      {
+        "id": "ref_delta",
+        "name": "Official_Thompson",
+        "status": "Distracted",
+        "position": "Lead",
+        "focus": "Injured_Player"
+      }
+    ]
+  }
+}

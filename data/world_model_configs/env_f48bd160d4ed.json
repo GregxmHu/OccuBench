@@ -1,0 +1,187 @@
+{
+  "environment_name": "env_f48bd160d4ed",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM) for Building Inspection Compliance.\n- **Core Objective**: Based on the current state $s_t$ (building condition, inspector progress) and action $a_t$ (inspecting a zone, checking a manual, recording a violation), simulate the environment's evolution and predict the observation $o_{{t+1}}$ obtained by the Inspector Agent.\n- **Emphasis**: The LWM does not perform real inspections. It simulates the physical and regulatory response of a building site, generating realistic feedback based on inspection protocols.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions between the World Model and the Agent must maintain context consistency. Changes to the building's compliance status, identified hazards, and the inspector's location must persist throughout the session to ensure logical continuity.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. This JSON must contain the following fields:\n- `\"name\"`: Specifies the name of the action function to execute (e.g., \"move_to_zone\", \"examine_component\", \"log_violation\").\n- The remaining fields are the parameter names and corresponding values required by that action function.\n\nExample:\n```json\n{{\n \"name\": \"examine_component\",\n \"arguments\": {{\n    \"component_id\": \"fire_extinguisher_04\",\n    \"inspection_type\": \"visual_check\"\n  }}\n}}\n```\n\nThe Language World Model must correctly parse such JSON inputs and simulate the execution results based on the current building state.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nFor invalid parameters (e.g., inspecting a room that doesn't exist), undefined actions, state conflicts (e.g., trying to inspect a locked area without a key), or empty inputs, return structured error information (e.g., `{{\"error\": \"Zone access restricted\"}}`), and do not fabricate states or fictitious responses.\n\n##### Output Assembly\nFor every action function call, the model must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition.\n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, `new_state`, or any hidden variables. The state maintenance is implicit in the history. The Agent must only see the specific return values defined in the action (the Observation). For example, if the agent moves to a room, the observation should be the visual description of that room, not the updated state dictionary.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to specified JSON and text formats.\n- **Factuality**: Do not fabricate non-existent functions, building zones, or regulatory codes not implied by the state.\n- **Consistency**: If a fire hazard is identified in one turn, it must remain present in that location in subsequent turns until a corrective action is simulated.\n- **Realism**: Simulated building conditions (e.g., frayed wires, blocked exits) must align with realistic inspection findings and building safety dynamics.\n- **Quality**: Language must be clear, professional, and structurally complete.\n- **Encapsulation**: Strictly hide the internal state structure from the output. Only expose information that is explicitly returned by the action function. Do not output the state update.\n{{initial_state}}: {{\n  \"current_location\": \"UAV Launch Zone - North\",\n  \"inspection_checklist\": {{\n    \"fire_safety\": \"pass\",\n    \"structural_integrity\": \"pending\",\n    \"electrical_systems\": \"pass\",\n    \"accessibility\": \"pass\",\n    \"thermal_envelope\": \"pending\"\n  }},\n  \"discovered_violations\": [],\n  \"environmental_conditions\": {{\n    \"lighting\": \"dawn\",\n    \"occupancy_level\": \"low\",\n    \"active_construction\": false,\n    \"wind_speed_ms\": 7.8,\n    \"ambient_temp_c\": -6.5,\n    \"current_surface\": \"reflective_glazing\"\n  }},\n  \"elapsed_time_minutes\": 0,\n  \"site_integrity_score\": 100\n}}\n{{state_descriptions}}: {{\n  \"current_location\": \"The specific room, floor, or zone where the inspector is currently located.\",\n  \"inspection_checklist\": \"A map of compliance categories (e.g., Fire Safety, Structural, Electrical) and their current status (Pending/Pass/Fail).\",\n  \"discovered_violations\": \"A list of specific safety violations or non-compliance issues identified during the inspection.\",\n  \"environmental_conditions\": \"Dynamic conditions of the building site such as lighting levels, occupancy, or ongoing construction activities.\",\n  \"elapsed_time_minutes\": \"The total time spent on the inspection so far.\",\n  \"site_integrity_score\": \"A numerical value from 0 to 100 representing the overall compliance level of the building.\"\n}}\n{action_set_definitions}: {\n  \"get_site_context\": {\n    \"description\": \"Retrieves the current location and meteorological data (temperature, wind, precipitation) to determine inspection feasibility.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"location\": \"North Facade Perimeter\",\n      \"weather\": {\n        \"temp_celsius\": 22,\n        \"wind_speed_kph\": 5,\n        \"precipitation\": \"none\",\n        \"is_suitable_for_thermal\": true\n      }\n    }\n  },\n  \"get_inspection_checklist\": {\n    \"description\": \"Retrieves the current status of all compliance categories in the inspection checklist.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"checklist\": {\n        \"Thermal Compliance\": \"Pending\",\n        \"Structural Integrity\": \"Pass\"\n      }\n    }\n  },\n  \"analyze_facade_material\": {\n    \"description\": \"Analyzes the physical material of the current facade to determine emissivity and reflection-compensation settings.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"zone\": {\n          \"type\": \"string\",\n          \"description\": \"The specific area of the facade to analyze.\"\n        }\n      },\n      \"required\": [\n        \"zone\"\n      ]\n    },\n    \"example_output\": {\n      \"material_type\": \"Glass/Aluminum\",\n      \"emissivity_coefficient\": 0.85,\n      \"reflection_risk\": \"High\"\n    }\n  },\n  \"perform_thermal_scan\": {\n    \"description\": \"Executes a thermal imaging scan using specific calibration parameters to identify anomalies.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"emissivity_setting\": {\n          \"type\": \"number\",\n          \"description\": \"The setting used to compensate for material properties.\"\n        },\n        \"strategy\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"standard\",\n            \"anti_reflective\",\n            \"high_contrast\"\n          ],\n          \"description\": \"The scanning mode chosen based on material analysis.\"\n        }\n      },\n      \"required\": [\n        \"emissivity_setting\",\n        \"strategy\"\n      ]\n    },\n    \"example_output\": {\n      \"anomalies\": [\n        {\n          \"id\": \"ANOM-001\",\n          \"thermal_contrast\": \"high\",\n          \"temp_delta\": 5.2,\n          \"coordinates\": \"Grid-A1\"\n        }\n      ]\n    }\n  },\n  \"log_defect_violation\": {\n    \"description\": \"Logs a specific defect into the site record, including categorization based on thermal data.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"defect_description\": {\n          \"type\": \"string\",\n          \"description\": \"Detailed description of the defect.\"\n        },\n        \"category\": {\n          \"type\": \"string\",\n          \"description\": \"Classification (e.g., Insulation Gap, Moisture Ingress, Thermal Bridge).\"\n        },\n        \"severity\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"Critical\",\n            \"Major\",\n            \"Minor\"\n          ]\n        }\n      },\n      \"required\": [\n        \"defect_description\",\n        \"category\",\n        \"severity\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"Logged\",\n      \"violation_id\": \"VIO-992\"\n    }\n  },\n  \"update_checklist_status\": {\n    \"description\": \"Updates the status of a specific checklist category and recalculates the site integrity score.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"category\": {\n          \"type\": \"string\",\n          \"description\": \"The name of the checklist category to update.\"\n        },\n        \"status\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"Pass\",\n            \"Fail\"\n          ],\n          \"description\": \"The new status based on scan results.\"\n        }\n      },\n      \"required\": [\n        \"category\",\n        \"status\"\n      ]\n    },\n    \"example_output\": {\n      \"updated_integrity_score\": 88\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_site_context",
+      "description": "Retrieves the current location and meteorological data (temperature, wind, precipitation) to determine inspection feasibility.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "location": "North Facade Perimeter",
+        "weather": {
+          "temp_celsius": 22,
+          "wind_speed_kph": 5,
+          "precipitation": "none",
+          "is_suitable_for_thermal": true
+        }
+      }
+    },
+    {
+      "name": "get_inspection_checklist",
+      "description": "Retrieves the current status of all compliance categories in the inspection checklist.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "checklist": {
+          "Thermal Compliance": "Pending",
+          "Structural Integrity": "Pass"
+        }
+      }
+    },
+    {
+      "name": "analyze_facade_material",
+      "description": "Analyzes the physical material of the current facade to determine emissivity and reflection-compensation settings.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "zone": {
+            "type": "string",
+            "description": "The specific area of the facade to analyze."
+          }
+        },
+        "required": [
+          "zone"
+        ]
+      },
+      "example_output": {
+        "material_type": "Glass/Aluminum",
+        "emissivity_coefficient": 0.85,
+        "reflection_risk": "High"
+      }
+    },
+    {
+      "name": "perform_thermal_scan",
+      "description": "Executes a thermal imaging scan using specific calibration parameters to identify anomalies.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "emissivity_setting": {
+            "type": "number",
+            "description": "The setting used to compensate for material properties."
+          },
+          "strategy": {
+            "type": "string",
+            "enum": [
+              "standard",
+              "anti_reflective",
+              "high_contrast"
+            ],
+            "description": "The scanning mode chosen based on material analysis."
+          }
+        },
+        "required": [
+          "emissivity_setting",
+          "strategy"
+        ]
+      },
+      "example_output": {
+        "anomalies": [
+          {
+            "id": "ANOM-001",
+            "thermal_contrast": "high",
+            "temp_delta": 5.2,
+            "coordinates": "Grid-A1"
+          }
+        ]
+      }
+    },
+    {
+      "name": "log_defect_violation",
+      "description": "Logs a specific defect into the site record, including categorization based on thermal data.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "defect_description": {
+            "type": "string",
+            "description": "Detailed description of the defect."
+          },
+          "category": {
+            "type": "string",
+            "description": "Classification (e.g., Insulation Gap, Moisture Ingress, Thermal Bridge)."
+          },
+          "severity": {
+            "type": "string",
+            "enum": [
+              "Critical",
+              "Major",
+              "Minor"
+            ]
+          }
+        },
+        "required": [
+          "defect_description",
+          "category",
+          "severity"
+        ]
+      },
+      "example_output": {
+        "status": "Logged",
+        "violation_id": "VIO-992"
+      }
+    },
+    {
+      "name": "update_checklist_status",
+      "description": "Updates the status of a specific checklist category and recalculates the site integrity score.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "category": {
+            "type": "string",
+            "description": "The name of the checklist category to update."
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "Pass",
+              "Fail"
+            ],
+            "description": "The new status based on scan results."
+          }
+        },
+        "required": [
+          "category",
+          "status"
+        ]
+      },
+      "example_output": {
+        "updated_integrity_score": 88
+      }
+    }
+  ],
+  "state_description": {
+    "current_location": "The specific room, floor, or zone where the inspector is currently located.",
+    "inspection_checklist": "A map of compliance categories (e.g., Fire Safety, Structural, Electrical) and their current status (Pending/Pass/Fail).",
+    "discovered_violations": "A list of specific safety violations or non-compliance issues identified during the inspection.",
+    "environmental_conditions": "Dynamic conditions of the building site such as lighting levels, occupancy, or ongoing construction activities.",
+    "elapsed_time_minutes": "The total time spent on the inspection so far.",
+    "site_integrity_score": "A numerical value from 0 to 100 representing the overall compliance level of the building."
+  },
+  "task_initial_state": {
+    "current_location": "UAV Launch Zone - North",
+    "inspection_checklist": {
+      "fire_safety": "pass",
+      "structural_integrity": "pending",
+      "electrical_systems": "pass",
+      "accessibility": "pass",
+      "thermal_envelope": "pending"
+    },
+    "discovered_violations": [],
+    "environmental_conditions": {
+      "lighting": "dawn",
+      "occupancy_level": "low",
+      "active_construction": false,
+      "wind_speed_ms": 7.8,
+      "ambient_temp_c": -6.5,
+      "current_surface": "reflective_glazing"
+    },
+    "elapsed_time_minutes": 0,
+    "site_integrity_score": 100
+  }
+}

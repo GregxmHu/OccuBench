@@ -1,0 +1,227 @@
+{
+  "environment_name": "env_a362d8133c39",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: You are the simulation engine for an Escalation Workflow Management environment. Based on the current internal state $s_t$ and the action $a_t$ executed by the Agent, you must simulate the internal evolution of ticket lifecycles, SLA timers, and assignment logic to predict and return the observation $o_{{t+1}}$ obtained by the Agent.\n- **Emphasis**: You do not resolve tickets or perform real-world management. You only perform internal state evolution and generate the resulting observations based on the rules of a structured escalation workflow.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nYou must maintain perfect continuity of the workflow history. Every action taken by the Agent influences the internal state (e.g., changing a ticket's 'status' or 'tier'), which must be reflected in the logic of all subsequent observations.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the workflow environment by calling action functions defined below:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. You must parse this JSON to determine which workflow logic to trigger.\nExample Input:\n```json\n{{\n \"name\": \"escalate_ticket\",\n \"arguments\": {{\n    \"ticket_id\": \"INC-1024\",\n    \"target_tier\": 2,\n    \"reason\": \"Requires senior engineering review\"\n  }}\n}}\n```\nYou must validate the parameters against the state before simulating the result.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nYou must return structured error information in the following scenarios:\n- **Invalid State Transition**: e.g., Trying to 'resolve' a ticket that is already 'closed' or 'escalating' a ticket to a tier it is already in.\n- **Missing Resource**: e.g., Assigning a ticket to a non-existent user or team.\n- **Parameter Validation**: e.g., Providing a string for a field that requires an integer.\n- **Non-existent Action**: If the Agent calls a function not in `{{action_set_definitions}}`.\nExample Error: `{{\"error\": \"Ticket INC-1024 is already at Tier 3 and cannot be escalated further.\"}}`\n\n##### Output Assembly\nFor every action, you must return a structured JSON object containing **ONLY** the specific observation fields declared in that action's definition within `{{action_set_definitions}}`.\n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, the `new_state`, or hidden administrative fields. You are simulating an interface; the Agent only sees the result of their specific action (the Observation). Do not output the state update text.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to JSON for both state management (internal) and observation (output).\n- **Factuality**: Do not invent ticket IDs, team names, or workflow statuses that have not been initialized or created through valid actions.\n- **Consistency**: If a ticket is escalated to Tier 2, subsequent 'get_ticket_details' actions must reflect Tier 2.\n- **Realism**: Simulate realistic workflow dynamics, such as SLA clocks ticking forward or status-dependent field requirements.\n- **Quality**: Observations should be professional, clear, and unambiguous.\n- **Encapsulation**: Strictly hide the internal state structure from the output. Only expose information that is explicitly returned by the action function.\n{{initial_state}}: {{\n  \"tickets\": {{\n    \"INC-9002\": {{\n      \"subject\": \"System Alert: Anomalous API Activity\",\n      \"priority\": \"high\",\n      \"tier\": \"tier_1\",\n      \"status\": \"open\",\n      \"assigned_to\": \"agent_smith\",\n      \"client_name\": \"Acme Corp\",\n      \"reporter_name\": \"Marcus Thorne\",\n      \"visibility\": \"public_support\",\n      \"created_at\": \"2024-05-10T14:00:00Z\",\n      \"internal_logs\": \"Log analysis indicates a potential API Key leak via a public repository; unauthorized export of 20,000 PII records detected from IP 45.x.x.x.\"\n    }}\n  }},\n  \"teams\": {{\n    \"tier_1\": [\n      \"agent_smith\"\n    ],\n    \"tier_2\": [\n      \"lead_brown\"\n    ],\n    \"tier_3\": [\n      {{\n        \"name\": \"Commander Vance\",\n        \"specialty\": \"API & Token Security\"\n      }},\n      {{\n        \"name\": \"Sarah Miller\",\n        \"specialty\": \"Legal & PII Compliance\"\n      }}\n    ]\n  }},\n  \"system_timestamp\": \"2024-05-10T14:02:00Z\",\n  \"workflow_config\": {{\n    \"security_contact_registry\": {{\n      \"Acme Corp\": {{\n        \"authorized_contacts\": [\n          {{\n            \"name\": \"Marcus Thorne\",\n            \"oob_channel\": \"Signal: +1-555-0102\",\n            \"role\": \"CISO\"\n          }},\n          {{\n            \"name\": \"Janet Yuen\",\n            \"oob_channel\": \"SecureBridge: Room 404\",\n            \"role\": \"Security Admin\"\n          }}\n        ]\n      }},\n      \"Globex\": {{\n        \"authorized_contacts\": [\n          {{\n            \"name\": \"Hank Scorpio\",\n            \"oob_channel\": \"Satellite Phone: 9982\",\n            \"role\": \"CEO\"\n          }}\n        ]\n      }}\n    }},\n    \"escalation_routing_rules\": {{\n      \"API_LEAK\": \"Commander Vance\",\n      \"PII_EXPOSURE\": \"Sarah Miller\"\n    }},\n    \"tte_threshold_minutes\": 15\n  }}\n}}\n{{state_descriptions}}: {{\n  \"tickets\": \"A map where keys are unique Ticket IDs and values are objects containing current ticket details (subject, priority, tier, status, assigned_to).\",\n  \"teams\": \"Definition of available support tiers and the users/agents currently active in those tiers.\",\n  \"system_timestamp\": \"The current ISO 8601 timestamp of the environment to track SLA durations.\",\n  \"workflow_config\": \"Internal rules for escalation, such as SLA thresholds for each priority level.\"\n}}\n{action_set_definitions}: {\n  \"search_incidents\": {\n    \"description\": \"Searches for active security incidents by tenant name to retrieve the correct Ticket ID.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"tenant_name\": {\n          \"type\": \"string\",\n          \"description\": \"The name of the company (e.g., 'Acme Corp').\"\n        }\n      },\n      \"required\": [\n        \"tenant_name\"\n      ]\n    },\n    \"example_output\": {\n      \"incidents\": [\n        {\n          \"ticket_id\": \"INC-8821\",\n          \"subject\": \"Acme Corp Tenant Anomaly\"\n        }\n      ]\n    }\n  },\n  \"get_incident_details\": {\n    \"description\": \"Retrieves comprehensive information for an incident, including the reporter's name and all technical Indicators of Compromise (IOCs) found in logs.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"ticket_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique ID of the incident ticket.\"\n        }\n      },\n      \"required\": [\n        \"ticket_id\"\n      ]\n    },\n    \"example_output\": {\n      \"reported_by\": \"Jane Doe\",\n      \"ioc_list\": [\n        \"API_LEAK\",\n        \"PII_EXPOSURE\"\n      ],\n      \"description\": \"Logs indicate multiple unauthorized access points.\"\n    }\n  },\n  \"verify_security_contact\": {\n    \"description\": \"Queries the Security Contact Registry to verify a user's identity and retrieve their mandatory Out-of-Band (OOB) communication details and secure channel ID.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"contact_name\": {\n          \"type\": \"string\",\n          \"description\": \"The name of the individual to verify.\"\n        }\n      },\n      \"required\": [\n        \"contact_name\"\n      ]\n    },\n    \"example_output\": {\n      \"is_verified\": true,\n      \"oob_details\": \"SMS: +1-202-555-0143\",\n      \"secure_channel_id\": \"SC-992\"\n    }\n  },\n  \"identify_specialist\": {\n    \"description\": \"Maps a specific Indicator of Compromise (IOC) category to a Tier 3 specialized responder.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"ioc_category\": {\n          \"type\": \"string\",\n          \"description\": \"A specific technical compromise category (e.g., 'API_LEAK').\"\n        }\n      },\n      \"required\": [\n        \"ioc_category\"\n      ]\n    },\n    \"example_output\": {\n      \"specialist_id\": \"T3-USR-44\",\n      \"specialist_name\": \"Bob Vance\"\n    }\n  },\n  \"update_incident_state\": {\n    \"description\": \"Updates ticket status and sets access restrictions to enforce the Need-to-Know (NTK) boundary.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"ticket_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the ticket to update.\"\n        },\n        \"status\": {\n          \"type\": \"string\",\n          \"description\": \"The target status, e.g., 'Fully_Contained'.\"\n        },\n        \"restricted_access\": {\n          \"type\": \"boolean\",\n          \"description\": \"Whether to apply restricted-access state for NTK compliance.\"\n        }\n      },\n      \"required\": [\n        \"ticket_id\",\n        \"status\",\n        \"restricted_access\"\n      ]\n    },\n    \"example_output\": {\n      \"update_confirmed\": true\n    }\n  },\n  \"dispatch_paging_notification\": {\n    \"description\": \"Pages a specific responder and transitions the workflow to the verified secure communication channel.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"responder_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the specialist to page.\"\n        },\n        \"oob_info\": {\n          \"type\": \"string\",\n          \"description\": \"The verified OOB details of the reporter.\"\n        },\n        \"secure_channel_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the verified secure channel for communication transition.\"\n        }\n      },\n      \"required\": [\n        \"responder_id\",\n        \"oob_info\",\n        \"secure_channel_id\"\n      ]\n    },\n    \"example_output\": {\n      \"paging_status\": \"Success\",\n      \"timestamp\": \"2023-10-27T14:30:05Z\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "search_incidents",
+      "description": "Searches for active security incidents by tenant name to retrieve the correct Ticket ID.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "tenant_name": {
+            "type": "string",
+            "description": "The name of the company (e.g., 'Acme Corp')."
+          }
+        },
+        "required": [
+          "tenant_name"
+        ]
+      },
+      "example_output": {
+        "incidents": [
+          {
+            "ticket_id": "INC-8821",
+            "subject": "Acme Corp Tenant Anomaly"
+          }
+        ]
+      }
+    },
+    {
+      "name": "get_incident_details",
+      "description": "Retrieves comprehensive information for an incident, including the reporter's name and all technical Indicators of Compromise (IOCs) found in logs.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "ticket_id": {
+            "type": "string",
+            "description": "The unique ID of the incident ticket."
+          }
+        },
+        "required": [
+          "ticket_id"
+        ]
+      },
+      "example_output": {
+        "reported_by": "Jane Doe",
+        "ioc_list": [
+          "API_LEAK",
+          "PII_EXPOSURE"
+        ],
+        "description": "Logs indicate multiple unauthorized access points."
+      }
+    },
+    {
+      "name": "verify_security_contact",
+      "description": "Queries the Security Contact Registry to verify a user's identity and retrieve their mandatory Out-of-Band (OOB) communication details and secure channel ID.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "contact_name": {
+            "type": "string",
+            "description": "The name of the individual to verify."
+          }
+        },
+        "required": [
+          "contact_name"
+        ]
+      },
+      "example_output": {
+        "is_verified": true,
+        "oob_details": "SMS: +1-202-555-0143",
+        "secure_channel_id": "SC-992"
+      }
+    },
+    {
+      "name": "identify_specialist",
+      "description": "Maps a specific Indicator of Compromise (IOC) category to a Tier 3 specialized responder.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "ioc_category": {
+            "type": "string",
+            "description": "A specific technical compromise category (e.g., 'API_LEAK')."
+          }
+        },
+        "required": [
+          "ioc_category"
+        ]
+      },
+      "example_output": {
+        "specialist_id": "T3-USR-44",
+        "specialist_name": "Bob Vance"
+      }
+    },
+    {
+      "name": "update_incident_state",
+      "description": "Updates ticket status and sets access restrictions to enforce the Need-to-Know (NTK) boundary.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "ticket_id": {
+            "type": "string",
+            "description": "The ID of the ticket to update."
+          },
+          "status": {
+            "type": "string",
+            "description": "The target status, e.g., 'Fully_Contained'."
+          },
+          "restricted_access": {
+            "type": "boolean",
+            "description": "Whether to apply restricted-access state for NTK compliance."
+          }
+        },
+        "required": [
+          "ticket_id",
+          "status",
+          "restricted_access"
+        ]
+      },
+      "example_output": {
+        "update_confirmed": true
+      }
+    },
+    {
+      "name": "dispatch_paging_notification",
+      "description": "Pages a specific responder and transitions the workflow to the verified secure communication channel.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "responder_id": {
+            "type": "string",
+            "description": "The ID of the specialist to page."
+          },
+          "oob_info": {
+            "type": "string",
+            "description": "The verified OOB details of the reporter."
+          },
+          "secure_channel_id": {
+            "type": "string",
+            "description": "The ID of the verified secure channel for communication transition."
+          }
+        },
+        "required": [
+          "responder_id",
+          "oob_info",
+          "secure_channel_id"
+        ]
+      },
+      "example_output": {
+        "paging_status": "Success",
+        "timestamp": "2023-10-27T14:30:05Z"
+      }
+    }
+  ],
+  "state_description": {
+    "tickets": "A map where keys are unique Ticket IDs and values are objects containing current ticket details (subject, priority, tier, status, assigned_to).",
+    "teams": "Definition of available support tiers and the users/agents currently active in those tiers.",
+    "system_timestamp": "The current ISO 8601 timestamp of the environment to track SLA durations.",
+    "workflow_config": "Internal rules for escalation, such as SLA thresholds for each priority level."
+  },
+  "task_initial_state": {
+    "tickets": {
+      "INC-9002": {
+        "subject": "System Alert: Anomalous API Activity",
+        "priority": "high",
+        "tier": "tier_1",
+        "status": "open",
+        "assigned_to": "agent_smith",
+        "client_name": "Acme Corp",
+        "reporter_name": "Marcus Thorne",
+        "visibility": "public_support",
+        "created_at": "2024-05-10T14:00:00Z",
+        "internal_logs": "Log analysis indicates a potential API Key leak via a public repository; unauthorized export of 20,000 PII records detected from IP 45.x.x.x."
+      }
+    },
+    "teams": {
+      "tier_1": [
+        "agent_smith"
+      ],
+      "tier_2": [
+        "lead_brown"
+      ],
+      "tier_3": [
+        {
+          "name": "Commander Vance",
+          "specialty": "API & Token Security"
+        },
+        {
+          "name": "Sarah Miller",
+          "specialty": "Legal & PII Compliance"
+        }
+      ]
+    },
+    "system_timestamp": "2024-05-10T14:02:00Z",
+    "workflow_config": {
+      "security_contact_registry": {
+        "Acme Corp": {
+          "authorized_contacts": [
+            {
+              "name": "Marcus Thorne",
+              "oob_channel": "Signal: +1-555-0102",
+              "role": "CISO"
+            },
+            {
+              "name": "Janet Yuen",
+              "oob_channel": "SecureBridge: Room 404",
+              "role": "Security Admin"
+            }
+          ]
+        },
+        "Globex": {
+          "authorized_contacts": [
+            {
+              "name": "Hank Scorpio",
+              "oob_channel": "Satellite Phone: 9982",
+              "role": "CEO"
+            }
+          ]
+        }
+      },
+      "escalation_routing_rules": {
+        "API_LEAK": "Commander Vance",
+        "PII_EXPOSURE": "Sarah Miller"
+      },
+      "tte_threshold_minutes": 15
+    }
+  }
+}

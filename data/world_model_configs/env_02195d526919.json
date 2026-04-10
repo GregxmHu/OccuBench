@@ -1,0 +1,166 @@
+{
+  "environment_name": "env_02195d526919",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Clear Role**: You are the Language World Model (LWM) for the Runway Arrival Sequencing scenario.\n- **Core Objective**: Based on the current internal state $s_t$ and the action $a_t$ submitted by the Agent, your task is to simulate the internal evolution of the arrival sequence environment and predict the resulting observation $o_{{t+1}}$ for the Agent.\n- **Emphasis**: You do not execute real-world air traffic control commands. Your purpose is to act as a transition function $f_\\theta$ that maintains environmental logic, handles physical constraints (like separation and speed), and generates the appropriate feedback (observation) for the Agent.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nYou must maintain strict context consistency throughout the interaction. Every action performed by the Agent updates the internal state (e.g., aircraft moving closer, fuel decreasing, runway occupancy changes). Even if the Agent does not see the full state, your internal transitions must be logical and continuous based on the history of interactions.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. You must parse this JSON to determine the intended transition. The format is:\n- `\"name\"`: Specifies the name of the action function to execute.\n- Parameters: The specific arguments required by that function.\n\nExample Input:\n```json\n{{\n \"name\": \"adjust_speed\",\n \"arguments\": {{\n    \"aircraft_id\": \"BA123\",\n    \"target_speed\": 180\n  }}\n}}\n```\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nIf the Agent submits an invalid parameter (e.g., a speed outside safe operating limits), calls an undefined action, or requests an operation that conflicts with the current state (e.g., landing an aircraft on a closed runway), you must return a structured error message:\n- `{{\"error\": \"Description of why the transition failed\"}}`\nDo not fabricate successful outcomes for invalid inputs.\n\n##### Output Assembly\nFor every action call, you must return a structured JSON object containing **ONLY** the return fields declared in the specific action's definition within the `{{action_set_definitions}}`.\n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, the `new_state`, or any hidden variables. You are the custodian of the state; the Agent only receives the specific `observation` $o_{{t+1}}$ resulting from their action. Do not output the state update process.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to specified JSON and text formats.\n- **Factuality**: Do not fabricate aircraft, runways, or weather conditions not present in the state.\n- **Consistency**: Ensure that if an aircraft is sequenced for landing, its arrival time and separation from the previous aircraft are physically consistent.\n- **Realism**: Simulated behaviors must align with aviation dynamics (e.g., wake turbulence separation requirements, decelerating takes time).\n- **Quality**: Language must be clear, unambiguous, and structurally complete.\n- **Encapsulation**: Strictly hide the internal state structure from the output. Only expose information explicitly returned by the action function.\n{{initial_state}}: {{\n  \"aircraft_queue\": [\n    {{\n      \"callsign\": \"N123Alpha\",\n      \"type\": \"Small\",\n      \"distance_to_threshold\": 12,\n      \"current_speed\": 110,\n      \"assigned_runway\": \"Runway 09\",\n      \"current_altitude\": 4000,\n      \"status\": \"Holding at NEXUS\",\n      \"fix_eta\": \"14:05\"\n    }},\n    {{\n      \"callsign\": \"BigJet88\",\n      \"type\": \"Heavy\",\n      \"distance_to_threshold\": 15,\n      \"current_speed\": 180,\n      \"assigned_runway\": \"Runway 09\",\n      \"current_altitude\": 5000,\n      \"status\": \"Holding at NEXUS\",\n      \"fix_eta\": \"14:08\"\n    }},\n    {{\n      \"callsign\": \"Swift44\",\n      \"type\": \"Large\",\n      \"distance_to_threshold\": 18,\n      \"current_speed\": 150,\n      \"assigned_runway\": \"Runway 09\",\n      \"current_altitude\": 6000,\n      \"status\": \"Holding at NEXUS\",\n      \"fix_eta\": \"14:12\"\n    }}\n  ],\n  \"runway_status\": {{\n    \"Runway 09\": {{\n      \"is_occupied\": false,\n      \"last_landing_callsign\": \"N5522\",\n      \"last_landing_time\": -600\n    }}\n  }},\n  \"simulation_time\": 0,\n  \"weather_conditions\": {{\n    \"wind_speed\": 8,\n    \"visibility\": \"1/2 mile\",\n    \"ceiling\": \"300ft overcast\",\n    \"condition\": \"IMC\"\n  }}\n}}\n{{state_descriptions}}: {{\n  \"aircraft_queue\": \"The list of aircraft currently in the terminal control area, tracking their callsigns, types (for wake turbulence), distances to the runway threshold, current speeds, and assigned runways.\",\n  \"runway_status\": \"The current state of each available runway, including occupancy status and the timestamp/details of the last aircraft to land to calculate separation buffers.\",\n  \"simulation_time\": \"The current cumulative simulation time in seconds from the start of the sequencing task.\",\n  \"weather_conditions\": \"Current environmental factors such as wind speed, direction, and visibility that affect landing intervals.\"\n}}\n{action_set_definitions}: {\n  \"get_terminal_state\": {\n    \"description\": \"Retrieves the current state of the terminal control area, including the aircraft queue, current altitudes, aircraft types, and runway occupancy.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"aircraft_queue\": [\n        {\n          \"callsign\": \"N123Alpha\",\n          \"type\": \"Small\",\n          \"altitude\": 4000,\n          \"distance\": 15\n        }\n      ],\n      \"runway_status\": {\n        \"occupied\": false,\n        \"last_aircraft_type\": \"Heavy\",\n        \"last_landing_time\": 1200\n      },\n      \"simulation_time\": 1300\n    }\n  },\n  \"set_altitude_assignment\": {\n    \"description\": \"Instructs a specific aircraft to climb or descend to a new assigned altitude.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"callsign\": {\n          \"type\": \"string\",\n          \"description\": \"The callsign of the aircraft (e.g., 'BigJet88').\"\n        },\n        \"target_altitude\": {\n          \"type\": \"integer\",\n          \"description\": \"The new altitude in feet (e.g., 2000).\"\n        }\n      },\n      \"required\": [\n        \"callsign\",\n        \"target_altitude\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"success\",\n      \"message\": \"BigJet88 assigned to 2000ft.\"\n    }\n  },\n  \"issue_approach_clearance\": {\n    \"description\": \"Clears an aircraft for the final approach to the runway with a required clearance void time.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"callsign\": {\n          \"type\": \"string\",\n          \"description\": \"The callsign of the aircraft.\"\n        },\n        \"void_time\": {\n          \"type\": \"string\",\n          \"description\": \"The time at which the clearance becomes void if the approach has not commenced.\"\n        }\n      },\n      \"required\": [\n        \"callsign\",\n        \"void_time\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"cleared\",\n      \"callsign\": \"Swift44\",\n      \"void_time\": \"14:30Z\"\n    }\n  },\n  \"wait_for_pilot_report\": {\n    \"description\": \"Pause execution until a specific pilot report is received from a specified aircraft.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"callsign\": {\n          \"type\": \"string\",\n          \"description\": \"The callsign of the aircraft to monitor.\"\n        },\n        \"event_type\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"VACATED_ALTITUDE\",\n            \"IFR_CANCELLATION\",\n            \"RUNWAY_VACATED\"\n          ],\n          \"description\": \"The specific event the agent is waiting for.\"\n        }\n      },\n      \"required\": [\n        \"callsign\",\n        \"event_type\"\n      ]\n    },\n    \"example_output\": {\n      \"event_received\": true,\n      \"timestamp\": 1350\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_terminal_state",
+      "description": "Retrieves the current state of the terminal control area, including the aircraft queue, current altitudes, aircraft types, and runway occupancy.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "aircraft_queue": [
+          {
+            "callsign": "N123Alpha",
+            "type": "Small",
+            "altitude": 4000,
+            "distance": 15
+          }
+        ],
+        "runway_status": {
+          "occupied": false,
+          "last_aircraft_type": "Heavy",
+          "last_landing_time": 1200
+        },
+        "simulation_time": 1300
+      }
+    },
+    {
+      "name": "set_altitude_assignment",
+      "description": "Instructs a specific aircraft to climb or descend to a new assigned altitude.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "callsign": {
+            "type": "string",
+            "description": "The callsign of the aircraft (e.g., 'BigJet88')."
+          },
+          "target_altitude": {
+            "type": "integer",
+            "description": "The new altitude in feet (e.g., 2000)."
+          }
+        },
+        "required": [
+          "callsign",
+          "target_altitude"
+        ]
+      },
+      "example_output": {
+        "status": "success",
+        "message": "BigJet88 assigned to 2000ft."
+      }
+    },
+    {
+      "name": "issue_approach_clearance",
+      "description": "Clears an aircraft for the final approach to the runway with a required clearance void time.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "callsign": {
+            "type": "string",
+            "description": "The callsign of the aircraft."
+          },
+          "void_time": {
+            "type": "string",
+            "description": "The time at which the clearance becomes void if the approach has not commenced."
+          }
+        },
+        "required": [
+          "callsign",
+          "void_time"
+        ]
+      },
+      "example_output": {
+        "status": "cleared",
+        "callsign": "Swift44",
+        "void_time": "14:30Z"
+      }
+    },
+    {
+      "name": "wait_for_pilot_report",
+      "description": "Pause execution until a specific pilot report is received from a specified aircraft.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "callsign": {
+            "type": "string",
+            "description": "The callsign of the aircraft to monitor."
+          },
+          "event_type": {
+            "type": "string",
+            "enum": [
+              "VACATED_ALTITUDE",
+              "IFR_CANCELLATION",
+              "RUNWAY_VACATED"
+            ],
+            "description": "The specific event the agent is waiting for."
+          }
+        },
+        "required": [
+          "callsign",
+          "event_type"
+        ]
+      },
+      "example_output": {
+        "event_received": true,
+        "timestamp": 1350
+      }
+    }
+  ],
+  "state_description": {
+    "aircraft_queue": "The list of aircraft currently in the terminal control area, tracking their callsigns, types (for wake turbulence), distances to the runway threshold, current speeds, and assigned runways.",
+    "runway_status": "The current state of each available runway, including occupancy status and the timestamp/details of the last aircraft to land to calculate separation buffers.",
+    "simulation_time": "The current cumulative simulation time in seconds from the start of the sequencing task.",
+    "weather_conditions": "Current environmental factors such as wind speed, direction, and visibility that affect landing intervals."
+  },
+  "task_initial_state": {
+    "aircraft_queue": [
+      {
+        "callsign": "N123Alpha",
+        "type": "Small",
+        "distance_to_threshold": 12,
+        "current_speed": 110,
+        "assigned_runway": "Runway 09",
+        "current_altitude": 4000,
+        "status": "Holding at NEXUS",
+        "fix_eta": "14:05"
+      },
+      {
+        "callsign": "BigJet88",
+        "type": "Heavy",
+        "distance_to_threshold": 15,
+        "current_speed": 180,
+        "assigned_runway": "Runway 09",
+        "current_altitude": 5000,
+        "status": "Holding at NEXUS",
+        "fix_eta": "14:08"
+      },
+      {
+        "callsign": "Swift44",
+        "type": "Large",
+        "distance_to_threshold": 18,
+        "current_speed": 150,
+        "assigned_runway": "Runway 09",
+        "current_altitude": 6000,
+        "status": "Holding at NEXUS",
+        "fix_eta": "14:12"
+      }
+    ],
+    "runway_status": {
+      "Runway 09": {
+        "is_occupied": false,
+        "last_landing_callsign": "N5522",
+        "last_landing_time": -600
+      }
+    },
+    "simulation_time": 0,
+    "weather_conditions": {
+      "wind_speed": 8,
+      "visibility": "1/2 mile",
+      "ceiling": "300ft overcast",
+      "condition": "IMC"
+    }
+  }
+}

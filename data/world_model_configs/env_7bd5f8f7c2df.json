@@ -1,0 +1,248 @@
+{
+  "environment_name": "env_7bd5f8f7c2df",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM) for Train Dispatch Conflict Resolution.\n- **Core Objective**: Based on the current internal railway state $s_t$ and the dispatcher's action $a_t$, simulate the evolution of the railway environment. You must predict the physical and logical changes within the system and generate the specific observation $o_{{t+1}}$ resulting from the action.\n- **Emphasis**: You are a simulator, not the dispatcher. Do not suggest actions. Your task is to perform internal state evolution (tracking train positions, signal aspects, and track availability) and output only the results visible to the dispatcher.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nYou must maintain strict temporal and spatial consistency. Trains cannot jump positions without passing through intermediate segments, and two trains cannot occupy the same track segment simultaneously unless a collision is simulated. All interactions must be consistent with the history of movement and signaling.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent (Dispatcher) interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. You must parse this JSON to determine the intended environment change. \n\nExample Input:\n```json\n{{\n \"name\": \"set_signal_aspect\",\n \"arguments\": {{\n    \"signal_id\": \"S102\",\n    \"aspect\": \"GREEN\"\n  }}\n}}\n```\nYou must simulate the consequences of this action (e.g., allowing a train to proceed into the next block) and update the internal state $s_{{t+1}}$ accordingly.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nIf the Agent submits an invalid command (e.g., clearing a signal for a route that is already occupied, or referencing a non-existent train), return structured error information:\n- If parameters are invalid: `{{\"error\": \"Invalid parameter value\"}}`\n- If the action is logically impossible: `{{\"error\": \"Conflict detected: Track segment blocked\"}}`\nDo not fabricate successful outcomes for failed logical operations.\n\n##### Output Assembly\nFor every action function call, you must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition.\n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, the updated state, or any hidden variables like global train coordinates unless specifically requested by the action's return schema. The state maintenance is your internal responsibility. The Agent must only see the specific return values (the Observation).\n\n### 4. Key Principles\n- **Format**: Strictly adhere to JSON for all inputs and outputs.\n- **Factuality**: Model train physics (acceleration/braking) and signaling logic (interlocking) realistically based on the provided scenario.\n- **Consistency**: If a train is delayed in one step, it remains delayed until an action is taken to resolve it or simulation time permits recovery.\n- **Realism**: Ensure that observations reflect realistic dispatching feedback (e.g., \"Action Successful\", \"Route Locked\", or sensor-triggered position updates).\n- **Encapsulation**: Strictly hide the internal state structure. Do not reveal the `new_state` object or state update logs in your response.\n{{initial_state}}: {{\n  \"trains\": {{\n    \"T49112\": {{\n      \"current_segment\": \"Block_A_Approach\",\n      \"speed\": 40,\n      \"delay_minutes\": 52,\n      \"OBU_status\": \"STM-KVB\",\n      \"traction_mode\": \"3kV_DC\",\n      \"crew_hours_remaining\": 1.1,\n      \"border_clearance_code\": \"PENDING\"\n    }},\n    \"P105\": {{\n      \"current_segment\": \"Block_A_Inbound\",\n      \"speed\": 140,\n      \"delay_minutes\": 0,\n      \"priority\": \"EXPRESS\"\n    }}\n  }},\n  \"infrastructure\": {{\n    \"signals\": {{\n      \"S_Approach_Main\": \"RED\",\n      \"S_Approach_Siding\": \"RED\",\n      \"S_Border_Exit\": \"RED\"\n    }},\n    \"switches\": {{\n      \"SW_Siding_Entry\": \"NORMAL\"\n    }}\n  }},\n  \"track_occupancy\": {{\n    \"Block_A_Approach\": \"T49112\",\n    \"Block_A_Inbound\": \"P105\"\n  }},\n  \"simulation_time\": 0\n}}\n{{state_descriptions}}: {{\n  \"trains\": \"Dictionary of trains indexed by ID, containing current position, speed, and schedule delay.\",\n  \"infrastructure\": \"Status of signals and track switches/points.\",\n  \"track_occupancy\": \"Mapping of track segments to the ID of the train currently occupying them.\",\n  \"simulation_time\": \"Current elapsed simulation time in minutes.\"\n}}\n{action_set_definitions}: {\n  \"get_simulation_state\": {\n    \"description\": \"Retrieves the current simulation time and a list of active train identifiers in the environment.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"simulation_time\": 45,\n      \"active_trains\": [\n        \"T49112\",\n        \"P105\"\n      ]\n    }\n  },\n  \"get_train_status\": {\n    \"description\": \"Returns detailed telemetry and logistical data for a specific train, including position, delay, crew hours, customs status, and technical configurations.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"train_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique ID of the train.\"\n        }\n      },\n      \"required\": [\n        \"train_id\"\n      ]\n    },\n    \"example_output\": {\n      \"position\": \"Segment-04\",\n      \"speed\": 60,\n      \"delay\": 25,\n      \"crew_remaining_hours\": 2.5,\n      \"customs_status\": \"PENDING\",\n      \"traction_type\": \"25kV DC\",\n      \"signaling_system\": \"IM-A-Standard\"\n    }\n  },\n  \"get_infrastructure_map\": {\n    \"description\": \"Queries the layout of tracks, sidings, and handover points between two locations to find feasible routes or passing loops.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"origin\": {\n          \"type\": \"string\",\n          \"description\": \"Current location or segment ID.\"\n        },\n        \"destination\": {\n          \"type\": \"string\",\n          \"description\": \"The target destination point (e.g., 'HOP-Alpha').\"\n        }\n      },\n      \"required\": [\n        \"origin\",\n        \"destination\"\n      ]\n    },\n    \"example_output\": {\n      \"segments\": [\n        \"Seg-04\",\n        \"Loop-A\",\n        \"Seg-05\",\n        \"HOP-Alpha\"\n      ],\n      \"sidings\": [\n        \"Loop-A\"\n      ],\n      \"distance_to_go\": 12.5\n    }\n  },\n  \"set_train_route\": {\n    \"description\": \"Assigns a train to a specific target segment or siding and locks the switches/signals for that path.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"train_id\": {\n          \"type\": \"string\"\n        },\n        \"target_segment\": {\n          \"type\": \"string\",\n          \"description\": \"The segment or loop ID to move the train to.\"\n        }\n      },\n      \"required\": [\n        \"train_id\",\n        \"target_segment\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"ROUTE_LOCKED\",\n      \"estimated_arrival\": 12\n    }\n  },\n  \"update_train_systems\": {\n    \"description\": \"Triggers the transition of the train's internal traction and signaling hardware for compatibility with receiving jurisdictions.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"train_id\": {\n          \"type\": \"string\"\n        },\n        \"traction_mode\": {\n          \"type\": \"string\",\n          \"description\": \"Target power system (e.g., '15kV AC').\"\n        },\n        \"signaling_mode\": {\n          \"type\": \"string\",\n          \"description\": \"Target signaling protocol.\"\n        }\n      },\n      \"required\": [\n        \"train_id\",\n        \"traction_mode\",\n        \"signaling_mode\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"TRANSITION_READY\"\n    }\n  },\n  \"execute_logistics_clearance\": {\n    \"description\": \"Resolves administrative blocks such as customs clearance or scheduling crew relief shifts.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"train_id\": {\n          \"type\": \"string\"\n        },\n        \"action_type\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"CUSTOMS_CLEAR\",\n            \"CREW_SWAP\"\n          ]\n        }\n      },\n      \"required\": [\n        \"train_id\",\n        \"action_type\"\n      ]\n    },\n    \"example_output\": {\n      \"result\": \"CLEARANCE_GRANTED\"\n    }\n  },\n  \"advance_simulation_time\": {\n    \"description\": \"Advances the environment clock, allowing trains to move according to their routes and for technical transitions to complete.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"minutes\": {\n          \"type\": \"integer\",\n          \"description\": \"Number of minutes to advance the simulation.\"\n        }\n      },\n      \"required\": [\n        \"minutes\"\n      ]\n    },\n    \"example_output\": {\n      \"new_simulation_time\": 60,\n      \"events\": [\n        \"T49112 reached Loop-A\",\n        \"Transition Complete\"\n      ]\n    }\n  },\n  \"confirm_handover\": {\n    \"description\": \"Submits a formal request to the receiving Infrastructure Manager (IM) to accept the train at the handover point.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"train_id\": {\n          \"type\": \"string\"\n        },\n        \"receiving_im\": {\n          \"type\": \"string\"\n        },\n        \"handover_point\": {\n          \"type\": \"string\"\n        }\n      },\n      \"required\": [\n        \"train_id\",\n        \"receiving_im\",\n        \"handover_point\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"ACCEPTED\",\n      \"entry_slot\": \"14:50\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_simulation_state",
+      "description": "Retrieves the current simulation time and a list of active train identifiers in the environment.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "simulation_time": 45,
+        "active_trains": [
+          "T49112",
+          "P105"
+        ]
+      }
+    },
+    {
+      "name": "get_train_status",
+      "description": "Returns detailed telemetry and logistical data for a specific train, including position, delay, crew hours, customs status, and technical configurations.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "train_id": {
+            "type": "string",
+            "description": "The unique ID of the train."
+          }
+        },
+        "required": [
+          "train_id"
+        ]
+      },
+      "example_output": {
+        "position": "Segment-04",
+        "speed": 60,
+        "delay": 25,
+        "crew_remaining_hours": 2.5,
+        "customs_status": "PENDING",
+        "traction_type": "25kV DC",
+        "signaling_system": "IM-A-Standard"
+      }
+    },
+    {
+      "name": "get_infrastructure_map",
+      "description": "Queries the layout of tracks, sidings, and handover points between two locations to find feasible routes or passing loops.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "origin": {
+            "type": "string",
+            "description": "Current location or segment ID."
+          },
+          "destination": {
+            "type": "string",
+            "description": "The target destination point (e.g., 'HOP-Alpha')."
+          }
+        },
+        "required": [
+          "origin",
+          "destination"
+        ]
+      },
+      "example_output": {
+        "segments": [
+          "Seg-04",
+          "Loop-A",
+          "Seg-05",
+          "HOP-Alpha"
+        ],
+        "sidings": [
+          "Loop-A"
+        ],
+        "distance_to_go": 12.5
+      }
+    },
+    {
+      "name": "set_train_route",
+      "description": "Assigns a train to a specific target segment or siding and locks the switches/signals for that path.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "train_id": {
+            "type": "string"
+          },
+          "target_segment": {
+            "type": "string",
+            "description": "The segment or loop ID to move the train to."
+          }
+        },
+        "required": [
+          "train_id",
+          "target_segment"
+        ]
+      },
+      "example_output": {
+        "status": "ROUTE_LOCKED",
+        "estimated_arrival": 12
+      }
+    },
+    {
+      "name": "update_train_systems",
+      "description": "Triggers the transition of the train's internal traction and signaling hardware for compatibility with receiving jurisdictions.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "train_id": {
+            "type": "string"
+          },
+          "traction_mode": {
+            "type": "string",
+            "description": "Target power system (e.g., '15kV AC')."
+          },
+          "signaling_mode": {
+            "type": "string",
+            "description": "Target signaling protocol."
+          }
+        },
+        "required": [
+          "train_id",
+          "traction_mode",
+          "signaling_mode"
+        ]
+      },
+      "example_output": {
+        "status": "TRANSITION_READY"
+      }
+    },
+    {
+      "name": "execute_logistics_clearance",
+      "description": "Resolves administrative blocks such as customs clearance or scheduling crew relief shifts.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "train_id": {
+            "type": "string"
+          },
+          "action_type": {
+            "type": "string",
+            "enum": [
+              "CUSTOMS_CLEAR",
+              "CREW_SWAP"
+            ]
+          }
+        },
+        "required": [
+          "train_id",
+          "action_type"
+        ]
+      },
+      "example_output": {
+        "result": "CLEARANCE_GRANTED"
+      }
+    },
+    {
+      "name": "advance_simulation_time",
+      "description": "Advances the environment clock, allowing trains to move according to their routes and for technical transitions to complete.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "minutes": {
+            "type": "integer",
+            "description": "Number of minutes to advance the simulation."
+          }
+        },
+        "required": [
+          "minutes"
+        ]
+      },
+      "example_output": {
+        "new_simulation_time": 60,
+        "events": [
+          "T49112 reached Loop-A",
+          "Transition Complete"
+        ]
+      }
+    },
+    {
+      "name": "confirm_handover",
+      "description": "Submits a formal request to the receiving Infrastructure Manager (IM) to accept the train at the handover point.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "train_id": {
+            "type": "string"
+          },
+          "receiving_im": {
+            "type": "string"
+          },
+          "handover_point": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "train_id",
+          "receiving_im",
+          "handover_point"
+        ]
+      },
+      "example_output": {
+        "status": "ACCEPTED",
+        "entry_slot": "14:50"
+      }
+    }
+  ],
+  "state_description": {
+    "trains": "Dictionary of trains indexed by ID, containing current position, speed, and schedule delay.",
+    "infrastructure": "Status of signals and track switches/points.",
+    "track_occupancy": "Mapping of track segments to the ID of the train currently occupying them.",
+    "simulation_time": "Current elapsed simulation time in minutes."
+  },
+  "task_initial_state": {
+    "trains": {
+      "T49112": {
+        "current_segment": "Block_A_Approach",
+        "speed": 40,
+        "delay_minutes": 52,
+        "OBU_status": "STM-KVB",
+        "traction_mode": "3kV_DC",
+        "crew_hours_remaining": 1.1,
+        "border_clearance_code": "PENDING"
+      },
+      "P105": {
+        "current_segment": "Block_A_Inbound",
+        "speed": 140,
+        "delay_minutes": 0,
+        "priority": "EXPRESS"
+      }
+    },
+    "infrastructure": {
+      "signals": {
+        "S_Approach_Main": "RED",
+        "S_Approach_Siding": "RED",
+        "S_Border_Exit": "RED"
+      },
+      "switches": {
+        "SW_Siding_Entry": "NORMAL"
+      }
+    },
+    "track_occupancy": {
+      "Block_A_Approach": "T49112",
+      "Block_A_Inbound": "P105"
+    },
+    "simulation_time": 0
+  }
+}

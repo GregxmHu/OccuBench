@@ -1,0 +1,168 @@
+{
+  "environment_name": "env_a927bc92ca9e",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: Based on the current internal state $s_t$ and the action $a_t$ executed by the Agent, simulate the evolution of the news desk environment and predict the observation $o_{{t+1}}$ obtained by the Agent.\n- **Emphasis**: You are the simulation engine. You do not make editorial decisions; you simulate the consequences of decisions, manage the news queue, and generate the observations resulting from the Agent's actions.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions between the World Model and the Agent must maintain rigorous context consistency. The internal state evolves based on previous actions (e.g., if a news item is published, it should move from the 'leads' queue to the 'published' list in the internal state).\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent submits action requests via structured JSON objects. Example:\n```json\n{{\n \"name\": \"assign_priority\",\n \"arguments\": {{\n    \"news_id\": \"NEWS-001\",\n    \"priority_level\": 1\n  }}\n}}\n```\nYou must parse these JSON inputs, update the internal state $s_t \\rightarrow s_{{t+1}}$ according to newsroom logic, and generate the observation $o_{{t+1}}$.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\n- If the Agent references a non-existent `news_id`, return: `{{\"error\": \"News ID not found\"}}`.\n- If an action is missing required arguments, return: `{{\"error\": \"Missing arguments for action [name]\"}}`.\n- Do not fabricate data; if the news queue is empty, return an empty list or a relevant status message as defined in the action.\n\n##### Output Assembly\nFor every action function call, you must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition.\n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, the `new_state`, or any hidden variables. You are the environment; the Agent only sees the `observation`. Do not output the state update or internal logs.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to specified JSON formats for all outputs.\n- **Factuality**: Do not fabricate news content or functions not provided in the initialization.\n- **Consistency**: If a story is archived, it must no longer appear in subsequent 'fetch' observations.\n- **Realism**: Simulate realistic constraints (e.g., breaking news might have a 'decay' in relevance over time if simulated in the state).\n- **Quality**: Ensure the simulated observations are clear and structurally complete.\n- **Encapsulation**: Strictly hide the internal state structure from the output. Only expose information that is explicitly returned by the action function.\n{{initial_state}}: {{\n  \"incoming_queue\": [\n    {{\n      \"id\": \"NEWS-OC-101\",\n      \"headline\": \"Oak Creek High: 15 books restricted following formal 90-day MRC review process.\",\n      \"source_reliability\": 0.95,\n      \"timestamp\": \"2025-05-20T08:10:00Z\"\n    }},\n    {{\n      \"id\": \"NEWS-OC-102\",\n      \"headline\": \"Oak Creek North: 12 titles purged from OPAC; principal confirms removal without MRC review.\",\n      \"source_reliability\": 0.89,\n      \"timestamp\": \"2025-05-20T08:20:00Z\"\n    }},\n    {{\n      \"id\": \"NEWS-OC-103\",\n      \"headline\": \"Viral: Oak Creek parent claims 'Gender Queer' is in the elementary library; no OPAC records found.\",\n      \"source_reliability\": 0.45,\n      \"timestamp\": \"2025-05-20T08:25:00Z\"\n    }},\n    {{\n      \"id\": \"NEWS-OC-104\",\n      \"headline\": \"Oak Creek South: Principal pulls 'The Bluest Eye' citing 'maintenance' bypasses protocol.\",\n      \"source_reliability\": 0.85,\n      \"timestamp\": \"2025-05-20T08:30:00Z\"\n    }},\n    {{\n      \"id\": \"NEWS-OC-105\",\n      \"headline\": \"Oak Creek West: 11 titles removed for rebinding; official log entries verified.\",\n      \"source_reliability\": 0.98,\n      \"timestamp\": \"2025-05-20T08:35:00Z\"\n    }}\n  ],\n  \"active_priorities\": [],\n  \"published_feed\": [],\n  \"system_clock\": \"2025-05-20T10:15:00Z\"\n}}\n{{state_descriptions}}: {{\n  \"incoming_queue\": \"A list of un-triaged news items currently available to the newsroom.\",\n  \"active_priorities\": \"News items that have been assigned a priority level but not yet published.\",\n  \"published_feed\": \"Historical log of news items sent to the public feed.\",\n  \"system_clock\": \"Current simulation time in ISO 8601 format.\"\n}}\n{action_set_definitions}: {\n  \"get_system_clock\": {\n    \"description\": \"Retrieves the current simulation time in ISO 8601 format to track deadlines and arrival windows.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"current_time\": \"2023-11-01T10:00:00Z\"\n    }\n  },\n  \"list_incoming_queue\": {\n    \"description\": \"Retrieves the list of unique identifiers for all un-triaged news items in the Oak Creek district queue.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"item_ids\": [\n        \"news_001\",\n        \"news_002\"\n      ]\n    }\n  },\n  \"get_item_metadata\": {\n    \"description\": \"Retrieves detailed metadata for a news item, including school name, incident type, arrival time, and protocol status (e.g., MRC review status).\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"item_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique ID of the news item.\"\n        }\n      },\n      \"required\": [\n        \"item_id\"\n      ]\n    },\n    \"example_output\": {\n      \"school\": \"Oak Creek High\",\n      \"district\": \"Oak Creek\",\n      \"incident_type\": \"Censorship/Removal\",\n      \"mrc_review_conducted\": false,\n      \"arrival_time\": \"2023-11-01T09:15:00Z\"\n    }\n  },\n  \"validate_process_integrity\": {\n    \"description\": \"Environment check to verify the physical scope of material removal and the administrative validity of the reporting process.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"item_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the item to validate.\"\n        }\n      },\n      \"required\": [\n        \"item_id\"\n      ]\n    },\n    \"example_output\": {\n      \"scope_confirmed\": true,\n      \"admin_validity_confirmed\": true\n    }\n  },\n  \"file_foia_request\": {\n    \"description\": \"Submits a formal FOIA request for the specified news item to satisfy the 120-minute protocol requirement.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"item_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the news item.\"\n        }\n      },\n      \"required\": [\n        \"item_id\"\n      ]\n    },\n    \"example_output\": {\n      \"filing_status\": \"Success\",\n      \"timestamp\": \"2023-11-01T10:10:00Z\"\n    }\n  },\n  \"publish_breaking_alert\": {\n    \"description\": \"Finalizes the triage and adds the high-priority news item to the published feed.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"item_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the item to publish.\"\n        },\n        \"priority_label\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"Breaking/High\",\n            \"Standard\"\n          ],\n          \"description\": \"The priority level for the published feed.\"\n        }\n      },\n      \"required\": [\n        \"item_id\",\n        \"priority_label\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"Published\",\n      \"feed_id\": \"PUB-778\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_system_clock",
+      "description": "Retrieves the current simulation time in ISO 8601 format to track deadlines and arrival windows.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "current_time": "2023-11-01T10:00:00Z"
+      }
+    },
+    {
+      "name": "list_incoming_queue",
+      "description": "Retrieves the list of unique identifiers for all un-triaged news items in the Oak Creek district queue.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "item_ids": [
+          "news_001",
+          "news_002"
+        ]
+      }
+    },
+    {
+      "name": "get_item_metadata",
+      "description": "Retrieves detailed metadata for a news item, including school name, incident type, arrival time, and protocol status (e.g., MRC review status).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "item_id": {
+            "type": "string",
+            "description": "The unique ID of the news item."
+          }
+        },
+        "required": [
+          "item_id"
+        ]
+      },
+      "example_output": {
+        "school": "Oak Creek High",
+        "district": "Oak Creek",
+        "incident_type": "Censorship/Removal",
+        "mrc_review_conducted": false,
+        "arrival_time": "2023-11-01T09:15:00Z"
+      }
+    },
+    {
+      "name": "validate_process_integrity",
+      "description": "Environment check to verify the physical scope of material removal and the administrative validity of the reporting process.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "item_id": {
+            "type": "string",
+            "description": "The ID of the item to validate."
+          }
+        },
+        "required": [
+          "item_id"
+        ]
+      },
+      "example_output": {
+        "scope_confirmed": true,
+        "admin_validity_confirmed": true
+      }
+    },
+    {
+      "name": "file_foia_request",
+      "description": "Submits a formal FOIA request for the specified news item to satisfy the 120-minute protocol requirement.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "item_id": {
+            "type": "string",
+            "description": "The ID of the news item."
+          }
+        },
+        "required": [
+          "item_id"
+        ]
+      },
+      "example_output": {
+        "filing_status": "Success",
+        "timestamp": "2023-11-01T10:10:00Z"
+      }
+    },
+    {
+      "name": "publish_breaking_alert",
+      "description": "Finalizes the triage and adds the high-priority news item to the published feed.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "item_id": {
+            "type": "string",
+            "description": "The ID of the item to publish."
+          },
+          "priority_label": {
+            "type": "string",
+            "enum": [
+              "Breaking/High",
+              "Standard"
+            ],
+            "description": "The priority level for the published feed."
+          }
+        },
+        "required": [
+          "item_id",
+          "priority_label"
+        ]
+      },
+      "example_output": {
+        "status": "Published",
+        "feed_id": "PUB-778"
+      }
+    }
+  ],
+  "state_description": {
+    "incoming_queue": "A list of un-triaged news items currently available to the newsroom.",
+    "active_priorities": "News items that have been assigned a priority level but not yet published.",
+    "published_feed": "Historical log of news items sent to the public feed.",
+    "system_clock": "Current simulation time in ISO 8601 format."
+  },
+  "task_initial_state": {
+    "incoming_queue": [
+      {
+        "id": "NEWS-OC-101",
+        "headline": "Oak Creek High: 15 books restricted following formal 90-day MRC review process.",
+        "source_reliability": 0.95,
+        "timestamp": "2025-05-20T08:10:00Z"
+      },
+      {
+        "id": "NEWS-OC-102",
+        "headline": "Oak Creek North: 12 titles purged from OPAC; principal confirms removal without MRC review.",
+        "source_reliability": 0.89,
+        "timestamp": "2025-05-20T08:20:00Z"
+      },
+      {
+        "id": "NEWS-OC-103",
+        "headline": "Viral: Oak Creek parent claims 'Gender Queer' is in the elementary library; no OPAC records found.",
+        "source_reliability": 0.45,
+        "timestamp": "2025-05-20T08:25:00Z"
+      },
+      {
+        "id": "NEWS-OC-104",
+        "headline": "Oak Creek South: Principal pulls 'The Bluest Eye' citing 'maintenance' bypasses protocol.",
+        "source_reliability": 0.85,
+        "timestamp": "2025-05-20T08:30:00Z"
+      },
+      {
+        "id": "NEWS-OC-105",
+        "headline": "Oak Creek West: 11 titles removed for rebinding; official log entries verified.",
+        "source_reliability": 0.98,
+        "timestamp": "2025-05-20T08:35:00Z"
+      }
+    ],
+    "active_priorities": [],
+    "published_feed": [],
+    "system_clock": "2025-05-20T10:15:00Z"
+  }
+}

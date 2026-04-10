@@ -1,0 +1,232 @@
+{
+  "environment_name": "env_d47daa8d2b59",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: Based on the current power grid state $s_t$ and the control action $a_t$ issued by the Agent, simulate the physical evolution of the power system and predict the observation $o_{{t+1}}$.\n- **Emphasis**: You are a simulator. You do not execute real-world grid adjustments; you perform internal state transitions to model how generation, load, and transmission lines respond to dispatch commands and environmental factors.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{initial_state_schema}}\n```\n\n#### Context Awareness\nAll interactions between the World Model and the Agent must maintain rigorous context consistency. Every action must build upon the state resulting from the previous step. Ensure that cumulative changes in power demand, fuel reserves, or equipment wear are tracked across the interaction history.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. This JSON will contain:\n- `\"name\"`: Specifies the name of the grid control action (e.g., adjust_generation, shed_load, toggle_breaker).\n- The remaining fields are the parameters required by that specific action function.\n\nYou must parse these JSON inputs and simulate the resulting physical effects on the grid (e.g., how increasing generation at one node affects line congestion or system frequency).\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nIn the event of invalid parameters (e.g., generation requests exceeding plant capacity), undefined actions, or physical impossibilities (e.g., connecting a non-existent substation), you must return a structured error message (e.g., `{{\"error\": \"Capacity limit exceeded at Node X\"}}`). Do not fabricate successful states for failed operations.\n\n##### Output Assembly\nFor every action function call, you must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition (the Observation).\n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state $s_t$, the `new_state`, or any hidden variables. The state maintenance is managed internally by you. The Agent must only receive the specific return values (Observations) defined in the action function.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to the specified JSON and text formats.\n- **Factuality**: Do not fabricate non-existent grid components, functions, or status responses.\n- **Consistency**: Ensure the laws of power systems (e.g., Load-Generation balance, Kirchhoff's laws) are respected so that state evolution is self-consistent.\n- **Realism**: Simulated behaviors must align with realistic grid dynamics, including ramp rates, load fluctuations, and the impact of frequency deviations on stability.\n- **Quality**: Language must be clear, technical, and structurally complete.\n- **Encapsulation**: Strictly hide the internal state structure from the output. Only expose information explicitly returned by the action function. Do not output state updates.\n{{initial_state}}: {{\n  \"timestamp\": 168,\n  \"system_frequency_hz\": 59.88,\n  \"generation_nodes\": {{\n    \"Base_Load_Steam_Unit\": {{\n      \"current_mw_output\": 480.0,\n      \"maximum_capacity_mw\": 500.0,\n      \"ramp_rate_limit_mw_per_step\": 2.0,\n      \"fuel_status\": \"nominal\"\n    }},\n    \"BTM_Solar_Aggregator\": {{\n      \"current_mw_output\": 45.0,\n      \"maximum_capacity_mw\": 200.0,\n      \"aggregate_dni\": 120.0,\n      \"fuel_status\": \"intermittent_low_irradiance\"\n    }},\n    \"Fast_Response_Gas_Peaker\": {{\n      \"current_mw_output\": 0.0,\n      \"maximum_capacity_mw\": 150.0,\n      \"ramp_rate_limit_mw_per_step\": 40.0,\n      \"fuel_status\": \"available\",\n      \"operational_status\": \"standby\"\n    }}\n  }},\n  \"load_zones\": {{\n    \"Metro_Industrial_Park\": {{\n      \"current_demand_mw\": 560.0,\n      \"priority_level\": \"critical\"\n    }}\n  }},\n  \"transmission_lines\": [\n    {{\n      \"line_id\": \"L1_Base_to_Metro\",\n      \"load_percentage\": 80.0,\n      \"thermal_limit_mw\": 600.0,\n      \"connectivity\": \"closed\"\n    }},\n    {{\n      \"line_id\": \"L2_Gas_to_Metro\",\n      \"load_percentage\": 0.0,\n      \"thermal_limit_mw\": 300.0,\n      \"connectivity\": \"open\"\n    }}\n  ],\n  \"grid_stability_margin\": 0.82\n}}\n{{state_descriptions}}: {{\n  \"timestamp\": \"The current simulation tick or time step in the power grid simulation.\",\n  \"system_frequency_hz\": \"The current operating frequency of the grid (target 60.0 or 50.0). Deviations indicate load/generation imbalance.\",\n  \"generation_nodes\": \"A map of power generation units, including their current MW output, maximum capacity, and fuel status.\",\n  \"load_zones\": \"Current power demand in Megawatts (MW) for different geographical zones or industrial sectors.\",\n  \"transmission_lines\": \"Status of transmission lines, including their current load percentage, thermal limits, and connectivity (open/closed).\",\n  \"grid_stability_margin\": \"A calculated index (0.0 to 1.0) representing how close the system is to a blackout or cascading failure.\"\n}}\n{action_set_definitions}: {\n  \"get_system_overview\": {\n    \"description\": \"Retrieves high-level grid telemetry including frequency and stability margin.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"system_frequency_hz\": 59.88,\n      \"grid_stability_margin\": 0.82,\n      \"timestamp\": 120\n    }\n  },\n  \"get_load_zone_details\": {\n    \"description\": \"Returns current demand and local generation for a specific load zone.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"zone_name\": {\n          \"type\": \"string\",\n          \"description\": \"The name of the zone (e.g., 'Metro_Industrial_Park').\"\n        }\n      },\n      \"required\": [\n        \"zone_name\"\n      ]\n    },\n    \"example_output\": {\n      \"zone_name\": \"Metro_Industrial_Park\",\n      \"current_demand_mw\": 500.0,\n      \"btm_solar_generation_mw\": 45.0\n    }\n  },\n  \"get_generation_assets\": {\n    \"description\": \"Lists all generation units with their current output, max capacity, and mechanical ramp rate limits.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"units\": [\n        {\n          \"unit_id\": \"G_01\",\n          \"current_mw\": 100,\n          \"max_capacity_mw\": 250,\n          \"ramp_rate_mw_per_tick\": 20,\n          \"status\": \"online\"\n        }\n      ]\n    }\n  },\n  \"get_transmission_topology\": {\n    \"description\": \"Provides status and thermal limits of transmission lines to check path deliverability.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"lines\": [\n        {\n          \"line_id\": \"L_99\",\n          \"status\": \"closed\",\n          \"load_pct\": 45.0,\n          \"thermal_limit_mw\": 800\n        }\n      ]\n    }\n  },\n  \"update_line_status\": {\n    \"description\": \"Changes the connectivity status (open/closed) of a specific transmission line.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"line_id\": {\n          \"type\": \"string\"\n        },\n        \"new_status\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"open\",\n            \"closed\"\n          ]\n        }\n      },\n      \"required\": [\n        \"line_id\",\n        \"new_status\"\n      ]\n    },\n    \"example_output\": {\n      \"line_id\": \"L_99\",\n      \"status\": \"closed\"\n    }\n  },\n  \"test_dispatch_scenario\": {\n    \"description\": \"Simulates the final impact of a set of dispatch instructions on the grid without applying them.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"proposed_dispatches\": {\n          \"type\": \"array\",\n          \"items\": {\n            \"type\": \"object\",\n            \"properties\": {\n              \"unit_id\": {\n                \"type\": \"string\"\n              },\n              \"target_mw\": {\n                \"type\": \"number\"\n              }\n            },\n            \"required\": [\n              \"unit_id\",\n              \"target_mw\"\n            ]\n          }\n        }\n      },\n      \"required\": [\n        \"proposed_dispatches\"\n      ]\n    },\n    \"example_output\": {\n      \"is_feasible\": true,\n      \"predicted_frequency_hz\": 60.0,\n      \"predicted_stability_margin\": 0.96\n    }\n  },\n  \"execute_dispatch_commands\": {\n    \"description\": \"Sends commands to power units to adjust their MW output for the current simulation tick.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"dispatches\": {\n          \"type\": \"array\",\n          \"items\": {\n            \"type\": \"object\",\n            \"properties\": {\n              \"unit_id\": {\n                \"type\": \"string\"\n              },\n              \"target_mw\": {\n                \"type\": \"number\"\n              }\n            },\n            \"required\": [\n              \"unit_id\",\n              \"target_mw\"\n            ]\n          }\n        }\n      },\n      \"required\": [\n        \"dispatches\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"success\",\n      \"new_current_mw_values\": {\n        \"G_01\": 120\n      }\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_system_overview",
+      "description": "Retrieves high-level grid telemetry including frequency and stability margin.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "system_frequency_hz": 59.88,
+        "grid_stability_margin": 0.82,
+        "timestamp": 120
+      }
+    },
+    {
+      "name": "get_load_zone_details",
+      "description": "Returns current demand and local generation for a specific load zone.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "zone_name": {
+            "type": "string",
+            "description": "The name of the zone (e.g., 'Metro_Industrial_Park')."
+          }
+        },
+        "required": [
+          "zone_name"
+        ]
+      },
+      "example_output": {
+        "zone_name": "Metro_Industrial_Park",
+        "current_demand_mw": 500.0,
+        "btm_solar_generation_mw": 45.0
+      }
+    },
+    {
+      "name": "get_generation_assets",
+      "description": "Lists all generation units with their current output, max capacity, and mechanical ramp rate limits.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "units": [
+          {
+            "unit_id": "G_01",
+            "current_mw": 100,
+            "max_capacity_mw": 250,
+            "ramp_rate_mw_per_tick": 20,
+            "status": "online"
+          }
+        ]
+      }
+    },
+    {
+      "name": "get_transmission_topology",
+      "description": "Provides status and thermal limits of transmission lines to check path deliverability.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "lines": [
+          {
+            "line_id": "L_99",
+            "status": "closed",
+            "load_pct": 45.0,
+            "thermal_limit_mw": 800
+          }
+        ]
+      }
+    },
+    {
+      "name": "update_line_status",
+      "description": "Changes the connectivity status (open/closed) of a specific transmission line.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "line_id": {
+            "type": "string"
+          },
+          "new_status": {
+            "type": "string",
+            "enum": [
+              "open",
+              "closed"
+            ]
+          }
+        },
+        "required": [
+          "line_id",
+          "new_status"
+        ]
+      },
+      "example_output": {
+        "line_id": "L_99",
+        "status": "closed"
+      }
+    },
+    {
+      "name": "test_dispatch_scenario",
+      "description": "Simulates the final impact of a set of dispatch instructions on the grid without applying them.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "proposed_dispatches": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "unit_id": {
+                  "type": "string"
+                },
+                "target_mw": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "unit_id",
+                "target_mw"
+              ]
+            }
+          }
+        },
+        "required": [
+          "proposed_dispatches"
+        ]
+      },
+      "example_output": {
+        "is_feasible": true,
+        "predicted_frequency_hz": 60.0,
+        "predicted_stability_margin": 0.96
+      }
+    },
+    {
+      "name": "execute_dispatch_commands",
+      "description": "Sends commands to power units to adjust their MW output for the current simulation tick.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "dispatches": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "unit_id": {
+                  "type": "string"
+                },
+                "target_mw": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "unit_id",
+                "target_mw"
+              ]
+            }
+          }
+        },
+        "required": [
+          "dispatches"
+        ]
+      },
+      "example_output": {
+        "status": "success",
+        "new_current_mw_values": {
+          "G_01": 120
+        }
+      }
+    }
+  ],
+  "state_description": {
+    "timestamp": "The current simulation tick or time step in the power grid simulation.",
+    "system_frequency_hz": "The current operating frequency of the grid (target 60.0 or 50.0). Deviations indicate load/generation imbalance.",
+    "generation_nodes": "A map of power generation units, including their current MW output, maximum capacity, and fuel status.",
+    "load_zones": "Current power demand in Megawatts (MW) for different geographical zones or industrial sectors.",
+    "transmission_lines": "Status of transmission lines, including their current load percentage, thermal limits, and connectivity (open/closed).",
+    "grid_stability_margin": "A calculated index (0.0 to 1.0) representing how close the system is to a blackout or cascading failure."
+  },
+  "task_initial_state": {
+    "timestamp": 168,
+    "system_frequency_hz": 59.88,
+    "generation_nodes": {
+      "Base_Load_Steam_Unit": {
+        "current_mw_output": 480.0,
+        "maximum_capacity_mw": 500.0,
+        "ramp_rate_limit_mw_per_step": 2.0,
+        "fuel_status": "nominal"
+      },
+      "BTM_Solar_Aggregator": {
+        "current_mw_output": 45.0,
+        "maximum_capacity_mw": 200.0,
+        "aggregate_dni": 120.0,
+        "fuel_status": "intermittent_low_irradiance"
+      },
+      "Fast_Response_Gas_Peaker": {
+        "current_mw_output": 0.0,
+        "maximum_capacity_mw": 150.0,
+        "ramp_rate_limit_mw_per_step": 40.0,
+        "fuel_status": "available",
+        "operational_status": "standby"
+      }
+    },
+    "load_zones": {
+      "Metro_Industrial_Park": {
+        "current_demand_mw": 560.0,
+        "priority_level": "critical"
+      }
+    },
+    "transmission_lines": [
+      {
+        "line_id": "L1_Base_to_Metro",
+        "load_percentage": 80.0,
+        "thermal_limit_mw": 600.0,
+        "connectivity": "closed"
+      },
+      {
+        "line_id": "L2_Gas_to_Metro",
+        "load_percentage": 0.0,
+        "thermal_limit_mw": 300.0,
+        "connectivity": "open"
+      }
+    ],
+    "grid_stability_margin": 0.82
+  }
+}

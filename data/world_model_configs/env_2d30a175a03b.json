@@ -1,0 +1,109 @@
+{
+  "environment_name": "env_2d30a175a03b",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM) for Adaptive Curriculum Sequencing.\n- **Core Objective**: Based on the current learner state $s_t$ and the pedagogical action $a_t$ (e.g., delivering a lesson or quiz), simulate the evolution of the learner's internal knowledge and engagement, and predict the resulting observation $o_{{t+1}}$ (e.g., test scores, completion time, or feedback).\n- **Emphasis**: You are the simulation engine of the learning environment. You do not choose the curriculum; you model how a student reacts to the curriculum chosen by the Agent. You perform internal state updates and generate realistic observations.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation tracking learner progress and psychological factors. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nEmphasis: You must maintain strict continuity of the learner's journey. Improvements in knowledge or declines in engagement must be logically derived from the history of actions and previous states.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. You must parse this to determine the next environmental transition. Format:\n- `\"name\"`: The name of the educational action (e.g., `present_lesson`, `take_assessment`).\n- Parameters: Specific arguments like `module_id` or `difficulty_level`.\n\nExample:\n```json\n{{\n \"name\": \"take_assessment\",\n \"arguments\": {{\n    \"module_id\": \"math_101_quiz\",\n    \"attempt_number\": 1\n  }}\n}}\n```\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nIf the Agent requests an action for a module the student hasn't unlocked, or provides invalid parameters, return a structured error (e.g., `{{\"error\": \"Prerequisites not met for module_id\"}}`). Do not hallucinate successful completions for invalid transitions.\n\n##### Output Assembly\nFor every action, you must return a JSON object containing **ONLY** the observation fields defined in the action's return schema. \n\n**CRITICAL CONSTRAINT**: You must **NOT** output the updated internal state (e.g., the new mastery percentages or engagement scores). These are hidden variables. Only output the visible result of the action (e.g., the quiz score, time taken, or the content text).\n\n### 4. Key Principles\n- **Format**: Output only the observation JSON.\n- **Factuality**: Use the provided state and action definitions as the source of truth.\n- **Consistency**: If a student masters a concept in state $t$, they should not suddenly forget it in state $t+1$ unless a specific 'decay' logic applies.\n- **Realism**: Simulate realistic student behavior—higher engagement should correlate with better quiz performance; overly difficult content should lower engagement.\n- **Encapsulation**: Maintain the boundary between the internal 'mind' of the learner (state) and the 'external' results (observation).\n{{initial_state}}: {{\n  \"knowledge_mastery\": {{\n    \"mh_recognition\": 0.25,\n    \"etco2_monitoring\": 0.6,\n    \"crisis_resource_management\": 0.1,\n    \"refractory_hyperkalemia_management\": 0.0\n  }},\n  \"engagement_score\": 0.55,\n  \"completed_modules\": [\n    \"basic_anesthesia_induction\"\n  ],\n  \"fatigue_level\": 0.4\n}}\n{{state_descriptions}}: {{\n  \"knowledge_mastery\": \"A map of topic IDs to mastery levels (0.0 to 1.0).\",\n  \"engagement_score\": \"A value from 0.0 to 1.0 representing the learner's current focus and motivation.\",\n  \"completed_modules\": \"A list of unique identifiers for content already finished by the learner.\",\n  \"fatigue_level\": \"A value from 0.0 to 1.0; high fatigue reduces performance on assessments.\"\n}}\n{action_set_definitions}: {\n  \"get_learner_status\": {\n    \"description\": \"Queries the World Model for the current internal state of the learner, including knowledge mastery levels, engagement, fatigue, and completed modules.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"knowledge_mastery\": {\n        \"Refractory_Hyperkalemia_Management\": 0.5\n      },\n      \"engagement_score\": 0.75,\n      \"fatigue_level\": 0.3,\n      \"completed_modules\": [\n        \"intro_assessment\"\n      ]\n    }\n  },\n  \"run_assessment\": {\n    \"description\": \"Triggers a specific assessment module. Returns the performance results and identifies specific clinical failure modes if applicable.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"assessment_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the assessment to be conducted (e.g., 'Malignant_Hyperthermia_Diagnostic').\"\n        }\n      },\n      \"required\": [\n        \"assessment_id\"\n      ]\n    },\n    \"example_output\": {\n      \"score\": 0.6,\n      \"failure_mode\": \"TTA_Crit\",\n      \"mastery_update\": 0.1\n    }\n  },\n  \"assign_content_module\": {\n    \"description\": \"Assigns and executes a specific instructional or remediation module to the learner.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"module_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier of the content module.\"\n        }\n      },\n      \"required\": [\n        \"module_id\"\n      ]\n    },\n    \"example_output\": {\n      \"completion_status\": \"success\",\n      \"new_mastery\": 0.8\n    }\n  },\n  \"manage_learner_wellbeing\": {\n    \"description\": \"Executes an intervention to adjust the learner's fatigue or engagement levels. Note: Interventions may have trade-offs (e.g., rest may slightly lower engagement).\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"intervention_type\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"rest\",\n            \"motivation_boost\"\n          ],\n          \"description\": \"The type of intervention to apply: 'rest' to decrease fatigue, 'motivation_boost' to increase engagement.\"\n        }\n      },\n      \"required\": [\n        \"intervention_type\"\n      ]\n    },\n    \"example_output\": {\n      \"intervention_result\": \"fatigue decreased\",\n      \"current_fatigue\": 0.4\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_learner_status",
+      "description": "Queries the World Model for the current internal state of the learner, including knowledge mastery levels, engagement, fatigue, and completed modules.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "knowledge_mastery": {
+          "Refractory_Hyperkalemia_Management": 0.5
+        },
+        "engagement_score": 0.75,
+        "fatigue_level": 0.3,
+        "completed_modules": [
+          "intro_assessment"
+        ]
+      }
+    },
+    {
+      "name": "run_assessment",
+      "description": "Triggers a specific assessment module. Returns the performance results and identifies specific clinical failure modes if applicable.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "assessment_id": {
+            "type": "string",
+            "description": "The unique identifier for the assessment to be conducted (e.g., 'Malignant_Hyperthermia_Diagnostic')."
+          }
+        },
+        "required": [
+          "assessment_id"
+        ]
+      },
+      "example_output": {
+        "score": 0.6,
+        "failure_mode": "TTA_Crit",
+        "mastery_update": 0.1
+      }
+    },
+    {
+      "name": "assign_content_module",
+      "description": "Assigns and executes a specific instructional or remediation module to the learner.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "module_id": {
+            "type": "string",
+            "description": "The unique identifier of the content module."
+          }
+        },
+        "required": [
+          "module_id"
+        ]
+      },
+      "example_output": {
+        "completion_status": "success",
+        "new_mastery": 0.8
+      }
+    },
+    {
+      "name": "manage_learner_wellbeing",
+      "description": "Executes an intervention to adjust the learner's fatigue or engagement levels. Note: Interventions may have trade-offs (e.g., rest may slightly lower engagement).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "intervention_type": {
+            "type": "string",
+            "enum": [
+              "rest",
+              "motivation_boost"
+            ],
+            "description": "The type of intervention to apply: 'rest' to decrease fatigue, 'motivation_boost' to increase engagement."
+          }
+        },
+        "required": [
+          "intervention_type"
+        ]
+      },
+      "example_output": {
+        "intervention_result": "fatigue decreased",
+        "current_fatigue": 0.4
+      }
+    }
+  ],
+  "state_description": {
+    "knowledge_mastery": "A map of topic IDs to mastery levels (0.0 to 1.0).",
+    "engagement_score": "A value from 0.0 to 1.0 representing the learner's current focus and motivation.",
+    "completed_modules": "A list of unique identifiers for content already finished by the learner.",
+    "fatigue_level": "A value from 0.0 to 1.0; high fatigue reduces performance on assessments."
+  },
+  "task_initial_state": {
+    "knowledge_mastery": {
+      "mh_recognition": 0.25,
+      "etco2_monitoring": 0.6,
+      "crisis_resource_management": 0.1,
+      "refractory_hyperkalemia_management": 0.0
+    },
+    "engagement_score": 0.55,
+    "completed_modules": [
+      "basic_anesthesia_induction"
+    ],
+    "fatigue_level": 0.4
+  }
+}

@@ -1,0 +1,286 @@
+{
+  "environment_name": "env_ba06a9f90235",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: Based on the current transit environment state $s_t$ and the schedule recovery action $a_t$ taken by the Agent, simulate the evolution of the transit network and predict the observation $o_{{t+1}}$ (e.g., updated arrival times, passenger counts, or service alerts).\n- **Emphasis**: You are a simulator of a complex transit system. You do not execute real-world dispatch commands; you calculate and describe the logical outcomes of those commands based on internal transit dynamics, traffic logic, and schedule constraints.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation tracking vehicle positions, delays, passenger loads, and resource availability. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions must maintain temporal and logical consistency. If a vehicle is delayed at time $t$, it remains delayed at $t+1$ unless a recovery action (like skipping stops or rerouting) is successfully simulated to mitigate the delay.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the transit environment by calling action functions defined below:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. You must parse this JSON to determine the intended state transition.\nFormat:\n- `\"name\"`: The action function name (e.g., \"reroute_bus\", \"skip_stop\").\n- Remaining fields: Parameters required for that specific action.\n\nExample:\n```json\n{{\n \"name\": \"dispatch_standby_vehicle\",\n \"arguments\": {{\n    \"line_id\": \"Blue-Line-101\",\n    \"start_stop\": \"Central-Station\",\n    \"target_gap_minutes\": 5\n  }}\n}}\n```\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\n- If an action references a non-existent vehicle ID or route, return: `{{\"error\": \"Vehicle/Route ID not found\"}}`.\n- If an action is physically impossible (e.g., rerouting a train to a bus-only lane), return: `{{\"error\": \"Invalid infrastructure constraints\"}}`.\n- Do not fabricate transit data if input is ambiguous.\n\n##### Output Assembly\nFor every action, return a JSON object containing **ONLY** the specific return fields (Observations) declared in the action function's definition. \n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, `new_state`, or hidden variables like `internal_delay_buffer`. The Agent must only see the resulting Observation (e.g., `\"new_estimated_arrival\"` or `\"passenger_impact_score\"`). State maintenance is handled internally by your simulation memory.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to specified JSON output formats.\n- **Factuality**: Use realistic transit physics (e.g., buses cannot travel between stops faster than speed limits; boarding takes time).\n- **Consistency**: Ensure that a change in one route's schedule correctly propagates to transfer points for connecting passengers.\n- **Realism**: Simulate stochastic elements if implied (e.g., minor traffic fluctuations or varying boarding speeds).\n- **Quality**: Ensure all output observations are precise and useful for Reinforcement Learning feedback.\n- **Encapsulation**: Strictly hide the internal state structure. Do not output the state update or internal logs.\n{{initial_state}}: {{\n  \"current_sim_time\": \"17:30:00\",\n  \"active_vehicles\": [\n    {{\n      \"vehicle_id\": \"BLU-L-501\",\n      \"route_id\": \"Blue-Line-Local\",\n      \"current_stop_id\": \"S5-A\",\n      \"delay_seconds\": 45,\n      \"passenger_count\": 85,\n      \"status\": \"moving\"\n    }},\n    {{\n      \"vehicle_id\": \"BLU-L-502\",\n      \"route_id\": \"Blue-Line-Local\",\n      \"current_stop_id\": \"S8-B\",\n      \"delay_seconds\": 600,\n      \"passenger_count\": 42,\n      \"status\": \"moving\"\n    }},\n    {{\n      \"vehicle_id\": \"BLU-E-501\",\n      \"route_id\": \"Blue-Line-Express\",\n      \"current_stop_id\": \"S10-A\",\n      \"delay_seconds\": 0,\n      \"passenger_count\": 20,\n      \"status\": \"moving\"\n    }},\n    {{\n      \"vehicle_id\": \"BLU-L-503\",\n      \"route_id\": \"Blue-Line-Local\",\n      \"current_stop_id\": \"S21-B\",\n      \"delay_seconds\": 2400,\n      \"passenger_count\": 98,\n      \"status\": \"out_of_service\"\n    }},\n    {{\n      \"vehicle_id\": \"BLU-L-504\",\n      \"route_id\": \"Blue-Line-Local\",\n      \"current_stop_id\": \"S22-B\",\n      \"delay_seconds\": 3600,\n      \"passenger_count\": 10,\n      \"status\": \"stopped\"\n    }},\n    {{\n      \"vehicle_id\": \"ORG-L-202\",\n      \"route_id\": \"Orange-Line-Local\",\n      \"current_stop_id\": \"S15-C\",\n      \"delay_seconds\": 120,\n      \"passenger_count\": 55,\n      \"status\": \"moving\"\n    }},\n    {{\n      \"vehicle_id\": \"BLU-L-505\",\n      \"route_id\": \"Blue-Line-Local\",\n      \"current_stop_id\": \"S12-A\",\n      \"delay_seconds\": 900,\n      \"passenger_count\": 30,\n      \"status\": \"moving\"\n    }}\n  ],\n  \"stop_congestion_levels\": {{\n    \"S1-A\": 0.12,\n    \"S5-A\": 0.25,\n    \"S10-A\": 0.2,\n    \"S20-B\": 0.95,\n    \"S21-B\": 0.98,\n    \"S22-B\": 0.88,\n    \"S25-B\": 0.92,\n    \"S30-B\": 0.7,\n    \"S15-C\": 0.45\n  }},\n  \"available_standby_units\": 2,\n  \"active_disruptions\": [\n    {{\n      \"incident_id\": \"MNT-901\",\n      \"location\": \"S21-B\",\n      \"severity\": \"Critical\",\n      \"est_clearance_time\": \"18:45:00\"\n    }},\n    {{\n      \"incident_id\": \"CLW-202\",\n      \"location\": \"S2-A\",\n      \"severity\": \"Minor\",\n      \"est_clearance_time\": \"17:45:00\"\n    }},\n    {{\n      \"incident_id\": \"SEC-404\",\n      \"location\": \"S35-D\",\n      \"severity\": \"Moderate\",\n      \"est_clearance_time\": \"18:15:00\"\n    }}\n  ]\n}}\n{{state_descriptions}}: {{\n  \"current_sim_time\": \"The current simulation timestamp in HH:MM:SS format.\",\n  \"active_vehicles\": \"List of all vehicles currently in service, including their current stop, delay status, and passenger load.\",\n  \"stop_congestion_levels\": \"A mapping of stop IDs to a congestion score (0.0 to 1.0) representing passenger density on the platform.\",\n  \"available_standby_units\": \"Number of spare vehicles and drivers available in the depot for emergency dispatch.\",\n  \"active_disruptions\": \"Current incidents affecting the network (e.g., roadwork, mechanical failure).\"\n}}\n{action_set_definitions}: {\n  \"get_system_overview\": {\n    \"description\": \"Retrieves the current simulation time, a list of active disruptions (including location, severity, and estimated clearance time), and the total count of available standby units in the depot.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"current_sim_time\": \"08:00:00\",\n      \"standby_units_available\": 5,\n      \"disruptions\": [\n        {\n          \"id\": \"INC-21B\",\n          \"location\": \"S21-B\",\n          \"severity\": \"Critical\",\n          \"estimated_clearance_time\": \"08:45:00\",\n          \"impacted_route\": \"Blue-Line-Local\"\n        }\n      ]\n    }\n  },\n  \"get_corridor_metrics\": {\n    \"description\": \"Returns current performance data (HDF and TDI) for a specific range of stops.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"corridor_name\": {\n          \"type\": \"string\",\n          \"description\": \"Identifier for the corridor (e.g., 'South' or 'North').\"\n        },\n        \"start_stop\": {\n          \"type\": \"string\",\n          \"description\": \"Starting stop ID.\"\n        },\n        \"end_stop\": {\n          \"type\": \"string\",\n          \"description\": \"Ending stop ID.\"\n        }\n      },\n      \"required\": [\n        \"corridor_name\",\n        \"start_stop\",\n        \"end_stop\"\n      ]\n    },\n    \"example_output\": {\n      \"hdf\": 1.95,\n      \"tdi\": 0.9\n    }\n  },\n  \"list_vehicles_on_route\": {\n    \"description\": \"Retrieves real-time status for all vehicles on a specific route, including current stop, passenger load, and position relative to any blockages.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"route_name\": {\n          \"type\": \"string\",\n          \"description\": \"e.g., 'Blue-Line-Local'.\"\n        }\n      },\n      \"required\": [\n        \"route_name\"\n      ]\n    },\n    \"example_output\": {\n      \"vehicles\": [\n        {\n          \"v_id\": \"BLL-101\",\n          \"current_stop\": \"S19\",\n          \"passengers\": 85,\n          \"is_ahead_of_blockage\": false\n        }\n      ]\n    }\n  },\n  \"dispatch_standby_unit\": {\n    \"description\": \"Dispatches a single standby unit from the depot to enter service at a specific stop.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"route_name\": {\n          \"type\": \"string\"\n        },\n        \"insertion_stop\": {\n          \"type\": \"string\",\n          \"description\": \"Stop ID where the vehicle begins its route.\"\n        }\n      },\n      \"required\": [\n        \"route_name\",\n        \"insertion_stop\"\n      ]\n    },\n    \"example_output\": {\n      \"unit_id\": \"STBY-09\",\n      \"status\": \"Dispatched\"\n    }\n  },\n  \"apply_vehicle_intervention\": {\n    \"description\": \"Executes a recovery command on a specific vehicle. Note: Commands fail if Route Crowding Ratio (RCR) is >= 0.80.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"vehicle_id\": {\n          \"type\": \"string\"\n        },\n        \"action\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"Express_Drop_Off_Only\",\n            \"Short_Turn\",\n            \"Resume_Normal\"\n          ]\n        },\n        \"turn_at_stop\": {\n          \"type\": \"string\",\n          \"description\": \"Required for Short_Turn; the stop where the vehicle will reverse.\"\n        }\n      },\n      \"required\": [\n        \"vehicle_id\",\n        \"action\"\n      ]\n    },\n    \"example_output\": {\n      \"success\": true,\n      \"observed_rcr\": 0.45\n    }\n  },\n  \"advance_sim_time\": {\n    \"description\": \"Advances the simulation clock by a specific number of minutes to allow interventions to process.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"minutes\": {\n          \"type\": \"integer\"\n        }\n      },\n      \"required\": [\n        \"minutes\"\n      ]\n    },\n    \"example_output\": {\n      \"new_sim_time\": \"08:15:00\"\n    }\n  },\n  \"submit_final_report\": {\n    \"description\": \"Finalizes the task by reporting current HDF metrics and a summary of recovery status.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"south_hdf\": {\n          \"type\": \"number\"\n        },\n        \"north_hdf\": {\n          \"type\": \"number\"\n        },\n        \"goal_met\": {\n          \"type\": \"boolean\"\n        },\n        \"summary\": {\n          \"type\": \"string\"\n        }\n      },\n      \"required\": [\n        \"south_hdf\",\n        \"north_hdf\",\n        \"goal_met\",\n        \"summary\"\n      ]\n    },\n    \"example_output\": null\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_system_overview",
+      "description": "Retrieves the current simulation time, a list of active disruptions (including location, severity, and estimated clearance time), and the total count of available standby units in the depot.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "current_sim_time": "08:00:00",
+        "standby_units_available": 5,
+        "disruptions": [
+          {
+            "id": "INC-21B",
+            "location": "S21-B",
+            "severity": "Critical",
+            "estimated_clearance_time": "08:45:00",
+            "impacted_route": "Blue-Line-Local"
+          }
+        ]
+      }
+    },
+    {
+      "name": "get_corridor_metrics",
+      "description": "Returns current performance data (HDF and TDI) for a specific range of stops.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "corridor_name": {
+            "type": "string",
+            "description": "Identifier for the corridor (e.g., 'South' or 'North')."
+          },
+          "start_stop": {
+            "type": "string",
+            "description": "Starting stop ID."
+          },
+          "end_stop": {
+            "type": "string",
+            "description": "Ending stop ID."
+          }
+        },
+        "required": [
+          "corridor_name",
+          "start_stop",
+          "end_stop"
+        ]
+      },
+      "example_output": {
+        "hdf": 1.95,
+        "tdi": 0.9
+      }
+    },
+    {
+      "name": "list_vehicles_on_route",
+      "description": "Retrieves real-time status for all vehicles on a specific route, including current stop, passenger load, and position relative to any blockages.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "route_name": {
+            "type": "string",
+            "description": "e.g., 'Blue-Line-Local'."
+          }
+        },
+        "required": [
+          "route_name"
+        ]
+      },
+      "example_output": {
+        "vehicles": [
+          {
+            "v_id": "BLL-101",
+            "current_stop": "S19",
+            "passengers": 85,
+            "is_ahead_of_blockage": false
+          }
+        ]
+      }
+    },
+    {
+      "name": "dispatch_standby_unit",
+      "description": "Dispatches a single standby unit from the depot to enter service at a specific stop.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "route_name": {
+            "type": "string"
+          },
+          "insertion_stop": {
+            "type": "string",
+            "description": "Stop ID where the vehicle begins its route."
+          }
+        },
+        "required": [
+          "route_name",
+          "insertion_stop"
+        ]
+      },
+      "example_output": {
+        "unit_id": "STBY-09",
+        "status": "Dispatched"
+      }
+    },
+    {
+      "name": "apply_vehicle_intervention",
+      "description": "Executes a recovery command on a specific vehicle. Note: Commands fail if Route Crowding Ratio (RCR) is >= 0.80.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "vehicle_id": {
+            "type": "string"
+          },
+          "action": {
+            "type": "string",
+            "enum": [
+              "Express_Drop_Off_Only",
+              "Short_Turn",
+              "Resume_Normal"
+            ]
+          },
+          "turn_at_stop": {
+            "type": "string",
+            "description": "Required for Short_Turn; the stop where the vehicle will reverse."
+          }
+        },
+        "required": [
+          "vehicle_id",
+          "action"
+        ]
+      },
+      "example_output": {
+        "success": true,
+        "observed_rcr": 0.45
+      }
+    },
+    {
+      "name": "advance_sim_time",
+      "description": "Advances the simulation clock by a specific number of minutes to allow interventions to process.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "minutes": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "minutes"
+        ]
+      },
+      "example_output": {
+        "new_sim_time": "08:15:00"
+      }
+    },
+    {
+      "name": "submit_final_report",
+      "description": "Finalizes the task by reporting current HDF metrics and a summary of recovery status.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "south_hdf": {
+            "type": "number"
+          },
+          "north_hdf": {
+            "type": "number"
+          },
+          "goal_met": {
+            "type": "boolean"
+          },
+          "summary": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "south_hdf",
+          "north_hdf",
+          "goal_met",
+          "summary"
+        ]
+      },
+      "example_output": null
+    }
+  ],
+  "state_description": {
+    "current_sim_time": "The current simulation timestamp in HH:MM:SS format.",
+    "active_vehicles": "List of all vehicles currently in service, including their current stop, delay status, and passenger load.",
+    "stop_congestion_levels": "A mapping of stop IDs to a congestion score (0.0 to 1.0) representing passenger density on the platform.",
+    "available_standby_units": "Number of spare vehicles and drivers available in the depot for emergency dispatch.",
+    "active_disruptions": "Current incidents affecting the network (e.g., roadwork, mechanical failure)."
+  },
+  "task_initial_state": {
+    "current_sim_time": "17:30:00",
+    "active_vehicles": [
+      {
+        "vehicle_id": "BLU-L-501",
+        "route_id": "Blue-Line-Local",
+        "current_stop_id": "S5-A",
+        "delay_seconds": 45,
+        "passenger_count": 85,
+        "status": "moving"
+      },
+      {
+        "vehicle_id": "BLU-L-502",
+        "route_id": "Blue-Line-Local",
+        "current_stop_id": "S8-B",
+        "delay_seconds": 600,
+        "passenger_count": 42,
+        "status": "moving"
+      },
+      {
+        "vehicle_id": "BLU-E-501",
+        "route_id": "Blue-Line-Express",
+        "current_stop_id": "S10-A",
+        "delay_seconds": 0,
+        "passenger_count": 20,
+        "status": "moving"
+      },
+      {
+        "vehicle_id": "BLU-L-503",
+        "route_id": "Blue-Line-Local",
+        "current_stop_id": "S21-B",
+        "delay_seconds": 2400,
+        "passenger_count": 98,
+        "status": "out_of_service"
+      },
+      {
+        "vehicle_id": "BLU-L-504",
+        "route_id": "Blue-Line-Local",
+        "current_stop_id": "S22-B",
+        "delay_seconds": 3600,
+        "passenger_count": 10,
+        "status": "stopped"
+      },
+      {
+        "vehicle_id": "ORG-L-202",
+        "route_id": "Orange-Line-Local",
+        "current_stop_id": "S15-C",
+        "delay_seconds": 120,
+        "passenger_count": 55,
+        "status": "moving"
+      },
+      {
+        "vehicle_id": "BLU-L-505",
+        "route_id": "Blue-Line-Local",
+        "current_stop_id": "S12-A",
+        "delay_seconds": 900,
+        "passenger_count": 30,
+        "status": "moving"
+      }
+    ],
+    "stop_congestion_levels": {
+      "S1-A": 0.12,
+      "S5-A": 0.25,
+      "S10-A": 0.2,
+      "S20-B": 0.95,
+      "S21-B": 0.98,
+      "S22-B": 0.88,
+      "S25-B": 0.92,
+      "S30-B": 0.7,
+      "S15-C": 0.45
+    },
+    "available_standby_units": 2,
+    "active_disruptions": [
+      {
+        "incident_id": "MNT-901",
+        "location": "S21-B",
+        "severity": "Critical",
+        "est_clearance_time": "18:45:00"
+      },
+      {
+        "incident_id": "CLW-202",
+        "location": "S2-A",
+        "severity": "Minor",
+        "est_clearance_time": "17:45:00"
+      },
+      {
+        "incident_id": "SEC-404",
+        "location": "S35-D",
+        "severity": "Moderate",
+        "est_clearance_time": "18:15:00"
+      }
+    ]
+  }
+}

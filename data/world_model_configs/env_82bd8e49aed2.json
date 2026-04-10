@@ -1,0 +1,201 @@
+{
+  "environment_name": "env_82bd8e49aed2",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: You act as the internal simulation engine for a Breaking News Prioritization environment. Based on the current state $s_t$ and the action $a_t$ submitted by the Agent, you simulate the internal evolution of the newsroom and generate the resulting observation $o_{{t+1}}$ for the Agent.\n- **Emphasis**: You do not suggest actions or provide advice. You are the environment itself. Your task is to perform internal state evolution and predict what the Agent sees after an action is taken.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nYou must maintain strict temporal and logical consistency throughout the interaction. Changes to the news queue, trending status, and editorial resources must persist across turns to ensure the environment remains self-consistent.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object containing:\n- `\"name\"`: The name of the action function.\n- Remaining fields: Parameter names and values.\n\nExample:\n```json\n{{\n  \"name\": \"prioritize_story\",\n  \"arguments\": {{\n    \"story_id\": \"NEWS-123\",\n    \"priority_level\": \"high\"\n  }}\n}}\n```\nYou must parse this JSON, simulate the internal logic (e.g., moving a story to the high-priority queue, updating resource availability), and generate the resulting observation.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\n- If an Agent references a non-existent `story_id`, returns an empty input, or calls an undefined function, return a structured error: `{{\"error\": \"Reason for failure\"}}`.\n- Do not fabricate data; if the news queue is empty, the observation should reflect that.\n\n##### Output Assembly\nFor every action call, return a structured JSON object containing **ONLY** the return fields declared in the action function's definition.\n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, `new_state`, or any hidden variables. You are responsible for maintaining the state internally, but the Agent must only see the specific Observation (the return values).\n\n### 4. Key Principles\n- **Format**: Strictly adhere to JSON for all environment outputs.\n- **Factuality**: Simulate realistic newsroom dynamics (e.g., breaking news loses relevance over time, resources are finite).\n- **Consistency**: If a story is published, it should no longer appear in the pending queue in subsequent steps.\n- **Realism**: Ensure the simulated impact of actions (like audience reach or reporter fatigue) aligns with reasonable world logic.\n- **Encapsulation**: Strictly hide the internal state structure from the output. Only expose information explicitly returned by the action function.\n{{initial_state}}: {{\n  \"pending_stories\": [\n    {{\n      \"id\": \"EDU-772\",\n      \"source\": \"NewsWhip\",\n      \"urgency_score\": 8.4,\n      \"topic\": \"Babel Syllabus Protest\",\n      \"headline_proposals\": [\n        \"Babel Syllabus: Why the Protest is Spreading\",\n        \"Campus Walkout Over Banned Novel\"\n      ]\n    }}\n  ],\n  \"published_feed\": [\n    {{\n      \"id\": \"POL-550\",\n      \"title\": \"Senate Hearing on Tech Monopoly\",\n      \"placement\": \"Hero Slot\",\n      \"peak_ppm\": 900,\n      \"current_ppm\": 380,\n      \"concurrents\": 5200,\n      \"engaged_time\": \"1:15\"\n    }},\n    {{\n      \"id\": \"BIZ-201\",\n      \"title\": \"Market Close: Tech Stocks Rally\",\n      \"placement\": \"Secondary Module\",\n      \"peak_ppm\": 400,\n      \"current_ppm\": 390,\n      \"concurrents\": 4100,\n      \"engaged_time\": \"0:55\"\n    }}\n  ],\n  \"trending_topics\": [\n    \"BabelWalkout\",\n    \"AcademicFreedom\",\n    \"TechMonopoly\",\n    \"MarketWatch\"\n  ],\n  \"editorial_capacity\": 55,\n  \"simulation_clock\": \"11:15\"\n}}\n{{state_descriptions}}: {{\n  \"pending_stories\": \"A list of unproccessed news stories currently in the inbox, including ID, source, and raw urgency score.\",\n  \"published_feed\": \"Stories that have been prioritized and pushed to the public feed.\",\n  \"trending_topics\": \"A list of keywords currently experiencing high search volume in the simulated world.\",\n  \"editorial_capacity\": \"Total available man-hours or units of effort for the current shift.\",\n  \"simulation_clock\": \"The current time in the simulation, formatted as HH:MM.\"\n}}\n{action_set_definitions}: {\n  \"get_pending_stories\": {\n    \"description\": \"Retrieves the list of unprocessed news stories in the inbox to identify candidates for promotion.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"stories\": [\n        {\n          \"id\": \"STORY_123\",\n          \"category\": \"culture\",\n          \"flagged\": true,\n          \"raw_urgency\": 8.5\n        }\n      ]\n    }\n  },\n  \"get_story_analytics\": {\n    \"description\": \"Obtains real-time analytics for a specific story, including velocity and reader engagement metrics.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"story_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier of the story.\"\n        }\n      },\n      \"required\": [\n        \"story_id\"\n      ]\n    },\n    \"example_output\": {\n      \"velocity\": 150.5,\n      \"engagement_rate\": 0.12,\n      \"topic_keywords\": [\n        \"art\",\n        \"exhibit\"\n      ]\n    }\n  },\n  \"get_hero_slot_status\": {\n    \"description\": \"Checks the current occupant of the Hero Slot and its performance metrics (current vs peak).\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"current_occupant_id\": \"STORY_001\",\n      \"current_velocity\": 45.0,\n      \"peak_velocity\": 200.0\n    }\n  },\n  \"get_editorial_config\": {\n    \"description\": \"Retrieves the Desk's mandatory thresholds, demotion criteria, and current shift capacity.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"min_velocity_threshold\": 100.0,\n      \"min_engagement_threshold\": 0.05,\n      \"demotion_decay_ratio\": 0.4,\n      \"remaining_capacity\": 10,\n      \"action_cost_units\": 2\n    }\n  },\n  \"promote_to_hero\": {\n    \"description\": \"Elevates a specific story to the Hero Slot, displacing the current occupant.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"story_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the story to promote.\"\n        }\n      },\n      \"required\": [\n        \"story_id\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"success\",\n      \"new_slot_id\": \"HERO_01\"\n    }\n  },\n  \"search_related_content\": {\n    \"description\": \"Searches the published feed or archive for supplementary content related to specific keywords for clustering.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"keywords\": {\n          \"type\": \"array\",\n          \"items\": {\n            \"type\": \"string\"\n          },\n          \"description\": \"Keywords to match content.\"\n        }\n      },\n      \"required\": [\n        \"keywords\"\n      ]\n    },\n    \"example_output\": {\n      \"related_story_ids\": [\n        \"STORY_99\",\n        \"STORY_101\"\n      ]\n    }\n  },\n  \"apply_clustering_workflow\": {\n    \"description\": \"Assigns and links supplementary content IDs to a primary story to maximize recirculation.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"primary_story_id\": {\n          \"type\": \"string\",\n          \"description\": \"The target Hero story ID.\"\n        },\n        \"supplementary_ids\": {\n          \"type\": \"array\",\n          \"items\": {\n            \"type\": \"string\"\n          },\n          \"description\": \"List of IDs to link.\"\n        }\n      },\n      \"required\": [\n        \"primary_story_id\",\n        \"supplementary_ids\"\n      ]\n    },\n    \"example_output\": {\n      \"links_created\": 2,\n      \"status\": \"active\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_pending_stories",
+      "description": "Retrieves the list of unprocessed news stories in the inbox to identify candidates for promotion.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "stories": [
+          {
+            "id": "STORY_123",
+            "category": "culture",
+            "flagged": true,
+            "raw_urgency": 8.5
+          }
+        ]
+      }
+    },
+    {
+      "name": "get_story_analytics",
+      "description": "Obtains real-time analytics for a specific story, including velocity and reader engagement metrics.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "story_id": {
+            "type": "string",
+            "description": "The unique identifier of the story."
+          }
+        },
+        "required": [
+          "story_id"
+        ]
+      },
+      "example_output": {
+        "velocity": 150.5,
+        "engagement_rate": 0.12,
+        "topic_keywords": [
+          "art",
+          "exhibit"
+        ]
+      }
+    },
+    {
+      "name": "get_hero_slot_status",
+      "description": "Checks the current occupant of the Hero Slot and its performance metrics (current vs peak).",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "current_occupant_id": "STORY_001",
+        "current_velocity": 45.0,
+        "peak_velocity": 200.0
+      }
+    },
+    {
+      "name": "get_editorial_config",
+      "description": "Retrieves the Desk's mandatory thresholds, demotion criteria, and current shift capacity.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "min_velocity_threshold": 100.0,
+        "min_engagement_threshold": 0.05,
+        "demotion_decay_ratio": 0.4,
+        "remaining_capacity": 10,
+        "action_cost_units": 2
+      }
+    },
+    {
+      "name": "promote_to_hero",
+      "description": "Elevates a specific story to the Hero Slot, displacing the current occupant.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "story_id": {
+            "type": "string",
+            "description": "The ID of the story to promote."
+          }
+        },
+        "required": [
+          "story_id"
+        ]
+      },
+      "example_output": {
+        "status": "success",
+        "new_slot_id": "HERO_01"
+      }
+    },
+    {
+      "name": "search_related_content",
+      "description": "Searches the published feed or archive for supplementary content related to specific keywords for clustering.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "keywords": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Keywords to match content."
+          }
+        },
+        "required": [
+          "keywords"
+        ]
+      },
+      "example_output": {
+        "related_story_ids": [
+          "STORY_99",
+          "STORY_101"
+        ]
+      }
+    },
+    {
+      "name": "apply_clustering_workflow",
+      "description": "Assigns and links supplementary content IDs to a primary story to maximize recirculation.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "primary_story_id": {
+            "type": "string",
+            "description": "The target Hero story ID."
+          },
+          "supplementary_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "List of IDs to link."
+          }
+        },
+        "required": [
+          "primary_story_id",
+          "supplementary_ids"
+        ]
+      },
+      "example_output": {
+        "links_created": 2,
+        "status": "active"
+      }
+    }
+  ],
+  "state_description": {
+    "pending_stories": "A list of unproccessed news stories currently in the inbox, including ID, source, and raw urgency score.",
+    "published_feed": "Stories that have been prioritized and pushed to the public feed.",
+    "trending_topics": "A list of keywords currently experiencing high search volume in the simulated world.",
+    "editorial_capacity": "Total available man-hours or units of effort for the current shift.",
+    "simulation_clock": "The current time in the simulation, formatted as HH:MM."
+  },
+  "task_initial_state": {
+    "pending_stories": [
+      {
+        "id": "EDU-772",
+        "source": "NewsWhip",
+        "urgency_score": 8.4,
+        "topic": "Babel Syllabus Protest",
+        "headline_proposals": [
+          "Babel Syllabus: Why the Protest is Spreading",
+          "Campus Walkout Over Banned Novel"
+        ]
+      }
+    ],
+    "published_feed": [
+      {
+        "id": "POL-550",
+        "title": "Senate Hearing on Tech Monopoly",
+        "placement": "Hero Slot",
+        "peak_ppm": 900,
+        "current_ppm": 380,
+        "concurrents": 5200,
+        "engaged_time": "1:15"
+      },
+      {
+        "id": "BIZ-201",
+        "title": "Market Close: Tech Stocks Rally",
+        "placement": "Secondary Module",
+        "peak_ppm": 400,
+        "current_ppm": 390,
+        "concurrents": 4100,
+        "engaged_time": "0:55"
+      }
+    ],
+    "trending_topics": [
+      "BabelWalkout",
+      "AcademicFreedom",
+      "TechMonopoly",
+      "MarketWatch"
+    ],
+    "editorial_capacity": 55,
+    "simulation_clock": "11:15"
+  }
+}

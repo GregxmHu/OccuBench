@@ -1,0 +1,214 @@
+{
+  "environment_name": "env_83367148d011",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM) for Quality Defect Root Cause Analysis.\n- **Core Objective**: Based on the current internal state $s_t$ and the Agent's diagnostic action $a_t$, simulate the evolution of the manufacturing environment and predict the resulting observation $o_{{t+1}}$.\n- **Emphasis**: You are the simulation engine. You do not provide advice or solve the problem; you update the internal state of the industrial process and return the specific data, logs, or test results requested by the Agent.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation tracking production parameters, equipment health, and hidden fault factors. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions must maintain absolute continuity. If an Agent adjusts a machine setting or performs a repair in step $t$, the observations in step $t+1$ and beyond must reflect that change in the environment state.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions (e.g., querying sensors, inspecting logs, or running teardown analyses). The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` returned for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. You must parse this JSON to determine the intended operation:\n- `\"name\"`: The specific diagnostic or investigative action.\n- `\"arguments\"`: Parameters such as `sensor_id`, `batch_number`, or `component_name`.\n\nExample Input:\n```json\n{{\n \"name\": \"query_sensor_history\",\n \"arguments\": {{\n    \"sensor_id\": \"TEMP_01\",\n    \"start_time\": \"2025-10-01T08:00:00Z\"\n  }}\n}}\n```\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nIf the Agent requests data for a non-existent sensor, provides invalid timestamps, or attempts an action not supported by the current state (e.g., inspecting a batch that hasn't been produced), return a structured error: `{{\"error\": \"Description of the specific failure\"}}`. Do not hallucinate data.\n\n##### Output Assembly\nFor every action call, you must return a structured JSON object containing **ONLY** the return fields declared in that action's definition. \n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, the updated state, or hidden variables like the actual root cause. You only provide the \"Observation\"—the specific information the Agent's action would realistically reveal.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to JSON output for observations.\n- **Factuality**: Use the internal state to derive realistic sensor noise, log entries, and defect patterns.\n- **Consistency**: If the internal state indicates a faulty heater, all temperature-related observations across different actions must be logically consistent with a failing heater.\n- **Realism**: Simulated industrial data should reflect realistic physics and process logic (e.g., pressure drops following a valve failure).\n- **Encapsulation**: Strictly hide the internal state structure and the \"ground truth\" root cause from the output. The Agent must deduce the cause solely through the observations provided.\n{{initial_state}}: {{\n  \"production_line_metadata\": {{\n    \"line_id\": \"LINE_04\",\n    \"active_batch\": \"BATCH_205\",\n    \"status\": \"degraded\"\n  }},\n  \"hidden_fault_ground_truth\": {{\n    \"component\": \"Suction_Flange_Gasket_A1\",\n    \"failure_mode\": \"Entrained_Gas_Ingress\",\n    \"severity\": 0.85\n  }},\n  \"sensor_current_values\": {{\n    \"temp_probe\": 88.5,\n    \"vibration_sensor\": 9.8,\n    \"pressure_gauge\": 108.2,\n    \"acoustic_emission_rms\": 82.4\n  }},\n  \"maintenance_history_db\": [\n    {{\n      \"date\": \"2025-02-01\",\n      \"action\": \"Impeller Replacement (316SS)\",\n      \"technician\": \"Tech_A\"\n    }}\n  ],\n  \"quality_metrics\": {{\n    \"defect_rate\": 0.088,\n    \"primary_symptom\": \"Surface_Pitting\"\n  }}\n}}\n{{state_descriptions}}: {{\n  \"production_line_metadata\": \"General info about the active production line and current batch.\",\n  \"hidden_fault_ground_truth\": \"The actual underlying cause of defects, used by the model to generate observations but never revealed to the agent.\",\n  \"sensor_current_values\": \"Real-time readings for all sensors on the line including noise levels.\",\n  \"maintenance_history_db\": \"A database of past maintenance events for the equipment.\",\n  \"quality_metrics\": \"Aggregation of defect rates or measurement deviations for the current batch.\"\n}}\n{action_set_definitions}: {\n  \"get_sensor_readings\": {\n    \"description\": \"Retrieves real-time sensor data for a specific equipment ID on a production line. Returns suction pressure, fluid temperature, and acoustic noise levels.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"equipment_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the equipment (e.g., 'Feed_Pump_P101').\"\n        },\n        \"sensor_list\": {\n          \"type\": \"array\",\n          \"items\": {\n            \"type\": \"string\"\n          },\n          \"description\": \"List of sensors to query: 'suction_pressure', 'temperature', 'discharge_pressure', 'vibration_level'.\"\n        }\n      },\n      \"required\": [\n        \"equipment_id\",\n        \"sensor_list\"\n      ]\n    },\n    \"example_output\": {\n      \"suction_pressure_bar\": 2.1,\n      \"fluid_temp_celsius\": 85.5,\n      \"vibration_rms\": 4.2\n    }\n  },\n  \"get_pump_design_specs\": {\n    \"description\": \"Retrieves technical specifications for a pump, including the Net Positive Suction Head Required (NPSHr) and design fluid properties.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"equipment_id\": {\n          \"type\": \"string\",\n          \"description\": \"The equipment identifier.\"\n        }\n      },\n      \"required\": [\n        \"equipment_id\"\n      ]\n    },\n    \"example_output\": {\n      \"npsh_required_m\": 1.8,\n      \"rated_flow_m3h\": 150.0,\n      \"fluid_type\": \"Water-based polymer\"\n    }\n  },\n  \"calculate_npsh_margin\": {\n    \"description\": \"Calculates the NPSH available (NPSHa) based on suction pressure and temperature, then returns the margin ratio (NPSHa / NPSHr).\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"suction_pressure\": {\n          \"type\": \"number\"\n        },\n        \"temperature\": {\n          \"type\": \"number\"\n        },\n        \"npsh_required\": {\n          \"type\": \"number\"\n        },\n        \"fluid_type\": {\n          \"type\": \"string\"\n        }\n      },\n      \"required\": [\n        \"suction_pressure\",\n        \"temperature\",\n        \"npsh_required\",\n        \"fluid_type\"\n      ]\n    },\n    \"example_output\": {\n      \"npsh_available_m\": 1.95,\n      \"margin_ratio\": 1.08\n    }\n  },\n  \"get_maintenance_records\": {\n    \"description\": \"Searches the maintenance database for recent repair events, seal replacements, or reported leaks for a specific asset.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"equipment_id\": {\n          \"type\": \"string\"\n        },\n        \"lookback_days\": {\n          \"type\": \"integer\"\n        }\n      },\n      \"required\": [\n        \"equipment_id\",\n        \"lookback_days\"\n      ]\n    },\n    \"example_output\": {\n      \"events\": [\n        {\n          \"date\": \"2023-10-12\",\n          \"component\": \"Mechanical Seal\",\n          \"issue\": \"Minor weeping noticed\"\n        },\n        {\n          \"date\": \"2023-11-01\",\n          \"component\": \"Suction Flange\",\n          \"issue\": \"Gasket degradation\"\n        }\n      ]\n    }\n  },\n  \"calculate_thermal_adjustment\": {\n    \"description\": \"Determines the exact temperature reduction in Celsius required to raise the NPSH margin ratio to a specific target.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"current_temp\": {\n          \"type\": \"number\"\n        },\n        \"current_npsha\": {\n          \"type\": \"number\"\n        },\n        \"npshr\": {\n          \"type\": \"number\"\n        },\n        \"target_ratio\": {\n          \"type\": \"number\"\n        }\n      },\n      \"required\": [\n        \"current_temp\",\n        \"current_npsha\",\n        \"npshr\",\n        \"target_ratio\"\n      ]\n    },\n    \"example_output\": {\n      \"required_reduction_celsius\": 12.5\n    }\n  },\n  \"submit_diagnostic_report\": {\n    \"description\": \"Submits the final root cause analysis and remediation plan to the system.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"calculated_margin\": {\n          \"type\": \"number\"\n        },\n        \"failure_mode\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"True Hydrodynamic Cavitation\",\n            \"Pseudo-Cavitation (Air Ingress)\"\n          ]\n        },\n        \"remediation_details\": {\n          \"type\": \"string\"\n        }\n      },\n      \"required\": [\n        \"calculated_margin\",\n        \"failure_mode\",\n        \"remediation_details\"\n      ]\n    },\n    \"example_output\": null\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_sensor_readings",
+      "description": "Retrieves real-time sensor data for a specific equipment ID on a production line. Returns suction pressure, fluid temperature, and acoustic noise levels.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "equipment_id": {
+            "type": "string",
+            "description": "The unique identifier for the equipment (e.g., 'Feed_Pump_P101')."
+          },
+          "sensor_list": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "List of sensors to query: 'suction_pressure', 'temperature', 'discharge_pressure', 'vibration_level'."
+          }
+        },
+        "required": [
+          "equipment_id",
+          "sensor_list"
+        ]
+      },
+      "example_output": {
+        "suction_pressure_bar": 2.1,
+        "fluid_temp_celsius": 85.5,
+        "vibration_rms": 4.2
+      }
+    },
+    {
+      "name": "get_pump_design_specs",
+      "description": "Retrieves technical specifications for a pump, including the Net Positive Suction Head Required (NPSHr) and design fluid properties.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "equipment_id": {
+            "type": "string",
+            "description": "The equipment identifier."
+          }
+        },
+        "required": [
+          "equipment_id"
+        ]
+      },
+      "example_output": {
+        "npsh_required_m": 1.8,
+        "rated_flow_m3h": 150.0,
+        "fluid_type": "Water-based polymer"
+      }
+    },
+    {
+      "name": "calculate_npsh_margin",
+      "description": "Calculates the NPSH available (NPSHa) based on suction pressure and temperature, then returns the margin ratio (NPSHa / NPSHr).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "suction_pressure": {
+            "type": "number"
+          },
+          "temperature": {
+            "type": "number"
+          },
+          "npsh_required": {
+            "type": "number"
+          },
+          "fluid_type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "suction_pressure",
+          "temperature",
+          "npsh_required",
+          "fluid_type"
+        ]
+      },
+      "example_output": {
+        "npsh_available_m": 1.95,
+        "margin_ratio": 1.08
+      }
+    },
+    {
+      "name": "get_maintenance_records",
+      "description": "Searches the maintenance database for recent repair events, seal replacements, or reported leaks for a specific asset.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "equipment_id": {
+            "type": "string"
+          },
+          "lookback_days": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "equipment_id",
+          "lookback_days"
+        ]
+      },
+      "example_output": {
+        "events": [
+          {
+            "date": "2023-10-12",
+            "component": "Mechanical Seal",
+            "issue": "Minor weeping noticed"
+          },
+          {
+            "date": "2023-11-01",
+            "component": "Suction Flange",
+            "issue": "Gasket degradation"
+          }
+        ]
+      }
+    },
+    {
+      "name": "calculate_thermal_adjustment",
+      "description": "Determines the exact temperature reduction in Celsius required to raise the NPSH margin ratio to a specific target.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "current_temp": {
+            "type": "number"
+          },
+          "current_npsha": {
+            "type": "number"
+          },
+          "npshr": {
+            "type": "number"
+          },
+          "target_ratio": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "current_temp",
+          "current_npsha",
+          "npshr",
+          "target_ratio"
+        ]
+      },
+      "example_output": {
+        "required_reduction_celsius": 12.5
+      }
+    },
+    {
+      "name": "submit_diagnostic_report",
+      "description": "Submits the final root cause analysis and remediation plan to the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "calculated_margin": {
+            "type": "number"
+          },
+          "failure_mode": {
+            "type": "string",
+            "enum": [
+              "True Hydrodynamic Cavitation",
+              "Pseudo-Cavitation (Air Ingress)"
+            ]
+          },
+          "remediation_details": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "calculated_margin",
+          "failure_mode",
+          "remediation_details"
+        ]
+      },
+      "example_output": null
+    }
+  ],
+  "state_description": {
+    "production_line_metadata": "General info about the active production line and current batch.",
+    "hidden_fault_ground_truth": "The actual underlying cause of defects, used by the model to generate observations but never revealed to the agent.",
+    "sensor_current_values": "Real-time readings for all sensors on the line including noise levels.",
+    "maintenance_history_db": "A database of past maintenance events for the equipment.",
+    "quality_metrics": "Aggregation of defect rates or measurement deviations for the current batch."
+  },
+  "task_initial_state": {
+    "production_line_metadata": {
+      "line_id": "LINE_04",
+      "active_batch": "BATCH_205",
+      "status": "degraded"
+    },
+    "hidden_fault_ground_truth": {
+      "component": "Suction_Flange_Gasket_A1",
+      "failure_mode": "Entrained_Gas_Ingress",
+      "severity": 0.85
+    },
+    "sensor_current_values": {
+      "temp_probe": 88.5,
+      "vibration_sensor": 9.8,
+      "pressure_gauge": 108.2,
+      "acoustic_emission_rms": 82.4
+    },
+    "maintenance_history_db": [
+      {
+        "date": "2025-02-01",
+        "action": "Impeller Replacement (316SS)",
+        "technician": "Tech_A"
+      }
+    ],
+    "quality_metrics": {
+      "defect_rate": 0.088,
+      "primary_symptom": "Surface_Pitting"
+    }
+  }
+}

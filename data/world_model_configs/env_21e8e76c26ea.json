@@ -1,0 +1,210 @@
+{
+  "environment_name": "env_21e8e76c26ea",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: You are a simulator for a Breaking News Prioritization environment. Based on the current internal state $s_t$ and the action $a_t$ executed by the News Editor Agent, you must simulate the evolution of the news cycle, update internal metrics, and predict the observation $o_{{t+1}}$ received by the Agent.\n- **Emphasis**: You do not suggest actions or make editorial decisions. You only simulate the environment's response to the Agent's decisions and generate the resulting data observations.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions must maintain context consistency. You must track which news items have been published, which are pending, and how the 'Breaking' status of a story decays over time. The environment must react realistically to the Agent's prioritization (e.g., publishing high-urgency news increases engagement; ignoring critical news hurts credibility).\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. You must parse this JSON to determine the evolution of the environment. The input format is:\n- `\"name\"`: The name of the action function to execute.\n- Parameters: The specific arguments required by that action.\n\nExample:\n```json\n{{\n \"name\": \"publish_article\",\n \"arguments\": {{\n    \"article_id\": \"NEWS_1024\",\n    \"priority_slot\": 1\n  }}\n}}\n```\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nIf the Agent attempts to publish an article that does not exist in the `pending_stories`, refers to an invalid slot, or submits malformed JSON, return a structured error message: `{{\"error\": \"Specific error message\"}}`. Do not fabricate news content or state updates if an action fails.\n\n##### Output Assembly\nFor every action, return a structured JSON object containing **ONLY** the return fields defined in the action's specification. \n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t` or the `new_state`. You must strictly hide the internal mechanics (like hidden urgency scores or global credibility variables) unless the action's observation explicitly calls for them. Only expose the Observation ($o_{{t+1}}$).\n\n### 4. Key Principles\n- **Format**: Strictly adhere to JSON for all inputs and outputs.\n- **Factuality**: Do not invent news stories that are not present in the environment's state or provided in the news feed.\n- **Consistency**: If a story is dismissed, it should no longer appear in the pending queue. If time advances, the 'relevance' of breaking news should decrease.\n- **Realism**: Simulate realistic audience reactions; publishing low-quality 'clickbait' might increase short-term views but decrease long-term credibility.\n- **Quality**: Ensure all simulated observations are clear and logically derived from the state transition.\n- **Encapsulation**: The internal state transition $s_{{t+1}}$ is for your internal tracking only. The Agent only sees the specified observation output.\n{{initial_state}}: {{\n  \"pending_stories\": [\n    {{\n      \"story_id\": \"WIRE_VANE_OFFICIAL\",\n      \"headline\": \"BREAKING: Publicist confirms death of Luna Vane at 22\",\n      \"vcs\": \"First_Party\",\n      \"type\": \"breaking_alert\",\n      \"source\": \"Associated Press\",\n      \"urgency_score\": 0.99\n    }},\n    {{\n      \"story_id\": \"B_MATTER_VANE\",\n      \"headline\": \"CULTURAL IMPACT: How Luna Vane Redefined Pop in the 2020s\",\n      \"vcs\": \"First_Party\",\n      \"type\": \"biographical\",\n      \"source\": \"Internal Morgue\",\n      \"urgency_score\": 0.1\n    }}\n  ],\n  \"published_stories\": [\n    {{\n      \"story_id\": \"JUNIOR_REPORTER_001\",\n      \"headline\": \"RUMOR: Luna Vane Involved in Fatal Los Angeles Accident\",\n      \"vcs\": \"Unverified\",\n      \"seo_slug\": \"/news/luna-vane-accident-rumor\",\n      \"slot_position\": 1,\n      \"published_at\": \"2025-05-20T08:45:00Z\"\n    }}\n  ],\n  \"audience_engagement_index\": 0.35,\n  \"newsroom_credibility_score\": 0.68,\n  \"simulation_time\": \"2025-05-20T09:00:00Z\"\n}}\n{{state_descriptions}}: {{\n  \"pending_stories\": \"A list of news items currently in the intake feed awaiting editorial review.\",\n  \"published_stories\": \"A list of stories currently live on the news platform, including their slot positions.\",\n  \"audience_engagement_index\": \"A normalized value (0.0-1.0) representing current viewer interest and traffic.\",\n  \"newsroom_credibility_score\": \"A metric reflecting the brand's reliability; decreases if breaking news is missed or ignored.\",\n  \"simulation_time\": \"The current timestamp in the simulated environment (ISO 8601 format).\"\n}}\n{action_set_definitions}: {\n  \"get_newsroom_metrics\": {\n    \"description\": \"Retrieves the current newsroom state including credibility score, audience engagement, and current simulation time.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"newsroom_credibility_score\": 0.78,\n      \"audience_engagement_index\": 0.65,\n      \"simulation_time\": \"2024-08-12T09:00:00Z\"\n    }\n  },\n  \"list_stories\": {\n    \"description\": \"Lists stories from the intake feed (pending) or currently live platform (published).\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"status\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"pending\",\n            \"published\"\n          ],\n          \"description\": \"The status of stories to retrieve.\"\n        }\n      },\n      \"required\": [\n        \"status\"\n      ]\n    },\n    \"example_output\": {\n      \"stories\": [\n        {\n          \"id\": \"LV-99\",\n          \"headline\": \"Luna Vane Rumor\",\n          \"url\": \"news.com/luna-vane-rumor-1\"\n        }\n      ]\n    }\n  },\n  \"evaluate_verification_status\": {\n    \"description\": \"Tests a specific story against the 'Death-Knell Verification' standards to determine the Confidence Score.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"story_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the story to evaluate.\"\n        },\n        \"standard\": {\n          \"type\": \"string\",\n          \"description\": \"The SOP standard to apply (e.g., 'Death-Knell Verification').\"\n        }\n      },\n      \"required\": [\n        \"story_id\",\n        \"standard\"\n      ]\n    },\n    \"example_output\": {\n      \"verification_confidence_score\": \"First_Party\",\n      \"is_verified\": true\n    }\n  },\n  \"compose_take_three_write_through\": {\n    \"description\": \"Aggregates information from multiple sources into a comprehensive Take-Three draft.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"source_ids\": {\n          \"type\": \"array\",\n          \"items\": {\n            \"type\": \"string\"\n          },\n          \"description\": \"List of story IDs to include in the write-through.\"\n        }\n      },\n      \"required\": [\n        \"source_ids\"\n      ]\n    },\n    \"example_output\": {\n      \"draft_id\": \"T3-LUNA-VANE-FINAL\",\n      \"title\": \"Comprehensive Write-through: Luna Vane Incident\"\n    }\n  },\n  \"execute_authoritative_publication\": {\n    \"description\": \"Publishes a draft, optimizes search indexing, and assigns a single authoritative URL.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"draft_id\": {\n          \"type\": \"string\",\n          \"description\": \"The draft ID to publish.\"\n        },\n        \"url_slug\": {\n          \"type\": \"string\",\n          \"description\": \"The desired authoritative URL path (e.g., '/news/luna-vane-official-confirmation').\"\n        },\n        \"optimize_indexing\": {\n          \"type\": \"boolean\",\n          \"description\": \"Whether to apply search indexing optimization.\"\n        }\n      },\n      \"required\": [\n        \"draft_id\",\n        \"url_slug\",\n        \"optimize_indexing\"\n      ]\n    },\n    \"example_output\": {\n      \"final_url\": \"https://newsroom.com/news/luna-vane-official-confirmation\",\n      \"indexing_status\": \"Success\"\n    }\n  },\n  \"retract_obsolete_stories\": {\n    \"description\": \"Removes unverified or redundant stories from the published feed.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"story_ids\": {\n          \"type\": \"array\",\n          \"items\": {\n            \"type\": \"string\"\n          },\n          \"description\": \"List of IDs to retract.\"\n        }\n      },\n      \"required\": [\n        \"story_ids\"\n      ]\n    },\n    \"example_output\": {\n      \"retracted_count\": 2,\n      \"status\": \"complete\"\n    }\n  },\n  \"wait_for_environment_update\": {\n    \"description\": \"Passively waits for the environment state to evolve or for new news intake to arrive.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"duration_minutes\": {\n          \"type\": \"integer\",\n          \"description\": \"Time to wait in the simulation.\"\n        }\n      },\n      \"required\": [\n        \"duration_minutes\"\n      ]\n    },\n    \"example_output\": {\n      \"new_simulation_time\": \"2024-08-12T09:30:00Z\",\n      \"new_items_available\": true\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_newsroom_metrics",
+      "description": "Retrieves the current newsroom state including credibility score, audience engagement, and current simulation time.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "newsroom_credibility_score": 0.78,
+        "audience_engagement_index": 0.65,
+        "simulation_time": "2024-08-12T09:00:00Z"
+      }
+    },
+    {
+      "name": "list_stories",
+      "description": "Lists stories from the intake feed (pending) or currently live platform (published).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "published"
+            ],
+            "description": "The status of stories to retrieve."
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "example_output": {
+        "stories": [
+          {
+            "id": "LV-99",
+            "headline": "Luna Vane Rumor",
+            "url": "news.com/luna-vane-rumor-1"
+          }
+        ]
+      }
+    },
+    {
+      "name": "evaluate_verification_status",
+      "description": "Tests a specific story against the 'Death-Knell Verification' standards to determine the Confidence Score.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "story_id": {
+            "type": "string",
+            "description": "The ID of the story to evaluate."
+          },
+          "standard": {
+            "type": "string",
+            "description": "The SOP standard to apply (e.g., 'Death-Knell Verification')."
+          }
+        },
+        "required": [
+          "story_id",
+          "standard"
+        ]
+      },
+      "example_output": {
+        "verification_confidence_score": "First_Party",
+        "is_verified": true
+      }
+    },
+    {
+      "name": "compose_take_three_write_through",
+      "description": "Aggregates information from multiple sources into a comprehensive Take-Three draft.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "source_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "List of story IDs to include in the write-through."
+          }
+        },
+        "required": [
+          "source_ids"
+        ]
+      },
+      "example_output": {
+        "draft_id": "T3-LUNA-VANE-FINAL",
+        "title": "Comprehensive Write-through: Luna Vane Incident"
+      }
+    },
+    {
+      "name": "execute_authoritative_publication",
+      "description": "Publishes a draft, optimizes search indexing, and assigns a single authoritative URL.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "draft_id": {
+            "type": "string",
+            "description": "The draft ID to publish."
+          },
+          "url_slug": {
+            "type": "string",
+            "description": "The desired authoritative URL path (e.g., '/news/luna-vane-official-confirmation')."
+          },
+          "optimize_indexing": {
+            "type": "boolean",
+            "description": "Whether to apply search indexing optimization."
+          }
+        },
+        "required": [
+          "draft_id",
+          "url_slug",
+          "optimize_indexing"
+        ]
+      },
+      "example_output": {
+        "final_url": "https://newsroom.com/news/luna-vane-official-confirmation",
+        "indexing_status": "Success"
+      }
+    },
+    {
+      "name": "retract_obsolete_stories",
+      "description": "Removes unverified or redundant stories from the published feed.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "story_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "List of IDs to retract."
+          }
+        },
+        "required": [
+          "story_ids"
+        ]
+      },
+      "example_output": {
+        "retracted_count": 2,
+        "status": "complete"
+      }
+    },
+    {
+      "name": "wait_for_environment_update",
+      "description": "Passively waits for the environment state to evolve or for new news intake to arrive.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "duration_minutes": {
+            "type": "integer",
+            "description": "Time to wait in the simulation."
+          }
+        },
+        "required": [
+          "duration_minutes"
+        ]
+      },
+      "example_output": {
+        "new_simulation_time": "2024-08-12T09:30:00Z",
+        "new_items_available": true
+      }
+    }
+  ],
+  "state_description": {
+    "pending_stories": "A list of news items currently in the intake feed awaiting editorial review.",
+    "published_stories": "A list of stories currently live on the news platform, including their slot positions.",
+    "audience_engagement_index": "A normalized value (0.0-1.0) representing current viewer interest and traffic.",
+    "newsroom_credibility_score": "A metric reflecting the brand's reliability; decreases if breaking news is missed or ignored.",
+    "simulation_time": "The current timestamp in the simulated environment (ISO 8601 format)."
+  },
+  "task_initial_state": {
+    "pending_stories": [
+      {
+        "story_id": "WIRE_VANE_OFFICIAL",
+        "headline": "BREAKING: Publicist confirms death of Luna Vane at 22",
+        "vcs": "First_Party",
+        "type": "breaking_alert",
+        "source": "Associated Press",
+        "urgency_score": 0.99
+      },
+      {
+        "story_id": "B_MATTER_VANE",
+        "headline": "CULTURAL IMPACT: How Luna Vane Redefined Pop in the 2020s",
+        "vcs": "First_Party",
+        "type": "biographical",
+        "source": "Internal Morgue",
+        "urgency_score": 0.1
+      }
+    ],
+    "published_stories": [
+      {
+        "story_id": "JUNIOR_REPORTER_001",
+        "headline": "RUMOR: Luna Vane Involved in Fatal Los Angeles Accident",
+        "vcs": "Unverified",
+        "seo_slug": "/news/luna-vane-accident-rumor",
+        "slot_position": 1,
+        "published_at": "2025-05-20T08:45:00Z"
+      }
+    ],
+    "audience_engagement_index": 0.35,
+    "newsroom_credibility_score": 0.68,
+    "simulation_time": "2025-05-20T09:00:00Z"
+  }
+}

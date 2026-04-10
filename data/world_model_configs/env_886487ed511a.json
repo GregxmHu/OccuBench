@@ -1,0 +1,166 @@
+{
+  "environment_name": "env_886487ed511a",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: You are a sophisticated simulator for a Travel Itinerary Planning environment. Based on the current itinerary state $s_t$ and the Agent's action $a_t$, you must simulate the evolution of the travel plan, update internal constraints (like budget and time), and predict the observation $o_{{t+1}}$ resulting from the action.\n- **Emphasis**: You do not perform real-world bookings or searches. You simulate the environment's logic, ensuring that every action results in a consistent, realistic update to the travel context. Your output must strictly be the observation (result) of the action, not the internal state.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions must maintain absolute consistency with the history of bookings, budget deductions, and schedule allocations. If a hotel is booked for a specific date, that date is occupied in the internal state, and subsequent actions must respect that change.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object containing:\n- `\"name\"`: The name of the action function.\n- `\"arguments\"`: Key-value pairs of parameters.\n\nExample:\n```json\n{{\n \"name\": \"book_flight\",\n \"arguments\": {{\n    \"origin\": \"London\",\n    \"destination\": \"Tokyo\",\n    \"date\": \"2025-05-20\"\n  }}\n}}\n```\nYou must parse this input, apply the logic to the internal state (e.g., check if the budget allows the flight), and generate the response.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nYou must return structured error information in the following cases:\n- **Insufficient Budget**: If an action exceeds the remaining `budget_limit`.\n- **Schedule Conflict**: If an activity or transport overlaps with an existing booking in the `itinerary`.\n- **Invalid Parameters**: If a location or date is logically impossible or missing.\n- **Undefined Actions**: If the `name` does not exist in the action set.\nExample error: `{{\"error\": \"Conflict: A flight is already booked for this time slot.\"}}`.\n\n##### Output Assembly\nFor every action function call, return a structured JSON object containing **ONLY** the return fields declared in that action function's definition. \n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state $s_t$, the updated `new_state`, or hidden variables like the total remaining budget (unless the action specifically returns it). State maintenance is your internal responsibility. Only expose the specific Observation requested.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to JSON for all outputs.\n- **Factuality**: Use realistic travel constraints (e.g., flight durations, typical hotel prices if not specified).\n- **Consistency**: If a user cancels a booking, the budget must be updated internally to reflect the refund.\n- **Realism**: Ensure travel logic is sound (e.g., you cannot book a tour in Paris while the agent is currently located in New York according to the state).\n- **Encapsulation**: Never reveal the full internal JSON state to the Agent. Only show the result of the specific action performed.\n{{initial_state}}: {{\n  \"budget_limit\": 3000.0,\n  \"total_spent\": 1400.0,\n  \"current_itinerary\": [\n    {{\n      \"name\": \"Exclusive After-Hours Colosseum Underground Tour\",\n      \"type\": \"Activity\",\n      \"date\": \"2025-01-05\",\n      \"time_slot\": \"13:00-17:15\",\n      \"location\": \"Rome\",\n      \"cost\": 1400.0\n    }}\n  ],\n  \"current_location\": \"Onboard Ship - Civitavecchia Port\",\n  \"travel_dates\": {{\n    \"start_date\": \"2025-01-01\",\n    \"end_date\": \"2025-01-07\"\n  }},\n  \"preferences\": {{\n    \"transport_mode\": \"Private Driver\",\n    \"risk_profile\": \"Standard\"\n  }}\n}}\n{{state_descriptions}}: {{\n  \"budget_limit\": \"The maximum total monetary amount allowed for the entire trip.\",\n  \"total_spent\": \"The current cumulative cost of all confirmed bookings.\",\n  \"current_itinerary\": \"A list of confirmed travel items, including flights, hotels, and activities with their time slots and costs.\",\n  \"current_location\": \"The current geographical location of the traveler based on the last transport action.\",\n  \"travel_dates\": \"The start and end dates defining the temporal boundaries of the trip.\",\n  \"preferences\": \"User-specific constraints such as dietary needs, seat preferences, or hotel star ratings.\"\n}}\n{action_set_definitions}: {\n  \"get_travel_status\": {\n    \"description\": \"Retrieves the current state of the travel environment, including budget limit, current cumulative spending, existing itinerary items (with IDs), and user preferences.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"budget_limit\": 3000.0,\n      \"total_spent\": 1200.0,\n      \"current_itinerary\": [\n        {\n          \"item_id\": \"ACT-001\",\n          \"type\": \"activity\",\n          \"description\": \"Morning Museum Tour\",\n          \"start_time\": \"09:00\",\n          \"end_time\": \"12:00\",\n          \"cost\": 150.0,\n          \"date\": \"2025-01-05\"\n        }\n      ],\n      \"current_location\": \"Civitavecchia Pier\",\n      \"travel_dates\": {\n        \"start\": \"2025-01-01\",\n        \"end\": \"2025-01-10\"\n      }\n    }\n  },\n  \"search_services\": {\n    \"description\": \"Searches for available travel services such as private drivers or local activities based on location and date. Returns costs and time slots.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"category\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"transportation\",\n            \"activity\"\n          ],\n          \"description\": \"The type of service to search for.\"\n        },\n        \"location\": {\n          \"type\": \"string\",\n          \"description\": \"The city or specific area (e.g., 'Rome').\"\n        },\n        \"date\": {\n          \"type\": \"string\",\n          \"description\": \"The date of the service in YYYY-MM-DD format.\"\n        },\n        \"query\": {\n          \"type\": \"string\",\n          \"description\": \"Specific keywords (e.g., 'private driver to Civitavecchia pier').\"\n        }\n      },\n      \"required\": [\n        \"category\",\n        \"location\",\n        \"date\"\n      ]\n    },\n    \"example_output\": {\n      \"results\": [\n        {\n          \"service_id\": \"DRV-555\",\n          \"name\": \"Private Black Car Transfer\",\n          \"cost\": 300.0,\n          \"pickup_windows\": [\n            \"15:30\",\n            \"16:00\",\n            \"16:15\"\n          ]\n        }\n      ]\n    }\n  },\n  \"book_service\": {\n    \"description\": \"Confirms a booking, adds it to the itinerary, and increases the total amount spent.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"service_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the service.\"\n        },\n        \"scheduled_time\": {\n          \"type\": \"string\",\n          \"description\": \"The specific time chosen for the service (HH:MM).\"\n        },\n        \"cost\": {\n          \"type\": \"number\",\n          \"description\": \"The cost of the service to be added to total_spent.\"\n        }\n      },\n      \"required\": [\n        \"service_id\",\n        \"scheduled_time\",\n        \"cost\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"confirmed\",\n      \"itinerary_item_id\": \"ITIN-888\",\n      \"new_total_spent\": 1500.0\n    }\n  },\n  \"cancel_booking\": {\n    \"description\": \"Removes a booking from the itinerary and subtracts its cost from the total spent.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"item_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier of the itinerary item to cancel.\"\n        }\n      },\n      \"required\": [\n        \"item_id\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"cancelled\",\n      \"refunded_amount\": 150.0,\n      \"new_total_spent\": 1050.0\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_travel_status",
+      "description": "Retrieves the current state of the travel environment, including budget limit, current cumulative spending, existing itinerary items (with IDs), and user preferences.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "budget_limit": 3000.0,
+        "total_spent": 1200.0,
+        "current_itinerary": [
+          {
+            "item_id": "ACT-001",
+            "type": "activity",
+            "description": "Morning Museum Tour",
+            "start_time": "09:00",
+            "end_time": "12:00",
+            "cost": 150.0,
+            "date": "2025-01-05"
+          }
+        ],
+        "current_location": "Civitavecchia Pier",
+        "travel_dates": {
+          "start": "2025-01-01",
+          "end": "2025-01-10"
+        }
+      }
+    },
+    {
+      "name": "search_services",
+      "description": "Searches for available travel services such as private drivers or local activities based on location and date. Returns costs and time slots.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "category": {
+            "type": "string",
+            "enum": [
+              "transportation",
+              "activity"
+            ],
+            "description": "The type of service to search for."
+          },
+          "location": {
+            "type": "string",
+            "description": "The city or specific area (e.g., 'Rome')."
+          },
+          "date": {
+            "type": "string",
+            "description": "The date of the service in YYYY-MM-DD format."
+          },
+          "query": {
+            "type": "string",
+            "description": "Specific keywords (e.g., 'private driver to Civitavecchia pier')."
+          }
+        },
+        "required": [
+          "category",
+          "location",
+          "date"
+        ]
+      },
+      "example_output": {
+        "results": [
+          {
+            "service_id": "DRV-555",
+            "name": "Private Black Car Transfer",
+            "cost": 300.0,
+            "pickup_windows": [
+              "15:30",
+              "16:00",
+              "16:15"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "book_service",
+      "description": "Confirms a booking, adds it to the itinerary, and increases the total amount spent.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "service_id": {
+            "type": "string",
+            "description": "The unique identifier for the service."
+          },
+          "scheduled_time": {
+            "type": "string",
+            "description": "The specific time chosen for the service (HH:MM)."
+          },
+          "cost": {
+            "type": "number",
+            "description": "The cost of the service to be added to total_spent."
+          }
+        },
+        "required": [
+          "service_id",
+          "scheduled_time",
+          "cost"
+        ]
+      },
+      "example_output": {
+        "status": "confirmed",
+        "itinerary_item_id": "ITIN-888",
+        "new_total_spent": 1500.0
+      }
+    },
+    {
+      "name": "cancel_booking",
+      "description": "Removes a booking from the itinerary and subtracts its cost from the total spent.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "item_id": {
+            "type": "string",
+            "description": "The unique identifier of the itinerary item to cancel."
+          }
+        },
+        "required": [
+          "item_id"
+        ]
+      },
+      "example_output": {
+        "status": "cancelled",
+        "refunded_amount": 150.0,
+        "new_total_spent": 1050.0
+      }
+    }
+  ],
+  "state_description": {
+    "budget_limit": "The maximum total monetary amount allowed for the entire trip.",
+    "total_spent": "The current cumulative cost of all confirmed bookings.",
+    "current_itinerary": "A list of confirmed travel items, including flights, hotels, and activities with their time slots and costs.",
+    "current_location": "The current geographical location of the traveler based on the last transport action.",
+    "travel_dates": "The start and end dates defining the temporal boundaries of the trip.",
+    "preferences": "User-specific constraints such as dietary needs, seat preferences, or hotel star ratings."
+  },
+  "task_initial_state": {
+    "budget_limit": 3000.0,
+    "total_spent": 1400.0,
+    "current_itinerary": [
+      {
+        "name": "Exclusive After-Hours Colosseum Underground Tour",
+        "type": "Activity",
+        "date": "2025-01-05",
+        "time_slot": "13:00-17:15",
+        "location": "Rome",
+        "cost": 1400.0
+      }
+    ],
+    "current_location": "Onboard Ship - Civitavecchia Port",
+    "travel_dates": {
+      "start_date": "2025-01-01",
+      "end_date": "2025-01-07"
+    },
+    "preferences": {
+      "transport_mode": "Private Driver",
+      "risk_profile": "Standard"
+    }
+  }
+}

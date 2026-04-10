@@ -1,0 +1,254 @@
+{
+  "environment_name": "env_fb980aaa0f21",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM) for Search and Rescue Mission Coordination.\n- **Core Objective**: Based on the current internal state of the disaster zone $s_t$ and the coordination action $a_t$ taken by the Mission Commander (Agent), your task is to simulate the evolution of the rescue environment and predict the resulting observation $o_{{t+1}}$.\n- **Emphasis**: You do not perform rescue operations. You are the engine that simulates the physical reality, resource constraints, and environmental changes of the mission. You must maintain internal consistency regarding victim locations, unit fuel/battery levels, and environmental hazards.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions between the World Model and the Agent must maintain strict context consistency. Decisions made at $t$ (e.g., moving a drone) must be reflected in the state at $t+1$. The environment must track the elapsed mission time and the consequences of previous actions on the mission's success or failure.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. This JSON contains:\n- `\"name\"`: Specifies the name of the action function to execute (e.g., `deploy_resource`, `scan_area`).\n- The remaining fields are the parameter names and corresponding values required by that action function.\n\nExample:\n```json\n{{\n \"name\": \"dispatch_unit\",\n \"arguments\": {{\n    \"unit_id\": \"DRONE_01\",\n    \"target_coordinates\": [42.36, -71.05]\n  }}\n}}\n```\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nIf the Agent attempts an impossible action (e.g., moving a unit with 0% battery, rescuing a victim at the wrong coordinates, or calling an undefined function), you must return a structured error message within the observation, such as `{{\"error\": \"Insufficient battery for requested path\"}}` or `{{\"error\": \"Target location out of bounds\"}}`. Do not fabricate successful outcomes for failed logic.\n\n##### Output Assembly\nFor every action function call, return a structured JSON object containing **ONLY** the return fields declared in that action function's definition. \n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, `new_state`, or any hidden variables like the coordinates of un-scanned victims. The state maintenance is internal. The Agent only sees the result of the action (the Observation).\n\n### 4. Key Principles\n- **Format**: Strictly adhere to JSON for all inputs and outputs.\n- **Factuality**: Do not invent new types of rescue equipment or environmental data not implied by the state or action space.\n- **Consistency**: If a unit moves, its fuel must decrease. If weather deteriorates, sensor accuracy in observations should decrease.\n- **Realism**: Simulate realistic delays and physical constraints (e.g., ground teams move slower than aerial units).\n- **Quality**: Ensure all generated observations are professional and precise, mimicking a mission control feed.\n- **Encapsulation**: Strictly hide the internal state structure. Only expose information that is explicitly returned by the action function (e.g., `sensor_data`, `success_status`).\n{{initial_state}}: {{\n  \"mission_time_elapsed\": 0,\n  \"active_units\": [\n    {{\n      \"unit_id\": \"UNIT_SKY_VANGUARD\",\n      \"type\": \"Drone\",\n      \"location\": [\n        0,\n        0\n      ],\n      \"energy_level\": 45,\n      \"status\": \"Idle\"\n    }},\n    {{\n      \"unit_id\": \"UNIT_RESCUE_ONE\",\n      \"type\": \"Helicopter\",\n      \"location\": [\n        0,\n        0\n      ],\n      \"energy_level\": 85,\n      \"status\": \"Idle\"\n    }},\n    {{\n      \"unit_id\": \"UNIT_TERRA_TEAM\",\n      \"type\": \"Ground_Team\",\n      \"location\": [\n        5,\n        5\n      ],\n      \"energy_level\": 100,\n      \"status\": \"Idle\"\n    }}\n  ],\n  \"identified_victims\": [\n    {{\n      \"victim_id\": \"CASUALTY_77\",\n      \"coordinates\": [\n        18,\n        22\n      ],\n      \"condition\": \"Critical\",\n      \"extraction_priority\": 1\n    }},\n    {{\n      \"victim_id\": \"HIKER_04\",\n      \"coordinates\": [\n        2,\n        3\n      ],\n      \"condition\": \"Stable\",\n      \"extraction_priority\": 3\n    }}\n  ],\n  \"environmental_conditions\": {{\n    \"visibility\": \"Clear\",\n    \"wind_speed\": 10,\n    \"hazard_zones\": [\n      {{\n        \"zone_id\": \"ZONE_DELTA\",\n        \"severity\": \"Low\",\n        \"description\": \"Rising gusts near eastern ridge\"\n      }}\n    ]\n  }},\n  \"search_grid_status\": {{\n    \"Sector_A1\": \"Cleared\",\n    \"Sector_A2\": \"Cleared\",\n    \"Sector_E9\": \"Unexplored\"\n  }}\n}}\n{{state_descriptions}}: {{\n  \"mission_time_elapsed\": \"Total minutes elapsed since the start of the mission.\",\n  \"active_units\": \"List of available rescue units including their status, current coordinates, and energy/fuel levels.\",\n  \"identified_victims\": \"Information about victims that have been localized but not yet rescued.\",\n  \"environmental_conditions\": \"Current weather and terrain constraints affecting the mission.\",\n  \"search_grid_status\": \"Mapping of grid sectors to their search status (e.g., Unexplored, In_Progress, Cleared).\"\n}}\n{action_set_definitions}: {\n  \"get_environment_status\": {\n    \"description\": \"Retrieves current mission time, weather alerts, and identifies status of grid sectors (e.g., Unexplored).\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"mission_time_elapsed\": 5,\n      \"wind_warning_minutes_remaining\": 45,\n      \"search_grid\": [\n        {\n          \"sector_id\": \"Sector_E10\",\n          \"status\": \"Unexplored\",\n          \"region\": \"far_eastern_edge\"\n        }\n      ]\n    }\n  },\n  \"get_unit_manifest\": {\n    \"description\": \"Lists all available rescue units including their ID, type (aerial/ground), current coordinates, and current fuel/energy percentage.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"units\": [\n        {\n          \"unit_id\": \"DRONE_A\",\n          \"type\": \"aerial\",\n          \"current_coords\": [\n            10,\n            10\n          ],\n          \"fuel_percent\": 90\n        }\n      ]\n    }\n  },\n  \"get_casualty_data\": {\n    \"description\": \"Returns a list of known victims, their IDs, coordinates, and health status (e.g., life-threatening).\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"victims\": [\n        {\n          \"victim_id\": \"V_001\",\n          \"location\": [\n            25,\n            30\n          ],\n          \"status\": \"life-threatening\"\n        }\n      ]\n    }\n  },\n  \"scan_sector\": {\n    \"description\": \"Performs a remote scan of a specific sector to identify the presence, ID, and coordinates of missing persons without requiring physical unit presence.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"sector_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the sector to scan.\"\n        }\n      },\n      \"required\": [\n        \"sector_id\"\n      ]\n    },\n    \"example_output\": {\n      \"found_person\": true,\n      \"victim_id\": \"V_002\",\n      \"location\": [\n        95,\n        80\n      ]\n    }\n  },\n  \"calculate_mission_feasibility\": {\n    \"description\": \"Calculates the estimated travel time and remaining fuel percentage for a unit to travel from its current location to a target, and then back to the ICP at [0, 0].\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"unit_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the unit.\"\n        },\n        \"target_coords\": {\n          \"type\": \"array\",\n          \"items\": {\n            \"type\": \"number\"\n          },\n          \"description\": \"The destination [x, y] coordinates.\"\n        }\n      },\n      \"required\": [\n        \"unit_id\",\n        \"target_coords\"\n      ]\n    },\n    \"example_output\": {\n      \"est_total_time_minutes\": 32,\n      \"est_fuel_remaining_at_icp\": 25.5\n    }\n  },\n  \"execute_dispatch\": {\n    \"description\": \"Dispatches a unit to a target location to perform an action (EVACUATE or SEARCH) and then return to ICP.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"unit_id\": {\n          \"type\": \"string\"\n        },\n        \"target_coords\": {\n          \"type\": \"array\",\n          \"items\": {\n            \"type\": \"number\"\n          }\n        },\n        \"mission_type\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"EVACUATE\",\n            \"SEARCH\",\n            \"RETURN_TO_BASE\"\n          ]\n        },\n        \"victim_id\": {\n          \"type\": \"string\"\n        }\n      },\n      \"required\": [\n        \"unit_id\",\n        \"target_coords\",\n        \"mission_type\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"In progress\",\n      \"expected_completion_time\": 40\n    }\n  },\n  \"log_mission_constraint_failure\": {\n    \"description\": \"Used to report when a mission objective cannot be met due to safety or time constraints.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"reason\": {\n          \"type\": \"string\",\n          \"description\": \"Explanation of why the objective is impossible (e.g., insufficient fuel).\"\n        }\n      },\n      \"required\": [\n        \"reason\"\n      ]\n    },\n    \"example_output\": null\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_environment_status",
+      "description": "Retrieves current mission time, weather alerts, and identifies status of grid sectors (e.g., Unexplored).",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "mission_time_elapsed": 5,
+        "wind_warning_minutes_remaining": 45,
+        "search_grid": [
+          {
+            "sector_id": "Sector_E10",
+            "status": "Unexplored",
+            "region": "far_eastern_edge"
+          }
+        ]
+      }
+    },
+    {
+      "name": "get_unit_manifest",
+      "description": "Lists all available rescue units including their ID, type (aerial/ground), current coordinates, and current fuel/energy percentage.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "units": [
+          {
+            "unit_id": "DRONE_A",
+            "type": "aerial",
+            "current_coords": [
+              10,
+              10
+            ],
+            "fuel_percent": 90
+          }
+        ]
+      }
+    },
+    {
+      "name": "get_casualty_data",
+      "description": "Returns a list of known victims, their IDs, coordinates, and health status (e.g., life-threatening).",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "victims": [
+          {
+            "victim_id": "V_001",
+            "location": [
+              25,
+              30
+            ],
+            "status": "life-threatening"
+          }
+        ]
+      }
+    },
+    {
+      "name": "scan_sector",
+      "description": "Performs a remote scan of a specific sector to identify the presence, ID, and coordinates of missing persons without requiring physical unit presence.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "sector_id": {
+            "type": "string",
+            "description": "The ID of the sector to scan."
+          }
+        },
+        "required": [
+          "sector_id"
+        ]
+      },
+      "example_output": {
+        "found_person": true,
+        "victim_id": "V_002",
+        "location": [
+          95,
+          80
+        ]
+      }
+    },
+    {
+      "name": "calculate_mission_feasibility",
+      "description": "Calculates the estimated travel time and remaining fuel percentage for a unit to travel from its current location to a target, and then back to the ICP at [0, 0].",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "unit_id": {
+            "type": "string",
+            "description": "The ID of the unit."
+          },
+          "target_coords": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            },
+            "description": "The destination [x, y] coordinates."
+          }
+        },
+        "required": [
+          "unit_id",
+          "target_coords"
+        ]
+      },
+      "example_output": {
+        "est_total_time_minutes": 32,
+        "est_fuel_remaining_at_icp": 25.5
+      }
+    },
+    {
+      "name": "execute_dispatch",
+      "description": "Dispatches a unit to a target location to perform an action (EVACUATE or SEARCH) and then return to ICP.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "unit_id": {
+            "type": "string"
+          },
+          "target_coords": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            }
+          },
+          "mission_type": {
+            "type": "string",
+            "enum": [
+              "EVACUATE",
+              "SEARCH",
+              "RETURN_TO_BASE"
+            ]
+          },
+          "victim_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "unit_id",
+          "target_coords",
+          "mission_type"
+        ]
+      },
+      "example_output": {
+        "status": "In progress",
+        "expected_completion_time": 40
+      }
+    },
+    {
+      "name": "log_mission_constraint_failure",
+      "description": "Used to report when a mission objective cannot be met due to safety or time constraints.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "description": "Explanation of why the objective is impossible (e.g., insufficient fuel)."
+          }
+        },
+        "required": [
+          "reason"
+        ]
+      },
+      "example_output": null
+    }
+  ],
+  "state_description": {
+    "mission_time_elapsed": "Total minutes elapsed since the start of the mission.",
+    "active_units": "List of available rescue units including their status, current coordinates, and energy/fuel levels.",
+    "identified_victims": "Information about victims that have been localized but not yet rescued.",
+    "environmental_conditions": "Current weather and terrain constraints affecting the mission.",
+    "search_grid_status": "Mapping of grid sectors to their search status (e.g., Unexplored, In_Progress, Cleared)."
+  },
+  "task_initial_state": {
+    "mission_time_elapsed": 0,
+    "active_units": [
+      {
+        "unit_id": "UNIT_SKY_VANGUARD",
+        "type": "Drone",
+        "location": [
+          0,
+          0
+        ],
+        "energy_level": 45,
+        "status": "Idle"
+      },
+      {
+        "unit_id": "UNIT_RESCUE_ONE",
+        "type": "Helicopter",
+        "location": [
+          0,
+          0
+        ],
+        "energy_level": 85,
+        "status": "Idle"
+      },
+      {
+        "unit_id": "UNIT_TERRA_TEAM",
+        "type": "Ground_Team",
+        "location": [
+          5,
+          5
+        ],
+        "energy_level": 100,
+        "status": "Idle"
+      }
+    ],
+    "identified_victims": [
+      {
+        "victim_id": "CASUALTY_77",
+        "coordinates": [
+          18,
+          22
+        ],
+        "condition": "Critical",
+        "extraction_priority": 1
+      },
+      {
+        "victim_id": "HIKER_04",
+        "coordinates": [
+          2,
+          3
+        ],
+        "condition": "Stable",
+        "extraction_priority": 3
+      }
+    ],
+    "environmental_conditions": {
+      "visibility": "Clear",
+      "wind_speed": 10,
+      "hazard_zones": [
+        {
+          "zone_id": "ZONE_DELTA",
+          "severity": "Low",
+          "description": "Rising gusts near eastern ridge"
+        }
+      ]
+    },
+    "search_grid_status": {
+      "Sector_A1": "Cleared",
+      "Sector_A2": "Cleared",
+      "Sector_E9": "Unexplored"
+    }
+  }
+}

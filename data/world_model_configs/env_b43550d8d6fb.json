@@ -1,0 +1,134 @@
+{
+  "environment_name": "env_b43550d8d6fb",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: Based on the current internal state $s_t$ and the action $a_t$ submitted by the Agent, simulate the evolution of the telescope environment and predict the observation $o_{{t+1}}$ obtained by the Agent. \n- **Emphasis**: You are the simulation engine. You do not perform physical telescope operations. Your task is to calculate the internal state transition (e.g., movement of the telescope, changes in sensor temperature, progression of time) and generate the resulting observation output based on the logic of astronomical observation.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nYou must maintain the continuity of the environment. Every action changes the internal state (e.g., slewing takes time and changes coordinates, taking an exposure consumes power/storage). All subsequent observations must be consistent with the cumulative history of the state.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. This JSON will contain:\n- `\"name\"`: The name of the action (e.g., `slew_to`, `take_exposure`).\n- `\"arguments\"`: A dictionary of parameters required for the action.\n\nYou must parse this JSON, validate the parameters against the current state, and simulate the resulting state transition and observation.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\n- **Invalid Parameters**: If an action is requested with parameters out of range (e.g., altitude < 0), return `{{\"error\": \"Invalid parameters: ...\"}}`.\n- **Operational Constraints**: If an action is impossible due to current state (e.g., `take_exposure` while `shutter_open` is false, or `slew_to` while a lock is engaged), return `{{\"error\": \"Constraint violation: ...\"}}`.\n- **Undefined Actions**: If the action name is not in the definition, return `{{\"error\": \"Action not found\"}}`.\n- **Non-Fabrication**: Do not invent new states or metadata not defined in the schema.\n\n##### Output Assembly\nFor every action function call, you must return a structured JSON object containing **ONLY** the return fields declared in that specific action function's definition. \n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, the `new_state`, or any hidden variables like `battery_level` or `internal_temperature` unless those specific fields are defined as return values for that action. State maintenance is handled internally by you; the Agent only sees the observation.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to specified JSON formats for both input parsing and output generation.\n- **Factuality**: Simulate physics and astronomical logic accurately (e.g., slewing takes time proportional to distance).\n- **Consistency**: If the weather becomes 'cloudy' in the state, subsequent exposures must return 'low_signal' or 'error' in the observation until the state changes.\n- **Realism**: Actions like moving a telescope or cooling a sensor are not instantaneous; ensure the `current_time` state field advances realistically.\n- **Encapsulation**: Strictly hide the internal state structure from the output. Only expose information that is explicitly returned by the action function.\n{{initial_state}}: {{\n  \"telescope_azimuth\": 85.0,\n  \"telescope_altitude\": 40.0,\n  \"shutter_open\": false,\n  \"ccd_temperature\": 15.0,\n  \"current_time_utc\": \"2025-05-20T22:00:00Z\",\n  \"weather_condition\": \"clear\",\n  \"storage_remaining_gb\": 1.2,\n  \"tracking_target_id\": \"HD-1415-8\"\n}}\n{{state_descriptions}}: {{\n  \"telescope_azimuth\": \"The horizontal angle of the telescope in degrees (0.0 to 359.9).\",\n  \"telescope_altitude\": \"The vertical angle of the telescope in degrees (0.0 to 90.0).\",\n  \"shutter_open\": \"Indicates if the telescope's protective shutter is open.\",\n  \"ccd_temperature\": \"The current temperature of the CCD sensor in degrees Celsius.\",\n  \"current_time_utc\": \"Current environment time in ISO 8601 format.\",\n  \"weather_condition\": \"Current sky conditions (e.g., 'clear', 'partly_cloudy', 'overcast').\",\n  \"storage_remaining_gb\": \"Available disk space for storing raw observation data.\",\n  \"tracking_target_id\": \"The ID of the celestial object currently being tracked, or null if idle.\"\n}}\n{action_set_definitions}: {\n  \"get_system_status\": {\n    \"description\": \"Retrieves the current telemetry and environmental state of the telescope and its sensors.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"telescope_azimuth\": 85.0,\n      \"telescope_altitude\": 40.0,\n      \"shutter_open\": false,\n      \"ccd_temperature\": -10.5,\n      \"weather_condition\": \"clear\",\n      \"storage_remaining_gb\": 1.2,\n      \"tracking_target_id\": \"HD-1415-8\"\n    }\n  },\n  \"set_tracking_target\": {\n    \"description\": \"Updates the tracking system to identify and lock onto a specific celestial object.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"target_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the target object (e.g., 'HD-1415-B').\"\n        }\n      },\n      \"required\": [\n        \"target_id\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"success\",\n      \"current_tracking\": \"HD-1415-B\"\n    }\n  },\n  \"configure_ccd_cooling\": {\n    \"description\": \"Sets the target temperature for the CCD sensor cooling system.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"target_temperature\": {\n          \"type\": \"number\",\n          \"description\": \"The target temperature in degrees Celsius.\"\n        }\n      },\n      \"required\": [\n        \"target_temperature\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"cooling_initiated\",\n      \"current_temp\": -15.0,\n      \"target_temp\": -25.0\n    }\n  },\n  \"toggle_shutter\": {\n    \"description\": \"Opens or closes the telescope's protective shutter.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"state\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"open\",\n            \"closed\"\n          ],\n          \"description\": \"The desired state of the shutter.\"\n        }\n      },\n      \"required\": [\n        \"state\"\n      ]\n    },\n    \"example_output\": {\n      \"shutter_open\": true\n    }\n  },\n  \"take_science_exposure\": {\n    \"description\": \"Triggers a high-resolution science exposure frame capture.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"target_id\": {\n          \"type\": \"string\",\n          \"description\": \"Object ID for metadata.\"\n        },\n        \"duration_seconds\": {\n          \"type\": \"integer\",\n          \"description\": \"Exposure time in seconds.\"\n        }\n      },\n      \"required\": [\n        \"target_id\",\n        \"duration_seconds\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"captured\",\n      \"file_path\": \"/data/obs_9921.fit\",\n      \"file_size_gb\": 0.8\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_system_status",
+      "description": "Retrieves the current telemetry and environmental state of the telescope and its sensors.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "telescope_azimuth": 85.0,
+        "telescope_altitude": 40.0,
+        "shutter_open": false,
+        "ccd_temperature": -10.5,
+        "weather_condition": "clear",
+        "storage_remaining_gb": 1.2,
+        "tracking_target_id": "HD-1415-8"
+      }
+    },
+    {
+      "name": "set_tracking_target",
+      "description": "Updates the tracking system to identify and lock onto a specific celestial object.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "target_id": {
+            "type": "string",
+            "description": "The ID of the target object (e.g., 'HD-1415-B')."
+          }
+        },
+        "required": [
+          "target_id"
+        ]
+      },
+      "example_output": {
+        "status": "success",
+        "current_tracking": "HD-1415-B"
+      }
+    },
+    {
+      "name": "configure_ccd_cooling",
+      "description": "Sets the target temperature for the CCD sensor cooling system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "target_temperature": {
+            "type": "number",
+            "description": "The target temperature in degrees Celsius."
+          }
+        },
+        "required": [
+          "target_temperature"
+        ]
+      },
+      "example_output": {
+        "status": "cooling_initiated",
+        "current_temp": -15.0,
+        "target_temp": -25.0
+      }
+    },
+    {
+      "name": "toggle_shutter",
+      "description": "Opens or closes the telescope's protective shutter.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "state": {
+            "type": "string",
+            "enum": [
+              "open",
+              "closed"
+            ],
+            "description": "The desired state of the shutter."
+          }
+        },
+        "required": [
+          "state"
+        ]
+      },
+      "example_output": {
+        "shutter_open": true
+      }
+    },
+    {
+      "name": "take_science_exposure",
+      "description": "Triggers a high-resolution science exposure frame capture.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "target_id": {
+            "type": "string",
+            "description": "Object ID for metadata."
+          },
+          "duration_seconds": {
+            "type": "integer",
+            "description": "Exposure time in seconds."
+          }
+        },
+        "required": [
+          "target_id",
+          "duration_seconds"
+        ]
+      },
+      "example_output": {
+        "status": "captured",
+        "file_path": "/data/obs_9921.fit",
+        "file_size_gb": 0.8
+      }
+    }
+  ],
+  "state_description": {
+    "telescope_azimuth": "The horizontal angle of the telescope in degrees (0.0 to 359.9).",
+    "telescope_altitude": "The vertical angle of the telescope in degrees (0.0 to 90.0).",
+    "shutter_open": "Indicates if the telescope's protective shutter is open.",
+    "ccd_temperature": "The current temperature of the CCD sensor in degrees Celsius.",
+    "current_time_utc": "Current environment time in ISO 8601 format.",
+    "weather_condition": "Current sky conditions (e.g., 'clear', 'partly_cloudy', 'overcast').",
+    "storage_remaining_gb": "Available disk space for storing raw observation data.",
+    "tracking_target_id": "The ID of the celestial object currently being tracked, or null if idle."
+  },
+  "task_initial_state": {
+    "telescope_azimuth": 85.0,
+    "telescope_altitude": 40.0,
+    "shutter_open": false,
+    "ccd_temperature": 15.0,
+    "current_time_utc": "2025-05-20T22:00:00Z",
+    "weather_condition": "clear",
+    "storage_remaining_gb": 1.2,
+    "tracking_target_id": "HD-1415-8"
+  }
+}

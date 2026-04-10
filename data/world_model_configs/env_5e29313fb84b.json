@@ -1,0 +1,106 @@
+{
+  "environment_name": "env_5e29313fb84b",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM) for Reactor Safety Parameter Monitoring.\n- **Core Objective**: Based on the current internal state $s_t$ and the action $a_t$ executed by the Agent, simulate the physical and logical evolution of the nuclear reactor environment to predict the next state $s_{{t+1}}$ and generate the specific observation $o_{{t+1}}$ obtained by the Agent.\n- **Emphasis**: You are a simulator, not an operator. You do not execute real-world safety protocols but maintain a consistent, physics-aligned internal simulation of reactor dynamics and provide the resulting sensor data to the Agent.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\n\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions must maintain absolute context consistency. Changes to parameters (e.g., core temperature, pressure) must follow logical trajectories over time based on previous actions (e.g., adjusting control rods or coolant flow). The environment must remember the cumulative effects of all previous steps.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object containing:\n- `\"name\"`: The specific safety or monitoring action to execute.\n- `\"arguments\"`: The parameter values for the action.\n\nExample:\n```json\n{{\n \"name\": \"adjust_coolant_flow\",\n \"arguments\": {{\n    \"flow_rate_m3_s\": 5.5\n  }}\n}}\n```\nYou must parse this input, calculate the resulting changes in the reactor's internal state (e.g., how a flow increase affects temperature), and generate the corresponding observation.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\n- For invalid parameters (e.g., flow rate out of physical bounds), undefined actions, or actions that conflict with the current state (e.g., trying to increase power during an emergency shutdown), return structured error info: `{{\"error\": \"Description of the specific failure\"}}`.\n- Do not fabricate data or guess state values if the input is malformed.\n\n##### Output Assembly\nFor every action function call, you must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition.\n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, `new_state`, or any hidden variables. You must strictly hide the internal state structure from the output. Only expose information that is explicitly defined as a return value (the Observation) for the specific action called.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to specified JSON formats for both inputs and outputs.\n- **Factuality**: Simulated physical responses (Temperature/Pressure/Radiation) must reflect realistic reactor behavior.\n- **Consistency**: State evolution must be self-consistent (e.g., if Control Rods are fully inserted, Power Output must decrease).\n- **Realism**: High-stress scenarios (e.g., meltdowns or alarms) should follow logical safety thresholds.\n- **Quality**: Observations should be precise and unambiguous.\n- **Encapsulation**: State maintenance is internal. The Agent must only see the specific return values defined in the action definition.\n{{initial_state}}: {{\n  \"core_temperature_celsius\": 348.2,\n  \"containment_pressure_mpa\": 18.7,\n  \"coolant_flow_rate\": 3.0,\n  \"control_rod_insertion_percent\": 18.0,\n  \"power_output_mw\": 1040.0,\n  \"radiation_level_msv_h\": 0.04,\n  \"safety_status\": \"WARNING\"\n}}\n{{state_descriptions}}: {{\n  \"core_temperature_celsius\": \"Current temperature of the reactor core in degrees Celsius.\",\n  \"containment_pressure_mpa\": \"Internal pressure within the containment vessel in Megapascals.\",\n  \"coolant_flow_rate\": \"The rate at which coolant is being pumped through the system in cubic meters per second.\",\n  \"control_rod_insertion_percent\": \"The percentage of control rod insertion (0 = fully retracted/max reactivity, 100 = fully inserted/min reactivity).\",\n  \"power_output_mw\": \"Current electrical power output in Megawatts.\",\n  \"radiation_level_msv_h\": \"Ambient radiation levels within the containment area in millisieverts per hour.\",\n  \"safety_status\": \"Current operational status: 'NORMAL', 'WARNING', 'CRITICAL', or 'SHUTDOWN'.\"\n}}\n{action_set_definitions}: {\n  \"get_system_metrics\": {\n    \"description\": \"Retrieves the current operational parameters of the reactor environment, including temperature, pressure, flow rate, rod insertion, power output, and safety status.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"core_temperature_celsius\": 315.5,\n      \"containment_pressure_mpa\": 19.8,\n      \"coolant_flow_rate\": 4.2,\n      \"control_rod_insertion_percent\": 45.0,\n      \"power_output_mw\": 520.0,\n      \"radiation_level_msv_h\": 0.05,\n      \"safety_status\": \"WARNING\"\n    }\n  },\n  \"adjust_coolant_flow\": {\n    \"description\": \"Adjusts the flow rate of the primary coolant system. Note: Mechanical constraints limit the safe maximum flow.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"flow_rate_m3_s\": {\n          \"type\": \"number\",\n          \"description\": \"Target coolant flow rate in cubic meters per second.\"\n        }\n      },\n      \"required\": [\n        \"flow_rate_m3_s\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"success\",\n      \"new_flow_rate\": 5.5\n    }\n  },\n  \"adjust_control_rod_insertion\": {\n    \"description\": \"Changes the insertion depth of the control rods to manage reactor reactivity, temperature, and power output.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"insertion_percent\": {\n          \"type\": \"number\",\n          \"description\": \"Target insertion percentage (0-100).\"\n        }\n      },\n      \"required\": [\n        \"insertion_percent\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"success\",\n      \"new_insertion_percent\": 60.0\n    }\n  },\n  \"manage_containment_pressure_system\": {\n    \"description\": \"Activates or deactivates the auxiliary containment cooling and pressure suppression systems.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"operation\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"ACTIVATE_SUPPRESSION\",\n            \"DEACTIVATE_SUPPRESSION\"\n          ],\n          \"description\": \"The command to stabilize containment pressure.\"\n        }\n      },\n      \"required\": [\n        \"operation\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"active\",\n      \"containment_pressure_mpa\": 19.2\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_system_metrics",
+      "description": "Retrieves the current operational parameters of the reactor environment, including temperature, pressure, flow rate, rod insertion, power output, and safety status.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "core_temperature_celsius": 315.5,
+        "containment_pressure_mpa": 19.8,
+        "coolant_flow_rate": 4.2,
+        "control_rod_insertion_percent": 45.0,
+        "power_output_mw": 520.0,
+        "radiation_level_msv_h": 0.05,
+        "safety_status": "WARNING"
+      }
+    },
+    {
+      "name": "adjust_coolant_flow",
+      "description": "Adjusts the flow rate of the primary coolant system. Note: Mechanical constraints limit the safe maximum flow.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "flow_rate_m3_s": {
+            "type": "number",
+            "description": "Target coolant flow rate in cubic meters per second."
+          }
+        },
+        "required": [
+          "flow_rate_m3_s"
+        ]
+      },
+      "example_output": {
+        "status": "success",
+        "new_flow_rate": 5.5
+      }
+    },
+    {
+      "name": "adjust_control_rod_insertion",
+      "description": "Changes the insertion depth of the control rods to manage reactor reactivity, temperature, and power output.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "insertion_percent": {
+            "type": "number",
+            "description": "Target insertion percentage (0-100)."
+          }
+        },
+        "required": [
+          "insertion_percent"
+        ]
+      },
+      "example_output": {
+        "status": "success",
+        "new_insertion_percent": 60.0
+      }
+    },
+    {
+      "name": "manage_containment_pressure_system",
+      "description": "Activates or deactivates the auxiliary containment cooling and pressure suppression systems.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "operation": {
+            "type": "string",
+            "enum": [
+              "ACTIVATE_SUPPRESSION",
+              "DEACTIVATE_SUPPRESSION"
+            ],
+            "description": "The command to stabilize containment pressure."
+          }
+        },
+        "required": [
+          "operation"
+        ]
+      },
+      "example_output": {
+        "status": "active",
+        "containment_pressure_mpa": 19.2
+      }
+    }
+  ],
+  "state_description": {
+    "core_temperature_celsius": "Current temperature of the reactor core in degrees Celsius.",
+    "containment_pressure_mpa": "Internal pressure within the containment vessel in Megapascals.",
+    "coolant_flow_rate": "The rate at which coolant is being pumped through the system in cubic meters per second.",
+    "control_rod_insertion_percent": "The percentage of control rod insertion (0 = fully retracted/max reactivity, 100 = fully inserted/min reactivity).",
+    "power_output_mw": "Current electrical power output in Megawatts.",
+    "radiation_level_msv_h": "Ambient radiation levels within the containment area in millisieverts per hour.",
+    "safety_status": "Current operational status: 'NORMAL', 'WARNING', 'CRITICAL', or 'SHUTDOWN'."
+  },
+  "task_initial_state": {
+    "core_temperature_celsius": 348.2,
+    "containment_pressure_mpa": 18.7,
+    "coolant_flow_rate": 3.0,
+    "control_rod_insertion_percent": 18.0,
+    "power_output_mw": 1040.0,
+    "radiation_level_msv_h": 0.04,
+    "safety_status": "WARNING"
+  }
+}

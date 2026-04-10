@@ -1,0 +1,233 @@
+{
+  "environment_name": "env_c13e92aa79ae",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: You function as a high-fidelity simulation of a Building Inspection Compliance environment. Based on the current internal state $s_t$ and the action $a_t$ submitted by the inspector (Agent), you simulate the environment's logic evolution and generate the resulting observation $o_{{t+1}}$ received by the Agent.\n- **Emphasis**: You are the environment itself. You do not offer advice or perform external tasks; you only simulate internal state transitions and provide sensor-like feedback (observations).\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nYou must maintain strict temporal and logical consistency throughout the interaction. Every action taken by the Agent must build upon the state resulting from previous actions. If a room is marked as 'Inspected' or a violation is 'Flagged', this must persist in your internal state evolution logic.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the building environment by calling specific action functions. The available action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object containing:\n- `\"name\"`: The name of the inspection action (e.g., `inspect_electrical_panel`, `verify_permit`).\n- `\"arguments\"`: The parameters required for that specific action.\n\nYou must parse this JSON, update the internal state of the building inspection (e.g., changing system status, logging violations), and generate the observation.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\n- If the Agent attempts to inspect a non-existent zone: Return `{{\"error\": \"Zone ID not found\"}}`.\n- If an action is missing required parameters: Return `{{\"error\": \"Missing required argument: [name]\"}}`.\n- If the Agent performs an action inconsistent with the current state (e.g., inspecting a room without access permissions): Return a realistic failure observation.\n- **Do not fabricate results** for actions not defined in the action set.\n\n##### Output Assembly\nFor every action executed, return a structured JSON object containing **ONLY** the return fields declared in the specific action's definition.\n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, the updated state, or any hidden system variables. The Agent must only see the specific return values (the Observation) defined in the action documentation. Do not output the logic of the state update.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to JSON output for observations.\n- **Factuality**: Simulated inspection results must be grounded in the building's current state and logic.\n- **Consistency**: If a fire hazard is found at time $t$, it must remain present at time $t+1$ unless a mitigation action is recorded.\n- **Realism**: Simulate the building's response realistically (e.g., structural cracks don't disappear, and electrical readings should be consistent with the panel's state).\n- **Quality**: Ensure the descriptions of findings (observations) are professional and follow inspection nomenclature.\n- **Encapsulation**: Strictly hide the internal state structure. Only expose information that is explicitly returned by the action function.\n{{initial_state}}: {{\n  \"inspected_zones\": [\n    \"corridor_4a\"\n  ],\n  \"detected_violations\": [],\n  \"system_status\": {{\n    \"fire_suppression\": \"operational\",\n    \"hvac\": \"active\",\n    \"electrical_grid\": \"stable\",\n    \"elevators\": \"operational\",\n    \"oxygen_zone_valve_402\": \"closed\",\n    \"downstream_line_pressure_psi\": 52,\n    \"nitrogen_purge_tank_pressure_psi\": 15,\n    \"manometer_display_value\": -0.025,\n    \"negative_air_machine_status\": \"standby\",\n    \"hepa_filter_differential\": 0.0\n  }},\n  \"permit_ledger\": {{\n    \"construction_permit\": \"valid\",\n    \"safety_certificate\": \"expired\",\n    \"icra_class_iv_permit\": \"active\",\n    \"hot_work_permit\": \"pending_inspection\"\n  }},\n  \"current_inspector_location\": \"anteroom_402\"\n}}\n{{state_descriptions}}: {{\n  \"inspected_zones\": \"A list of room IDs or zone identifiers that have already been fully inspected.\",\n  \"detected_violations\": \"A list of recorded compliance violations, including location, severity, and category (e.g., Fire, Structural, Electrical).\",\n  \"system_status\": \"Current functional status of building-wide systems (e.g., 'fire_sprinklers': 'operational', 'emergency_lighting': 'malfunctioning').\",\n  \"permit_ledger\": \"Status of legal documentation required for the building (e.g., 'occupancy_permit': true).\",\n  \"current_inspector_location\": \"The current room or area where the Agent (inspector) is located.\"\n}}\n{action_set_definitions}: {\n  \"get_environment_state\": {\n    \"description\": \"Retrieves the current state of the environment, including the permit_ledger, current_inspector_location, and system_status (valves, containment devices).\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"permit_ledger\": {\n        \"safety_certificate\": \"expired\",\n        \"hot_work_permit\": \"pending\"\n      },\n      \"system_status\": {\n        \"oxygen_main_valve\": \"open\",\n        \"negative_air_machine\": \"off\"\n      }\n    }\n  },\n  \"renew_permit\": {\n    \"description\": \"Updates or renews a specific permit or certificate in the building ledger.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"permit_type\": {\n          \"type\": \"string\",\n          \"description\": \"The name of the permit to update (e.g., 'safety_certificate', 'hot_work_permit').\"\n        },\n        \"zone_id\": {\n          \"type\": \"string\",\n          \"description\": \"The location associated with the permit.\"\n        }\n      },\n      \"required\": [\n        \"permit_type\",\n        \"zone_id\"\n      ]\n    },\n    \"example_output\": {\n      \"permit_type\": \"safety_certificate\",\n      \"status\": \"active\",\n      \"expiry\": \"2024-12-31\"\n    }\n  },\n  \"manage_containment_infrastructure\": {\n    \"description\": \"Controls containment systems like negative air machines and monitors ICRA compliance levels.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"component\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"negative_air_machine\",\n            \"pressure_monitor\"\n          ],\n          \"description\": \"The specific containment tool to manage.\"\n        },\n        \"operation\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"activate\",\n            \"deactivate\",\n            \"verify_icra_iv\"\n          ],\n          \"description\": \"The action to perform.\"\n        },\n        \"zone_id\": {\n          \"type\": \"string\",\n          \"description\": \"The area where containment is required.\"\n        }\n      },\n      \"required\": [\n        \"component\",\n        \"operation\",\n        \"zone_id\"\n      ]\n    },\n    \"example_output\": {\n      \"component\": \"negative_air_machine\",\n      \"status\": \"running\",\n      \"icra_compliance\": \"Class IV Verified\"\n    }\n  },\n  \"manage_medical_gas_isolation\": {\n    \"description\": \"Controls and verifies the state of medical gas valves (e.g., Oxygen, Nitrogen).\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"gas_system\": {\n          \"type\": \"string\",\n          \"description\": \"The type of gas system (e.g., 'oxygen').\"\n        },\n        \"operation\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"isolate\",\n            \"restore\",\n            \"check_valve_status\"\n          ],\n          \"description\": \"The mechanical operation to perform or check.\"\n        },\n        \"zone_id\": {\n          \"type\": \"string\",\n          \"description\": \"The specific renovation zone.\"\n        }\n      },\n      \"required\": [\n        \"gas_system\",\n        \"operation\",\n        \"zone_id\"\n      ]\n    },\n    \"example_output\": {\n      \"gas_system\": \"oxygen\",\n      \"valve_state\": \"closed\",\n      \"integration_verified\": true\n    }\n  },\n  \"execute_nitrogen_purged_brazing\": {\n    \"description\": \"Performs the NFPA 99 brazing sequence with a continuous nitrogen purge.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"zone_id\": {\n          \"type\": \"string\",\n          \"description\": \"Location of the brazing work.\"\n        },\n        \"nitrogen_purge_active\": {\n          \"type\": \"boolean\",\n          \"description\": \"Must be set to true to ensure NFPA 99 compliance.\"\n        }\n      },\n      \"required\": [\n        \"zone_id\",\n        \"nitrogen_purge_active\"\n      ]\n    },\n    \"example_output\": {\n      \"brazing_status\": \"certified_complete\",\n      \"nfpa_compliance\": \"pass\"\n    }\n  },\n  \"verify_pressure_stability\": {\n    \"description\": \"Starts or checks the 24-hour pressure stability verification test.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"zone_id\": {\n          \"type\": \"string\",\n          \"description\": \"The zone under verification.\"\n        },\n        \"action\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"start_24h_test\",\n            \"get_test_results\"\n          ],\n          \"description\": \"Whether to initiate the test or retrieve the completion status.\"\n        }\n      },\n      \"required\": [\n        \"zone_id\",\n        \"action\"\n      ]\n    },\n    \"example_output\": {\n      \"test_duration_met\": true,\n      \"pressure_stable\": true\n    }\n  },\n  \"submit_clinical_certification\": {\n    \"description\": \"Submits final documentation to certify the medical gas expansion for clinical use.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"zone_id\": {\n          \"type\": \"string\",\n          \"description\": \"The zone for which certification is requested.\"\n        }\n      },\n      \"required\": [\n        \"zone_id\"\n      ]\n    },\n    \"example_output\": {\n      \"certification_status\": \"Approved\",\n      \"timestamp\": \"2023-11-01T12:00:00Z\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_environment_state",
+      "description": "Retrieves the current state of the environment, including the permit_ledger, current_inspector_location, and system_status (valves, containment devices).",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "permit_ledger": {
+          "safety_certificate": "expired",
+          "hot_work_permit": "pending"
+        },
+        "system_status": {
+          "oxygen_main_valve": "open",
+          "negative_air_machine": "off"
+        }
+      }
+    },
+    {
+      "name": "renew_permit",
+      "description": "Updates or renews a specific permit or certificate in the building ledger.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "permit_type": {
+            "type": "string",
+            "description": "The name of the permit to update (e.g., 'safety_certificate', 'hot_work_permit')."
+          },
+          "zone_id": {
+            "type": "string",
+            "description": "The location associated with the permit."
+          }
+        },
+        "required": [
+          "permit_type",
+          "zone_id"
+        ]
+      },
+      "example_output": {
+        "permit_type": "safety_certificate",
+        "status": "active",
+        "expiry": "2024-12-31"
+      }
+    },
+    {
+      "name": "manage_containment_infrastructure",
+      "description": "Controls containment systems like negative air machines and monitors ICRA compliance levels.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "component": {
+            "type": "string",
+            "enum": [
+              "negative_air_machine",
+              "pressure_monitor"
+            ],
+            "description": "The specific containment tool to manage."
+          },
+          "operation": {
+            "type": "string",
+            "enum": [
+              "activate",
+              "deactivate",
+              "verify_icra_iv"
+            ],
+            "description": "The action to perform."
+          },
+          "zone_id": {
+            "type": "string",
+            "description": "The area where containment is required."
+          }
+        },
+        "required": [
+          "component",
+          "operation",
+          "zone_id"
+        ]
+      },
+      "example_output": {
+        "component": "negative_air_machine",
+        "status": "running",
+        "icra_compliance": "Class IV Verified"
+      }
+    },
+    {
+      "name": "manage_medical_gas_isolation",
+      "description": "Controls and verifies the state of medical gas valves (e.g., Oxygen, Nitrogen).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "gas_system": {
+            "type": "string",
+            "description": "The type of gas system (e.g., 'oxygen')."
+          },
+          "operation": {
+            "type": "string",
+            "enum": [
+              "isolate",
+              "restore",
+              "check_valve_status"
+            ],
+            "description": "The mechanical operation to perform or check."
+          },
+          "zone_id": {
+            "type": "string",
+            "description": "The specific renovation zone."
+          }
+        },
+        "required": [
+          "gas_system",
+          "operation",
+          "zone_id"
+        ]
+      },
+      "example_output": {
+        "gas_system": "oxygen",
+        "valve_state": "closed",
+        "integration_verified": true
+      }
+    },
+    {
+      "name": "execute_nitrogen_purged_brazing",
+      "description": "Performs the NFPA 99 brazing sequence with a continuous nitrogen purge.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "zone_id": {
+            "type": "string",
+            "description": "Location of the brazing work."
+          },
+          "nitrogen_purge_active": {
+            "type": "boolean",
+            "description": "Must be set to true to ensure NFPA 99 compliance."
+          }
+        },
+        "required": [
+          "zone_id",
+          "nitrogen_purge_active"
+        ]
+      },
+      "example_output": {
+        "brazing_status": "certified_complete",
+        "nfpa_compliance": "pass"
+      }
+    },
+    {
+      "name": "verify_pressure_stability",
+      "description": "Starts or checks the 24-hour pressure stability verification test.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "zone_id": {
+            "type": "string",
+            "description": "The zone under verification."
+          },
+          "action": {
+            "type": "string",
+            "enum": [
+              "start_24h_test",
+              "get_test_results"
+            ],
+            "description": "Whether to initiate the test or retrieve the completion status."
+          }
+        },
+        "required": [
+          "zone_id",
+          "action"
+        ]
+      },
+      "example_output": {
+        "test_duration_met": true,
+        "pressure_stable": true
+      }
+    },
+    {
+      "name": "submit_clinical_certification",
+      "description": "Submits final documentation to certify the medical gas expansion for clinical use.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "zone_id": {
+            "type": "string",
+            "description": "The zone for which certification is requested."
+          }
+        },
+        "required": [
+          "zone_id"
+        ]
+      },
+      "example_output": {
+        "certification_status": "Approved",
+        "timestamp": "2023-11-01T12:00:00Z"
+      }
+    }
+  ],
+  "state_description": {
+    "inspected_zones": "A list of room IDs or zone identifiers that have already been fully inspected.",
+    "detected_violations": "A list of recorded compliance violations, including location, severity, and category (e.g., Fire, Structural, Electrical).",
+    "system_status": "Current functional status of building-wide systems (e.g., 'fire_sprinklers': 'operational', 'emergency_lighting': 'malfunctioning').",
+    "permit_ledger": "Status of legal documentation required for the building (e.g., 'occupancy_permit': true).",
+    "current_inspector_location": "The current room or area where the Agent (inspector) is located."
+  },
+  "task_initial_state": {
+    "inspected_zones": [
+      "corridor_4a"
+    ],
+    "detected_violations": [],
+    "system_status": {
+      "fire_suppression": "operational",
+      "hvac": "active",
+      "electrical_grid": "stable",
+      "elevators": "operational",
+      "oxygen_zone_valve_402": "closed",
+      "downstream_line_pressure_psi": 52,
+      "nitrogen_purge_tank_pressure_psi": 15,
+      "manometer_display_value": -0.025,
+      "negative_air_machine_status": "standby",
+      "hepa_filter_differential": 0.0
+    },
+    "permit_ledger": {
+      "construction_permit": "valid",
+      "safety_certificate": "expired",
+      "icra_class_iv_permit": "active",
+      "hot_work_permit": "pending_inspection"
+    },
+    "current_inspector_location": "anteroom_402"
+  }
+}

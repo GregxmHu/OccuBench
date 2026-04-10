@@ -1,0 +1,116 @@
+{
+  "environment_name": "env_734db17a9cb6",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: Act as a high-fidelity simulator for a Kubernetes Pod Autoscaling environment. Based on the current internal cluster state $s_t$ and the scaling action $a_t$ provided by the Agent, you must simulate the cluster's internal state transition and predict the resulting observation $o_{{t+1}}$.\n- **Emphasis**: You do not perform actual Kubernetes API calls. You manage the environment logic, including resource contention, pod startup delays, and the relationship between replica counts and performance metrics (CPU/Memory/Latency).\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation tracking the cluster's health and resource utilization. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nYou must maintain strict temporal consistency. If an action increases the replica count, subsequent observations must reflect the gradual change in resource utilization and the time required for pods to reach a 'Ready' state. All interactions must be treated as a continuous timeline.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the Kubernetes environment by calling the following defined actions:\n```json\n{{action_set_definitions}}\n```\nThe `observation` returned for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests as structured JSON objects. You must parse these and simulate the resulting environment evolution.\nExample input:\n```json\n{{\n \"name\": \"scale_deployment\",\n \"arguments\": {{\n    \"replicas\": 5\n  }}\n}}\n```\nYou must validate that the action exists in the `{{action_set_definitions}}` and that arguments are within logical bounds (e.g., non-negative replicas).\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\n- If an action exceeds cluster limits (e.g., node capacity), return an error: `{{\"error\": \"Insufficient cluster resources for requested scale\"}}`.\n- If the action name is unknown: `{{\"error\": \"Action not found\"}}`.\n- For invalid parameter types: `{{\"error\": \"Invalid argument type\"}}`.\n- Do not invent new states or fabricate metadata not supported by the environment logic.\n\n##### Output Assembly\nFor every action, return a structured JSON object containing **ONLY** the fields defined as return values/observations in the action definition. \n\n**CRITICAL CONSTRAINT**: You must **NOT** include the internal state `s_t` or any updated state variables in your response. The internal state evolution is your private logic. The Agent only receives the specific observation (e.g., current CPU metrics or status codes) as defined in the action's return schema.\n\n### 4. Key Principles\n- **Format**: Output strictly valid JSON observations.\n- **Factuality**: Simulate realistic Kubernetes behavior (e.g., high load leads to increased latency; adding pods eventually lowers average CPU utilization).\n- **Consistency**: Ensure that if traffic (`incoming_qps`) increases without a change in replicas, CPU utilization and latency trend upward.\n- **Realism**: Account for \"noisy neighbors\" or scheduling overhead if implied by the state.\n- **Encapsulation**: Never reveal the full internal state JSON to the Agent. Only return the specific observation fields requested by the action function.\n{{initial_state}}: {{\n  \"current_replicas\": 8,\n  \"cpu_usage_percent\": 88.0,\n  \"memory_usage_percent\": 62.5,\n  \"incoming_qps\": 220.0,\n  \"avg_latency_ms\": 215.0,\n  \"max_node_capacity_pods\": 10,\n  \"pending_replicas\": 2\n}}\n{{state_descriptions}}: {{\n  \"current_replicas\": \"The number of pods currently in the 'Running' and 'Ready' state.\",\n  \"cpu_usage_percent\": \"The average CPU utilization percentage across all ready pods.\",\n  \"memory_usage_percent\": \"The average memory utilization percentage across all ready pods.\",\n  \"incoming_qps\": \"The current rate of incoming requests per second directed to the deployment.\",\n  \"avg_latency_ms\": \"The current average response latency in milliseconds.\",\n  \"max_node_capacity_pods\": \"The maximum number of pods the underlying cluster nodes can support.\",\n  \"pending_replicas\": \"The number of pods currently in 'Pending' state (transitioning to Ready).\"\n}}\n{action_set_definitions}: {\n  \"get_cluster_info\": {\n    \"description\": \"Retrieves cluster-wide constraints and capacity limits, specifically the maximum number of pods allowed on the current infrastructure.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"max_node_capacity_pods\": 50\n    }\n  },\n  \"get_deployment_status\": {\n    \"description\": \"Retrieves the current real-time metrics for a specific deployment, including replica counts, resource utilization, and traffic performance.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"service_name\": {\n          \"type\": \"string\",\n          \"description\": \"The name of the service to query (e.g., 'checkout-service').\"\n        }\n      },\n      \"required\": [\n        \"service_name\"\n      ]\n    },\n    \"example_output\": {\n      \"current_replicas\": 5,\n      \"cpu_usage_percent\": 80.5,\n      \"memory_usage_percent\": 45.0,\n      \"incoming_qps\": 250,\n      \"avg_latency_ms\": 160,\n      \"pending_replicas\": 2\n    }\n  },\n  \"patch_deployment_replicas\": {\n    \"description\": \"Updates the desired number of replicas for a specific deployment.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"service_name\": {\n          \"type\": \"string\",\n          \"description\": \"The name of the service to scale.\"\n        },\n        \"replicas\": {\n          \"type\": \"integer\",\n          \"description\": \"The target number of replicas.\"\n        }\n      },\n      \"required\": [\n        \"service_name\",\n        \"replicas\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"success\",\n      \"new_replica_count\": 10\n    }\n  },\n  \"patch_deployment_resources\": {\n    \"description\": \"Adjusts the CPU and Memory resource requests/limits for the deployment pods to resolve scheduling blocks or resource contention.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"service_name\": {\n          \"type\": \"string\",\n          \"description\": \"The name of the service to update.\"\n        },\n        \"cpu_request\": {\n          \"type\": \"string\",\n          \"description\": \"The new CPU request value (e.g., '500m', '1').\"\n        },\n        \"memory_request\": {\n          \"type\": \"string\",\n          \"description\": \"The new memory request value (e.g., '256Mi', '1Gi').\"\n        }\n      },\n      \"required\": [\n        \"service_name\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"success\",\n      \"updated_config\": {\n        \"cpu_request\": \"500m\",\n        \"memory_request\": \"256Mi\"\n      }\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_cluster_info",
+      "description": "Retrieves cluster-wide constraints and capacity limits, specifically the maximum number of pods allowed on the current infrastructure.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "max_node_capacity_pods": 50
+      }
+    },
+    {
+      "name": "get_deployment_status",
+      "description": "Retrieves the current real-time metrics for a specific deployment, including replica counts, resource utilization, and traffic performance.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "service_name": {
+            "type": "string",
+            "description": "The name of the service to query (e.g., 'checkout-service')."
+          }
+        },
+        "required": [
+          "service_name"
+        ]
+      },
+      "example_output": {
+        "current_replicas": 5,
+        "cpu_usage_percent": 80.5,
+        "memory_usage_percent": 45.0,
+        "incoming_qps": 250,
+        "avg_latency_ms": 160,
+        "pending_replicas": 2
+      }
+    },
+    {
+      "name": "patch_deployment_replicas",
+      "description": "Updates the desired number of replicas for a specific deployment.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "service_name": {
+            "type": "string",
+            "description": "The name of the service to scale."
+          },
+          "replicas": {
+            "type": "integer",
+            "description": "The target number of replicas."
+          }
+        },
+        "required": [
+          "service_name",
+          "replicas"
+        ]
+      },
+      "example_output": {
+        "status": "success",
+        "new_replica_count": 10
+      }
+    },
+    {
+      "name": "patch_deployment_resources",
+      "description": "Adjusts the CPU and Memory resource requests/limits for the deployment pods to resolve scheduling blocks or resource contention.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "service_name": {
+            "type": "string",
+            "description": "The name of the service to update."
+          },
+          "cpu_request": {
+            "type": "string",
+            "description": "The new CPU request value (e.g., '500m', '1')."
+          },
+          "memory_request": {
+            "type": "string",
+            "description": "The new memory request value (e.g., '256Mi', '1Gi')."
+          }
+        },
+        "required": [
+          "service_name"
+        ]
+      },
+      "example_output": {
+        "status": "success",
+        "updated_config": {
+          "cpu_request": "500m",
+          "memory_request": "256Mi"
+        }
+      }
+    }
+  ],
+  "state_description": {
+    "current_replicas": "The number of pods currently in the 'Running' and 'Ready' state.",
+    "cpu_usage_percent": "The average CPU utilization percentage across all ready pods.",
+    "memory_usage_percent": "The average memory utilization percentage across all ready pods.",
+    "incoming_qps": "The current rate of incoming requests per second directed to the deployment.",
+    "avg_latency_ms": "The current average response latency in milliseconds.",
+    "max_node_capacity_pods": "The maximum number of pods the underlying cluster nodes can support.",
+    "pending_replicas": "The number of pods currently in 'Pending' state (transitioning to Ready)."
+  },
+  "task_initial_state": {
+    "current_replicas": 8,
+    "cpu_usage_percent": 88.0,
+    "memory_usage_percent": 62.5,
+    "incoming_qps": 220.0,
+    "avg_latency_ms": 215.0,
+    "max_node_capacity_pods": 10,
+    "pending_replicas": 2
+  }
+}

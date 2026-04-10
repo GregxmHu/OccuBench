@@ -1,0 +1,279 @@
+{
+  "environment_name": "env_02dcd90095cb",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: Based on the current environment state $s_t$ and the action $a_t$ executed by the Agent, simulate the evolution of the wildfire scenario, update internal environment logic, and predict the specific observation $o_{{t+1}}$ obtained by the Agent.\n- **Emphasis**: You are the engine of the simulation. You do not perform real-world emergency responses; you simulate the physical and logistical consequences of the Agent's decisions within the wildfire evacuation context.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation tracking fire dynamics, infrastructure status, and resource allocation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions between the World Model and the Agent must maintain strict temporal and logical consistency. The wildfire spread, wind changes, and evacuation progress must follow a continuous trajectory based on previous states and cumulative actions.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. This JSON will contain:\n- `\"name\"`: Specifies the name of the action function (e.g., dispatch_unit, update_evacuation_route).\n- The remaining fields are the parameter names and values required by that function.\n\nExample Input:\n```json\n{{\n \"name\": \"deploy_fire_retardant\",\n \"arguments\": {{\n    \"zone_id\": \"Sector_7\",\n    \"unit_id\": \"Air_Tanker_1\"\n  }}\n}}\n```\n\nYou must parse this input, calculate the impact on the internal state (e.g., fire intensity reduction in Sector_7), and generate the resulting observation.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nIf the Agent attempts an undefined action, provides coordinates outside the map, dispatches a unit already in use, or sends malformed JSON, return a structured error: `{{\"error\": \"Reason for failure\"}}`. Do not fabricate successful outcomes for invalid inputs.\n\n##### Output Assembly\nFor every action function call, you must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition. \n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t` or the updated `new_state`. You must strictly hide the internal state structure. The Agent only receives the specific Observation (the return value of the action). State maintenance is your internal responsibility.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to specified JSON and text formats.\n- **Factuality**: Do not simulate resources or zones that have not been initialized or defined.\n- **Consistency**: Ensure fire spreads logically (e.g., influenced by wind and terrain) and that evacuation counts do not exceed population totals.\n- **Realism**: Simulate realistic delays and physical constraints (e.g., units take time to travel, fire intensity affects road accessibility).\n- **Quality**: Ensure the simulation logic is robust and observations are descriptive yet concise.\n- **Encapsulation**: Never reveal the internal state variables in the final output. Only provide the defined observation object.\n{{initial_state}}: {{\n  \"fire_zones\": [\n    {{\n      \"sector_id\": \"Sector_4_Ridgeline\",\n      \"intensity\": 75,\n      \"spread_rate\": 0.18,\n      \"estimated_impact_time_hwy9\": 90\n    }}\n  ],\n  \"weather_conditions\": {{\n    \"wind_speed\": 42.0,\n    \"wind_direction\": \"NE\",\n    \"temperature\": 37.0\n  }},\n  \"evacuation_routes\": [\n    {{\n      \"route_id\": \"Arterial_Hwy_9\",\n      \"status\": \"congested\",\n      \"v_c_ratio\": 0.95,\n      \"level_of_service\": \"E\",\n      \"lane_capacity_vph\": 1100,\n      \"connected_zones\": [\n        \"Zone_Alpha\",\n        \"Zone_Bravo\"\n      ]\n    }}\n  ],\n  \"safe_zones\": [\n    {{\n      \"name\": \"County_Fairgrounds\",\n      \"current_occupancy\": 0,\n      \"max_capacity\": 5000,\n      \"target_evacuees\": 2000\n    }}\n  ],\n  \"emergency_units\": [\n    {{\n      \"unit_id\": \"IPAWS_System_Station\",\n      \"type\": \"Emergency Alerts\",\n      \"status\": \"active\",\n      \"current_broadcast\": \"EMERGENCY: ALL RESIDENTS IN ALPHA AND BRAVO SECTORS EVACUATE IMMEDIATELY VIA HWY 9.\",\n      \"last_update_time\": -5\n    }},\n    {{\n      \"unit_id\": \"DMS_Gateway_Main\",\n      \"type\": \"Signage\",\n      \"status\": \"active\",\n      \"current_message\": \"EVACUATE NOW - ALL ZONES USE HWY 9\"\n    }},\n    {{\n      \"unit_id\": \"LE_Patrol_1\",\n      \"type\": \"Law Enforcement\",\n      \"status\": \"idle\",\n      \"current_location\": \"EOC_Base\"\n    }},\n    {{\n      \"unit_id\": \"Air_Tanker_Alpha\",\n      \"type\": \"Aerial Support\",\n      \"status\": \"idle\",\n      \"operational_wind_limit\": 40.0\n    }}\n  ],\n  \"shadow_participation_rate\": 0.58,\n  \"simulation_time\": 0\n}}\n{{state_descriptions}}: {{\n  \"fire_zones\": \"A list of geographical sectors currently affected by fire, including their fire intensity (0-100) and spread rate.\",\n  \"weather_conditions\": \"Meteorological factors influencing fire behavior.\",\n  \"evacuation_routes\": \"Status of primary and secondary roads (e.g., 'open', 'congested', 'blocked_by_fire').\",\n  \"safe_zones\": \"Designated shelters including their current occupancy and maximum capacity.\",\n  \"emergency_units\": \"Available resources (firefighters, ambulances, air tankers) and their current status ('idle', 'en_route', 'active').\",\n  \"simulation_time\": \"Elapsed minutes since the start of the emergency coordination.\"\n}}\n{action_set_definitions}: {\n  \"get_environment_overview\": {\n    \"description\": \"Retrieves high-level data on fire zones (intensity, spread rate, direction), weather conditions, and current simulation time.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"fire_zones\": [\n        {\n          \"id\": \"Ridgeline_Fire\",\n          \"intensity\": 85,\n          \"spread_rate\": \"5mph\",\n          \"direction\": \"South-West\"\n        }\n      ],\n      \"weather_conditions\": \"High winds, 15% humidity\",\n      \"simulation_time\": 15\n    }\n  },\n  \"get_traffic_metrics\": {\n    \"description\": \"Provides real-time traffic data, including Volume-to-Capacity (V/C) ratios and Level of Service (LOS) for specific evacuation routes.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"route_ids\": {\n          \"type\": \"array\",\n          \"items\": {\n            \"type\": \"string\"\n          },\n          \"description\": \"List of road identifiers (e.g., ['Hwy9', 'Arterial_A']).\"\n        }\n      },\n      \"required\": [\n        \"route_ids\"\n      ]\n    },\n    \"example_output\": {\n      \"routes\": [\n        {\n          \"route_id\": \"Hwy9\",\n          \"status\": \"congested\",\n          \"vc_ratio\": 0.88,\n          \"level_of_service\": \"E\"\n        }\n      ]\n    }\n  },\n  \"get_facility_status\": {\n    \"description\": \"Checks the current occupancy and maximum capacity of designated safe zones or shelters.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"facility_ids\": {\n          \"type\": \"array\",\n          \"items\": {\n            \"type\": \"string\"\n          },\n          \"description\": \"List of safe zone names or IDs (e.g., ['County_Fairgrounds']).\"\n        }\n      },\n      \"required\": [\n        \"facility_ids\"\n      ]\n    },\n    \"example_output\": {\n      \"facilities\": [\n        {\n          \"facility_id\": \"County_Fairgrounds\",\n          \"current_occupancy\": 540,\n          \"max_capacity\": 3000\n        }\n      ]\n    }\n  },\n  \"get_resource_inventory\": {\n    \"description\": \"Lists available emergency units (firefighters, police, traffic control) and their current status.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"units\": [\n        {\n          \"unit_id\": \"Traffic_Unit_1\",\n          \"type\": \"police\",\n          \"status\": \"idle\"\n        }\n      ]\n    }\n  },\n  \"execute_traffic_control\": {\n    \"description\": \"Applies operational changes to a road segment to increase capacity (e.g., contraflow) and prevent gridlock.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"route_id\": {\n          \"type\": \"string\"\n        },\n        \"measure_type\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"contraflow\",\n            \"signal_priority\",\n            \"ramp_closure\"\n          ]\n        }\n      },\n      \"required\": [\n        \"route_id\",\n        \"measure_type\"\n      ]\n    },\n    \"example_output\": {\n      \"success\": true,\n      \"new_vc_ratio_projection\": 0.75\n    }\n  },\n  \"issue_evacuation_broadcast\": {\n    \"description\": \"Sends mandatory evacuation orders, routing instructions, or advisory messages to specific zones.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"source_zone\": {\n          \"type\": \"string\"\n        },\n        \"destination_id\": {\n          \"type\": \"string\"\n        },\n        \"recommended_route_id\": {\n          \"type\": \"string\"\n        },\n        \"message\": {\n          \"type\": \"string\",\n          \"description\": \"Specific instruction text (e.g., 'Use secondary routes').\"\n        }\n      },\n      \"required\": [\n        \"source_zone\",\n        \"destination_id\",\n        \"recommended_route_id\"\n      ]\n    },\n    \"example_output\": {\n      \"broadcast_status\": \"sent\"\n    }\n  },\n  \"deploy_emergency_unit\": {\n    \"description\": \"Dispatches a specific unit to a location for traffic management or fire mitigation tasks.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"unit_id\": {\n          \"type\": \"string\"\n        },\n        \"target_location\": {\n          \"type\": \"string\"\n        },\n        \"task_description\": {\n          \"type\": \"string\"\n        }\n      },\n      \"required\": [\n        \"unit_id\",\n        \"target_location\",\n        \"task_description\"\n      ]\n    },\n    \"example_output\": {\n      \"unit_id\": \"Traffic_Unit_1\",\n      \"eta\": \"5 mins\"\n    }\n  },\n  \"advance_simulation_time\": {\n    \"description\": \"Advances the internal world clock, triggering movement of residents, fire spread, and traffic updates.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"minutes\": {\n          \"type\": \"number\",\n          \"description\": \"Minutes to progress (e.g., 5 or 10).\"\n        }\n      },\n      \"required\": [\n        \"minutes\"\n      ]\n    },\n    \"example_output\": {\n      \"new_simulation_time\": 25\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_environment_overview",
+      "description": "Retrieves high-level data on fire zones (intensity, spread rate, direction), weather conditions, and current simulation time.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "fire_zones": [
+          {
+            "id": "Ridgeline_Fire",
+            "intensity": 85,
+            "spread_rate": "5mph",
+            "direction": "South-West"
+          }
+        ],
+        "weather_conditions": "High winds, 15% humidity",
+        "simulation_time": 15
+      }
+    },
+    {
+      "name": "get_traffic_metrics",
+      "description": "Provides real-time traffic data, including Volume-to-Capacity (V/C) ratios and Level of Service (LOS) for specific evacuation routes.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "route_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "List of road identifiers (e.g., ['Hwy9', 'Arterial_A'])."
+          }
+        },
+        "required": [
+          "route_ids"
+        ]
+      },
+      "example_output": {
+        "routes": [
+          {
+            "route_id": "Hwy9",
+            "status": "congested",
+            "vc_ratio": 0.88,
+            "level_of_service": "E"
+          }
+        ]
+      }
+    },
+    {
+      "name": "get_facility_status",
+      "description": "Checks the current occupancy and maximum capacity of designated safe zones or shelters.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "facility_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "List of safe zone names or IDs (e.g., ['County_Fairgrounds'])."
+          }
+        },
+        "required": [
+          "facility_ids"
+        ]
+      },
+      "example_output": {
+        "facilities": [
+          {
+            "facility_id": "County_Fairgrounds",
+            "current_occupancy": 540,
+            "max_capacity": 3000
+          }
+        ]
+      }
+    },
+    {
+      "name": "get_resource_inventory",
+      "description": "Lists available emergency units (firefighters, police, traffic control) and their current status.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "units": [
+          {
+            "unit_id": "Traffic_Unit_1",
+            "type": "police",
+            "status": "idle"
+          }
+        ]
+      }
+    },
+    {
+      "name": "execute_traffic_control",
+      "description": "Applies operational changes to a road segment to increase capacity (e.g., contraflow) and prevent gridlock.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "route_id": {
+            "type": "string"
+          },
+          "measure_type": {
+            "type": "string",
+            "enum": [
+              "contraflow",
+              "signal_priority",
+              "ramp_closure"
+            ]
+          }
+        },
+        "required": [
+          "route_id",
+          "measure_type"
+        ]
+      },
+      "example_output": {
+        "success": true,
+        "new_vc_ratio_projection": 0.75
+      }
+    },
+    {
+      "name": "issue_evacuation_broadcast",
+      "description": "Sends mandatory evacuation orders, routing instructions, or advisory messages to specific zones.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "source_zone": {
+            "type": "string"
+          },
+          "destination_id": {
+            "type": "string"
+          },
+          "recommended_route_id": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string",
+            "description": "Specific instruction text (e.g., 'Use secondary routes')."
+          }
+        },
+        "required": [
+          "source_zone",
+          "destination_id",
+          "recommended_route_id"
+        ]
+      },
+      "example_output": {
+        "broadcast_status": "sent"
+      }
+    },
+    {
+      "name": "deploy_emergency_unit",
+      "description": "Dispatches a specific unit to a location for traffic management or fire mitigation tasks.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "unit_id": {
+            "type": "string"
+          },
+          "target_location": {
+            "type": "string"
+          },
+          "task_description": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "unit_id",
+          "target_location",
+          "task_description"
+        ]
+      },
+      "example_output": {
+        "unit_id": "Traffic_Unit_1",
+        "eta": "5 mins"
+      }
+    },
+    {
+      "name": "advance_simulation_time",
+      "description": "Advances the internal world clock, triggering movement of residents, fire spread, and traffic updates.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "minutes": {
+            "type": "number",
+            "description": "Minutes to progress (e.g., 5 or 10)."
+          }
+        },
+        "required": [
+          "minutes"
+        ]
+      },
+      "example_output": {
+        "new_simulation_time": 25
+      }
+    }
+  ],
+  "state_description": {
+    "fire_zones": "A list of geographical sectors currently affected by fire, including their fire intensity (0-100) and spread rate.",
+    "weather_conditions": "Meteorological factors influencing fire behavior.",
+    "evacuation_routes": "Status of primary and secondary roads (e.g., 'open', 'congested', 'blocked_by_fire').",
+    "safe_zones": "Designated shelters including their current occupancy and maximum capacity.",
+    "emergency_units": "Available resources (firefighters, ambulances, air tankers) and their current status ('idle', 'en_route', 'active').",
+    "simulation_time": "Elapsed minutes since the start of the emergency coordination."
+  },
+  "task_initial_state": {
+    "fire_zones": [
+      {
+        "sector_id": "Sector_4_Ridgeline",
+        "intensity": 75,
+        "spread_rate": 0.18,
+        "estimated_impact_time_hwy9": 90
+      }
+    ],
+    "weather_conditions": {
+      "wind_speed": 42.0,
+      "wind_direction": "NE",
+      "temperature": 37.0
+    },
+    "evacuation_routes": [
+      {
+        "route_id": "Arterial_Hwy_9",
+        "status": "congested",
+        "v_c_ratio": 0.95,
+        "level_of_service": "E",
+        "lane_capacity_vph": 1100,
+        "connected_zones": [
+          "Zone_Alpha",
+          "Zone_Bravo"
+        ]
+      }
+    ],
+    "safe_zones": [
+      {
+        "name": "County_Fairgrounds",
+        "current_occupancy": 0,
+        "max_capacity": 5000,
+        "target_evacuees": 2000
+      }
+    ],
+    "emergency_units": [
+      {
+        "unit_id": "IPAWS_System_Station",
+        "type": "Emergency Alerts",
+        "status": "active",
+        "current_broadcast": "EMERGENCY: ALL RESIDENTS IN ALPHA AND BRAVO SECTORS EVACUATE IMMEDIATELY VIA HWY 9.",
+        "last_update_time": -5
+      },
+      {
+        "unit_id": "DMS_Gateway_Main",
+        "type": "Signage",
+        "status": "active",
+        "current_message": "EVACUATE NOW - ALL ZONES USE HWY 9"
+      },
+      {
+        "unit_id": "LE_Patrol_1",
+        "type": "Law Enforcement",
+        "status": "idle",
+        "current_location": "EOC_Base"
+      },
+      {
+        "unit_id": "Air_Tanker_Alpha",
+        "type": "Aerial Support",
+        "status": "idle",
+        "operational_wind_limit": 40.0
+      }
+    ],
+    "shadow_participation_rate": 0.58,
+    "simulation_time": 0
+  }
+}

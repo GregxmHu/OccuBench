@@ -1,0 +1,158 @@
+{
+  "environment_name": "env_5dd1aa6418cf",
+  "world_model_system_prompt": "## 1. Role and Objective\nYou are the Language World Model (LWM) for this Game Strategy Simulation. Your core objective is to simulate the internal evolution of the game world and predict the observations ($o_{{t+1}}$) obtained by the Agent after executing an action ($a_t$) within the current environment state ($s_t$).\n\nAs a World Model, you do not execute real-world operations or play the game yourself. Instead, you perform internal state transitions and generate the resulting sensory feedback or data reports (observations) that the Agent would receive from a real game engine.\n\n## 2. Environment Management\n\n### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n### Context Awareness\nYou must maintain perfect context consistency throughout the simulation. Every action taken by the Agent must update your internal understanding of the world state, and subsequent observations must reflect the cumulative history of all previous interactions.\n\n## 3. Environment Execution\n\n### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. You must parse these requests to determine the intended state transition. The input format is:\n- `\"name\"`: The name of the action function to execute.\n- Additional fields: Parameter names and values required by that function.\n\nExample input:\n```json\n{{\n \"name\": \"move_unit\",\n \"arguments\": {{\n    \"unit_id\": \"infantry_01\",\n    \"target_coordinates\": [12, 45]\n  }}\n}}\n```\n\n### Environment Behavior Modeling\n\n#### Error Handling & Edge Cases\nIf the Agent provides invalid parameters (e.g., moving to an occupied tile), calls undefined actions, or submits empty inputs, you must return a structured error message (e.g., `{{\"error\": \"Invalid target coordinates\"}}`). Do not fabricate states or provide fictitious successful responses for failed actions.\n\n#### Output Assembly\nFor every action function call, you must return a structured JSON object containing **ONLY** the return fields (the Observation) declared in that action function's definition.\n\n**CRITICAL CONSTRAINT**: Your output must **NOT** contain the full internal state `$s_t$`, the updated `new_state`, or any hidden variables. You are the custodian of the state; the Agent only sees what the action function explicitly returns. Do not describe the state update process in your output.\n\n## 4. Key Principles\n- **Format**: Strictly adhere to JSON for all observations and error messages.\n- **Factuality**: Do not simulate resources or entities that have not been initialized or created through valid actions.\n- **Consistency**: Ensure that if a unit is destroyed in turn $t$, it remains unavailable in turn $t+1$.\n- **Realism**: Dynamics must follow the logic of a strategy game (e.g., movement costs, fog of war, resource depletion).\n- **Quality**: Observations should be clear and provide all data necessary for the Agent to make the next decision.\n- **Encapsulation**: Strictly hide the internal state structure from the output. Only expose information that is explicitly defined as a return value of the action.\n{{initial_state}}: {{\n  \"player_resources\": {{\n    \"gold\": 1500,\n    \"energy\": 350\n  }},\n  \"turn_count\": 1,\n  \"map_dimensions\": [\n    100,\n    100\n  ],\n  \"units\": [\n    {{\n      \"unit_id\": \"RB_22\",\n      \"type\": \"Hybrid_Archetype\",\n      \"position\": [\n        25,\n        60\n      ],\n      \"health\": 100,\n      \"biomechanical_data\": {{\n        \"maneuver\": \"Apex Leap\",\n        \"pfs\": 55,\n        \"safety_factor\": 1.1,\n        \"axial_loading_n\": 7200,\n        \"traction_demand\": 0.75,\n        \"joint_lockout_risk\": \"low\"\n      }},\n      \"environmental_conditions\": {{\n        \"surface_type\": \"Variable_Turf\",\n        \"current_mu\": \"Pending_Sensor_Readout\"\n      }}\n    }}\n  ],\n  \"game_phase\": \"exploration\"\n}}\n{{state_descriptions}}: {{\n  \"player_resources\": \"The current balance of game currencies (e.g., gold, wood, energy).\",\n  \"turn_count\": \"The current turn number in the simulation.\",\n  \"map_dimensions\": \"The [width, height] of the game map.\",\n  \"units\": \"A list of active units, their types, positions, and health status.\",\n  \"game_phase\": \"The current phase of the turn (e.g., 'exploration', 'combat', 'upkeep').\"\n}}\n{action_set_definitions}: {\n  \"check_energy_balance\": {\n    \"description\": \"Retrieves the current available energy in player_resources to ensure the budget constraint is monitored.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"energy\": 500\n    }\n  },\n  \"query_unit_details\": {\n    \"description\": \"Retrieves specific data for a given unit, including its type, position, and current biomechanical status.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"unit_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the unit (e.g., 'RB_22').\"\n        }\n      },\n      \"required\": [\n        \"unit_id\"\n      ]\n    },\n    \"example_output\": {\n      \"unit_id\": \"RB_22\",\n      \"type\": \"mechanical_infantry\",\n      \"status\": \"active\",\n      \"active_debuffs\": []\n    }\n  },\n  \"assess_environment_friction\": {\n    \"description\": \"Queries the environment at the unit's current location to determine the surface coefficient of friction (mu) and the traction demand required for maneuvers.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"unit_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the unit whose location's environment is being scanned.\"\n        }\n      },\n      \"required\": [\n        \"unit_id\"\n      ]\n    },\n    \"example_output\": {\n      \"surface_mu\": 0.5,\n      \"traction_demand\": 0.8\n    }\n  },\n  \"apply_biomechanical_optimization\": {\n    \"description\": \"Executes a corrective optimization protocol on a unit to resolve biomechanical failures.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"unit_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the unit to optimize.\"\n        },\n        \"protocol_type\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"kinematic_realignment\",\n            \"axial_load_redistribution\"\n          ],\n          \"description\": \"The protocol to run: 'kinematic_realignment' for low-friction or 'axial_load_redistribution' for high-friction.\"\n        }\n      },\n      \"required\": [\n        \"unit_id\",\n        \"protocol_type\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"success\",\n      \"energy_consumed\": 120\n    }\n  },\n  \"evaluate_maneuver_metrics\": {\n    \"description\": \"Evaluates the performance metrics of a specific maneuver for a unit to check certification eligibility.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"unit_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the unit.\"\n        },\n        \"maneuver_name\": {\n          \"type\": \"string\",\n          \"description\": \"The name of the maneuver (e.g., 'Apex Leap').\"\n        }\n      },\n      \"required\": [\n        \"unit_id\",\n        \"maneuver_name\"\n      ]\n    },\n    \"example_output\": {\n      \"pfs_score\": 92,\n      \"safety_factor\": 1.7,\n      \"failure_modes\": [],\n      \"certification_status\": \"pending\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "check_energy_balance",
+      "description": "Retrieves the current available energy in player_resources to ensure the budget constraint is monitored.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "energy": 500
+      }
+    },
+    {
+      "name": "query_unit_details",
+      "description": "Retrieves specific data for a given unit, including its type, position, and current biomechanical status.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "unit_id": {
+            "type": "string",
+            "description": "The unique identifier for the unit (e.g., 'RB_22')."
+          }
+        },
+        "required": [
+          "unit_id"
+        ]
+      },
+      "example_output": {
+        "unit_id": "RB_22",
+        "type": "mechanical_infantry",
+        "status": "active",
+        "active_debuffs": []
+      }
+    },
+    {
+      "name": "assess_environment_friction",
+      "description": "Queries the environment at the unit's current location to determine the surface coefficient of friction (mu) and the traction demand required for maneuvers.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "unit_id": {
+            "type": "string",
+            "description": "The ID of the unit whose location's environment is being scanned."
+          }
+        },
+        "required": [
+          "unit_id"
+        ]
+      },
+      "example_output": {
+        "surface_mu": 0.5,
+        "traction_demand": 0.8
+      }
+    },
+    {
+      "name": "apply_biomechanical_optimization",
+      "description": "Executes a corrective optimization protocol on a unit to resolve biomechanical failures.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "unit_id": {
+            "type": "string",
+            "description": "The ID of the unit to optimize."
+          },
+          "protocol_type": {
+            "type": "string",
+            "enum": [
+              "kinematic_realignment",
+              "axial_load_redistribution"
+            ],
+            "description": "The protocol to run: 'kinematic_realignment' for low-friction or 'axial_load_redistribution' for high-friction."
+          }
+        },
+        "required": [
+          "unit_id",
+          "protocol_type"
+        ]
+      },
+      "example_output": {
+        "status": "success",
+        "energy_consumed": 120
+      }
+    },
+    {
+      "name": "evaluate_maneuver_metrics",
+      "description": "Evaluates the performance metrics of a specific maneuver for a unit to check certification eligibility.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "unit_id": {
+            "type": "string",
+            "description": "The ID of the unit."
+          },
+          "maneuver_name": {
+            "type": "string",
+            "description": "The name of the maneuver (e.g., 'Apex Leap')."
+          }
+        },
+        "required": [
+          "unit_id",
+          "maneuver_name"
+        ]
+      },
+      "example_output": {
+        "pfs_score": 92,
+        "safety_factor": 1.7,
+        "failure_modes": [],
+        "certification_status": "pending"
+      }
+    }
+  ],
+  "state_description": {
+    "player_resources": "The current balance of game currencies (e.g., gold, wood, energy).",
+    "turn_count": "The current turn number in the simulation.",
+    "map_dimensions": "The [width, height] of the game map.",
+    "units": "A list of active units, their types, positions, and health status.",
+    "game_phase": "The current phase of the turn (e.g., 'exploration', 'combat', 'upkeep')."
+  },
+  "task_initial_state": {
+    "player_resources": {
+      "gold": 1500,
+      "energy": 350
+    },
+    "turn_count": 1,
+    "map_dimensions": [
+      100,
+      100
+    ],
+    "units": [
+      {
+        "unit_id": "RB_22",
+        "type": "Hybrid_Archetype",
+        "position": [
+          25,
+          60
+        ],
+        "health": 100,
+        "biomechanical_data": {
+          "maneuver": "Apex Leap",
+          "pfs": 55,
+          "safety_factor": 1.1,
+          "axial_loading_n": 7200,
+          "traction_demand": 0.75,
+          "joint_lockout_risk": "low"
+        },
+        "environmental_conditions": {
+          "surface_type": "Variable_Turf",
+          "current_mu": "Pending_Sensor_Readout"
+        }
+      }
+    ],
+    "game_phase": "exploration"
+  }
+}

@@ -1,0 +1,191 @@
+{
+  "environment_name": "env_d628f036e549",
+  "world_model_system_prompt": "### 1. Role and Objective\n\n- **Role**: Language World Model (LWM) for Property Valuation Assessment.\n- **Core Objective**: Based on the current internal state $s_t$ and the action $a_t$ submitted by the Agent, simulate the evolution of the property assessment environment and predict the observation $o_{{t+1}}$.\n- **Emphasis**: You are the simulation engine. You do not perform real-world property inspections or database queries. Instead, you evolve the internal representation of the valuation process (e.g., updating property data, refining market comparisons) and generate realistic observations based on that evolution.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation tracking the target property details, the set of comparable sales, market trends, and workflow progress. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions must maintain rigorous context consistency. If a property is identified as a 'comparable' in step $t$, it must remain consistent in its attributes and influence on the valuation in step $t+1$ unless an explicit action modifies it.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object containing:\n- `\"name\"`: The specific action function to execute.\n- Parameters required by that function.\n\nExample:\n```json\n{{\n \"name\": \"search_comparable_sales\",\n \"arguments\": {{\n    \"radius_miles\": 2.0,\n    \"property_type\": \"Single Family Residence\"\n  }}\n}}\n```\nYou must parse these inputs and determine how they alter the internal state (e.g., adding properties to the `comparable_set`) and what the resulting observation should be.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nIf the Agent attempts an action with invalid parameters (e.g., negative square footage), calls an undefined function, or executes an action that contradicts the current state (e.g., generating a final report before data collection), return structured error information: `{{\"error\": \"Description of why the action failed\"}}`. Do not fabricate successful responses for invalid operations.\n\n##### Output Assembly\nFor every action function call, you must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition.\n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, `new_state`, or any hidden variables. State maintenance is handled internally by your simulation. The Agent must only see the specific return values defined in the action (the Observation).\n\n### 4. Key Principles\n- **Format**: Strictly adhere to specified JSON and text formats.\n- **Factuality**: Do not fabricate property data or market metrics that would be logically impossible within the context of the defined state.\n- **Consistency**: The valuation logic (e.g., Price per SqFt) must remain self-consistent throughout the interaction.\n- **Realism**: Simulated market data, adjustments for property condition, and neighborhood trends must align with reasonable real estate dynamics.\n- **Quality**: Language must be professional and structurally complete.\n- **Encapsulation**: Strictly hide the internal state structure from the output. Only expose information that is explicitly returned by the action function.\n{{initial_state}}: {{\n  \"target_property\": {{\n    \"address\": \"450 North Oak St\",\n    \"lot_size_sqft\": 12000,\n    \"existing_gba_sqft\": 5000,\n    \"year_built\": 1972,\n    \"current_use\": \"Warehouse/Industrial\",\n    \"condition\": \"Fair\",\n    \"zoning_district\": \"MU-4\",\n    \"frontage_feet\": 80\n  }},\n  \"comparable_pool\": [],\n  \"market_conditions\": {{\n    \"trend\": \"Transitioning to Mixed-Use\",\n    \"median_ppsft\": 325.0,\n    \"zoning_constraints\": {{\n      \"max_far\": 3.0,\n      \"max_height_feet\": 55,\n      \"parking_requirement_ratio\": \"1:500 sqft\"\n    }},\n    \"financial_metrics\": {{\n      \"industrial_market_rent_psf\": 22.0,\n      \"industrial_cap_rate\": 0.065,\n      \"residential_condo_sale_psf\": 475.0,\n      \"new_construction_hard_cost_psf\": 285.0,\n      \"structured_parking_cost_per_space\": 45000,\n      \"surface_parking_cost_per_space\": 5000,\n      \"demolition_cost_psf\": 18.0\n    }}\n  }},\n  \"valuation_progress\": \"DATA_COLLECTION\",\n  \"internal_valuation_estimate\": 0.0\n}}\n{{state_descriptions}}: {{\n  \"target_property\": \"Details of the specific property being valued, including address, square footage, and condition.\",\n  \"comparable_pool\": \"A list of similar properties identified in the local market to be used for price comparison.\",\n  \"market_conditions\": \"Current economic indicators for the local area, such as average days on market or inventory levels.\",\n  \"valuation_progress\": \"The current stage of the assessment workflow (e.g., 'DATA_COLLECTION', 'ADJUSTMENT_PHASE', 'FINAL_REPORT').\",\n  \"internal_valuation_estimate\": \"The current calculated value based on existing data points; updated as the Agent refines the model.\"\n}}\n{action_set_definitions}: {\n  \"get_subject_property_data\": {\n    \"description\": \"Retrieves the initial configuration and current state of the target property from the environment.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"address\": {\n          \"type\": \"string\",\n          \"description\": \"The street address of the property.\"\n        }\n      },\n      \"required\": [\n        \"address\"\n      ]\n    },\n    \"example_output\": {\n      \"lot_sqft\": 12000,\n      \"existing_building_sqft\": 5000,\n      \"condition\": \"fair\",\n      \"current_zoning\": \"MU-4\",\n      \"current_rent_noi\": 75000\n    }\n  },\n  \"get_market_economic_data\": {\n    \"description\": \"Fetches local market indicators, including construction costs, rental rates, and capitalization rates required for financial modeling.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"location\": {\n          \"type\": \"string\",\n          \"description\": \"The neighborhood or city area for market benchmarking.\"\n        },\n        \"asset_types\": {\n          \"type\": \"array\",\n          \"items\": {\n            \"type\": \"string\"\n          },\n          \"description\": \"Types of property to get data for (e.g., 'warehouse', 'office', 'multifamily').\"\n        }\n      },\n      \"required\": [\n        \"location\",\n        \"asset_types\"\n      ]\n    },\n    \"example_output\": {\n      \"warehouse_cap_rate\": 0.06,\n      \"new_development_rent_psf\": 35.0,\n      \"construction_cost_psf\": 220.0,\n      \"surface_parking_cost_per_stall\": 5000,\n      \"structured_parking_cost_per_stall\": 35000,\n      \"market_cap_rate\": 0.055\n    }\n  },\n  \"calculate_parking_feasibility\": {\n    \"description\": \"Evaluates if a specific building size and parking type can physically fit on the lot and calculates the total parking costs.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"lot_sqft\": {\n          \"type\": \"number\"\n        },\n        \"gross_building_area\": {\n          \"type\": \"number\"\n        },\n        \"parking_ratio_per_sqft\": {\n          \"type\": \"number\",\n          \"description\": \"e.g., 500 for 1 space per 500 sqft.\"\n        },\n        \"parking_type\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"surface\",\n            \"structured\"\n          ]\n        }\n      },\n      \"required\": [\n        \"lot_sqft\",\n        \"gross_building_area\",\n        \"parking_ratio_per_sqft\",\n        \"parking_type\"\n      ]\n    },\n    \"example_output\": {\n      \"is_physically_possible\": true,\n      \"total_stalls_required\": 72,\n      \"total_parking_cost\": 2520000,\n      \"remaining_lot_area_sqft\": 0\n    }\n  },\n  \"calculate_valuation_metric\": {\n    \"description\": \"Computes either Income Capitalization for current use or Residual Land Value (RLV) for redevelopment.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"method\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"income_cap\",\n            \"residual_land_value\"\n          ]\n        },\n        \"financial_inputs\": {\n          \"type\": \"object\",\n          \"description\": \"Map of numerical inputs like NOI, Cap Rate, GBA, or Total Costs.\"\n        }\n      },\n      \"required\": [\n        \"method\",\n        \"financial_inputs\"\n      ]\n    },\n    \"example_output\": {\n      \"estimated_value\": 2450000,\n      \"metric_type\": \"RLV\"\n    }\n  },\n  \"update_internal_valuation_state\": {\n    \"description\": \"Updates the world model's internal state with the progress and the final valuation findings.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"valuation_stage\": {\n          \"type\": \"string\"\n        },\n        \"hbu_conclusion\": {\n          \"type\": \"string\"\n        },\n        \"final_estimate\": {\n          \"type\": \"number\"\n        }\n      },\n      \"required\": [\n        \"valuation_stage\",\n        \"hbu_conclusion\",\n        \"final_estimate\"\n      ]\n    },\n    \"example_output\": null\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_subject_property_data",
+      "description": "Retrieves the initial configuration and current state of the target property from the environment.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "address": {
+            "type": "string",
+            "description": "The street address of the property."
+          }
+        },
+        "required": [
+          "address"
+        ]
+      },
+      "example_output": {
+        "lot_sqft": 12000,
+        "existing_building_sqft": 5000,
+        "condition": "fair",
+        "current_zoning": "MU-4",
+        "current_rent_noi": 75000
+      }
+    },
+    {
+      "name": "get_market_economic_data",
+      "description": "Fetches local market indicators, including construction costs, rental rates, and capitalization rates required for financial modeling.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "location": {
+            "type": "string",
+            "description": "The neighborhood or city area for market benchmarking."
+          },
+          "asset_types": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Types of property to get data for (e.g., 'warehouse', 'office', 'multifamily')."
+          }
+        },
+        "required": [
+          "location",
+          "asset_types"
+        ]
+      },
+      "example_output": {
+        "warehouse_cap_rate": 0.06,
+        "new_development_rent_psf": 35.0,
+        "construction_cost_psf": 220.0,
+        "surface_parking_cost_per_stall": 5000,
+        "structured_parking_cost_per_stall": 35000,
+        "market_cap_rate": 0.055
+      }
+    },
+    {
+      "name": "calculate_parking_feasibility",
+      "description": "Evaluates if a specific building size and parking type can physically fit on the lot and calculates the total parking costs.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "lot_sqft": {
+            "type": "number"
+          },
+          "gross_building_area": {
+            "type": "number"
+          },
+          "parking_ratio_per_sqft": {
+            "type": "number",
+            "description": "e.g., 500 for 1 space per 500 sqft."
+          },
+          "parking_type": {
+            "type": "string",
+            "enum": [
+              "surface",
+              "structured"
+            ]
+          }
+        },
+        "required": [
+          "lot_sqft",
+          "gross_building_area",
+          "parking_ratio_per_sqft",
+          "parking_type"
+        ]
+      },
+      "example_output": {
+        "is_physically_possible": true,
+        "total_stalls_required": 72,
+        "total_parking_cost": 2520000,
+        "remaining_lot_area_sqft": 0
+      }
+    },
+    {
+      "name": "calculate_valuation_metric",
+      "description": "Computes either Income Capitalization for current use or Residual Land Value (RLV) for redevelopment.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "method": {
+            "type": "string",
+            "enum": [
+              "income_cap",
+              "residual_land_value"
+            ]
+          },
+          "financial_inputs": {
+            "type": "object",
+            "description": "Map of numerical inputs like NOI, Cap Rate, GBA, or Total Costs."
+          }
+        },
+        "required": [
+          "method",
+          "financial_inputs"
+        ]
+      },
+      "example_output": {
+        "estimated_value": 2450000,
+        "metric_type": "RLV"
+      }
+    },
+    {
+      "name": "update_internal_valuation_state",
+      "description": "Updates the world model's internal state with the progress and the final valuation findings.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "valuation_stage": {
+            "type": "string"
+          },
+          "hbu_conclusion": {
+            "type": "string"
+          },
+          "final_estimate": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "valuation_stage",
+          "hbu_conclusion",
+          "final_estimate"
+        ]
+      },
+      "example_output": null
+    }
+  ],
+  "state_description": {
+    "target_property": "Details of the specific property being valued, including address, square footage, and condition.",
+    "comparable_pool": "A list of similar properties identified in the local market to be used for price comparison.",
+    "market_conditions": "Current economic indicators for the local area, such as average days on market or inventory levels.",
+    "valuation_progress": "The current stage of the assessment workflow (e.g., 'DATA_COLLECTION', 'ADJUSTMENT_PHASE', 'FINAL_REPORT').",
+    "internal_valuation_estimate": "The current calculated value based on existing data points; updated as the Agent refines the model."
+  },
+  "task_initial_state": {
+    "target_property": {
+      "address": "450 North Oak St",
+      "lot_size_sqft": 12000,
+      "existing_gba_sqft": 5000,
+      "year_built": 1972,
+      "current_use": "Warehouse/Industrial",
+      "condition": "Fair",
+      "zoning_district": "MU-4",
+      "frontage_feet": 80
+    },
+    "comparable_pool": [],
+    "market_conditions": {
+      "trend": "Transitioning to Mixed-Use",
+      "median_ppsft": 325.0,
+      "zoning_constraints": {
+        "max_far": 3.0,
+        "max_height_feet": 55,
+        "parking_requirement_ratio": "1:500 sqft"
+      },
+      "financial_metrics": {
+        "industrial_market_rent_psf": 22.0,
+        "industrial_cap_rate": 0.065,
+        "residential_condo_sale_psf": 475.0,
+        "new_construction_hard_cost_psf": 285.0,
+        "structured_parking_cost_per_space": 45000,
+        "surface_parking_cost_per_space": 5000,
+        "demolition_cost_psf": 18.0
+      }
+    },
+    "valuation_progress": "DATA_COLLECTION",
+    "internal_valuation_estimate": 0.0
+  }
+}

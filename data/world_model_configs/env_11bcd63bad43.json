@@ -1,0 +1,220 @@
+{
+  "environment_name": "env_11bcd63bad43",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM) for Food Recall Traceability.\n- **Core Objective**: Based on the current supply chain state $s_t$ and the Agent's query/action $a_t$, simulate the evolution of the food safety environment and predict the observation $o_{{t+1}}$. This involves tracking batch movement, verifying safety records, and simulating the impact of recall actions.\n- **Emphasis**: The LWM does not connect to actual logistics databases. It performs internal state evolution within the simulated supply chain and generates observations based on the logic of food safety protocols.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions between the World Model and the Agent must maintain strict context consistency. The model must remember previous shipments, test results, and batch splits to ensure traceability logic is maintained across the interaction history.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. This JSON must contain the following fields:\n- `\"name\"`: Specifies the name of the action function to execute.\n- Parameters: The remaining fields are the parameter names and corresponding values required by that action function.\n\nExample:\n```json\n{{\n \"name\": \"trace_batch_origin\",\n \"arguments\": {{\n    \"batch_id\": \"LOT-9982\",\n    \"depth\": 2\n  }}\n}}\n```\n\nThe Language World Model must correctly parse such JSON inputs and simulate the execution results based on the internal state.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nFor invalid batch IDs, actions targeting non-existent supply chain nodes, state conflicts (e.g., recalling a batch already disposed of), or empty inputs, return structured error information (e.g., `{{\"error\": \"Batch ID 'LOT-XYZ' not found in database\"}}`). Do not fabricate states or fictitious successful responses if the logic fails.\n\n##### Output Assembly\nFor every action function call, the model must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition.\n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state $s_t$, the updated `new_state`, or any hidden variables. The state maintenance is implicit in the simulation. The Agent must only see the specific return values defined in the action (the Observation).\n\n### 4. Key Principles\n- **Format**: Strictly adhere to specified JSON and text formats.\n- **Factuality**: Do not fabricate non-existent supply chain nodes, lab certificates, or shipment logs.\n- **Consistency**: Traceability logic must be self-consistent (e.g., if Batch A is a derivative of Batch B, Batch A cannot exist before Batch B's production date).\n- **Realism**: Simulated behaviors must align with food safety regulations and logistics (e.g., transit times between nodes, contamination spread risk).\n- **Quality**: Language must be clear, unambiguous, and structurally complete.\n- **Encapsulation**: Strictly hide the internal state structure from the output. Only expose information that is explicitly returned by the action function.\n{{initial_state}}: {{\n  \"batch_registry\": {{\n    \"LOT-L2204\": {{\n      \"product_name\": \"FreshValley Roasted Garlic Hummus, 10oz\",\n      \"origin_node_id\": \"PLANT-05\",\n      \"production_date\": \"2023-10-20\"\n    }},\n    \"LOT-L2205\": {{\n      \"product_name\": \"FreshValley Roasted Garlic Hummus, 10oz\",\n      \"origin_node_id\": \"PLANT-05\",\n      \"production_date\": \"2023-10-21\"\n    }}\n  }},\n  \"supply_chain_nodes\": {{\n    \"DC-NORTH-01\": {{\n      \"name\": \"Northeast Regional DC\",\n      \"type\": \"Distribution Center\",\n      \"location\": \"New Jersey\",\n      \"inventory\": {{\n        \"LOT-L2204\": 200,\n        \"LOT-L2205\": 500\n      }}\n    }},\n    \"STORE-001\": {{\n      \"name\": \"City Center Market\",\n      \"type\": \"Retailer\",\n      \"location\": \"New York, NY\",\n      \"inventory\": {{\n        \"LOT-L2204\": 80,\n        \"LOT-L2205\": 45\n      }},\n      \"pos_system\": {{\n        \"sold_units_LOT-L2204\": 20,\n        \"pos_lock_active\": false\n      }}\n    }},\n    \"STORE-002\": {{\n      \"name\": \"Suburban Fresh\",\n      \"type\": \"Retailer\",\n      \"location\": \"Stamford, CT\",\n      \"inventory\": {{\n        \"LOT-L2204\": 40\n      }},\n      \"pos_system\": {{\n        \"sold_units_LOT-L2204\": 5,\n        \"pos_lock_active\": false\n      }}\n    }},\n    \"STORE-003\": {{\n      \"name\": \"Coastal Foods\",\n      \"type\": \"Retailer\",\n      \"location\": \"Providence, RI\",\n      \"inventory\": {{}},\n      \"status\": \"Awaiting_Delivery\"\n    }}\n  }},\n  \"shipment_logs\": [\n    {{\n      \"shipment_id\": \"SHP-7701\",\n      \"batch_id\": \"LOT-L2204\",\n      \"from_node\": \"DC-NORTH-01\",\n      \"to_node\": \"STORE-001\",\n      \"quantity\": 100,\n      \"status\": \"delivered\",\n      \"timestamp\": \"2023-10-21T06:00:00Z\"\n    }},\n    {{\n      \"shipment_id\": \"SHP-7702\",\n      \"batch_id\": \"LOT-L2204\",\n      \"from_node\": \"DC-NORTH-01\",\n      \"to_node\": \"STORE-002\",\n      \"quantity\": 50,\n      \"status\": \"delivered\",\n      \"timestamp\": \"2023-10-21T08:30:00Z\"\n    }},\n    {{\n      \"shipment_id\": \"SHP-7703\",\n      \"batch_id\": \"LOT-L2204\",\n      \"from_node\": \"DC-NORTH-01\",\n      \"to_node\": \"STORE-003\",\n      \"quantity\": 50,\n      \"status\": \"in-transit\",\n      \"carrier\": \"ColdChain Express\",\n      \"eta\": \"2023-10-22T14:00:00Z\"\n    }}\n  ],\n  \"lab_test_results\": [\n    {{\n      \"test_id\": \"LAB-R-9982\",\n      \"batch_id\": \"LOT-L2204\",\n      \"tested_contaminant\": \"Listeria monocytogenes\",\n      \"status\": \"FAIL\",\n      \"notes\": \"Positive culture detected in sample C-4.\",\n      \"timestamp\": \"2023-10-22T07:45:00Z\"\n    }},\n    {{\n      \"test_id\": \"LAB-R-9983\",\n      \"batch_id\": \"LOT-L2205\",\n      \"tested_contaminant\": \"Listeria monocytogenes\",\n      \"status\": \"PASS\",\n      \"timestamp\": \"2023-10-22T08:00:00Z\"\n    }}\n  ],\n  \"active_recalls\": []\n}}\n{{state_descriptions}}: {{\n  \"batch_registry\": \"A mapping of unique Batch IDs to their metadata (e.g., product name, origin_node_id, production_date).\",\n  \"supply_chain_nodes\": \"Details of entities in the chain (Farms, Processing Plants, Distribution Centers, Retailers) including their locations and current inventory.\",\n  \"shipment_logs\": \"A chronological record of batch movements between nodes, including timestamps and carrier info.\",\n  \"lab_test_results\": \"Safety inspection records containing Batch IDs, tested contaminants (e.g., E. coli, Salmonella), and pass/fail status.\",\n  \"active_recalls\": \"A list of Batch IDs currently under an official recall order.\"\n}}\n{action_set_definitions}: {\n  \"find_failed_lab_result\": {\n    \"description\": \"Queries the lab_test_results database to identify the unique Batch ID that failed safety inspections.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"status\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"FAIL\",\n            \"PASS\"\n          ],\n          \"description\": \"Filter for safety inspection results.\"\n        }\n      },\n      \"required\": [\n        \"status\"\n      ]\n    },\n    \"example_output\": {\n      \"failed_batches\": [\n        {\n          \"batch_id\": \"LOT-5521\",\n          \"contaminant\": \"E. coli\",\n          \"test_date\": \"2023-11-15\"\n        }\n      ]\n    }\n  },\n  \"get_shipment_history\": {\n    \"description\": \"Retrieves all recorded movements for a specific batch ID from the shipment_logs.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"batch_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique ID of the batch to trace.\"\n        }\n      },\n      \"required\": [\n        \"batch_id\"\n      ]\n    },\n    \"example_output\": {\n      \"logs\": [\n        {\n          \"from_node_id\": \"RDC-ALPHA\",\n          \"to_node_id\": \"RETAIL-04\",\n          \"shipped_quantity\": 500,\n          \"timestamp\": \"2023-11-16T10:00:00Z\"\n        }\n      ]\n    }\n  },\n  \"get_node_registry\": {\n    \"description\": \"Retrieves the metadata for a specific supply chain node, including its classification (e.g., Farm, RDC, Retailer).\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"node_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the node to look up.\"\n        }\n      },\n      \"required\": [\n        \"node_id\"\n      ]\n    },\n    \"example_output\": {\n      \"node_id\": \"RDC-ALPHA\",\n      \"node_type\": \"Regional Distribution Center\",\n      \"location\": \"North Sector\"\n    }\n  },\n  \"get_inventory_audit_report\": {\n    \"description\": \"Retrieves current inventory and sales metrics for a specific batch across the retail network, including physical counts, system-recorded counts, and units already sold.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"batch_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique ID of the batch being audited.\"\n        }\n      },\n      \"required\": [\n        \"batch_id\"\n      ]\n    },\n    \"example_output\": {\n      \"retail_metrics\": [\n        {\n          \"node_id\": \"RETAIL-04\",\n          \"physical_stock\": 45,\n          \"system_stock\": 50,\n          \"units_sold\": 450\n        }\n      ]\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "find_failed_lab_result",
+      "description": "Queries the lab_test_results database to identify the unique Batch ID that failed safety inspections.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "FAIL",
+              "PASS"
+            ],
+            "description": "Filter for safety inspection results."
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "example_output": {
+        "failed_batches": [
+          {
+            "batch_id": "LOT-5521",
+            "contaminant": "E. coli",
+            "test_date": "2023-11-15"
+          }
+        ]
+      }
+    },
+    {
+      "name": "get_shipment_history",
+      "description": "Retrieves all recorded movements for a specific batch ID from the shipment_logs.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "batch_id": {
+            "type": "string",
+            "description": "The unique ID of the batch to trace."
+          }
+        },
+        "required": [
+          "batch_id"
+        ]
+      },
+      "example_output": {
+        "logs": [
+          {
+            "from_node_id": "RDC-ALPHA",
+            "to_node_id": "RETAIL-04",
+            "shipped_quantity": 500,
+            "timestamp": "2023-11-16T10:00:00Z"
+          }
+        ]
+      }
+    },
+    {
+      "name": "get_node_registry",
+      "description": "Retrieves the metadata for a specific supply chain node, including its classification (e.g., Farm, RDC, Retailer).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "node_id": {
+            "type": "string",
+            "description": "The ID of the node to look up."
+          }
+        },
+        "required": [
+          "node_id"
+        ]
+      },
+      "example_output": {
+        "node_id": "RDC-ALPHA",
+        "node_type": "Regional Distribution Center",
+        "location": "North Sector"
+      }
+    },
+    {
+      "name": "get_inventory_audit_report",
+      "description": "Retrieves current inventory and sales metrics for a specific batch across the retail network, including physical counts, system-recorded counts, and units already sold.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "batch_id": {
+            "type": "string",
+            "description": "The unique ID of the batch being audited."
+          }
+        },
+        "required": [
+          "batch_id"
+        ]
+      },
+      "example_output": {
+        "retail_metrics": [
+          {
+            "node_id": "RETAIL-04",
+            "physical_stock": 45,
+            "system_stock": 50,
+            "units_sold": 450
+          }
+        ]
+      }
+    }
+  ],
+  "state_description": {
+    "batch_registry": "A mapping of unique Batch IDs to their metadata (e.g., product name, origin_node_id, production_date).",
+    "supply_chain_nodes": "Details of entities in the chain (Farms, Processing Plants, Distribution Centers, Retailers) including their locations and current inventory.",
+    "shipment_logs": "A chronological record of batch movements between nodes, including timestamps and carrier info.",
+    "lab_test_results": "Safety inspection records containing Batch IDs, tested contaminants (e.g., E. coli, Salmonella), and pass/fail status.",
+    "active_recalls": "A list of Batch IDs currently under an official recall order."
+  },
+  "task_initial_state": {
+    "batch_registry": {
+      "LOT-L2204": {
+        "product_name": "FreshValley Roasted Garlic Hummus, 10oz",
+        "origin_node_id": "PLANT-05",
+        "production_date": "2023-10-20"
+      },
+      "LOT-L2205": {
+        "product_name": "FreshValley Roasted Garlic Hummus, 10oz",
+        "origin_node_id": "PLANT-05",
+        "production_date": "2023-10-21"
+      }
+    },
+    "supply_chain_nodes": {
+      "DC-NORTH-01": {
+        "name": "Northeast Regional DC",
+        "type": "Distribution Center",
+        "location": "New Jersey",
+        "inventory": {
+          "LOT-L2204": 200,
+          "LOT-L2205": 500
+        }
+      },
+      "STORE-001": {
+        "name": "City Center Market",
+        "type": "Retailer",
+        "location": "New York, NY",
+        "inventory": {
+          "LOT-L2204": 80,
+          "LOT-L2205": 45
+        },
+        "pos_system": {
+          "sold_units_LOT-L2204": 20,
+          "pos_lock_active": false
+        }
+      },
+      "STORE-002": {
+        "name": "Suburban Fresh",
+        "type": "Retailer",
+        "location": "Stamford, CT",
+        "inventory": {
+          "LOT-L2204": 40
+        },
+        "pos_system": {
+          "sold_units_LOT-L2204": 5,
+          "pos_lock_active": false
+        }
+      },
+      "STORE-003": {
+        "name": "Coastal Foods",
+        "type": "Retailer",
+        "location": "Providence, RI",
+        "inventory": {},
+        "status": "Awaiting_Delivery"
+      }
+    },
+    "shipment_logs": [
+      {
+        "shipment_id": "SHP-7701",
+        "batch_id": "LOT-L2204",
+        "from_node": "DC-NORTH-01",
+        "to_node": "STORE-001",
+        "quantity": 100,
+        "status": "delivered",
+        "timestamp": "2023-10-21T06:00:00Z"
+      },
+      {
+        "shipment_id": "SHP-7702",
+        "batch_id": "LOT-L2204",
+        "from_node": "DC-NORTH-01",
+        "to_node": "STORE-002",
+        "quantity": 50,
+        "status": "delivered",
+        "timestamp": "2023-10-21T08:30:00Z"
+      },
+      {
+        "shipment_id": "SHP-7703",
+        "batch_id": "LOT-L2204",
+        "from_node": "DC-NORTH-01",
+        "to_node": "STORE-003",
+        "quantity": 50,
+        "status": "in-transit",
+        "carrier": "ColdChain Express",
+        "eta": "2023-10-22T14:00:00Z"
+      }
+    ],
+    "lab_test_results": [
+      {
+        "test_id": "LAB-R-9982",
+        "batch_id": "LOT-L2204",
+        "tested_contaminant": "Listeria monocytogenes",
+        "status": "FAIL",
+        "notes": "Positive culture detected in sample C-4.",
+        "timestamp": "2023-10-22T07:45:00Z"
+      },
+      {
+        "test_id": "LAB-R-9983",
+        "batch_id": "LOT-L2205",
+        "tested_contaminant": "Listeria monocytogenes",
+        "status": "PASS",
+        "timestamp": "2023-10-22T08:00:00Z"
+      }
+    ],
+    "active_recalls": []
+  }
+}

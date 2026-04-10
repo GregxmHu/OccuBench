@@ -1,0 +1,152 @@
+{
+  "environment_name": "env_ca8ae725251b",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: Based on the current internal state $s_t$ of the insurance claim and the action $a_t$ performed by the Adjudication Agent, simulate the environment's internal evolution and predict the resulting observation $o_{{t+1}}$.\n- **Emphasis**: The LWM does not process actual insurance payouts or contact real claimants; it simulates the response of an insurance backend system and the availability of case documentation based on the underlying logic of the claim scenario.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions between the World Model and the Agent must maintain strict context consistency. The LWM must track the progress of the adjudication process (e.g., if a document was marked as 'fraudulent' in step 2, it cannot be 'verified' in step 3 without a corrective action).\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. This JSON contains:\n- `\"name\"`: The specific adjudication action (e.g., \"verify_document\", \"check_policy_coverage\", \"update_claim_status\").\n- Additional fields: Parameters required for that specific action.\n\nExample:\n```json\n{{\n \"name\": \"verify_coverage\",\n \"arguments\": {{\n    \"policy_id\": \"POL-8829\",\n    \"claim_type\": \"Medical\"\n  }}\n}}\n```\nThe Language World Model must parse this input and determine how the internal state (e.g., `assessment_progress`) changes and what the Agent observes.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nIf the Agent attempts to approve a claim without required documentation, or uses an invalid `claim_id`, the LWM must return structured error information (e.g., `{{\"error\": \"Missing required document: medical_report\"}}`). Do not fabricate success responses for invalid logical flows.\n\n##### Output Assembly\nFor every action call, the LWM must return a structured JSON object containing **ONLY** the return fields declared in that action's definition. \n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the internal state fields (e.g., hidden fraud scores or full state history). Only expose the specific observation result of the action.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to JSON output.\n- **Factuality**: Simulated responses (e.g., policy limits, claimant history) must be consistent with the provided state.\n- **Consistency**: The claim status must evolve logically (e.g., a claim cannot move from 'Closed' to 'In Progress' without a specific 'Reopen' action).\n- **Realism**: Simulate realistic delays or data discrepancies (e.g., a 'document_upload' action might show a 'low_resolution' warning if defined in the state).\n- **Quality**: Ensure clear, professional terminology suitable for insurance adjudication.\n- **Encapsulation**: Hide the full `s_t` from the Agent. The Agent only sees the result of its specific query.\n{{initial_state}}: {{\n  \"claim_id\": \"CLM-EO-4432\",\n  \"policy_details\": {{\n    \"policy_number\": \"EOP-9910-X\",\n    \"coverage_type\": \"Claims-Made / Eroding Limits (CEIL)\",\n    \"deductible_amount\": 25000,\n    \"max_limit\": 1000000\n  }},\n  \"claimant_history\": {{\n    \"previous_claims_count\": 0,\n    \"risk_flag\": false\n  }},\n  \"document_vault\": {{\n    \"medical_report\": \"verified\",\n    \"proof_of_loss\": \"Settlement_Offer_Pending: $500,000; Total_Defense_Spend: $310,000; Approved_Litigation_Budget: $200,000\"\n  }},\n  \"internal_assessment_state\": {{\n    \"fraud_score\": 0.02,\n    \"current_status\": \"Under Investigation\"\n  }}\n}}\n{{state_descriptions}}: {{\n  \"claim_id\": \"Unique identifier for the insurance claim.\",\n  \"policy_details\": \"Details of the insurance policy associated with the claim, including coverage limits and deductibles.\",\n  \"claimant_history\": \"Internal record of the claimant's past claims and risk profile.\",\n  \"document_vault\": \"Status of required documents (e.g., medical invoices, police reports, photos).\",\n  \"internal_assessment_state\": \"Internal tracking of the adjudication progress.\"\n}}\n{action_set_definitions}: {\n  \"get_claim_summary\": {\n    \"description\": \"Retrieves the core details of a claim, including current status and internal assessment state.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"claim_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the claim (e.g., CLM-EO-4432).\"\n        }\n      },\n      \"required\": [\n        \"claim_id\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"Pending\",\n      \"internal_assessment_state\": \"Investigation Complete\"\n    }\n  },\n  \"get_policy_and_ledger\": {\n    \"description\": \"Retrieves policy terms (limit type) and current financial data including defense spend and budget status.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"claim_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the claim.\"\n        }\n      },\n      \"required\": [\n        \"claim_id\"\n      ]\n    },\n    \"example_output\": {\n      \"policy_type\": \"Eroding Limits\",\n      \"total_limit\": 1000000,\n      \"defense_costs_incurred\": 150000,\n      \"budget_reconciled\": true\n    }\n  },\n  \"verify_lmg_compliance\": {\n    \"description\": \"Checks the document vault and litigation management guidelines (LMG) for compliance.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"claim_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the claim.\"\n        }\n      },\n      \"required\": [\n        \"claim_id\"\n      ]\n    },\n    \"example_output\": {\n      \"is_compliant\": true,\n      \"missing_documents\": [],\n      \"lmg_violations\": []\n    }\n  },\n  \"reconcile_and_post_settlement\": {\n    \"description\": \"Reconciles the defense spend against the policy limits and records the proposed settlement amount.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"claim_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the claim.\"\n        },\n        \"settlement_amount\": {\n          \"type\": \"number\",\n          \"description\": \"The final settlement amount to be posted.\"\n        },\n        \"reconciled_defense_spend\": {\n          \"type\": \"number\",\n          \"description\": \"The confirmed defense cost to be deducted from the eroding limit.\"\n        }\n      },\n      \"required\": [\n        \"claim_id\",\n        \"settlement_amount\",\n        \"reconciled_defense_spend\"\n      ]\n    },\n    \"example_output\": {\n      \"remaining_limit\": 350000,\n      \"transaction_status\": \"Posted\"\n    }\n  },\n  \"update_claim_status\": {\n    \"description\": \"Transitions the claim to a new workflow status.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"claim_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the claim.\"\n        },\n        \"new_status\": {\n          \"type\": \"string\",\n          \"description\": \"The target status (e.g., 'Final Review').\"\n        }\n      },\n      \"required\": [\n        \"claim_id\",\n        \"new_status\"\n      ]\n    },\n    \"example_output\": {\n      \"updated_status\": \"Final Review\",\n      \"timestamp\": \"2023-10-27T10:00:00Z\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_claim_summary",
+      "description": "Retrieves the core details of a claim, including current status and internal assessment state.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "claim_id": {
+            "type": "string",
+            "description": "The unique identifier for the claim (e.g., CLM-EO-4432)."
+          }
+        },
+        "required": [
+          "claim_id"
+        ]
+      },
+      "example_output": {
+        "status": "Pending",
+        "internal_assessment_state": "Investigation Complete"
+      }
+    },
+    {
+      "name": "get_policy_and_ledger",
+      "description": "Retrieves policy terms (limit type) and current financial data including defense spend and budget status.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "claim_id": {
+            "type": "string",
+            "description": "The unique identifier for the claim."
+          }
+        },
+        "required": [
+          "claim_id"
+        ]
+      },
+      "example_output": {
+        "policy_type": "Eroding Limits",
+        "total_limit": 1000000,
+        "defense_costs_incurred": 150000,
+        "budget_reconciled": true
+      }
+    },
+    {
+      "name": "verify_lmg_compliance",
+      "description": "Checks the document vault and litigation management guidelines (LMG) for compliance.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "claim_id": {
+            "type": "string",
+            "description": "The unique identifier for the claim."
+          }
+        },
+        "required": [
+          "claim_id"
+        ]
+      },
+      "example_output": {
+        "is_compliant": true,
+        "missing_documents": [],
+        "lmg_violations": []
+      }
+    },
+    {
+      "name": "reconcile_and_post_settlement",
+      "description": "Reconciles the defense spend against the policy limits and records the proposed settlement amount.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "claim_id": {
+            "type": "string",
+            "description": "The unique identifier for the claim."
+          },
+          "settlement_amount": {
+            "type": "number",
+            "description": "The final settlement amount to be posted."
+          },
+          "reconciled_defense_spend": {
+            "type": "number",
+            "description": "The confirmed defense cost to be deducted from the eroding limit."
+          }
+        },
+        "required": [
+          "claim_id",
+          "settlement_amount",
+          "reconciled_defense_spend"
+        ]
+      },
+      "example_output": {
+        "remaining_limit": 350000,
+        "transaction_status": "Posted"
+      }
+    },
+    {
+      "name": "update_claim_status",
+      "description": "Transitions the claim to a new workflow status.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "claim_id": {
+            "type": "string",
+            "description": "The unique identifier for the claim."
+          },
+          "new_status": {
+            "type": "string",
+            "description": "The target status (e.g., 'Final Review')."
+          }
+        },
+        "required": [
+          "claim_id",
+          "new_status"
+        ]
+      },
+      "example_output": {
+        "updated_status": "Final Review",
+        "timestamp": "2023-10-27T10:00:00Z"
+      }
+    }
+  ],
+  "state_description": {
+    "claim_id": "Unique identifier for the insurance claim.",
+    "policy_details": "Details of the insurance policy associated with the claim, including coverage limits and deductibles.",
+    "claimant_history": "Internal record of the claimant's past claims and risk profile.",
+    "document_vault": "Status of required documents (e.g., medical invoices, police reports, photos).",
+    "internal_assessment_state": "Internal tracking of the adjudication progress."
+  },
+  "task_initial_state": {
+    "claim_id": "CLM-EO-4432",
+    "policy_details": {
+      "policy_number": "EOP-9910-X",
+      "coverage_type": "Claims-Made / Eroding Limits (CEIL)",
+      "deductible_amount": 25000,
+      "max_limit": 1000000
+    },
+    "claimant_history": {
+      "previous_claims_count": 0,
+      "risk_flag": false
+    },
+    "document_vault": {
+      "medical_report": "verified",
+      "proof_of_loss": "Settlement_Offer_Pending: $500,000; Total_Defense_Spend: $310,000; Approved_Litigation_Budget: $200,000"
+    },
+    "internal_assessment_state": {
+      "fraud_score": 0.02,
+      "current_status": "Under Investigation"
+    }
+  }
+}

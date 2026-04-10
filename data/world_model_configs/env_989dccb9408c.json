@@ -1,0 +1,243 @@
+{
+  "environment_name": "env_989dccb9408c",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: You act as a high-fidelity simulator for the Ship Cargo Loading Optimization environment. Based on the current internal state $s_t$ and the action $a_t$ submitted by the Agent, you must simulate the physical and logistical evolution of the environment and predict the resulting observation $o_{{t+1}}$.\n- **Emphasis**: You are not the Agent; you do not make decisions on how to load the ship. You are the Environment; you process actions, update the vessel's internal physics and inventory, and return only the feedback defined in the action's return schema.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nYou must maintain strict context consistency throughout the session. Every action must build upon the state resulting from the previous action. You must track the ship's total weight, balance (center of gravity), and the specific placement of cargo in the hold.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. You must parse this JSON to determine the action to execute:\n- `\"name\"`: The name of the action (e.g., \"load_container\", \"calculate_stability\").\n- Remaining fields: Parameters for that action.\n\nYou must simulate the logic of the ship's environment (e.g., if a container is placed in a slot, that slot is no longer available; if weight exceeds capacity, the action fails).\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nReturn structured error information (e.g., `{{\"error\": \"Exceeds maximum permissible draft\"}}` or `{{\"error\": \"Slot (x,y,z) already occupied\"}}`) if the Agent provides:\n- Invalid parameters.\n- Undefined actions.\n- Actions that violate physical constraints (e.g., overloading).\n- Missing required fields.\nDo not fabricate states or fictitious responses beyond the logic of the cargo environment.\n\n##### Output Assembly\nFor every action function call, you must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition. \n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, `new_state`, or any hidden variables. You manage the state internally; the Agent only receives the specific `observation` (e.g., a success confirmation or a sensor reading).\n\n### 4. Key Principles\n- **Format**: Strictly adhere to specified JSON and text formats.\n- **Factuality**: Do not fabricate cargo items, ship dimensions, or physics calculations that contradict the provided state.\n- **Consistency**: The ship's stability and inventory must evolve logically (e.g., unloading an item must decrease current_weight).\n- **Realism**: Simulated behaviors must align with maritime logistics and physics (e.g., heavy containers at the bottom improve stability).\n- **Quality**: Language must be clear, unambiguous, and structurally complete.\n- **Encapsulation**: Strictly hide the internal state structure. Do not output \"State updated to...\". Only output the Observation.\n{{initial_state}}: {{\n  \"vessel_metadata\": {{\n    \"vessel_name\": \"MV Logistics Titan\",\n    \"max_weight_capacity\": 160000.0,\n    \"max_teu_capacity\": 14000\n  }},\n  \"current_status\": {{\n    \"current_total_weight\": 128500.0,\n    \"center_of_gravity\": {{\n      \"x\": 110.5,\n      \"y\": 0.02,\n      \"z\": 13.8\n    }},\n    \"metacentric_height\": 1.62\n  }},\n  \"cargo_hold_map\": [\n    {{\n      \"slot_id\": \"140482\",\n      \"cargo_id\": \"TRANSIT-99\",\n      \"weight\": 28.5,\n      \"type\": \"standard\",\n      \"status\": \"In-Transit\",\n      \"imo_class\": null\n    }},\n    {{\n      \"slot_id\": \"100684\",\n      \"cargo_id\": \"TRANSIT-102\",\n      \"weight\": 22.0,\n      \"type\": \"standard\",\n      \"status\": \"In-Transit\",\n      \"imo_class\": null\n    }},\n    {{\n      \"slot_id\": \"180482\",\n      \"cargo_id\": \"TRANSIT-405\",\n      \"weight\": 15.0,\n      \"type\": \"reefer\",\n      \"status\": \"In-Transit\",\n      \"imo_class\": null\n    }}\n  ],\n  \"dock_inventory\": [\n    {{\n      \"cargo_id\": \"DG-FLAM-3\",\n      \"weight\": 24.0,\n      \"type\": \"DG\",\n      \"imo_class\": \"3\",\n      \"un_number\": \"1993\",\n      \"flash_point\": 12.0,\n      \"priority\": 1\n    }},\n    {{\n      \"cargo_id\": \"DG-OXID-5\",\n      \"weight\": 21.5,\n      \"type\": \"DG\",\n      \"imo_class\": \"5.1\",\n      \"un_number\": \"1479\",\n      \"priority\": 1\n    }},\n    {{\n      \"cargo_id\": \"HVY-STD-01\",\n      \"weight\": 32.0,\n      \"type\": \"standard\",\n      \"imo_class\": null,\n      \"priority\": 2\n    }},\n    {{\n      \"cargo_id\": \"REF-MACH-09\",\n      \"weight\": 26.0,\n      \"type\": \"reefer\",\n      \"imo_class\": null,\n      \"priority\": 2\n    }}\n  ]\n}}\n{{state_descriptions}}: {{\n  \"vessel_metadata\": \"General information about the ship\",\n  \"current_status\": \"Real-time metrics of the ship's condition\",\n  \"cargo_hold_map\": \"A representation of the ship's bays and slots and their current occupancy\",\n  \"dock_inventory\": \"List of cargo items currently at the port waiting to be loaded\"\n}}\n{action_set_definitions}: {\n  \"get_vessel_specs\": {\n    \"description\": \"Retrieves vessel metadata including current GM (metacentric height), maintenance zones, and coordinates of active reefer motor intakes.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"current_gm\": 1.6,\n      \"maintenance_bays\": [\n        \"Bay 14\"\n      ],\n      \"reefer_intake_coords\": [\n        {\n          \"x\": 10.0,\n          \"y\": 5.0,\n          \"z\": 2.0\n        }\n      ]\n    }\n  },\n  \"get_ballast_status\": {\n    \"description\": \"Retrieves the current status of the vessel's ballast tanks, including current levels and max capacities to assist in stability adjustments.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"tanks\": [\n        {\n          \"tank_id\": \"BT-01\",\n          \"current_level_tons\": 50,\n          \"max_capacity_tons\": 200\n        }\n      ]\n    }\n  },\n  \"get_dock_inventory\": {\n    \"description\": \"Lists all containers at the dock awaiting loading, including their ID, weight, IMDG class, and flammability status.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"items\": [\n        {\n          \"container_id\": \"C-101\",\n          \"weight\": 25.5,\n          \"imdg_class\": \"3\",\n          \"is_flammable\": true\n        }\n      ]\n    }\n  },\n  \"get_cargo_hold_map\": {\n    \"description\": \"Retrieves the layout of the ship's cargo hold, specifying occupancy, in-transit status, and physical (X, Y, Z) coordinates for every slot.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"slots\": [\n        {\n          \"slot_id\": \"S-B12-01\",\n          \"bay\": \"12\",\n          \"is_occupied\": false,\n          \"is_in_transit\": false,\n          \"coordinates\": {\n            \"x\": 12.0,\n            \"y\": 2.0,\n            \"z\": 1.5\n          },\n          \"occupied_by_imdg_class\": null\n        }\n      ]\n    }\n  },\n  \"adjust_vessel_ballast\": {\n    \"description\": \"Adjusts the level of a specific ballast tank to change the ship's center of gravity and improve metacentric height (GM).\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"tank_id\": {\n          \"type\": \"string\",\n          \"description\": \"ID of the ballast tank to adjust.\"\n        },\n        \"target_level_tons\": {\n          \"type\": \"number\",\n          \"description\": \"The desired level of ballast in tons.\"\n        }\n      },\n      \"required\": [\n        \"tank_id\",\n        \"target_level_tons\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"adjusted\",\n      \"new_vessel_gm\": 1.65\n    }\n  },\n  \"validate_stowage_plan\": {\n    \"description\": \"Simulates a loading action. Returns 'is_valid' as true ONLY if the resulting GM is strictly > 1.55m and all segregation/maintenance rules are met.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"container_id\": {\n          \"type\": \"string\"\n        },\n        \"target_slot_id\": {\n          \"type\": \"string\"\n        }\n      },\n      \"required\": [\n        \"container_id\",\n        \"target_slot_id\"\n      ]\n    },\n    \"example_output\": {\n      \"is_valid\": true,\n      \"resulting_gm\": 1.58,\n      \"violations\": []\n    }\n  },\n  \"execute_loading_operation\": {\n    \"description\": \"Permanently loads a container from the dock into a ship slot and updates the environment state.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"container_id\": {\n          \"type\": \"string\"\n        },\n        \"target_slot_id\": {\n          \"type\": \"string\"\n        }\n      },\n      \"required\": [\n        \"container_id\",\n        \"target_slot_id\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"success\",\n      \"final_gm\": 1.57\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_vessel_specs",
+      "description": "Retrieves vessel metadata including current GM (metacentric height), maintenance zones, and coordinates of active reefer motor intakes.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "current_gm": 1.6,
+        "maintenance_bays": [
+          "Bay 14"
+        ],
+        "reefer_intake_coords": [
+          {
+            "x": 10.0,
+            "y": 5.0,
+            "z": 2.0
+          }
+        ]
+      }
+    },
+    {
+      "name": "get_ballast_status",
+      "description": "Retrieves the current status of the vessel's ballast tanks, including current levels and max capacities to assist in stability adjustments.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "tanks": [
+          {
+            "tank_id": "BT-01",
+            "current_level_tons": 50,
+            "max_capacity_tons": 200
+          }
+        ]
+      }
+    },
+    {
+      "name": "get_dock_inventory",
+      "description": "Lists all containers at the dock awaiting loading, including their ID, weight, IMDG class, and flammability status.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "items": [
+          {
+            "container_id": "C-101",
+            "weight": 25.5,
+            "imdg_class": "3",
+            "is_flammable": true
+          }
+        ]
+      }
+    },
+    {
+      "name": "get_cargo_hold_map",
+      "description": "Retrieves the layout of the ship's cargo hold, specifying occupancy, in-transit status, and physical (X, Y, Z) coordinates for every slot.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "slots": [
+          {
+            "slot_id": "S-B12-01",
+            "bay": "12",
+            "is_occupied": false,
+            "is_in_transit": false,
+            "coordinates": {
+              "x": 12.0,
+              "y": 2.0,
+              "z": 1.5
+            },
+            "occupied_by_imdg_class": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "adjust_vessel_ballast",
+      "description": "Adjusts the level of a specific ballast tank to change the ship's center of gravity and improve metacentric height (GM).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "tank_id": {
+            "type": "string",
+            "description": "ID of the ballast tank to adjust."
+          },
+          "target_level_tons": {
+            "type": "number",
+            "description": "The desired level of ballast in tons."
+          }
+        },
+        "required": [
+          "tank_id",
+          "target_level_tons"
+        ]
+      },
+      "example_output": {
+        "status": "adjusted",
+        "new_vessel_gm": 1.65
+      }
+    },
+    {
+      "name": "validate_stowage_plan",
+      "description": "Simulates a loading action. Returns 'is_valid' as true ONLY if the resulting GM is strictly > 1.55m and all segregation/maintenance rules are met.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "container_id": {
+            "type": "string"
+          },
+          "target_slot_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "container_id",
+          "target_slot_id"
+        ]
+      },
+      "example_output": {
+        "is_valid": true,
+        "resulting_gm": 1.58,
+        "violations": []
+      }
+    },
+    {
+      "name": "execute_loading_operation",
+      "description": "Permanently loads a container from the dock into a ship slot and updates the environment state.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "container_id": {
+            "type": "string"
+          },
+          "target_slot_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "container_id",
+          "target_slot_id"
+        ]
+      },
+      "example_output": {
+        "status": "success",
+        "final_gm": 1.57
+      }
+    }
+  ],
+  "state_description": {
+    "vessel_metadata": "General information about the ship",
+    "current_status": "Real-time metrics of the ship's condition",
+    "cargo_hold_map": "A representation of the ship's bays and slots and their current occupancy",
+    "dock_inventory": "List of cargo items currently at the port waiting to be loaded"
+  },
+  "task_initial_state": {
+    "vessel_metadata": {
+      "vessel_name": "MV Logistics Titan",
+      "max_weight_capacity": 160000.0,
+      "max_teu_capacity": 14000
+    },
+    "current_status": {
+      "current_total_weight": 128500.0,
+      "center_of_gravity": {
+        "x": 110.5,
+        "y": 0.02,
+        "z": 13.8
+      },
+      "metacentric_height": 1.62
+    },
+    "cargo_hold_map": [
+      {
+        "slot_id": "140482",
+        "cargo_id": "TRANSIT-99",
+        "weight": 28.5,
+        "type": "standard",
+        "status": "In-Transit",
+        "imo_class": null
+      },
+      {
+        "slot_id": "100684",
+        "cargo_id": "TRANSIT-102",
+        "weight": 22.0,
+        "type": "standard",
+        "status": "In-Transit",
+        "imo_class": null
+      },
+      {
+        "slot_id": "180482",
+        "cargo_id": "TRANSIT-405",
+        "weight": 15.0,
+        "type": "reefer",
+        "status": "In-Transit",
+        "imo_class": null
+      }
+    ],
+    "dock_inventory": [
+      {
+        "cargo_id": "DG-FLAM-3",
+        "weight": 24.0,
+        "type": "DG",
+        "imo_class": "3",
+        "un_number": "1993",
+        "flash_point": 12.0,
+        "priority": 1
+      },
+      {
+        "cargo_id": "DG-OXID-5",
+        "weight": 21.5,
+        "type": "DG",
+        "imo_class": "5.1",
+        "un_number": "1479",
+        "priority": 1
+      },
+      {
+        "cargo_id": "HVY-STD-01",
+        "weight": 32.0,
+        "type": "standard",
+        "imo_class": null,
+        "priority": 2
+      },
+      {
+        "cargo_id": "REF-MACH-09",
+        "weight": 26.0,
+        "type": "reefer",
+        "imo_class": null,
+        "priority": 2
+      }
+    ]
+  }
+}

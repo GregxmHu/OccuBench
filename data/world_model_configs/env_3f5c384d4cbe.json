@@ -1,0 +1,226 @@
+{
+  "environment_name": "env_3f5c384d4cbe",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM) for Treatment Plan Sequencing.\n- **Core Objective**: Based on the current patient state $s_t$ and the medical action $a_t$ executed by the Agent, simulate the physiological evolution of the patient and predict the resulting clinical observation $o_{{t+1}}$.\n- **Emphasis**: You are the environment. You do not recommend treatments. Your task is to calculate/simulate how the patient's body and disease markers respond to the Agent's decisions, maintaining internal consistency and medical realism.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions between the World Model and the Agent must maintain context consistency. You must track cumulative effects of treatments, drug interactions, and the natural progression of the patient's condition over time.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions (e.g., prescribing medication, ordering labs, or performing procedures). The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. This JSON must contain the following fields:\n- `\"name\"`: Specifies the name of the medical action function to execute.\n- The remaining fields are the parameter names (e.g., dosage, duration) required by that action.\n\nExample:\n```json\n{{\n \"name\": \"administer_medication\",\n \"arguments\": {{\n    \"drug_name\": \"Lisinopril\",\n    \"dosage_mg\": 10\n  }}\n}}\n```\n\nYou must parse this input and simulate the patient's response.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nIf the Agent submits invalid parameters (e.g., a negative dosage), undefined actions, or actions that conflict with the current state (e.g., administering a drug the patient is allergic to), return structured error information: `{{\"error\": \"Reason for failure\"}}`. Do not fabricate successful responses for invalid inputs.\n\n##### Output Assembly\nFor every action call, return a structured JSON object containing **ONLY** the return fields declared in the action function's definition. \n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal patient state, state update logs, or hidden variables. The Agent must only see the specific clinical observation (the Observation) resulting from the action.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to specified JSON formats.\n- **Factuality**: Do not fabricate clinical markers or physiological responses that do not align with the provided state.\n- **Consistency**: The patient's health trajectory must be self-consistent (e.g., blood pressure cannot drop and rise simultaneously without cause).\n- **Realism**: Simulated behaviors must align with medical logic, including side effects, treatment delays, and disease progression.\n- **Quality**: Clinical descriptions in observations must be clear and professional.\n- **Encapsulation**: Strictly hide the internal state structure from the output. Only expose information explicitly returned by the action function.\n{{initial_state}}: {{\n  \"patient_id\": \"PT-9055\",\n  \"vital_signs\": {{\n    \"systolic_bp\": 135,\n    \"diastolic_bp\": 88,\n    \"heart_rate\": 82\n  }},\n  \"biomarkers\": {{\n    \"glucose_mg_dl\": 110,\n    \"creatinine_mg_dl\": 1.1,\n    \"plaque_index_percent\": 82,\n    \"bleeding_on_probing_percent\": 65,\n    \"max_probing_depth_mm\": 6,\n    \"hba1c\": 6.8\n  }},\n  \"symptom_severity\": {{\n    \"upper_left_throbbing\": 9,\n    \"gingival_bleeding\": 7,\n    \"general_soreness\": 4\n  }},\n  \"treatment_history\": [],\n  \"disease_progression_stage\": \"Acute\"\n}}\n{{state_descriptions}}: {{\n  \"patient_id\": \"Unique identifier for the patient.\",\n  \"vital_signs\": \"Current physiological vitals including blood pressure, heart rate, and temperature.\",\n  \"biomarkers\": \"Key laboratory values relevant to the treatment plan.\",\n  \"symptom_severity\": \"A map of symptom names to their severity level (1-10).\",\n  \"treatment_history\": \"Chronological list of actions previously taken in this episode of care.\",\n  \"disease_progression_stage\": \"The current stage of the underlying condition (e.g., Stable, Acute, Recovery).\"\n}}\n{action_set_definitions}: {\n  \"search_patient_by_complaint\": {\n    \"description\": \"Searches the clinical database using a string description of symptoms to identify the correct patient record.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"complaint_description\": {\n          \"type\": \"string\",\n          \"description\": \"The specific symptoms or chief complaint reported by the patient.\"\n        }\n      },\n      \"required\": [\n        \"complaint_description\"\n      ]\n    },\n    \"example_output\": {\n      \"patient_id\": \"P-99234\",\n      \"name\": \"Jane Doe\"\n    }\n  },\n  \"get_patient_state\": {\n    \"description\": \"Retrieves the current environmental state for a specific patient, including vitals, biomarkers, symptom severity, and disease stage.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"patient_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the patient.\"\n        }\n      },\n      \"required\": [\n        \"patient_id\"\n      ]\n    },\n    \"example_output\": {\n      \"vital_signs\": \"str\",\n      \"biomarkers\": \"object\",\n      \"symptom_severity\": \"object\",\n      \"disease_progression_stage\": \"str\",\n      \"treatment_history\": \"array\"\n    }\n  },\n  \"perform_clinical_examination\": {\n    \"description\": \"Conducts a physical exam or diagnostic imaging to identify specific tooth issues and measure biological health indices (plaque control/gingival bleeding).\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"patient_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the patient.\"\n        },\n        \"exam_type\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"emergency_focus\",\n            \"periodontal_charting\",\n            \"comprehensive\"\n          ],\n          \"description\": \"The scope of the examination.\"\n        }\n      },\n      \"required\": [\n        \"patient_id\",\n        \"exam_type\"\n      ]\n    },\n    \"example_output\": {\n      \"affected_tooth_id\": \"UL6\",\n      \"plaque_index_percentage\": 45,\n      \"gingival_bleeding_index\": 3,\n      \"findings\": \"str\"\n    }\n  },\n  \"execute_emergency_intervention\": {\n    \"description\": \"Phase I: Performs immediate clinical actions to resolve acute pain or infection.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"patient_id\": {\n          \"type\": \"string\",\n          \"description\": \"Unique patient identifier.\"\n        },\n        \"tooth_id\": {\n          \"type\": \"string\",\n          \"description\": \"The specific tooth requiring emergency treatment.\"\n        },\n        \"procedure_type\": {\n          \"type\": \"string\",\n          \"description\": \"The specific emergency procedure (e.g., pulpectomy, incision and drainage).\"\n        }\n      },\n      \"required\": [\n        \"patient_id\",\n        \"tooth_id\",\n        \"procedure_type\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"success\",\n      \"updated_symptom_severity\": \"object\"\n    }\n  },\n  \"execute_etiotropic_therapy\": {\n    \"description\": \"Phase II: Executes procedures to stabilize underlying disease, specifically periodontal therapy and caries control.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"patient_id\": {\n          \"type\": \"string\",\n          \"description\": \"Unique patient identifier.\"\n        },\n        \"treatment_focus\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"periodontal_scaling\",\n            \"caries_debridement\",\n            \"patient_education\"\n          ],\n          \"description\": \"The type of stabilization therapy.\"\n        }\n      },\n      \"required\": [\n        \"patient_id\",\n        \"treatment_focus\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"completed\",\n      \"next_recommended_action\": \"str\"\n    }\n  },\n  \"execute_restorative_care\": {\n    \"description\": \"Phase III: Provides definitive restorative treatment (e.g., crowns, fillings, bridges) once the patient is biologically stable.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"patient_id\": {\n          \"type\": \"string\",\n          \"description\": \"Unique patient identifier.\"\n        },\n        \"tooth_id\": {\n          \"type\": \"string\",\n          \"description\": \"The tooth being restored.\"\n        }\n      },\n      \"required\": [\n        \"patient_id\",\n        \"tooth_id\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"restored\",\n      \"biological_status\": \"stable\"\n    }\n  },\n  \"enroll_in_maintenance_program\": {\n    \"description\": \"Phase IV: Transitions the patient into a long-term preventive recall program based on their clinical risk profile.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"patient_id\": {\n          \"type\": \"string\",\n          \"description\": \"Unique patient identifier.\"\n        },\n        \"recall_interval_months\": {\n          \"type\": \"number\",\n          \"description\": \"The frequency of recall based on risk (e.g., 3, 4, or 6 months).\"\n        },\n        \"preventive_protocol\": {\n          \"type\": \"string\",\n          \"description\": \"Customized preventive instructions.\"\n        }\n      },\n      \"required\": [\n        \"patient_id\",\n        \"recall_interval_months\",\n        \"preventive_protocol\"\n      ]\n    },\n    \"example_output\": {\n      \"final_status\": \"Maintenance Phase Active\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "search_patient_by_complaint",
+      "description": "Searches the clinical database using a string description of symptoms to identify the correct patient record.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "complaint_description": {
+            "type": "string",
+            "description": "The specific symptoms or chief complaint reported by the patient."
+          }
+        },
+        "required": [
+          "complaint_description"
+        ]
+      },
+      "example_output": {
+        "patient_id": "P-99234",
+        "name": "Jane Doe"
+      }
+    },
+    {
+      "name": "get_patient_state",
+      "description": "Retrieves the current environmental state for a specific patient, including vitals, biomarkers, symptom severity, and disease stage.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "patient_id": {
+            "type": "string",
+            "description": "The unique identifier for the patient."
+          }
+        },
+        "required": [
+          "patient_id"
+        ]
+      },
+      "example_output": {
+        "vital_signs": "str",
+        "biomarkers": "object",
+        "symptom_severity": "object",
+        "disease_progression_stage": "str",
+        "treatment_history": "array"
+      }
+    },
+    {
+      "name": "perform_clinical_examination",
+      "description": "Conducts a physical exam or diagnostic imaging to identify specific tooth issues and measure biological health indices (plaque control/gingival bleeding).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "patient_id": {
+            "type": "string",
+            "description": "The unique identifier for the patient."
+          },
+          "exam_type": {
+            "type": "string",
+            "enum": [
+              "emergency_focus",
+              "periodontal_charting",
+              "comprehensive"
+            ],
+            "description": "The scope of the examination."
+          }
+        },
+        "required": [
+          "patient_id",
+          "exam_type"
+        ]
+      },
+      "example_output": {
+        "affected_tooth_id": "UL6",
+        "plaque_index_percentage": 45,
+        "gingival_bleeding_index": 3,
+        "findings": "str"
+      }
+    },
+    {
+      "name": "execute_emergency_intervention",
+      "description": "Phase I: Performs immediate clinical actions to resolve acute pain or infection.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "patient_id": {
+            "type": "string",
+            "description": "Unique patient identifier."
+          },
+          "tooth_id": {
+            "type": "string",
+            "description": "The specific tooth requiring emergency treatment."
+          },
+          "procedure_type": {
+            "type": "string",
+            "description": "The specific emergency procedure (e.g., pulpectomy, incision and drainage)."
+          }
+        },
+        "required": [
+          "patient_id",
+          "tooth_id",
+          "procedure_type"
+        ]
+      },
+      "example_output": {
+        "status": "success",
+        "updated_symptom_severity": "object"
+      }
+    },
+    {
+      "name": "execute_etiotropic_therapy",
+      "description": "Phase II: Executes procedures to stabilize underlying disease, specifically periodontal therapy and caries control.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "patient_id": {
+            "type": "string",
+            "description": "Unique patient identifier."
+          },
+          "treatment_focus": {
+            "type": "string",
+            "enum": [
+              "periodontal_scaling",
+              "caries_debridement",
+              "patient_education"
+            ],
+            "description": "The type of stabilization therapy."
+          }
+        },
+        "required": [
+          "patient_id",
+          "treatment_focus"
+        ]
+      },
+      "example_output": {
+        "status": "completed",
+        "next_recommended_action": "str"
+      }
+    },
+    {
+      "name": "execute_restorative_care",
+      "description": "Phase III: Provides definitive restorative treatment (e.g., crowns, fillings, bridges) once the patient is biologically stable.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "patient_id": {
+            "type": "string",
+            "description": "Unique patient identifier."
+          },
+          "tooth_id": {
+            "type": "string",
+            "description": "The tooth being restored."
+          }
+        },
+        "required": [
+          "patient_id",
+          "tooth_id"
+        ]
+      },
+      "example_output": {
+        "status": "restored",
+        "biological_status": "stable"
+      }
+    },
+    {
+      "name": "enroll_in_maintenance_program",
+      "description": "Phase IV: Transitions the patient into a long-term preventive recall program based on their clinical risk profile.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "patient_id": {
+            "type": "string",
+            "description": "Unique patient identifier."
+          },
+          "recall_interval_months": {
+            "type": "number",
+            "description": "The frequency of recall based on risk (e.g., 3, 4, or 6 months)."
+          },
+          "preventive_protocol": {
+            "type": "string",
+            "description": "Customized preventive instructions."
+          }
+        },
+        "required": [
+          "patient_id",
+          "recall_interval_months",
+          "preventive_protocol"
+        ]
+      },
+      "example_output": {
+        "final_status": "Maintenance Phase Active"
+      }
+    }
+  ],
+  "state_description": {
+    "patient_id": "Unique identifier for the patient.",
+    "vital_signs": "Current physiological vitals including blood pressure, heart rate, and temperature.",
+    "biomarkers": "Key laboratory values relevant to the treatment plan.",
+    "symptom_severity": "A map of symptom names to their severity level (1-10).",
+    "treatment_history": "Chronological list of actions previously taken in this episode of care.",
+    "disease_progression_stage": "The current stage of the underlying condition (e.g., Stable, Acute, Recovery)."
+  },
+  "task_initial_state": {
+    "patient_id": "PT-9055",
+    "vital_signs": {
+      "systolic_bp": 135,
+      "diastolic_bp": 88,
+      "heart_rate": 82
+    },
+    "biomarkers": {
+      "glucose_mg_dl": 110,
+      "creatinine_mg_dl": 1.1,
+      "plaque_index_percent": 82,
+      "bleeding_on_probing_percent": 65,
+      "max_probing_depth_mm": 6,
+      "hba1c": 6.8
+    },
+    "symptom_severity": {
+      "upper_left_throbbing": 9,
+      "gingival_bleeding": 7,
+      "general_soreness": 4
+    },
+    "treatment_history": [],
+    "disease_progression_stage": "Acute"
+  }
+}

@@ -1,0 +1,153 @@
+{
+  "environment_name": "env_007fe9c5fdcb",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: You are the simulation engine for a Policy Underwriting Review environment. Based on the current internal state $s_t$ and the Action $a_t$ submitted by the Underwriting Agent, you must simulate the evolution of the policy application status, update internal risk assessments, and generate the specific Observation $o_{{t+1}}$ that the Agent would receive from the underwriting system. \n- **Emphasis**: You do not perform actual insurance underwriting; you model the environment's response. You are responsible for maintaining the logic of insurance rules, medical data retrieval, and risk calculations internally.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nYou must maintain a consistent history of the application review. Decisions made in previous steps (e.g., flagging a medical condition) must persist and influence future observations and state transitions. Ensure that the policy status evolves logically (e.g., a policy cannot be 'Approved' before 'Medical_History_Checked').\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object with the following fields:\n- `\"name\"`: The name of the underwriting action (e.g., `retrieve_credit_score`, `verify_employment`).\n- `\"arguments\"`: A dictionary of parameters required for the function.\n\nYou must parse this JSON, update the internal state of the policy review, and determine the output based on the logic of the underwriting environment.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\n- If the Agent attempts to access data for a non-existent policy ID: Return `{{\"error\": \"Policy ID not found\"}}`.\n- If the Agent calls an action without required prerequisites (e.g., finalizing a decision without a risk score): Return a relevant error message.\n- For invalid parameters or undefined actions: Return `{{\"error\": \"Invalid action or arguments\"}}`.\n- Do not fabricate data; if a field is unknown in the state, the observation should reflect that the information is currently unavailable.\n\n##### Output Assembly\nFor every action function call, you must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition.\n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state $s_t$, the `new_state`, or any hidden variables. You are a black box to the Agent; the Agent only sees the Observation $o_{{t+1}}$. Do not output any text explaining the state update.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to JSON output for observations.\n- **Factuality**: Simulations must be based on the provided state data and realistic underwriting constraints.\n- **Consistency**: The policy state must not contradict itself (e.g., an applicant cannot be 25 years old in one turn and 50 in the next).\n- **Realism**: Simulate realistic delays or data variations typical in financial and medical record retrieval.\n- **Quality**: Ensure all generated observations are professional, unambiguous, and formatted correctly.\n- **Encapsulation**: Never reveal the internal `initial_state` structure or its updated values directly in the response. Only provide the specified return values of the action.\n{{initial_state}}: {{\n  \"application_id\": \"POL-882734\",\n  \"applicant_profile\": {{\n    \"age\": 12,\n    \"occupation\": \"EV Motor Manufacturing\",\n    \"is_smoker\": true\n  }},\n  \"medical_history_logs\": [\n    \"Archived Log [2022-03-12]: 2022 Preliminary Risk Survey suggests TTR of 45 days and daily impact of $800,000 for Kobe site.\",\n    \"Technical Audit [2024-01-20]: Kobe Magnetics identified as the sole source (SPOF) for drivetrain magnets; no domestic alternate exists.\",\n    \"Inventory Log [2024-02-05]: Apex Precision Motors on-site Safety Stock Buffer (SSB) is verified at 15 days.\",\n    \"Supply Chain Note [2024-02-06]: Secondary supplier Euro-Mag (Germany) holds 60 days of redundant stock, but cannot reach volume requirements for 6 months.\",\n    \"Current Survey [2024-02-12]: 2024 Validated TTR for Kobe Magnetics production line is 90 days due to specialized tooling replacement times.\",\n    \"Financial Review [2024-02-14]: 2024 Daily Gross Profit dependency for the Kobe Magnetics node is confirmed at $1,100,000.\",\n    \"Catastrophe Report [2024-02-15]: Kobe Magnetics facility location Earthquake Hazard Score confirmed at 9 (Extreme).\",\n    \"Logistics Note [2024-02-16]: Total shipping time for Euro-Mag components is 14 days, separate from production TTR.\"\n  ],\n  \"verification_checklist\": {{\n    \"identity_verified\": true,\n    \"credit_check_completed\": true,\n    \"medical_exam_received\": true\n  }},\n  \"internal_risk_rating\": 85,\n  \"current_workflow_step\": \"RISK_ASSESSMENT\"\n}}\n{{state_descriptions}}: {{\n  \"application_id\": \"Unique identifier for the insurance policy application\",\n  \"applicant_profile\": \"Demographic and lifestyle data of the applicant (age, occupation, tobacco use)\",\n  \"medical_history_logs\": \"Chronological records of medical disclosures or retrieved clinical data\",\n  \"verification_checklist\": \"Status tracking for various required checks (identity, credit, employment, health)\",\n  \"internal_risk_rating\": \"A calculated internal score representing mortality/morbidity risk (1-100)\",\n  \"current_workflow_step\": \"The current stage in the underwriting pipeline (e.g., DATA_GATHERING, RISK_ASSESSMENT, DECISION_PENDING)\"\n}}\n{action_set_definitions}: {\n  \"get_workflow_state\": {\n    \"description\": \"Retrieves the current status and metadata of a policy application from the environment state.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"application_id\": {\n          \"type\": \"string\",\n          \"description\": \"The policy identifier (e.g., POL-882734).\"\n        }\n      },\n      \"required\": [\n        \"application_id\"\n      ]\n    },\n    \"example_output\": {\n      \"current_workflow_step\": \"RISK_ASSESSMENT\",\n      \"verification_checklist\": {\n        \"identity\": \"PASS\",\n        \"credit\": \"PASS\"\n      }\n    }\n  },\n  \"retrieve_validated_underwriting_logs\": {\n    \"description\": \"Queries the environment for validated underwriting logs for a specific year. Filters out superseded data.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"policy_id\": {\n          \"type\": \"string\",\n          \"description\": \"The policy ID to query.\"\n        },\n        \"target_year\": {\n          \"type\": \"integer\",\n          \"description\": \"The year of the logs to retrieve (e.g., 2024).\"\n        }\n      },\n      \"required\": [\n        \"policy_id\",\n        \"target_year\"\n      ]\n    },\n    \"example_output\": {\n      \"logs\": [\n        {\n          \"log_id\": \"LOG-001\",\n          \"data_source\": \"2024_Audit\",\n          \"ttr_unmitigated_days\": 120,\n          \"daily_loss_impact\": 1000000,\n          \"inventory_buffers\": {\n            \"apex_ssb\": 15,\n            \"euro_mag\": 10\n          }\n        }\n      ]\n    }\n  },\n  \"get_facility_risk_profile\": {\n    \"description\": \"Retrieves technical risk factors for a specific supplier facility, including SPOF and Hazard Zone status.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"facility_name\": {\n          \"type\": \"string\",\n          \"description\": \"The name of the facility (e.g., Kobe Magnetics).\"\n        }\n      },\n      \"required\": [\n        \"facility_name\"\n      ]\n    },\n    \"example_output\": {\n      \"is_single_point_of_failure\": true,\n      \"hazard_zone_rating\": \"HIGH\",\n      \"primary_product\": \"Rare Earth Magnets\"\n    }\n  },\n  \"submit_final_underwriting_decision\": {\n    \"description\": \"Records the final MFL, sub-limit, and waiting period to the environment to conclude the review.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"application_id\": {\n          \"type\": \"string\",\n          \"description\": \"The policy identifier.\"\n        },\n        \"calculated_mfl\": {\n          \"type\": \"number\",\n          \"description\": \"The calculated Maximum Foreseeable Loss.\"\n        },\n        \"final_sub_limit\": {\n          \"type\": \"number\",\n          \"description\": \"The final CBI sub-limit after applying caps.\"\n        },\n        \"mandatory_waiting_period\": {\n          \"type\": \"integer\",\n          \"description\": \"The waiting period in days.\"\n        }\n      },\n      \"required\": [\n        \"application_id\",\n        \"calculated_mfl\",\n        \"final_sub_limit\",\n        \"mandatory_waiting_period\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"SUBMITTED\",\n      \"transaction_id\": \"TXN-998877\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_workflow_state",
+      "description": "Retrieves the current status and metadata of a policy application from the environment state.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "application_id": {
+            "type": "string",
+            "description": "The policy identifier (e.g., POL-882734)."
+          }
+        },
+        "required": [
+          "application_id"
+        ]
+      },
+      "example_output": {
+        "current_workflow_step": "RISK_ASSESSMENT",
+        "verification_checklist": {
+          "identity": "PASS",
+          "credit": "PASS"
+        }
+      }
+    },
+    {
+      "name": "retrieve_validated_underwriting_logs",
+      "description": "Queries the environment for validated underwriting logs for a specific year. Filters out superseded data.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "policy_id": {
+            "type": "string",
+            "description": "The policy ID to query."
+          },
+          "target_year": {
+            "type": "integer",
+            "description": "The year of the logs to retrieve (e.g., 2024)."
+          }
+        },
+        "required": [
+          "policy_id",
+          "target_year"
+        ]
+      },
+      "example_output": {
+        "logs": [
+          {
+            "log_id": "LOG-001",
+            "data_source": "2024_Audit",
+            "ttr_unmitigated_days": 120,
+            "daily_loss_impact": 1000000,
+            "inventory_buffers": {
+              "apex_ssb": 15,
+              "euro_mag": 10
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "get_facility_risk_profile",
+      "description": "Retrieves technical risk factors for a specific supplier facility, including SPOF and Hazard Zone status.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "facility_name": {
+            "type": "string",
+            "description": "The name of the facility (e.g., Kobe Magnetics)."
+          }
+        },
+        "required": [
+          "facility_name"
+        ]
+      },
+      "example_output": {
+        "is_single_point_of_failure": true,
+        "hazard_zone_rating": "HIGH",
+        "primary_product": "Rare Earth Magnets"
+      }
+    },
+    {
+      "name": "submit_final_underwriting_decision",
+      "description": "Records the final MFL, sub-limit, and waiting period to the environment to conclude the review.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "application_id": {
+            "type": "string",
+            "description": "The policy identifier."
+          },
+          "calculated_mfl": {
+            "type": "number",
+            "description": "The calculated Maximum Foreseeable Loss."
+          },
+          "final_sub_limit": {
+            "type": "number",
+            "description": "The final CBI sub-limit after applying caps."
+          },
+          "mandatory_waiting_period": {
+            "type": "integer",
+            "description": "The waiting period in days."
+          }
+        },
+        "required": [
+          "application_id",
+          "calculated_mfl",
+          "final_sub_limit",
+          "mandatory_waiting_period"
+        ]
+      },
+      "example_output": {
+        "status": "SUBMITTED",
+        "transaction_id": "TXN-998877"
+      }
+    }
+  ],
+  "state_description": {
+    "application_id": "Unique identifier for the insurance policy application",
+    "applicant_profile": "Demographic and lifestyle data of the applicant (age, occupation, tobacco use)",
+    "medical_history_logs": "Chronological records of medical disclosures or retrieved clinical data",
+    "verification_checklist": "Status tracking for various required checks (identity, credit, employment, health)",
+    "internal_risk_rating": "A calculated internal score representing mortality/morbidity risk (1-100)",
+    "current_workflow_step": "The current stage in the underwriting pipeline (e.g., DATA_GATHERING, RISK_ASSESSMENT, DECISION_PENDING)"
+  },
+  "task_initial_state": {
+    "application_id": "POL-882734",
+    "applicant_profile": {
+      "age": 12,
+      "occupation": "EV Motor Manufacturing",
+      "is_smoker": true
+    },
+    "medical_history_logs": [
+      "Archived Log [2022-03-12]: 2022 Preliminary Risk Survey suggests TTR of 45 days and daily impact of $800,000 for Kobe site.",
+      "Technical Audit [2024-01-20]: Kobe Magnetics identified as the sole source (SPOF) for drivetrain magnets; no domestic alternate exists.",
+      "Inventory Log [2024-02-05]: Apex Precision Motors on-site Safety Stock Buffer (SSB) is verified at 15 days.",
+      "Supply Chain Note [2024-02-06]: Secondary supplier Euro-Mag (Germany) holds 60 days of redundant stock, but cannot reach volume requirements for 6 months.",
+      "Current Survey [2024-02-12]: 2024 Validated TTR for Kobe Magnetics production line is 90 days due to specialized tooling replacement times.",
+      "Financial Review [2024-02-14]: 2024 Daily Gross Profit dependency for the Kobe Magnetics node is confirmed at $1,100,000.",
+      "Catastrophe Report [2024-02-15]: Kobe Magnetics facility location Earthquake Hazard Score confirmed at 9 (Extreme).",
+      "Logistics Note [2024-02-16]: Total shipping time for Euro-Mag components is 14 days, separate from production TTR."
+    ],
+    "verification_checklist": {
+      "identity_verified": true,
+      "credit_check_completed": true,
+      "medical_exam_received": true
+    },
+    "internal_risk_rating": 85,
+    "current_workflow_step": "RISK_ASSESSMENT"
+  }
+}

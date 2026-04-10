@@ -1,0 +1,230 @@
+{
+  "environment_name": "env_96becc5aeb21",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM) for Zoning Variance Application Review.\n- **Core Objective**: Based on the current internal state $s_t$ and the action $a_t$ executed by the Agent, simulate the internal evolution of the zoning application process and generate the resulting observation $o_{{t+1}}$.\n- **Emphasis**: You are the environment. You do not make autonomous decisions; you simulate the consequences of the Agent's actions (e.g., a city planner or administrative officer) within the regulatory framework of zoning laws. You manage the lifecycle of a variance application from submission to final decision.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state of the application and property is represented in the following JSON format:\n```json\n{{initial_state}}\n```\n\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nYou must maintain perfect continuity of the application's history. Every action modifies the internal state (e.g., changing a status from 'Under Review' to 'Hearing Scheduled'). Subsequent observations must reflect these historical changes.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the zoning system by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` returned for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object containing:\n- `\"name\"`: The name of the action function.\n- `\"arguments\"`: A dictionary of parameters for that function.\n\nYou must parse this JSON, update your internal state $s_t$ to $s_{{t+1}}$ based on the logic of zoning procedures, and generate the corresponding observation.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\n- **Invalid Procedures**: If an agent attempts to 'Issue Decision' before a 'Public Hearing' has occurred (if required by the state), return an error: `{{\"error\": \"Procedural violation: Public hearing must precede final decision.\"}}`.\n- **Undefined Actions**: If the action name is not in the defined set, return `{{\"error\": \"Action [name] not recognized.\"}}`.\n- **Data Integrity**: Do not allow the state to enter impossible configurations (e.g., a hearing date in the past relative to the submission date).\n\n##### Output Assembly\nFor every action function call, you must return a structured JSON object containing **ONLY** the specific return fields defined in the action's documentation. \n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state or any hidden variables. You are a black box to the Agent; they only see the specific results (observations) of their actions. Do not output \"State Updated\" or the new state JSON.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to JSON for all observations.\n- **Factuality**: Use only the provided zoning data and procedural rules. Do not invent municipal codes.\n- **Consistency**: If a variance is denied in the state, subsequent observations must reflect that the file is closed or in the appeal phase.\n- **Realism**: Simulate realistic administrative delays or requirements (e.g., missing documents trigger a 'pending' status).\n- **Encapsulation**: Strictly hide the internal state structure. Only expose information explicitly returned by the action function.\n{{initial_state}}: {{\n  \"application_id\": \"VAR-2024-505\",\n  \"property_info\": {{\n    \"address\": \"88 Hudson Way\",\n    \"current_zone\": \"C6-4 Mixed-Use (TOD)\",\n    \"lot_size_sqft\": 25000\n  }},\n  \"variance_request\": {{\n    \"type\": \"Bulk (FAR and Height)\",\n    \"requested_value\": \"16.0 FAR / 345 ft Height\",\n    \"justification\": \"Extreme subsurface conditions and a complex MTA easement require significant density to offset extraordinary construction costs.\"\n  }},\n  \"review_status\": \"Technical_Review\",\n  \"compliance_checklist\": {{\n    \"application_fee_paid\": true,\n    \"site_plan_submitted\": true,\n    \"neighbor_notification_complete\": false\n  }},\n  \"internal_notes\": [\n    \"Applicant proposes 16.0 FAR using TDR from Lot 12. Note: ZLDA (Zoning Lot Development Agreement) status is currently 'Unverified'—must be confirmed as recorded before certification.\",\n    \"Preliminary Shadow Study Review: Height of 345ft results in a Shadow_Sweep_Duration of 58 minutes on 'Seafarer’s Garden' during the equinox, which exceeds the 45-minute allowable threshold.\",\n    \"Sewer flow increment is estimated at 22,000 GPD; local main is at peak capacity.\"\n  ],\n  \"hearing_details\": {{\n    \"scheduled_date\": null,\n    \"board_recommendation\": null\n  }},\n  \"final_decision\": {{\n    \"outcome\": null,\n    \"conditions\": []\n  }}\n}}\n{{state_descriptions}}: {{\n  \"application_id\": \"Unique identifier for the variance application.\",\n  \"property_info\": \"Details about the physical property and its current zoning designation.\",\n  \"variance_request\": \"The specific relief requested by the applicant.\",\n  \"review_status\": \"Current stage in the administrative pipeline.\",\n  \"compliance_checklist\": \"Boolean flags for required legal steps.\",\n  \"internal_notes\": \"Chronological log of reviewer comments and internal findings.\",\n  \"hearing_details\": \"Information regarding the Zoning Board of Adjustment hearing.\",\n  \"final_decision\": \"The official outcome of the review.\"\n}}\n{action_set_definitions}: {\n  \"search_application\": {\n    \"description\": \"Searches for a variance application by project name or address to retrieve its unique application_id.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"query\": {\n          \"type\": \"string\",\n          \"description\": \"The project name (e.g., 'Hudson Rise') or property address (e.g., '88 Hudson Way').\"\n        }\n      },\n      \"required\": [\n        \"query\"\n      ]\n    },\n    \"example_output\": {\n      \"results\": [\n        {\n          \"application_id\": \"VAR-2023-001\",\n          \"project_name\": \"Hudson Rise\",\n          \"address\": \"88 Hudson Way\"\n        }\n      ]\n    }\n  },\n  \"get_application_details\": {\n    \"description\": \"Retrieves the full current state of a specific application, including review status, compliance checklist, and internal notes.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"application_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the application.\"\n        }\n      },\n      \"required\": [\n        \"application_id\"\n      ]\n    },\n    \"example_output\": {\n      \"application_id\": \"VAR-2023-001\",\n      \"review_status\": \"Technical Review\",\n      \"compliance_checklist\": {\n        \"public_notification_complete\": true,\n        \"development_agreements_verified\": false\n      },\n      \"variance_request\": \"Density bonus transfer\",\n      \"internal_notes\": \"Initial filing received.\"\n    }\n  },\n  \"verify_development_agreements\": {\n    \"description\": \"Technically verifies recorded development agreements associated with the floor area transfers.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"application_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the application.\"\n        }\n      },\n      \"required\": [\n        \"application_id\"\n      ]\n    },\n    \"example_output\": {\n      \"verification_status\": \"Verified\",\n      \"agreement_ref_ids\": [\n        \"AG-88-A\",\n        \"AG-88-B\"\n      ]\n    }\n  },\n  \"get_environmental_record\": {\n    \"description\": \"Retrieves internal records related to environmental impacts, specifically identifying protected sunlight-sensitive resources.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"application_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the application.\"\n        }\n      },\n      \"required\": [\n        \"application_id\"\n      ]\n    },\n    \"example_output\": {\n      \"sensitive_resources\": [\n        \"Central Park North Meadow\"\n      ],\n      \"mitigation_requirements\": \"Shadow study required for winter solstice.\"\n    }\n  },\n  \"update_compliance_step\": {\n    \"description\": \"Updates a specific flag in the compliance checklist once a statutory prerequisite is satisfied.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"application_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the application.\"\n        },\n        \"step_name\": {\n          \"type\": \"string\",\n          \"description\": \"The name of the checklist item (e.g., 'public_notification', 'agreement_verification').\"\n        },\n        \"status\": {\n          \"type\": \"boolean\",\n          \"description\": \"The completion status.\"\n        }\n      },\n      \"required\": [\n        \"application_id\",\n        \"step_name\",\n        \"status\"\n      ]\n    },\n    \"example_output\": {\n      \"updated_checklist\": {\n        \"public_notification_complete\": true\n      }\n    }\n  },\n  \"issue_board_determination\": {\n    \"description\": \"Records the final board decision based on SOP compliance and environmental mitigation findings.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"application_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the application.\"\n        },\n        \"decision\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"Approved\",\n            \"Approved with Conditions\",\n            \"Denied\"\n          ],\n          \"description\": \"The outcome of the Board's determination.\"\n        },\n        \"justification\": {\n          \"type\": \"string\",\n          \"description\": \"Formal reasoning reflecting bulk variance SOP and sunlight mitigation.\"\n        }\n      },\n      \"required\": [\n        \"application_id\",\n        \"decision\",\n        \"justification\"\n      ]\n    },\n    \"example_output\": {\n      \"final_decision\": \"Approved with Conditions\",\n      \"timestamp\": \"2023-10-27T10:00:00Z\"\n    }\n  },\n  \"close_application\": {\n    \"description\": \"Finalizes the review process and archives the application file.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"application_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the application.\"\n        }\n      },\n      \"required\": [\n        \"application_id\"\n      ]\n    },\n    \"example_output\": {\n      \"review_status\": \"Closed\",\n      \"closure_date\": \"2023-10-27\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "search_application",
+      "description": "Searches for a variance application by project name or address to retrieve its unique application_id.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "description": "The project name (e.g., 'Hudson Rise') or property address (e.g., '88 Hudson Way')."
+          }
+        },
+        "required": [
+          "query"
+        ]
+      },
+      "example_output": {
+        "results": [
+          {
+            "application_id": "VAR-2023-001",
+            "project_name": "Hudson Rise",
+            "address": "88 Hudson Way"
+          }
+        ]
+      }
+    },
+    {
+      "name": "get_application_details",
+      "description": "Retrieves the full current state of a specific application, including review status, compliance checklist, and internal notes.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "application_id": {
+            "type": "string",
+            "description": "The unique identifier for the application."
+          }
+        },
+        "required": [
+          "application_id"
+        ]
+      },
+      "example_output": {
+        "application_id": "VAR-2023-001",
+        "review_status": "Technical Review",
+        "compliance_checklist": {
+          "public_notification_complete": true,
+          "development_agreements_verified": false
+        },
+        "variance_request": "Density bonus transfer",
+        "internal_notes": "Initial filing received."
+      }
+    },
+    {
+      "name": "verify_development_agreements",
+      "description": "Technically verifies recorded development agreements associated with the floor area transfers.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "application_id": {
+            "type": "string",
+            "description": "The unique identifier for the application."
+          }
+        },
+        "required": [
+          "application_id"
+        ]
+      },
+      "example_output": {
+        "verification_status": "Verified",
+        "agreement_ref_ids": [
+          "AG-88-A",
+          "AG-88-B"
+        ]
+      }
+    },
+    {
+      "name": "get_environmental_record",
+      "description": "Retrieves internal records related to environmental impacts, specifically identifying protected sunlight-sensitive resources.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "application_id": {
+            "type": "string",
+            "description": "The unique identifier for the application."
+          }
+        },
+        "required": [
+          "application_id"
+        ]
+      },
+      "example_output": {
+        "sensitive_resources": [
+          "Central Park North Meadow"
+        ],
+        "mitigation_requirements": "Shadow study required for winter solstice."
+      }
+    },
+    {
+      "name": "update_compliance_step",
+      "description": "Updates a specific flag in the compliance checklist once a statutory prerequisite is satisfied.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "application_id": {
+            "type": "string",
+            "description": "The unique identifier for the application."
+          },
+          "step_name": {
+            "type": "string",
+            "description": "The name of the checklist item (e.g., 'public_notification', 'agreement_verification')."
+          },
+          "status": {
+            "type": "boolean",
+            "description": "The completion status."
+          }
+        },
+        "required": [
+          "application_id",
+          "step_name",
+          "status"
+        ]
+      },
+      "example_output": {
+        "updated_checklist": {
+          "public_notification_complete": true
+        }
+      }
+    },
+    {
+      "name": "issue_board_determination",
+      "description": "Records the final board decision based on SOP compliance and environmental mitigation findings.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "application_id": {
+            "type": "string",
+            "description": "The unique identifier for the application."
+          },
+          "decision": {
+            "type": "string",
+            "enum": [
+              "Approved",
+              "Approved with Conditions",
+              "Denied"
+            ],
+            "description": "The outcome of the Board's determination."
+          },
+          "justification": {
+            "type": "string",
+            "description": "Formal reasoning reflecting bulk variance SOP and sunlight mitigation."
+          }
+        },
+        "required": [
+          "application_id",
+          "decision",
+          "justification"
+        ]
+      },
+      "example_output": {
+        "final_decision": "Approved with Conditions",
+        "timestamp": "2023-10-27T10:00:00Z"
+      }
+    },
+    {
+      "name": "close_application",
+      "description": "Finalizes the review process and archives the application file.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "application_id": {
+            "type": "string",
+            "description": "The unique identifier for the application."
+          }
+        },
+        "required": [
+          "application_id"
+        ]
+      },
+      "example_output": {
+        "review_status": "Closed",
+        "closure_date": "2023-10-27"
+      }
+    }
+  ],
+  "state_description": {
+    "application_id": "Unique identifier for the variance application.",
+    "property_info": "Details about the physical property and its current zoning designation.",
+    "variance_request": "The specific relief requested by the applicant.",
+    "review_status": "Current stage in the administrative pipeline.",
+    "compliance_checklist": "Boolean flags for required legal steps.",
+    "internal_notes": "Chronological log of reviewer comments and internal findings.",
+    "hearing_details": "Information regarding the Zoning Board of Adjustment hearing.",
+    "final_decision": "The official outcome of the review."
+  },
+  "task_initial_state": {
+    "application_id": "VAR-2024-505",
+    "property_info": {
+      "address": "88 Hudson Way",
+      "current_zone": "C6-4 Mixed-Use (TOD)",
+      "lot_size_sqft": 25000
+    },
+    "variance_request": {
+      "type": "Bulk (FAR and Height)",
+      "requested_value": "16.0 FAR / 345 ft Height",
+      "justification": "Extreme subsurface conditions and a complex MTA easement require significant density to offset extraordinary construction costs."
+    },
+    "review_status": "Technical_Review",
+    "compliance_checklist": {
+      "application_fee_paid": true,
+      "site_plan_submitted": true,
+      "neighbor_notification_complete": false
+    },
+    "internal_notes": [
+      "Applicant proposes 16.0 FAR using TDR from Lot 12. Note: ZLDA (Zoning Lot Development Agreement) status is currently 'Unverified'—must be confirmed as recorded before certification.",
+      "Preliminary Shadow Study Review: Height of 345ft results in a Shadow_Sweep_Duration of 58 minutes on 'Seafarer’s Garden' during the equinox, which exceeds the 45-minute allowable threshold.",
+      "Sewer flow increment is estimated at 22,000 GPD; local main is at peak capacity."
+    ],
+    "hearing_details": {
+      "scheduled_date": null,
+      "board_recommendation": null
+    },
+    "final_decision": {
+      "outcome": null,
+      "conditions": []
+    }
+  }
+}

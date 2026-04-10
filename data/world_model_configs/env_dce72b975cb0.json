@@ -1,0 +1,312 @@
+{
+  "environment_name": "env_dce72b975cb0",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: You are a specialized simulator for Network Capacity Planning. Based on the current network state $s_t$ and the Agent's planning action $a_t$, you simulate the evolution of the network infrastructure and traffic dynamics to predict the observation $o_{{t+1}}$.\n- **Emphasis**: You do not execute real-world network configurations. Your role is to perform internal state evolution (tracking bandwidth, latency, and topology) and generate realistic feedback (observations) for the Agent.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nYou must maintain perfect continuity of the network environment. Every action taken by the Agent (e.g., upgrading a link, rerouting traffic) must permanently modify the internal state. Subsequent observations must reflect these cumulative changes and respect the physical and logical constraints of network engineering.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the network by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. You must parse this JSON to determine the transition. The input format is:\n- `\"name\"`: The name of the action (e.g., \"upgrade_link\", \"add_node\", \"optimize_routing\").\n- `\"arguments\"`: A dictionary of parameters required for that action.\n\nExample Input:\n```json\n{{\n \"name\": \"upgrade_link\",\n \"arguments\": {{\n    \"source\": \"Node_A\",\n    \"target\": \"Node_B\",\n    \"new_capacity_gbps\": 100\n  }}\n}}\n```\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nIf the Agent attempts an invalid operation—such as upgrading a non-existent link, exceeding the available budget, or causing a network partition—you must return a structured error. Do not hallucinate successful outcomes for impossible actions.\nExample Error: `{{\"error\": \"Insufficient budget for requested upgrade\", \"remaining_budget\": 500}}`\n\n##### Output Assembly\nFor every action, you must return a structured JSON object containing **ONLY** the return fields declared in the action function's definition. \n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, `new_state`, or any hidden variables. You must strictly hide the internal network topology or budget unless the specific action definition requires returning them. The Agent only sees the Observation.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to specified JSON formats for both input parsing and output generation.\n- **Factuality**: Use realistic network metrics. Bandwidth, latency, and packet loss should follow logical relationships (e.g., higher utilization leads to higher latency).\n- **Consistency**: If a link is removed at time $t$, it must remain absent at $t+1$ unless explicitly recreated.\n- **Realism**: Simulate the impact of capacity changes on traffic flow based on standard networking principles (e.g., shortest path or load balancing).\n- **Quality**: Ensure all generated observations are unambiguous and provide the necessary data for the Agent to make the next decision.\n- **Encapsulation**: Keep the complexity of the network state hidden. Only expose the specific metrics or status flags defined in the action's observation schema.\n{{initial_state}}: {{\n  \"nodes\": [\n    {{\n      \"node_id\": \"CLS-Seattle-Main\",\n      \"operational_status\": \"active\",\n      \"current_power_draw_kw\": 25.0,\n      \"max_power_limit_kw\": 50.0,\n      \"rack_space_available_u\": 40\n    }},\n    {{\n      \"node_id\": \"CLS-Seattle-South\",\n      \"operational_status\": \"active\",\n      \"current_power_draw_kw\": 36.8,\n      \"max_power_limit_kw\": 40.0,\n      \"rack_space_available_u\": 4\n    }},\n    {{\n      \"node_id\": \"CLS-Tokyo-North\",\n      \"operational_status\": \"active\",\n      \"current_power_draw_kw\": 12.0,\n      \"max_power_limit_kw\": 60.0,\n      \"rack_space_available_u\": 30\n    }},\n    {{\n      \"node_id\": \"CLS-Tokyo-South-Backup\",\n      \"operational_status\": \"maintenance\",\n      \"current_power_draw_kw\": 5.0,\n      \"max_power_limit_kw\": 20.0,\n      \"rack_space_available_u\": 0\n    }}\n  ],\n  \"links\": [\n    {{\n      \"link_id\": \"PC5-Segment-C-FiberPair-1\",\n      \"source\": \"CLS-Seattle-South\",\n      \"target\": \"CLS-Tokyo-North\",\n      \"capacity_gbps\": 5000,\n      \"current_utilization\": 0.8,\n      \"length_km\": 8200,\n      \"spectrum_grid\": \"Fixed-50GHz\",\n      \"active_channels\": 50,\n      \"min_q_margin_db\": 4.1,\n      \"last_characterization_date\": \"2023-11-01\"\n    }},\n    {{\n      \"link_id\": \"PC5-Segment-C-FiberPair-2\",\n      \"source\": \"CLS-Seattle-South\",\n      \"target\": \"CLS-Tokyo-North\",\n      \"capacity_gbps\": 4000,\n      \"current_utilization\": 1.0,\n      \"length_km\": 8200,\n      \"spectrum_grid\": \"FlexGrid-Ready\",\n      \"active_channels\": 40,\n      \"min_q_margin_db\": 5.5,\n      \"last_characterization_date\": \"2015-04-10\"\n    }},\n    {{\n      \"link_id\": \"PC5-Segment-C-FiberPair-2-Legacy\",\n      \"source\": \"CLS-Seattle-Main\",\n      \"target\": \"CLS-Tokyo-North\",\n      \"capacity_gbps\": 1000,\n      \"current_utilization\": 0.2,\n      \"length_km\": 8250,\n      \"spectrum_grid\": \"Fixed-100GHz\",\n      \"active_channels\": 10,\n      \"min_q_margin_db\": 2.2,\n      \"last_characterization_date\": \"2010-01-15\"\n    }},\n    {{\n      \"link_id\": \"PC5-Segment-B-FiberPair-2\",\n      \"source\": \"CLS-Seattle-South\",\n      \"target\": \"CLS-Tokyo-North\",\n      \"capacity_gbps\": 8000,\n      \"current_utilization\": 0.5,\n      \"length_km\": 4100,\n      \"spectrum_grid\": \"FlexGrid-Ready\",\n      \"active_channels\": 20,\n      \"min_q_margin_db\": 6.8,\n      \"last_characterization_date\": \"2024-01-20\"\n    }},\n    {{\n      \"link_id\": \"Experimental-Link-C2\",\n      \"source\": \"CLS-Seattle-South\",\n      \"target\": \"CLS-Tokyo-North\",\n      \"capacity_gbps\": 100,\n      \"current_utilization\": 0.0,\n      \"length_km\": 8200,\n      \"spectrum_grid\": \"Super-Gaussian\",\n      \"active_channels\": 1,\n      \"min_q_margin_db\": 1.5,\n      \"last_characterization_date\": \"2024-02-14\"\n    }}\n  ],\n  \"traffic_demand_matrix\": {{\n    \"PC5-C-FP1-Demand\": 4000,\n    \"PC5-C-FP2-Target-Demand\": 14500,\n    \"PC5-B-FP2-Demand\": 2000,\n    \"Legacy-Transit\": 500\n  }},\n  \"available_budget\": 2500000,\n  \"network_metrics\": {{\n    \"avg_latency_ms\": 64.2,\n    \"congestion_index\": 0.88,\n    \"pre_fec_ber\": 2.4e-05,\n    \"total_system_power_kw\": 85.0\n  }}\n}}\n{{state_descriptions}}: {{\n  \"nodes\": \"List of active network nodes (routers/switches) and their operational status.\",\n  \"links\": \"List of physical or logical connections between nodes, including capacity (Gbps) and current utilization.\",\n  \"traffic_demand_matrix\": \"Current traffic requirements between node pairs (Source-Destination pairs and required Mbps).\",\n  \"available_budget\": \"Remaining capital expenditure (CAPEX) available for network upgrades or additions.\",\n  \"network_metrics\": \"Global performance indicators such as average latency, packet loss rate, and congestion score.\"\n}}\n{action_set_definitions}: {\n  \"search_network_inventory\": {\n    \"description\": \"Searches for network components by name/identifier to retrieve unique IDs and metadata. Used to isolate 'PC5-Segment-C-FiberPair-2' from decommissioned or experimental links.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"search_query\": {\n          \"type\": \"string\",\n          \"description\": \"The name of the link or node.\"\n        },\n        \"component_type\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"link\",\n            \"node\"\n          ],\n          \"description\": \"The type of network component.\"\n        }\n      },\n      \"required\": [\n        \"search_query\",\n        \"component_type\"\n      ]\n    },\n    \"example_output\": {\n      \"results\": [\n        {\n          \"id\": \"link-uuid-550e8400\",\n          \"name\": \"PC5-Segment-C-FiberPair-2\",\n          \"status\": \"production\"\n        }\n      ]\n    }\n  },\n  \"get_link_telemetry\": {\n    \"description\": \"Retrieves the current capacity (Gbps), utilization, and a list of currently installed hardware modules on a specific fiber link.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"link_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier of the fiber link.\"\n        }\n      },\n      \"required\": [\n        \"link_id\"\n      ]\n    },\n    \"example_output\": {\n      \"current_capacity_gbps\": 10000,\n      \"source_node_id\": \"node-SEA-77\",\n      \"destination_node_id\": \"node-TYO-88\",\n      \"installed_hardware\": [\n        {\n          \"model\": \"100G-Legacy-Transponder\",\n          \"quantity\": 20,\n          \"power_per_unit_kw\": 0.2\n        }\n      ]\n    }\n  },\n  \"get_facility_metrics\": {\n    \"description\": \"Retrieves the power limit and current power consumption for a specific facility (node).\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"node_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier of the node.\"\n        }\n      },\n      \"required\": [\n        \"node_id\"\n      ]\n    },\n    \"example_output\": {\n      \"total_power_limit_kw\": 45.0,\n      \"current_power_draw_kw\": 38.5,\n      \"available_rack_units\": 10\n    }\n  },\n  \"run_optical_diagnostic\": {\n    \"description\": \"Executes a sweep of the fiber pair to establish the baseline link budget, specifically the post-repair aging margin (Q-factor).\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"link_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier of the link.\"\n        }\n      },\n      \"required\": [\n        \"link_id\"\n      ]\n    },\n    \"example_output\": {\n      \"aging_margin_q_factor_db\": 3.7,\n      \"span_loss_db\": 24.2\n    }\n  },\n  \"get_upgrade_catalog\": {\n    \"description\": \"Returns a list of available 400G and 800G hardware modules with their unit costs, power draw, and capacity specs.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {}\n    },\n    \"example_output\": {\n      \"available_modules\": [\n        {\n          \"model\": \"800G-Ultra-Coherent\",\n          \"unit_cost_usd\": 120000,\n          \"power_draw_kw\": 0.6,\n          \"capacity_gbps\": 800\n        }\n      ]\n    }\n  },\n  \"get_financial_status\": {\n    \"description\": \"Checks the remaining CAPEX budget for the network upgrade project.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {}\n    },\n    \"example_output\": {\n      \"available_budget_usd\": 3000000\n    }\n  },\n  \"decommission_network_hardware\": {\n    \"description\": \"Removes existing hardware modules from a link to reclaim power and rack space.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"link_id\": {\n          \"type\": \"string\",\n          \"description\": \"The link identifier.\"\n        },\n        \"hardware_model\": {\n          \"type\": \"string\",\n          \"description\": \"The model to remove.\"\n        },\n        \"quantity\": {\n          \"type\": \"integer\",\n          \"description\": \"Number of units to remove.\"\n        }\n      },\n      \"required\": [\n        \"link_id\",\n        \"hardware_model\",\n        \"quantity\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"success\",\n      \"power_reclaimed_kw\": 1.2\n    }\n  },\n  \"execute_capacity_provisioning\": {\n    \"description\": \"Installs new capacity modules on a specific link.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"link_id\": {\n          \"type\": \"string\",\n          \"description\": \"The link identifier.\"\n        },\n        \"module_model\": {\n          \"type\": \"string\",\n          \"description\": \"The hardware model to install.\"\n        },\n        \"quantity\": {\n          \"type\": \"integer\",\n          \"description\": \"Number of units to provision.\"\n        }\n      },\n      \"required\": [\n        \"link_id\",\n        \"module_model\",\n        \"quantity\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"success\",\n      \"provisioned_capacity_gbps\": 4000\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "search_network_inventory",
+      "description": "Searches for network components by name/identifier to retrieve unique IDs and metadata. Used to isolate 'PC5-Segment-C-FiberPair-2' from decommissioned or experimental links.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "search_query": {
+            "type": "string",
+            "description": "The name of the link or node."
+          },
+          "component_type": {
+            "type": "string",
+            "enum": [
+              "link",
+              "node"
+            ],
+            "description": "The type of network component."
+          }
+        },
+        "required": [
+          "search_query",
+          "component_type"
+        ]
+      },
+      "example_output": {
+        "results": [
+          {
+            "id": "link-uuid-550e8400",
+            "name": "PC5-Segment-C-FiberPair-2",
+            "status": "production"
+          }
+        ]
+      }
+    },
+    {
+      "name": "get_link_telemetry",
+      "description": "Retrieves the current capacity (Gbps), utilization, and a list of currently installed hardware modules on a specific fiber link.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "link_id": {
+            "type": "string",
+            "description": "The unique identifier of the fiber link."
+          }
+        },
+        "required": [
+          "link_id"
+        ]
+      },
+      "example_output": {
+        "current_capacity_gbps": 10000,
+        "source_node_id": "node-SEA-77",
+        "destination_node_id": "node-TYO-88",
+        "installed_hardware": [
+          {
+            "model": "100G-Legacy-Transponder",
+            "quantity": 20,
+            "power_per_unit_kw": 0.2
+          }
+        ]
+      }
+    },
+    {
+      "name": "get_facility_metrics",
+      "description": "Retrieves the power limit and current power consumption for a specific facility (node).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "node_id": {
+            "type": "string",
+            "description": "The unique identifier of the node."
+          }
+        },
+        "required": [
+          "node_id"
+        ]
+      },
+      "example_output": {
+        "total_power_limit_kw": 45.0,
+        "current_power_draw_kw": 38.5,
+        "available_rack_units": 10
+      }
+    },
+    {
+      "name": "run_optical_diagnostic",
+      "description": "Executes a sweep of the fiber pair to establish the baseline link budget, specifically the post-repair aging margin (Q-factor).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "link_id": {
+            "type": "string",
+            "description": "The unique identifier of the link."
+          }
+        },
+        "required": [
+          "link_id"
+        ]
+      },
+      "example_output": {
+        "aging_margin_q_factor_db": 3.7,
+        "span_loss_db": 24.2
+      }
+    },
+    {
+      "name": "get_upgrade_catalog",
+      "description": "Returns a list of available 400G and 800G hardware modules with their unit costs, power draw, and capacity specs.",
+      "parameters": {
+        "type": "object",
+        "properties": {}
+      },
+      "example_output": {
+        "available_modules": [
+          {
+            "model": "800G-Ultra-Coherent",
+            "unit_cost_usd": 120000,
+            "power_draw_kw": 0.6,
+            "capacity_gbps": 800
+          }
+        ]
+      }
+    },
+    {
+      "name": "get_financial_status",
+      "description": "Checks the remaining CAPEX budget for the network upgrade project.",
+      "parameters": {
+        "type": "object",
+        "properties": {}
+      },
+      "example_output": {
+        "available_budget_usd": 3000000
+      }
+    },
+    {
+      "name": "decommission_network_hardware",
+      "description": "Removes existing hardware modules from a link to reclaim power and rack space.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "link_id": {
+            "type": "string",
+            "description": "The link identifier."
+          },
+          "hardware_model": {
+            "type": "string",
+            "description": "The model to remove."
+          },
+          "quantity": {
+            "type": "integer",
+            "description": "Number of units to remove."
+          }
+        },
+        "required": [
+          "link_id",
+          "hardware_model",
+          "quantity"
+        ]
+      },
+      "example_output": {
+        "status": "success",
+        "power_reclaimed_kw": 1.2
+      }
+    },
+    {
+      "name": "execute_capacity_provisioning",
+      "description": "Installs new capacity modules on a specific link.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "link_id": {
+            "type": "string",
+            "description": "The link identifier."
+          },
+          "module_model": {
+            "type": "string",
+            "description": "The hardware model to install."
+          },
+          "quantity": {
+            "type": "integer",
+            "description": "Number of units to provision."
+          }
+        },
+        "required": [
+          "link_id",
+          "module_model",
+          "quantity"
+        ]
+      },
+      "example_output": {
+        "status": "success",
+        "provisioned_capacity_gbps": 4000
+      }
+    }
+  ],
+  "state_description": {
+    "nodes": "List of active network nodes (routers/switches) and their operational status.",
+    "links": "List of physical or logical connections between nodes, including capacity (Gbps) and current utilization.",
+    "traffic_demand_matrix": "Current traffic requirements between node pairs (Source-Destination pairs and required Mbps).",
+    "available_budget": "Remaining capital expenditure (CAPEX) available for network upgrades or additions.",
+    "network_metrics": "Global performance indicators such as average latency, packet loss rate, and congestion score."
+  },
+  "task_initial_state": {
+    "nodes": [
+      {
+        "node_id": "CLS-Seattle-Main",
+        "operational_status": "active",
+        "current_power_draw_kw": 25.0,
+        "max_power_limit_kw": 50.0,
+        "rack_space_available_u": 40
+      },
+      {
+        "node_id": "CLS-Seattle-South",
+        "operational_status": "active",
+        "current_power_draw_kw": 36.8,
+        "max_power_limit_kw": 40.0,
+        "rack_space_available_u": 4
+      },
+      {
+        "node_id": "CLS-Tokyo-North",
+        "operational_status": "active",
+        "current_power_draw_kw": 12.0,
+        "max_power_limit_kw": 60.0,
+        "rack_space_available_u": 30
+      },
+      {
+        "node_id": "CLS-Tokyo-South-Backup",
+        "operational_status": "maintenance",
+        "current_power_draw_kw": 5.0,
+        "max_power_limit_kw": 20.0,
+        "rack_space_available_u": 0
+      }
+    ],
+    "links": [
+      {
+        "link_id": "PC5-Segment-C-FiberPair-1",
+        "source": "CLS-Seattle-South",
+        "target": "CLS-Tokyo-North",
+        "capacity_gbps": 5000,
+        "current_utilization": 0.8,
+        "length_km": 8200,
+        "spectrum_grid": "Fixed-50GHz",
+        "active_channels": 50,
+        "min_q_margin_db": 4.1,
+        "last_characterization_date": "2023-11-01"
+      },
+      {
+        "link_id": "PC5-Segment-C-FiberPair-2",
+        "source": "CLS-Seattle-South",
+        "target": "CLS-Tokyo-North",
+        "capacity_gbps": 4000,
+        "current_utilization": 1.0,
+        "length_km": 8200,
+        "spectrum_grid": "FlexGrid-Ready",
+        "active_channels": 40,
+        "min_q_margin_db": 5.5,
+        "last_characterization_date": "2015-04-10"
+      },
+      {
+        "link_id": "PC5-Segment-C-FiberPair-2-Legacy",
+        "source": "CLS-Seattle-Main",
+        "target": "CLS-Tokyo-North",
+        "capacity_gbps": 1000,
+        "current_utilization": 0.2,
+        "length_km": 8250,
+        "spectrum_grid": "Fixed-100GHz",
+        "active_channels": 10,
+        "min_q_margin_db": 2.2,
+        "last_characterization_date": "2010-01-15"
+      },
+      {
+        "link_id": "PC5-Segment-B-FiberPair-2",
+        "source": "CLS-Seattle-South",
+        "target": "CLS-Tokyo-North",
+        "capacity_gbps": 8000,
+        "current_utilization": 0.5,
+        "length_km": 4100,
+        "spectrum_grid": "FlexGrid-Ready",
+        "active_channels": 20,
+        "min_q_margin_db": 6.8,
+        "last_characterization_date": "2024-01-20"
+      },
+      {
+        "link_id": "Experimental-Link-C2",
+        "source": "CLS-Seattle-South",
+        "target": "CLS-Tokyo-North",
+        "capacity_gbps": 100,
+        "current_utilization": 0.0,
+        "length_km": 8200,
+        "spectrum_grid": "Super-Gaussian",
+        "active_channels": 1,
+        "min_q_margin_db": 1.5,
+        "last_characterization_date": "2024-02-14"
+      }
+    ],
+    "traffic_demand_matrix": {
+      "PC5-C-FP1-Demand": 4000,
+      "PC5-C-FP2-Target-Demand": 14500,
+      "PC5-B-FP2-Demand": 2000,
+      "Legacy-Transit": 500
+    },
+    "available_budget": 2500000,
+    "network_metrics": {
+      "avg_latency_ms": 64.2,
+      "congestion_index": 0.88,
+      "pre_fec_ber": 2.4e-05,
+      "total_system_power_kw": 85.0
+    }
+  }
+}

@@ -1,0 +1,172 @@
+{
+  "environment_name": "env_f06e8ef993b4",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: Based on the current internal state $s_t$ and the action $a_t$ submitted by the Agent, simulate the internal evolution of the Supplier Evaluation Scoring environment and predict the resulting observation $o_{{t+1}}$.\n- **Emphasis**: You are a simulator of the environment logic. You do not perform real-world evaluations or procurement; you calculate state transitions and generate the corresponding feedback (observations) that a real scoring system would return.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\n\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions between the World Model and the Agent must maintain strict context consistency. Every action must build upon the state resulting from the previous action to ensure the scoring history and supplier profiles remain coherent.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. This JSON must contain the following fields:\n- `\"name\"`: Specifies the name of the action function to execute.\n- The remaining fields are the parameter names and corresponding values required by that action function.\n\nExample Input:\n```json\n{{\n \"name\": \"update_metric\",\n \"arguments\": {{\n    \"supplier_id\": \"SUPP_001\",\n    \"metric_type\": \"quality_score\",\n    \"value\": 95\n  }}\n}}\n```\n\nYou must correctly parse this input, update the internal state $s_t$ to $s_{{t+1}}$, and generate the observation $o_{{t+1}}$.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nIf the Agent attempts to evaluate a non-existent supplier, provides scores outside of valid ranges (e.g., negative scores where only 0-100 is allowed), or uses an undefined action, return a structured error response: `{{\"error\": \"Reason for failure\"}}`. Do not fabricate successful responses for invalid inputs.\n\n##### Output Assembly\nFor every action function call, you must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition. \n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state $s_t$, the `new_state`, or any hidden variables. You must strictly hide the internal state structure from the output. Only expose information that is explicitly defined as an Observation in the action function definition.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to JSON for both inputs and outputs.\n- **Factuality**: Do not calculate scores based on imaginary data; use only the data provided in the current state.\n- **Consistency**: If a supplier's score is updated, subsequent 'get' or 'calculate' actions must reflect that change.\n- **Realism**: State transitions (e.g., calculating weighted averages) must follow standard mathematical logic for supplier performance evaluation.\n- **Quality**: Observations should be clear, concise, and structured.\n- **Encapsulation**: Never reveal the backend database structure or the full state JSON in the observation.\n{{initial_state}}: {{\n  \"suppliers\": {{\n    \"TH-007\": {{\n      \"name\": \"ThermoHaul Solutions\",\n      \"quality_score\": 45,\n      \"delivery_score\": 50,\n      \"cost_score\": 70,\n      \"total_score\": 54,\n      \"status\": \"Disqualified\"\n    }},\n    \"SKY-99\": {{\n      \"name\": \"SkyCold Air\",\n      \"quality_score\": 95,\n      \"delivery_score\": 92,\n      \"cost_score\": 88,\n      \"total_score\": 92,\n      \"status\": \"Preferred\"\n    }}\n  }},\n  \"evaluation_criteria\": {{\n    \"quality_weight\": 0.4,\n    \"delivery_weight\": 0.3,\n    \"cost_weight\": 0.3\n  }},\n  \"evaluation_cycle\": \"2024_Q1\",\n  \"audit_logs\": [\n    {{\n      \"supplier_id\": \"TH-007\",\n      \"timestamp\": \"2024-01-10T09:15:00Z\",\n      \"event\": \"Audit_Failure\",\n      \"details\": \"Failed seasonal thermal mapping for Dublin-Dubai lane; PQ reports missing for summer extremes.\"\n    }},\n    {{\n      \"supplier_id\": \"TH-007\",\n      \"timestamp\": \"2024-02-14T14:30:00Z\",\n      \"event\": \"CAPA_Verification\",\n      \"details\": \"CAPA accepted. New summer PQ reports validated. Update Quality_Score to 88 and Delivery_Score to 84 based on thermal duration capacity results.\"\n    }},\n    {{\n      \"supplier_id\": \"SKY-99\",\n      \"timestamp\": \"2024-01-05T11:00:00Z\",\n      \"event\": \"Annual_Review\",\n      \"details\": \"Maintained high performance across all lanes.\"\n    }}\n  ]\n}}\n{{state_descriptions}}: {{\n  \"suppliers\": \"A collection of supplier records indexed by unique Supplier IDs.\",\n  \"evaluation_criteria\": \"The weights assigned to different performance categories (e.g., quality, delivery, cost) used for final score calculation.\",\n  \"evaluation_cycle\": \"The current time period or round of scoring (e.g., '2023_Q4').\",\n  \"audit_logs\": \"A record of all modifications made to scores during the current session.\"\n}}\n{action_set_definitions}: {\n  \"search_suppliers\": {\n    \"description\": \"Search for suppliers based on specific attributes like status, audit failure reasons, or keywords.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"search_query\": {\n          \"type\": \"string\",\n          \"description\": \"The search term or criteria (e.g., 'failed thermal mapping audit', 'pending status').\"\n        }\n      },\n      \"required\": [\n        \"search_query\"\n      ]\n    },\n    \"example_output\": {\n      \"suppliers\": [\n        {\n          \"supplier_id\": \"SUP-992\",\n          \"name\": \"Arctic-Flow Logistics\",\n          \"current_status\": \"Pending\"\n        }\n      ]\n    }\n  },\n  \"get_audit_history\": {\n    \"description\": \"Retrieves the historical audit logs and performance metrics for a specific supplier.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"supplier_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the supplier.\"\n        }\n      },\n      \"required\": [\n        \"supplier_id\"\n      ]\n    },\n    \"example_output\": {\n      \"audit_entries\": [\n        {\n          \"timestamp\": \"2023-12-15T10:00:00Z\",\n          \"audit_type\": \"Seasonal Thermal Mapping\",\n          \"metrics\": {\n            \"quality_compliance\": 85,\n            \"delivery_reliability\": 92,\n            \"corrective_action_score\": 78\n          },\n          \"notes\": \"Failed initial mapping; corrective actions submitted.\"\n        }\n      ]\n    }\n  },\n  \"get_evaluation_criteria\": {\n    \"description\": \"Retrieves the current weights and scoring logic for supplier evaluation.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {}\n    },\n    \"example_output\": {\n      \"weights\": {\n        \"quality_compliance\": 0.4,\n        \"delivery_reliability\": 0.3,\n        \"corrective_action_score\": 0.3\n      }\n    }\n  },\n  \"update_supplier_profile\": {\n    \"description\": \"Updates a supplier's record with a new evaluation cycle, score, and designation.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"supplier_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the supplier.\"\n        },\n        \"evaluation_cycle\": {\n          \"type\": \"string\",\n          \"description\": \"The cycle label (e.g., '2024_Q1').\"\n        },\n        \"total_score\": {\n          \"type\": \"number\",\n          \"description\": \"The final recalculated score.\"\n        },\n        \"designation\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"Preferred\",\n            \"Approved with CAPA\",\n            \"Unqualified\"\n          ],\n          \"description\": \"The status based on compliance thresholds.\"\n        },\n        \"updated_metrics\": {\n          \"type\": \"object\",\n          \"description\": \"The metrics used for this update.\"\n        }\n      },\n      \"required\": [\n        \"supplier_id\",\n        \"evaluation_cycle\",\n        \"total_score\",\n        \"designation\"\n      ]\n    },\n    \"example_output\": {\n      \"success\": true,\n      \"message\": \"Supplier profile updated for 2024_Q1.\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "search_suppliers",
+      "description": "Search for suppliers based on specific attributes like status, audit failure reasons, or keywords.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "search_query": {
+            "type": "string",
+            "description": "The search term or criteria (e.g., 'failed thermal mapping audit', 'pending status')."
+          }
+        },
+        "required": [
+          "search_query"
+        ]
+      },
+      "example_output": {
+        "suppliers": [
+          {
+            "supplier_id": "SUP-992",
+            "name": "Arctic-Flow Logistics",
+            "current_status": "Pending"
+          }
+        ]
+      }
+    },
+    {
+      "name": "get_audit_history",
+      "description": "Retrieves the historical audit logs and performance metrics for a specific supplier.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "supplier_id": {
+            "type": "string",
+            "description": "The unique identifier for the supplier."
+          }
+        },
+        "required": [
+          "supplier_id"
+        ]
+      },
+      "example_output": {
+        "audit_entries": [
+          {
+            "timestamp": "2023-12-15T10:00:00Z",
+            "audit_type": "Seasonal Thermal Mapping",
+            "metrics": {
+              "quality_compliance": 85,
+              "delivery_reliability": 92,
+              "corrective_action_score": 78
+            },
+            "notes": "Failed initial mapping; corrective actions submitted."
+          }
+        ]
+      }
+    },
+    {
+      "name": "get_evaluation_criteria",
+      "description": "Retrieves the current weights and scoring logic for supplier evaluation.",
+      "parameters": {
+        "type": "object",
+        "properties": {}
+      },
+      "example_output": {
+        "weights": {
+          "quality_compliance": 0.4,
+          "delivery_reliability": 0.3,
+          "corrective_action_score": 0.3
+        }
+      }
+    },
+    {
+      "name": "update_supplier_profile",
+      "description": "Updates a supplier's record with a new evaluation cycle, score, and designation.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "supplier_id": {
+            "type": "string",
+            "description": "The unique identifier for the supplier."
+          },
+          "evaluation_cycle": {
+            "type": "string",
+            "description": "The cycle label (e.g., '2024_Q1')."
+          },
+          "total_score": {
+            "type": "number",
+            "description": "The final recalculated score."
+          },
+          "designation": {
+            "type": "string",
+            "enum": [
+              "Preferred",
+              "Approved with CAPA",
+              "Unqualified"
+            ],
+            "description": "The status based on compliance thresholds."
+          },
+          "updated_metrics": {
+            "type": "object",
+            "description": "The metrics used for this update."
+          }
+        },
+        "required": [
+          "supplier_id",
+          "evaluation_cycle",
+          "total_score",
+          "designation"
+        ]
+      },
+      "example_output": {
+        "success": true,
+        "message": "Supplier profile updated for 2024_Q1."
+      }
+    }
+  ],
+  "state_description": {
+    "suppliers": "A collection of supplier records indexed by unique Supplier IDs.",
+    "evaluation_criteria": "The weights assigned to different performance categories (e.g., quality, delivery, cost) used for final score calculation.",
+    "evaluation_cycle": "The current time period or round of scoring (e.g., '2023_Q4').",
+    "audit_logs": "A record of all modifications made to scores during the current session."
+  },
+  "task_initial_state": {
+    "suppliers": {
+      "TH-007": {
+        "name": "ThermoHaul Solutions",
+        "quality_score": 45,
+        "delivery_score": 50,
+        "cost_score": 70,
+        "total_score": 54,
+        "status": "Disqualified"
+      },
+      "SKY-99": {
+        "name": "SkyCold Air",
+        "quality_score": 95,
+        "delivery_score": 92,
+        "cost_score": 88,
+        "total_score": 92,
+        "status": "Preferred"
+      }
+    },
+    "evaluation_criteria": {
+      "quality_weight": 0.4,
+      "delivery_weight": 0.3,
+      "cost_weight": 0.3
+    },
+    "evaluation_cycle": "2024_Q1",
+    "audit_logs": [
+      {
+        "supplier_id": "TH-007",
+        "timestamp": "2024-01-10T09:15:00Z",
+        "event": "Audit_Failure",
+        "details": "Failed seasonal thermal mapping for Dublin-Dubai lane; PQ reports missing for summer extremes."
+      },
+      {
+        "supplier_id": "TH-007",
+        "timestamp": "2024-02-14T14:30:00Z",
+        "event": "CAPA_Verification",
+        "details": "CAPA accepted. New summer PQ reports validated. Update Quality_Score to 88 and Delivery_Score to 84 based on thermal duration capacity results."
+      },
+      {
+        "supplier_id": "SKY-99",
+        "timestamp": "2024-01-05T11:00:00Z",
+        "event": "Annual_Review",
+        "details": "Maintained high performance across all lanes."
+      }
+    ]
+  }
+}

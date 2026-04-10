@@ -1,0 +1,186 @@
+{
+  "environment_name": "env_7080813f0c09",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: Based on the current internal state $s_t$ of the Policy Underwriting Review process and the action $a_t$ executed by the Underwriting Agent, you are to simulate the environment's internal state evolution and predict the specific observation $o_{{t+1}}$ obtained by the Agent. \n- **Emphasis**: You are a simulator of the underwriting system. You do not perform real-world insurance operations; you maintain the logical consistency of the policy case file and provide realistic feedback based on underwriting rules and historical data.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nYou must maintain strict context consistency throughout the session. Every decision, note added, or risk factor flagged must persist in the internal state and influence subsequent observations. The history of the underwriting case is the ground truth for the simulation.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object containing:\n- `\"name\"`: Specifies the name of the action function (e.g., \"retrieve_medical_records\", \"flag_risk\", \"finalize_decision\").\n- Arguments: Parameters required by that action function.\n\nYou must parse these JSON inputs, update the internal state $s_t$ to $s_{{t+1}}$ based on the logic of the underwriting process, and generate the resulting observation.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\n- If an Agent attempts to approve a policy with pending critical documents, return a structured error: `{{\"error\": \"Incomplete documentation for approval\"}}`.\n- For undefined actions or invalid parameters (e.g., invalid Policy ID format), return: `{{\"error\": \"Action/Parameter invalid\"}}`.\n- Do not fabricate data; if a record does not exist in the state, report its absence.\n\n##### Output Assembly\nFor every action call, you must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition. \n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state $s_t$, the `new_state`, or any internal state tracking variables. You are the environment; the Agent only sees what the system interface returns (the Observation). Do not output the state update process.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to JSON for all observations.\n- **Factuality**: Simulate realistic underwriting outcomes (e.g., medical history affecting risk scores).\n- **Consistency**: If a policy is marked as 'High Risk' in one step, it must remain so unless a specific action (like 'verify_mitigating_factor') changes it.\n- **Realism**: Simulate system latency or data retrieval gaps if the action definition implies it.\n- **Quality**: Ensure all generated observations are professional and align with insurance industry standards.\n- **Encapsulation**: Under no circumstances should the Agent see the internal `state_descriptions` or the raw `initial_state` in the output response.\n{{initial_state}}: {{\n  \"policy_id\": \"POL-5522-XP\",\n  \"review_status\": \"IN_REVIEW\",\n  \"applicant_profile\": {{\n    \"age\": 15,\n    \"occupation\": \"Industrial Freight & Hazmat\",\n    \"medical_history\": [\n      \"Historical reserve deficiency noted\",\n      \"TPA transition in 2022 caused data fragmentation\"\n    ]\n  }},\n  \"risk_score\": 10,\n  \"document_checklist\": {{\n    \"ID_Verified\": true,\n    \"Medical_Exam\": true,\n    \"Income_Proof\": true,\n    \"Data_Integrity_Verified\": false\n  }},\n  \"internal_logs\": [\n    \"2024-02-01: SYSTEM ALERT - Data Source Conflict: TPA change detected. Historical development triangle is currently severed between AY 2021 and AY 2022.\",\n    \"2024-02-01: AY 2021 Incurred (Legacy TPA): $200,000 at 12mo; $320,000 at 24mo.\",\n    \"2024-02-01: AY 2022 Incurred (Current TPA): $150,000 at 12mo; $255,000 at 24mo.\",\n    \"2024-02-02: SYSTEM NOTE: Policy status updates are locked until Data_Integrity_Verified is marked TRUE via the 'normalize_loss_records' process.\",\n    \"2024-02-02: Base Risk Score for Hazmat class is 10. Industry benchmark Link Ratio is 1.10.\"\n  ]\n}}\n{{state_descriptions}}: {{\n  \"policy_id\": \"Unique identifier for the insurance policy application\",\n  \"review_status\": \"Current stage of the underwriting process (e.g., PENDING, IN_REVIEW, REJECTED, APPROVED)\",\n  \"applicant_profile\": \"Structured data containing applicant age, occupation, and basic medical history\",\n  \"risk_score\": \"Numerical risk assessment value calculated by the system (0-100)\",\n  \"document_checklist\": \"Status of required documents (e.g., ID_Verified, Medical_Exam, Income_Proof)\",\n  \"internal_logs\": \"List of internal timestamps and actions performed on this case\"\n}}\n{action_set_definitions}: {\n  \"get_policy_details\": {\n    \"description\": \"Retrieves the current state of a specific policy, including the base risk score, current status, and document checklist.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"policy_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the policy (e.g., POL-5522-XP).\"\n        }\n      },\n      \"required\": [\n        \"policy_id\"\n      ]\n    },\n    \"example_output\": {\n      \"policy_id\": \"POL-5522-XP\",\n      \"risk_score\": 45,\n      \"review_status\": \"PENDING\",\n      \"document_checklist\": [\n        \"ID_Verified\",\n        \"Financial_Statement_Received\"\n      ]\n    }\n  },\n  \"retrieve_tpa_records\": {\n    \"description\": \"Fetches the loss development factors and link ratios from the Third Party Administrator (TPA) database for a specific year.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"policy_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the policy.\"\n        },\n        \"year\": {\n          \"type\": \"integer\",\n          \"description\": \"The historical year to retrieve records for (e.g., 2021).\"\n        }\n      },\n      \"required\": [\n        \"policy_id\",\n        \"year\"\n      ]\n    },\n    \"example_output\": {\n      \"year\": 2021,\n      \"calculated_link_ratio\": 1.35\n    }\n  },\n  \"update_risk_score\": {\n    \"description\": \"Updates the internal numerical risk assessment value for the policy application.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"policy_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the policy.\"\n        },\n        \"new_score\": {\n          \"type\": \"number\",\n          \"description\": \"The final calculated risk score.\"\n        }\n      },\n      \"required\": [\n        \"policy_id\",\n        \"new_score\"\n      ]\n    },\n    \"example_output\": {\n      \"success\": true,\n      \"updated_score\": 85.5\n    }\n  },\n  \"validate_system_integrity\": {\n    \"description\": \"Checks if all system-enforced data integrity requirements and document checklists are satisfied for a policy before allowing a status change.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"policy_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the policy.\"\n        }\n      },\n      \"required\": [\n        \"policy_id\"\n      ]\n    },\n    \"example_output\": {\n      \"integrity_satisfied\": false,\n      \"missing_requirements\": [\n        \"Data_Integrity_Verified\"\n      ]\n    }\n  },\n  \"normalize_loss_records\": {\n    \"description\": \"Standardizes disjointed TPA records to ensure consistency and sets the 'Data_Integrity_Verified' requirement to true.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"policy_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the policy.\"\n        }\n      },\n      \"required\": [\n        \"policy_id\"\n      ]\n    },\n    \"example_output\": {\n      \"success\": true,\n      \"message\": \"Data_Integrity_Verified has been set to true.\"\n    }\n  },\n  \"set_policy_status\": {\n    \"description\": \"Updates the final review status of the policy (e.g., APPROVED, REJECTED).\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"policy_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the policy.\"\n        },\n        \"status\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"APPROVED\",\n            \"REJECTED\"\n          ],\n          \"description\": \"The final underwriting decision.\"\n        }\n      },\n      \"required\": [\n        \"policy_id\",\n        \"status\"\n      ]\n    },\n    \"example_output\": {\n      \"policy_id\": \"POL-5522-XP\",\n      \"final_status\": \"REJECTED\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_policy_details",
+      "description": "Retrieves the current state of a specific policy, including the base risk score, current status, and document checklist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "policy_id": {
+            "type": "string",
+            "description": "The unique identifier for the policy (e.g., POL-5522-XP)."
+          }
+        },
+        "required": [
+          "policy_id"
+        ]
+      },
+      "example_output": {
+        "policy_id": "POL-5522-XP",
+        "risk_score": 45,
+        "review_status": "PENDING",
+        "document_checklist": [
+          "ID_Verified",
+          "Financial_Statement_Received"
+        ]
+      }
+    },
+    {
+      "name": "retrieve_tpa_records",
+      "description": "Fetches the loss development factors and link ratios from the Third Party Administrator (TPA) database for a specific year.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "policy_id": {
+            "type": "string",
+            "description": "The unique identifier for the policy."
+          },
+          "year": {
+            "type": "integer",
+            "description": "The historical year to retrieve records for (e.g., 2021)."
+          }
+        },
+        "required": [
+          "policy_id",
+          "year"
+        ]
+      },
+      "example_output": {
+        "year": 2021,
+        "calculated_link_ratio": 1.35
+      }
+    },
+    {
+      "name": "update_risk_score",
+      "description": "Updates the internal numerical risk assessment value for the policy application.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "policy_id": {
+            "type": "string",
+            "description": "The unique identifier for the policy."
+          },
+          "new_score": {
+            "type": "number",
+            "description": "The final calculated risk score."
+          }
+        },
+        "required": [
+          "policy_id",
+          "new_score"
+        ]
+      },
+      "example_output": {
+        "success": true,
+        "updated_score": 85.5
+      }
+    },
+    {
+      "name": "validate_system_integrity",
+      "description": "Checks if all system-enforced data integrity requirements and document checklists are satisfied for a policy before allowing a status change.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "policy_id": {
+            "type": "string",
+            "description": "The unique identifier for the policy."
+          }
+        },
+        "required": [
+          "policy_id"
+        ]
+      },
+      "example_output": {
+        "integrity_satisfied": false,
+        "missing_requirements": [
+          "Data_Integrity_Verified"
+        ]
+      }
+    },
+    {
+      "name": "normalize_loss_records",
+      "description": "Standardizes disjointed TPA records to ensure consistency and sets the 'Data_Integrity_Verified' requirement to true.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "policy_id": {
+            "type": "string",
+            "description": "The unique identifier for the policy."
+          }
+        },
+        "required": [
+          "policy_id"
+        ]
+      },
+      "example_output": {
+        "success": true,
+        "message": "Data_Integrity_Verified has been set to true."
+      }
+    },
+    {
+      "name": "set_policy_status",
+      "description": "Updates the final review status of the policy (e.g., APPROVED, REJECTED).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "policy_id": {
+            "type": "string",
+            "description": "The unique identifier for the policy."
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "APPROVED",
+              "REJECTED"
+            ],
+            "description": "The final underwriting decision."
+          }
+        },
+        "required": [
+          "policy_id",
+          "status"
+        ]
+      },
+      "example_output": {
+        "policy_id": "POL-5522-XP",
+        "final_status": "REJECTED"
+      }
+    }
+  ],
+  "state_description": {
+    "policy_id": "Unique identifier for the insurance policy application",
+    "review_status": "Current stage of the underwriting process (e.g., PENDING, IN_REVIEW, REJECTED, APPROVED)",
+    "applicant_profile": "Structured data containing applicant age, occupation, and basic medical history",
+    "risk_score": "Numerical risk assessment value calculated by the system (0-100)",
+    "document_checklist": "Status of required documents (e.g., ID_Verified, Medical_Exam, Income_Proof)",
+    "internal_logs": "List of internal timestamps and actions performed on this case"
+  },
+  "task_initial_state": {
+    "policy_id": "POL-5522-XP",
+    "review_status": "IN_REVIEW",
+    "applicant_profile": {
+      "age": 15,
+      "occupation": "Industrial Freight & Hazmat",
+      "medical_history": [
+        "Historical reserve deficiency noted",
+        "TPA transition in 2022 caused data fragmentation"
+      ]
+    },
+    "risk_score": 10,
+    "document_checklist": {
+      "ID_Verified": true,
+      "Medical_Exam": true,
+      "Income_Proof": true,
+      "Data_Integrity_Verified": false
+    },
+    "internal_logs": [
+      "2024-02-01: SYSTEM ALERT - Data Source Conflict: TPA change detected. Historical development triangle is currently severed between AY 2021 and AY 2022.",
+      "2024-02-01: AY 2021 Incurred (Legacy TPA): $200,000 at 12mo; $320,000 at 24mo.",
+      "2024-02-01: AY 2022 Incurred (Current TPA): $150,000 at 12mo; $255,000 at 24mo.",
+      "2024-02-02: SYSTEM NOTE: Policy status updates are locked until Data_Integrity_Verified is marked TRUE via the 'normalize_loss_records' process.",
+      "2024-02-02: Base Risk Score for Hazmat class is 10. Industry benchmark Link Ratio is 1.10."
+    ]
+  }
+}

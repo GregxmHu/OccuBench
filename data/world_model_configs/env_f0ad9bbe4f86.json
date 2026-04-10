@@ -1,0 +1,224 @@
+{
+  "environment_name": "env_f0ad9bbe4f86",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: Act as the authoritative simulation engine for a Permit Application Processing environment. Based on the current internal state $s_t$ and the action $a_t$ received from the Agent, you will simulate the internal evolution of the permit system and predict the resulting observation $o_{{t+1}}$.\n- **Emphasis**: You are the environment itself. You do not provide advice or execute real-world legal actions; you only calculate and return the logical consequences of actions within this simulated permit processing workflow.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nYou must maintain perfect continuity of the permit database, application statuses, and processing history throughout the interaction. Every action must build upon the state resulting from the previous action.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. You must parse this JSON to determine the transition logic. The input format is:\n- `\"name\"`: The specific action function (e.g., approve_permit, update_applicant_info).\n- `\"arguments\"`: A dictionary of parameters required by that function.\n\nExample Input:\n```json\n{{\n \"name\": \"review_application\",\n \"arguments\": {{\n    \"application_id\": \"PERMIT-2024-001\",\n    \"decision\": \"approved\",\n    \"comment\": \"Documentation verified.\"\n  }}\n}}\n```\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\n- If an Agent attempts to modify a permit ID that does not exist, return: `{{\"error\": \"Application ID not found\"}}`.\n- If an Agent submits a transition that violates business logic (e.g., approving an already rejected permit), return a logic error message.\n- For malformed JSON or missing required arguments, return structured error details. Do not invent data to fill gaps.\n\n##### Output Assembly\nFor every action executed, you must return a structured JSON object containing **ONLY** the observation fields defined in the action function's return schema. \n\n**CRITICAL CONSTRAINT**: You must **NOT** output the full internal state `s_t`, the updated state, or any hidden system counters. Only return the specific information the Agent is supposed to 'see' as a result of their action.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to JSON for all observations.\n- **Factuality**: Simulations must be grounded in the provided state and action definitions.\n- **Consistency**: If a permit status is changed to 'Closed', subsequent queries must reflect this state unless another action re-opens it.\n- **Realism**: Simulate realistic system behavior (e.g., timestamps should advance, IDs should be unique).\n- **Quality**: Ensure error messages are helpful and structural integrity is maintained.\n- **Encapsulation**: The Agent must not see the underlying JSON state structure in its entirety; they only receive the 'observation' (return value) of their function call.\n{{initial_state}}: {{\n  \"applications\": {{\n    \"APP-2025-001\": {{\n      \"applicant\": \"Cornerstone Logistics\",\n      \"type\": \"Standard Warehouse\",\n      \"status\": \"In Review\",\n      \"submission_date\": \"2025-02-05T10:00:00Z\",\n      \"details\": {{\n        \"materials\": \"Class IV Commodities\",\n        \"occupancy\": \"S-1\"\n      }}\n    }},\n    \"APP-2025-042\": {{\n      \"applicant\": \"Apex Battery Manufacturing\",\n      \"type\": \"HazMat Storage & Production\",\n      \"status\": \"Awaiting FPE Review\",\n      \"submission_date\": \"2025-01-10T08:30:00Z\",\n      \"details\": {{\n        \"inventory\": [\n          {{\n            \"chemical\": \"Silane Gas\",\n            \"hazard\": \"Pyrophoric\",\n            \"quantity\": 100,\n            \"unit\": \"cu_ft\",\n            \"location\": \"Interior Production Floor\"\n          }},\n          {{\n            \"chemical\": \"N-Methyl-2-pyrrolidone (NMP)\",\n            \"hazard\": \"Class IIIB Combustible Liquid\",\n            \"quantity\": 5000,\n            \"unit\": \"gallons\",\n            \"largest_vessel\": 1000\n          }}\n        ],\n        \"engineering\": {{\n          \"containment_sump_capacity\": 1050,\n          \"current_occupancy\": \"F-1\",\n          \"sprinkler_type\": \"Ordinary Hazard\"\n        }}\n      }}\n    }},\n    \"APP-2025-089\": {{\n      \"applicant\": \"Bio-Labs Inc\",\n      \"type\": \"Research Laboratory\",\n      \"status\": \"Intake\",\n      \"submission_date\": \"2025-02-12T14:00:00Z\",\n      \"details\": {{\n        \"materials\": \"Biological Agents Level 2\",\n        \"occupancy\": \"B\"\n      }}\n    }}\n  }},\n  \"processing_queue\": [\n    \"APP-2025-042\",\n    \"APP-2025-001\",\n    \"APP-2025-089\"\n  ],\n  \"officer_metadata\": {{\n    \"officer_id\": \"OFFICER_FPE_SHIELD\",\n    \"role\": \"Chief Fire Protection Engineer\",\n    \"specialization\": \"Industrial Hazards\"\n  }},\n  \"system_clock\": \"2025-02-15T09:00:00Z\"\n}}\n{{state_descriptions}}: {{\n  \"applications\": \"A dictionary mapping application_ids to their detailed records (applicant, type, status, submission_date).\",\n  \"processing_queue\": \"A list of application_ids currently awaiting review, ordered by priority.\",\n  \"officer_metadata\": \"Information about the current logged-in processing officer and their permissions.\",\n  \"system_clock\": \"The current simulated ISO 8601 timestamp of the environment.\"\n}}\n{action_set_definitions}: {\n  \"get_system_context\": {\n    \"description\": \"Retrieves the current system time (ISO 8601) and the metadata of the processing officer currently logged in.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"system_clock\": \"2023-10-27T10:00:00Z\",\n      \"officer_id\": \"OFFICER_772\",\n      \"permissions\": [\n        \"read\",\n        \"write\",\n        \"approve_hazardous\"\n      ]\n    }\n  },\n  \"get_application_queue\": {\n    \"description\": \"Retrieves the list of application IDs currently awaiting review in the processing queue.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"queue\": [\n        \"APP-001\",\n        \"APP-402\",\n        \"APP-981\"\n      ]\n    }\n  },\n  \"get_application_details\": {\n    \"description\": \"Retrieves the full technical and administrative details of a specific permit application.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"application_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the permit application.\"\n        }\n      },\n      \"required\": [\n        \"application_id\"\n      ]\n    },\n    \"example_output\": {\n      \"applicant\": \"VoltTech Energy\",\n      \"type\": \"lithium-ion battery plant\",\n      \"submission_date\": \"2023-08-15T09:00:00Z\",\n      \"materials_inventory\": [\n        {\n          \"chemical\": \"Lithium Hexafluorophosphate\",\n          \"quantity\": 5000,\n          \"unit\": \"lbs\",\n          \"hazard\": \"reactive\"\n        }\n      ],\n      \"solvent_storage\": {\n        \"volume\": 1000,\n        \"containment_capacity\": 1050\n      },\n      \"gas_cabinets\": [\n        {\n          \"id\": \"GC-1\",\n          \"gas\": \"Silane\",\n          \"placement\": \"interior_center\"\n        }\n      ]\n    }\n  },\n  \"get_regulatory_standards\": {\n    \"description\": \"Retrieves statutory limit tables, including Maximum Allowable Quantity (MAQ) tables and NFPA 55 safety requirements.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"standard_category\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"MAQ_TABLES\",\n            \"NFPA_55_GAS\",\n            \"CONTAINMENT_RATIOS\"\n          ],\n          \"description\": \"The specific regulatory category to retrieve.\"\n        }\n      },\n      \"required\": [\n        \"standard_category\"\n      ]\n    },\n    \"example_output\": {\n      \"standard_name\": \"MAQ_TABLES\",\n      \"data\": {\n        \"Hazardous_Class_1\": {\n          \"max_qty\": 500,\n          \"unit\": \"lbs\"\n        },\n        \"Pyrophoric_Exterior_Requirement\": \"Must be within 5ft of exterior wall\"\n      }\n    }\n  },\n  \"finalize_application_review\": {\n    \"description\": \"Updates the application with a final regulatory status, documents specific code violations, and closes the review process.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"application_id\": {\n          \"type\": \"string\",\n          \"description\": \"The application ID being finalized.\"\n        },\n        \"status\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"APPROVED\",\n            \"DENIED\",\n            \"NON_COMPLIANT_EXPIRED\"\n          ],\n          \"description\": \"The final regulatory determination.\"\n        },\n        \"violations\": {\n          \"type\": \"array\",\n          \"items\": {\n            \"type\": \"string\"\n          },\n          \"description\": \"A list of specific code sections or safety violations identified.\"\n        },\n        \"case_notes\": {\n          \"type\": \"string\",\n          \"description\": \"Detailed justification for the status, including technical evaluation results.\"\n        }\n      },\n      \"required\": [\n        \"application_id\",\n        \"status\",\n        \"violations\",\n        \"case_notes\"\n      ]\n    },\n    \"example_output\": {\n      \"transaction_id\": \"TXN_55422\",\n      \"timestamp\": \"2023-10-27T10:15:00Z\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_system_context",
+      "description": "Retrieves the current system time (ISO 8601) and the metadata of the processing officer currently logged in.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "system_clock": "2023-10-27T10:00:00Z",
+        "officer_id": "OFFICER_772",
+        "permissions": [
+          "read",
+          "write",
+          "approve_hazardous"
+        ]
+      }
+    },
+    {
+      "name": "get_application_queue",
+      "description": "Retrieves the list of application IDs currently awaiting review in the processing queue.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "queue": [
+          "APP-001",
+          "APP-402",
+          "APP-981"
+        ]
+      }
+    },
+    {
+      "name": "get_application_details",
+      "description": "Retrieves the full technical and administrative details of a specific permit application.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "application_id": {
+            "type": "string",
+            "description": "The unique identifier for the permit application."
+          }
+        },
+        "required": [
+          "application_id"
+        ]
+      },
+      "example_output": {
+        "applicant": "VoltTech Energy",
+        "type": "lithium-ion battery plant",
+        "submission_date": "2023-08-15T09:00:00Z",
+        "materials_inventory": [
+          {
+            "chemical": "Lithium Hexafluorophosphate",
+            "quantity": 5000,
+            "unit": "lbs",
+            "hazard": "reactive"
+          }
+        ],
+        "solvent_storage": {
+          "volume": 1000,
+          "containment_capacity": 1050
+        },
+        "gas_cabinets": [
+          {
+            "id": "GC-1",
+            "gas": "Silane",
+            "placement": "interior_center"
+          }
+        ]
+      }
+    },
+    {
+      "name": "get_regulatory_standards",
+      "description": "Retrieves statutory limit tables, including Maximum Allowable Quantity (MAQ) tables and NFPA 55 safety requirements.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "standard_category": {
+            "type": "string",
+            "enum": [
+              "MAQ_TABLES",
+              "NFPA_55_GAS",
+              "CONTAINMENT_RATIOS"
+            ],
+            "description": "The specific regulatory category to retrieve."
+          }
+        },
+        "required": [
+          "standard_category"
+        ]
+      },
+      "example_output": {
+        "standard_name": "MAQ_TABLES",
+        "data": {
+          "Hazardous_Class_1": {
+            "max_qty": 500,
+            "unit": "lbs"
+          },
+          "Pyrophoric_Exterior_Requirement": "Must be within 5ft of exterior wall"
+        }
+      }
+    },
+    {
+      "name": "finalize_application_review",
+      "description": "Updates the application with a final regulatory status, documents specific code violations, and closes the review process.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "application_id": {
+            "type": "string",
+            "description": "The application ID being finalized."
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "APPROVED",
+              "DENIED",
+              "NON_COMPLIANT_EXPIRED"
+            ],
+            "description": "The final regulatory determination."
+          },
+          "violations": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "A list of specific code sections or safety violations identified."
+          },
+          "case_notes": {
+            "type": "string",
+            "description": "Detailed justification for the status, including technical evaluation results."
+          }
+        },
+        "required": [
+          "application_id",
+          "status",
+          "violations",
+          "case_notes"
+        ]
+      },
+      "example_output": {
+        "transaction_id": "TXN_55422",
+        "timestamp": "2023-10-27T10:15:00Z"
+      }
+    }
+  ],
+  "state_description": {
+    "applications": "A dictionary mapping application_ids to their detailed records (applicant, type, status, submission_date).",
+    "processing_queue": "A list of application_ids currently awaiting review, ordered by priority.",
+    "officer_metadata": "Information about the current logged-in processing officer and their permissions.",
+    "system_clock": "The current simulated ISO 8601 timestamp of the environment."
+  },
+  "task_initial_state": {
+    "applications": {
+      "APP-2025-001": {
+        "applicant": "Cornerstone Logistics",
+        "type": "Standard Warehouse",
+        "status": "In Review",
+        "submission_date": "2025-02-05T10:00:00Z",
+        "details": {
+          "materials": "Class IV Commodities",
+          "occupancy": "S-1"
+        }
+      },
+      "APP-2025-042": {
+        "applicant": "Apex Battery Manufacturing",
+        "type": "HazMat Storage & Production",
+        "status": "Awaiting FPE Review",
+        "submission_date": "2025-01-10T08:30:00Z",
+        "details": {
+          "inventory": [
+            {
+              "chemical": "Silane Gas",
+              "hazard": "Pyrophoric",
+              "quantity": 100,
+              "unit": "cu_ft",
+              "location": "Interior Production Floor"
+            },
+            {
+              "chemical": "N-Methyl-2-pyrrolidone (NMP)",
+              "hazard": "Class IIIB Combustible Liquid",
+              "quantity": 5000,
+              "unit": "gallons",
+              "largest_vessel": 1000
+            }
+          ],
+          "engineering": {
+            "containment_sump_capacity": 1050,
+            "current_occupancy": "F-1",
+            "sprinkler_type": "Ordinary Hazard"
+          }
+        }
+      },
+      "APP-2025-089": {
+        "applicant": "Bio-Labs Inc",
+        "type": "Research Laboratory",
+        "status": "Intake",
+        "submission_date": "2025-02-12T14:00:00Z",
+        "details": {
+          "materials": "Biological Agents Level 2",
+          "occupancy": "B"
+        }
+      }
+    },
+    "processing_queue": [
+      "APP-2025-042",
+      "APP-2025-001",
+      "APP-2025-089"
+    ],
+    "officer_metadata": {
+      "officer_id": "OFFICER_FPE_SHIELD",
+      "role": "Chief Fire Protection Engineer",
+      "specialization": "Industrial Hazards"
+    },
+    "system_clock": "2025-02-15T09:00:00Z"
+  }
+}

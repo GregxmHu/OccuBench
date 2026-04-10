@@ -1,0 +1,140 @@
+{
+  "environment_name": "env_6b26ddd66686",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM) for Power Grid Load Balancing.\n- **Core Objective**: Based on the current power grid state $s_t$ and the control action $a_t$ taken by the Agent (Grid Operator), simulate the physical evolution of the grid and predict the resulting observation $o_{{t+1}}$ and sensor readings.\n- **Emphasis**: You are a simulator. You do not execute real-world grid adjustments. You calculate internal state transitions (e.g., frequency fluctuations, load changes, voltage stability) and generate the data the Agent would see on their monitoring console.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nYou must maintain a consistent timeline. The power grid's status at time $t+1$ depends strictly on the state at time $t$, the action taken, and the inherent physics of load/supply balancing. Ensure that cumulative variables (like battery storage levels or thermal constraints) track accurately over time.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. You must parse the `\"name\"` and `\"arguments\"` to determine the effect on the grid. \n\nExample Input:\n```json\n{{\n \"name\": \"adjust_generator_output\",\n \"arguments\": {{\n    \"unit_id\": \"G-01\",\n    \"target_mw\": 450.0\n  }}\n}}\n```\n\n#### Environment Behavior Modeling\n- **Grid Physics**: If total supply exceeds demand, simulate an increase in system frequency; if demand exceeds supply, simulate a frequency drop. Model the ramping constraints of different generator types (e.g., gas turbines vs. nuclear).\n- **Error Handling & Edge Cases**: If an action attempts to exceed a generator's maximum capacity, violate transmission line limits, or use an unknown `unit_id`, return a structured error: `{{\"error\": \"Description of constraint violation\"}}`. Do not simulate successful outcomes for impossible physical actions.\n- **Output Assembly**: For every action, return ONLY the specific fields defined in that action's return schema (the Observation). \n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `$s_{{t+1}}$` or any hidden variables like global demand coefficients. Only return the specific observation data requested by the action function. Do not display \"State updated to...\" text.\n\n### 4. Key Principles\n- **Format**: Strictly JSON for all inputs and outputs.\n- **Factuality**: Use realistic electrical engineering logic (e.g., Ohm's law, power flow principles) within the simulation.\n- **Consistency**: Frequency and voltage must not jump erratically without a physical cause.\n- **Realism**: Include stochastic elements if appropriate for the scenario (e.g., minor fluctuations in consumer demand).\n- **Encapsulation**: The Agent must never see the underlying `initial_state` JSON structure in the output; they only see the results of their specific queries/actions.\n{{initial_state}}: {{\n  \"system_frequency\": 59.78,\n  \"total_consumer_load\": 5500.0,\n  \"generation_units\": {{\n    \"G_Thermal_Base\": {{\n      \"output_mw\": 1400,\n      \"max_capacity\": 2000,\n      \"type\": \"thermal\"\n    }},\n    \"G_Hydro_Fast\": {{\n      \"output_mw\": 600,\n      \"max_capacity\": 1000,\n      \"type\": \"hydro\"\n    }},\n    \"HVDC_Intertie\": {{\n      \"output_mw\": 2000,\n      \"max_capacity\": 3200,\n      \"type\": \"LCC_HVDC\"\n    }}\n  }},\n  \"energy_storage_soc\": 0.45,\n  \"grid_stability_margin\": 0.87\n}}\n{{state_descriptions}}: {{\n  \"system_frequency\": \"The current frequency of the grid in Hz (nominal 60.0 or 50.0).\",\n  \"total_consumer_load\": \"The instantaneous total demand from the grid in Megawatts (MW).\",\n  \"generation_units\": \"A map of generator IDs to their current output and status.\",\n  \"energy_storage_soc\": \"State of Charge of grid-scale batteries (0.0 to 1.0).\",\n  \"grid_stability_margin\": \"A safety metric indicating how close the system is to a blackout (0.0 to 1.0).\"\n}}\n{action_set_definitions}: {\n  \"get_grid_telemetry\": {\n    \"description\": \"Retrieves high-level grid metrics including current frequency, total consumer load, and the system-wide stability margin.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"system_frequency\": 58.2,\n      \"total_consumer_load\": 12500.0,\n      \"grid_stability_margin\": 0.85,\n      \"energy_storage_soc\": 0.45\n    }\n  },\n  \"get_resource_status\": {\n    \"description\": \"Provides a detailed list of all local generation units and the HVDC intertie, including their current MW output and maximum rated capacity.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"generation_units\": [\n        {\n          \"id\": \"GEN_01\",\n          \"current_mw\": 450,\n          \"max_mw\": 600,\n          \"status\": \"online\"\n        }\n      ],\n      \"hvdc_intertie\": {\n        \"current_mw\": 2000,\n        \"max_thermal_capacity_mw\": 3200\n      }\n    }\n  },\n  \"update_hvdc_injection\": {\n    \"description\": \"Adjusts the power flow setpoint for the HVDC_Intertie. Note: Rapid increases consume reactive power and can lower the stability margin.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"target_mw\": {\n          \"type\": \"number\",\n          \"description\": \"The desired power injection in Megawatts (limit 3200 MW).\"\n        }\n      },\n      \"required\": [\n        \"target_mw\"\n      ]\n    },\n    \"example_output\": {\n      \"new_hvdc_mw\": 2500.0,\n      \"status\": \"success\"\n    }\n  },\n  \"update_generator_output\": {\n    \"description\": \"Adjusts the power output of a specific local generation unit.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"generator_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique ID of the generator to adjust.\"\n        },\n        \"target_mw\": {\n          \"type\": \"number\",\n          \"description\": \"The desired power output in Megawatts.\"\n        }\n      },\n      \"required\": [\n        \"generator_id\",\n        \"target_mw\"\n      ]\n    },\n    \"example_output\": {\n      \"generator_id\": \"GEN_01\",\n      \"new_output_mw\": 500.0,\n      \"status\": \"success\"\n    }\n  },\n  \"update_battery_output\": {\n    \"description\": \"Commands the grid-scale battery storage to charge or discharge. Positive values indicate discharging (injecting power into the grid). Useful for improving stability margins.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"target_mw\": {\n          \"type\": \"number\",\n          \"description\": \"The power to discharge (positive) or charge (negative) in Megawatts.\"\n        }\n      },\n      \"required\": [\n        \"target_mw\"\n      ]\n    },\n    \"example_output\": {\n      \"battery_output_mw\": 150.0,\n      \"energy_storage_soc\": 0.42\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_grid_telemetry",
+      "description": "Retrieves high-level grid metrics including current frequency, total consumer load, and the system-wide stability margin.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "system_frequency": 58.2,
+        "total_consumer_load": 12500.0,
+        "grid_stability_margin": 0.85,
+        "energy_storage_soc": 0.45
+      }
+    },
+    {
+      "name": "get_resource_status",
+      "description": "Provides a detailed list of all local generation units and the HVDC intertie, including their current MW output and maximum rated capacity.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "generation_units": [
+          {
+            "id": "GEN_01",
+            "current_mw": 450,
+            "max_mw": 600,
+            "status": "online"
+          }
+        ],
+        "hvdc_intertie": {
+          "current_mw": 2000,
+          "max_thermal_capacity_mw": 3200
+        }
+      }
+    },
+    {
+      "name": "update_hvdc_injection",
+      "description": "Adjusts the power flow setpoint for the HVDC_Intertie. Note: Rapid increases consume reactive power and can lower the stability margin.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "target_mw": {
+            "type": "number",
+            "description": "The desired power injection in Megawatts (limit 3200 MW)."
+          }
+        },
+        "required": [
+          "target_mw"
+        ]
+      },
+      "example_output": {
+        "new_hvdc_mw": 2500.0,
+        "status": "success"
+      }
+    },
+    {
+      "name": "update_generator_output",
+      "description": "Adjusts the power output of a specific local generation unit.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "generator_id": {
+            "type": "string",
+            "description": "The unique ID of the generator to adjust."
+          },
+          "target_mw": {
+            "type": "number",
+            "description": "The desired power output in Megawatts."
+          }
+        },
+        "required": [
+          "generator_id",
+          "target_mw"
+        ]
+      },
+      "example_output": {
+        "generator_id": "GEN_01",
+        "new_output_mw": 500.0,
+        "status": "success"
+      }
+    },
+    {
+      "name": "update_battery_output",
+      "description": "Commands the grid-scale battery storage to charge or discharge. Positive values indicate discharging (injecting power into the grid). Useful for improving stability margins.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "target_mw": {
+            "type": "number",
+            "description": "The power to discharge (positive) or charge (negative) in Megawatts."
+          }
+        },
+        "required": [
+          "target_mw"
+        ]
+      },
+      "example_output": {
+        "battery_output_mw": 150.0,
+        "energy_storage_soc": 0.42
+      }
+    }
+  ],
+  "state_description": {
+    "system_frequency": "The current frequency of the grid in Hz (nominal 60.0 or 50.0).",
+    "total_consumer_load": "The instantaneous total demand from the grid in Megawatts (MW).",
+    "generation_units": "A map of generator IDs to their current output and status.",
+    "energy_storage_soc": "State of Charge of grid-scale batteries (0.0 to 1.0).",
+    "grid_stability_margin": "A safety metric indicating how close the system is to a blackout (0.0 to 1.0)."
+  },
+  "task_initial_state": {
+    "system_frequency": 59.78,
+    "total_consumer_load": 5500.0,
+    "generation_units": {
+      "G_Thermal_Base": {
+        "output_mw": 1400,
+        "max_capacity": 2000,
+        "type": "thermal"
+      },
+      "G_Hydro_Fast": {
+        "output_mw": 600,
+        "max_capacity": 1000,
+        "type": "hydro"
+      },
+      "HVDC_Intertie": {
+        "output_mw": 2000,
+        "max_capacity": 3200,
+        "type": "LCC_HVDC"
+      }
+    },
+    "energy_storage_soc": 0.45,
+    "grid_stability_margin": 0.87
+  }
+}

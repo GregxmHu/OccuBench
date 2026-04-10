@@ -1,0 +1,219 @@
+{
+  "environment_name": "env_b395f4247c98",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: Based on the current zoning application state $s_t$ and the action $a_t$ taken by the reviewer/agent, simulate the internal evolution of the zoning variance process and predict the observation $o_{{t+1}}$ (e.g., system confirmations, public feedback, or updated case details).\n- **Emphasis**: The LWM does not act as the reviewer. It simulates the administrative environment, legal framework, and external stakeholders (like the public or the planning board) involved in a Zoning Variance Application Review. It performs internal state evolution and observation generation only.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation tracking the lifecycle of a zoning application. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions between the World Model and the Agent must maintain context consistency. The model must track the progression of the application (e.g., from 'Submitted' to 'Public Notice' to 'Board Hearing') ensuring that actions follow a logical legal sequence.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. This JSON must contain the following fields:\n- `\"name\"`: Specifies the name of the action function to execute (e.g., `schedule_hearing`, `log_public_comment`, `verify_setback_compliance`).\n- The remaining fields are the parameter names and corresponding values required by that action function.\n\nExample:\n```json\n{{\n \"name\": \"update_application_status\",\n \"arguments\": {{\n    \"application_id\": \"VAR-2025-001\",\n    \"new_status\": \"HEARING_SCHEDULED\"\n  }}\n}}\n```\n\nThe Language World Model must correctly parse such JSON inputs, update the internal state of the zoning case, and simulate the resulting observation.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nIf the Agent attempts an illegal transition (e.g., approving an application before a public hearing is held) or provides invalid parameters (e.g., a non-existent application ID), return structured error information: `{{\"error\": \"Descriptive error message\"}}`. Do not fabricate states or fictitious legal outcomes.\n\n##### Output Assembly\nFor every action function call, the model must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition.\n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, `new_state`, or any hidden variables like the internal database structure. State maintenance is implicit. The Agent must only see the specific return values defined in the action (the Observation).\n\n### 4. Key Principles\n- **Format**: Strictly adhere to specified JSON and text formats.\n- **Factuality**: Align with standard zoning and administrative procedures; do not invent laws or functions.\n- **Consistency**: If a variance is denied, the state must reflect a 'Closed' or 'Denied' status in subsequent turns.\n- **Realism**: Simulate realistic delays or public reactions (e.g., if a variance is high-impact, simulate multiple public objections).\n- **Quality**: Use precise legal and planning terminology.\n- **Encapsulation**: Strictly hide the internal state structure. Only expose information explicitly returned by the action function.\n{{initial_state}}: {{\n  \"application_id\": \"VAR-2025-099\",\n  \"status\": \"RECEIVED\",\n  \"applicant_info\": {{\n    \"project_name\": \"Southside Multi-Hub\",\n    \"base_code_requirement\": 500,\n    \"proposed_supply\": 200,\n    \"transit_proximity_miles\": 0.15,\n    \"pedestrian_route_plos\": \"D\",\n    \"offsite_agreement_type\": \"10-Year Commercial Lease\",\n    \"claimed_peak_offset\": \"4 hours\"\n  }},\n  \"variance_request\": \"60% reduction in parking via transit-oriented development credits and a shared-use lease with the adjacent commercial plaza.\",\n  \"public_comments\": [\n    \"The walk to the transit station involves crossing a 6-lane arterial without a signal.\",\n    \"A 10-year lease is too short; if the lease ends, our neighborhood will be a parking lot.\"\n  ],\n  \"legal_compliance_score\": 0.3,\n  \"hearing_date\": \"NOT_SCHEDULED\"\n}}\n{{state_descriptions}}: {{\n  \"application_id\": \"Unique identifier for the zoning variance case.\",\n  \"status\": \"The current stage of the application: RECEIVED, UNDER_REVIEW, PUBLIC_NOTICE, HEARING_PENDING, DECIDED.\",\n  \"applicant_info\": \"Details about the property owner and the specific parcel of land.\",\n  \"variance_request\": \"Description of the requested deviation from code (e.g., 'Side yard setback reduced from 10ft to 5ft').\",\n  \"public_comments\": \"List of strings/objects representing community feedback or objections.\",\n  \"legal_compliance_score\": \"Internal assessment (0.0 to 1.0) of how well the application meets hardship criteria.\",\n  \"hearing_date\": \"Scheduled date for the Board of Adjustment hearing, if applicable.\"\n}}\n{action_set_definitions}: {\n  \"get_application_data\": {\n    \"description\": \"Retrieves the full details of a specific zoning variance application, including applicant info, current status, and specific variance request details.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"application_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the zoning case (e.g., VAR-2025-099).\"\n        }\n      },\n      \"required\": [\n        \"application_id\"\n      ]\n    },\n    \"example_output\": {\n      \"application_id\": \"VAR-2025-099\",\n      \"status\": \"UNDER_REVIEW\",\n      \"applicant_info\": \"Southside Developers LLC\",\n      \"variance_request\": \"60% reduction in required parking (300 spaces reduction from 500 space baseline).\",\n      \"hearing_date\": \"2025-11-15\"\n    }\n  },\n  \"perform_technical_review\": {\n    \"description\": \"Evaluates the application against Standard Operating Procedure (SOP) technical thresholds for high-intensity variances, focusing on traffic and infrastructure impact.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"application_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the zoning case.\"\n        }\n      },\n      \"required\": [\n        \"application_id\"\n      ]\n    },\n    \"example_output\": {\n      \"thresholds_met\": false,\n      \"deficiencies\": [\n        \"Insufficient traffic mitigation for reduced parking volume\"\n      ],\n      \"impact_score\": 0.85\n    }\n  },\n  \"evaluate_pedestrian_accessibility\": {\n    \"description\": \"Analyzes the site's pedestrian infrastructure to determine if it can offset the reduction in vehicle parking.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"application_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the zoning case.\"\n        }\n      },\n      \"required\": [\n        \"application_id\"\n      ]\n    },\n    \"example_output\": {\n      \"walkability_score\": 0.6,\n      \"deficiencies\": [\n        \"Lack of signalized crosswalks on East Sector\",\n        \"Broken sidewalk connectivity\"\n      ]\n    }\n  },\n  \"verify_offsite_parking_legality\": {\n    \"description\": \"Reviews the legal instruments and contracts associated with off-site parking to ensure long-term security and code compliance.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"application_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the zoning case.\"\n        }\n      },\n      \"required\": [\n        \"application_id\"\n      ]\n    },\n    \"example_output\": {\n      \"contracts_verified\": false,\n      \"legal_issues\": [\n        \"Off-site lease term is only 2 years; code requires 20 years\",\n        \"No recorded easement found\"\n      ]\n    }\n  },\n  \"get_public_comments\": {\n    \"description\": \"Retrieves community feedback and formal objections related to the application.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"application_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the zoning case.\"\n        }\n      },\n      \"required\": [\n        \"application_id\"\n      ]\n    },\n    \"example_output\": {\n      \"comments\": [\n        \"Concerned about spillover parking into residential streets\",\n        \"Supportive of reduced car usage\"\n      ]\n    }\n  },\n  \"prescribe_mitigation_measures\": {\n    \"description\": \"Generates a list of required mitigation measures or contractual conversions based on identified deficiencies to ensure the variance is legally defensible.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"application_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier.\"\n        },\n        \"identified_deficiencies\": {\n          \"type\": \"array\",\n          \"items\": {\n            \"type\": \"string\"\n          },\n          \"description\": \"List of issues found during review.\"\n        }\n      },\n      \"required\": [\n        \"application_id\",\n        \"identified_deficiencies\"\n      ]\n    },\n    \"example_output\": {\n      \"mitigation_requirements\": [\n        \"Mandatory 20-year recorded parking easement\",\n        \"Developer-funded crosswalk installation at 5th St\"\n      ]\n    }\n  },\n  \"submit_staff_recommendation\": {\n    \"description\": \"Submits the final recommendation to the Board of Zoning Adjustment.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"application_id\": {\n          \"type\": \"string\"\n        },\n        \"recommendation\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"APPROVE\",\n            \"APPROVE_WITH_CONDITIONS\",\n            \"DENY\"\n          ]\n        },\n        \"findings_of_fact\": {\n          \"type\": \"string\",\n          \"description\": \"Detailed empirical justification based on the review.\"\n        },\n        \"required_conditions\": {\n          \"type\": \"array\",\n          \"items\": {\n            \"type\": \"string\"\n          },\n          \"description\": \"Legal/technical conditions the applicant must meet.\"\n        }\n      },\n      \"required\": [\n        \"application_id\",\n        \"recommendation\",\n        \"findings_of_fact\"\n      ]\n    },\n    \"example_output\": {\n      \"submission_id\": \"REC-992-A\",\n      \"timestamp\": \"2025-10-01T10:00:00Z\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_application_data",
+      "description": "Retrieves the full details of a specific zoning variance application, including applicant info, current status, and specific variance request details.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "application_id": {
+            "type": "string",
+            "description": "The unique identifier for the zoning case (e.g., VAR-2025-099)."
+          }
+        },
+        "required": [
+          "application_id"
+        ]
+      },
+      "example_output": {
+        "application_id": "VAR-2025-099",
+        "status": "UNDER_REVIEW",
+        "applicant_info": "Southside Developers LLC",
+        "variance_request": "60% reduction in required parking (300 spaces reduction from 500 space baseline).",
+        "hearing_date": "2025-11-15"
+      }
+    },
+    {
+      "name": "perform_technical_review",
+      "description": "Evaluates the application against Standard Operating Procedure (SOP) technical thresholds for high-intensity variances, focusing on traffic and infrastructure impact.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "application_id": {
+            "type": "string",
+            "description": "The unique identifier for the zoning case."
+          }
+        },
+        "required": [
+          "application_id"
+        ]
+      },
+      "example_output": {
+        "thresholds_met": false,
+        "deficiencies": [
+          "Insufficient traffic mitigation for reduced parking volume"
+        ],
+        "impact_score": 0.85
+      }
+    },
+    {
+      "name": "evaluate_pedestrian_accessibility",
+      "description": "Analyzes the site's pedestrian infrastructure to determine if it can offset the reduction in vehicle parking.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "application_id": {
+            "type": "string",
+            "description": "The unique identifier for the zoning case."
+          }
+        },
+        "required": [
+          "application_id"
+        ]
+      },
+      "example_output": {
+        "walkability_score": 0.6,
+        "deficiencies": [
+          "Lack of signalized crosswalks on East Sector",
+          "Broken sidewalk connectivity"
+        ]
+      }
+    },
+    {
+      "name": "verify_offsite_parking_legality",
+      "description": "Reviews the legal instruments and contracts associated with off-site parking to ensure long-term security and code compliance.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "application_id": {
+            "type": "string",
+            "description": "The unique identifier for the zoning case."
+          }
+        },
+        "required": [
+          "application_id"
+        ]
+      },
+      "example_output": {
+        "contracts_verified": false,
+        "legal_issues": [
+          "Off-site lease term is only 2 years; code requires 20 years",
+          "No recorded easement found"
+        ]
+      }
+    },
+    {
+      "name": "get_public_comments",
+      "description": "Retrieves community feedback and formal objections related to the application.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "application_id": {
+            "type": "string",
+            "description": "The unique identifier for the zoning case."
+          }
+        },
+        "required": [
+          "application_id"
+        ]
+      },
+      "example_output": {
+        "comments": [
+          "Concerned about spillover parking into residential streets",
+          "Supportive of reduced car usage"
+        ]
+      }
+    },
+    {
+      "name": "prescribe_mitigation_measures",
+      "description": "Generates a list of required mitigation measures or contractual conversions based on identified deficiencies to ensure the variance is legally defensible.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "application_id": {
+            "type": "string",
+            "description": "The unique identifier."
+          },
+          "identified_deficiencies": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "List of issues found during review."
+          }
+        },
+        "required": [
+          "application_id",
+          "identified_deficiencies"
+        ]
+      },
+      "example_output": {
+        "mitigation_requirements": [
+          "Mandatory 20-year recorded parking easement",
+          "Developer-funded crosswalk installation at 5th St"
+        ]
+      }
+    },
+    {
+      "name": "submit_staff_recommendation",
+      "description": "Submits the final recommendation to the Board of Zoning Adjustment.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "application_id": {
+            "type": "string"
+          },
+          "recommendation": {
+            "type": "string",
+            "enum": [
+              "APPROVE",
+              "APPROVE_WITH_CONDITIONS",
+              "DENY"
+            ]
+          },
+          "findings_of_fact": {
+            "type": "string",
+            "description": "Detailed empirical justification based on the review."
+          },
+          "required_conditions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Legal/technical conditions the applicant must meet."
+          }
+        },
+        "required": [
+          "application_id",
+          "recommendation",
+          "findings_of_fact"
+        ]
+      },
+      "example_output": {
+        "submission_id": "REC-992-A",
+        "timestamp": "2025-10-01T10:00:00Z"
+      }
+    }
+  ],
+  "state_description": {
+    "application_id": "Unique identifier for the zoning variance case.",
+    "status": "The current stage of the application: RECEIVED, UNDER_REVIEW, PUBLIC_NOTICE, HEARING_PENDING, DECIDED.",
+    "applicant_info": "Details about the property owner and the specific parcel of land.",
+    "variance_request": "Description of the requested deviation from code (e.g., 'Side yard setback reduced from 10ft to 5ft').",
+    "public_comments": "List of strings/objects representing community feedback or objections.",
+    "legal_compliance_score": "Internal assessment (0.0 to 1.0) of how well the application meets hardship criteria.",
+    "hearing_date": "Scheduled date for the Board of Adjustment hearing, if applicable."
+  },
+  "task_initial_state": {
+    "application_id": "VAR-2025-099",
+    "status": "RECEIVED",
+    "applicant_info": {
+      "project_name": "Southside Multi-Hub",
+      "base_code_requirement": 500,
+      "proposed_supply": 200,
+      "transit_proximity_miles": 0.15,
+      "pedestrian_route_plos": "D",
+      "offsite_agreement_type": "10-Year Commercial Lease",
+      "claimed_peak_offset": "4 hours"
+    },
+    "variance_request": "60% reduction in parking via transit-oriented development credits and a shared-use lease with the adjacent commercial plaza.",
+    "public_comments": [
+      "The walk to the transit station involves crossing a 6-lane arterial without a signal.",
+      "A 10-year lease is too short; if the lease ends, our neighborhood will be a parking lot."
+    ],
+    "legal_compliance_score": 0.3,
+    "hearing_date": "NOT_SCHEDULED"
+  }
+}

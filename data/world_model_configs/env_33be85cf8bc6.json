@@ -1,0 +1,190 @@
+{
+  "environment_name": "env_33be85cf8bc6",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: Based on the current internal state $s_t$ and the action $a_t$ provided by the Agent, you are to simulate the evolution of the 'Excavation Site Grid Assignment' environment. You will predict the resulting observation $o_{{t+1}}$ that the Agent receives.\n- **Emphasis**: You are a simulator, not an actor. You do not perform the actions yourself; you compute the logic of how the excavation site changes (e.g., soil removal, discovery of artifacts, resource depletion) and return only the specific feedback defined for each action.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nYou must maintain strict context consistency throughout the interaction. Every action performed by the Agent updates the internal state (which you track privately), and subsequent observations must reflect these historical changes (e.g., if a grid cell is excavated at step $t$, it remains excavated at step $t+1$).\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object containing:\n- `\"name\"`: The name of the action (e.g., \"assign_excavator\", \"survey_grid\", \"extract_artifact\").\n- `\"arguments\"`: A dictionary of parameters required by the function.\n\nYou must parse this JSON, validate the parameters against the state and the action definitions, and simulate the outcome.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nIf the Agent attempts an invalid operation (e.g., digging in a cell already completed, assigning a worker who is busy, or using an undefined action), you must return a structured error message:\n`{{\"error\": \"Reason for failure\"}}`.\nDo not fabricate successful outcomes for invalid inputs.\n\n##### Output Assembly\nFor every action function call, you must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition. \n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state, hidden variables, or any field not explicitly defined as a return value for the action. State maintenance is handled by you internally; the Agent only sees the Observation.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to specified JSON formats for both inputs and outputs.\n- **Factuality**: Simulate site dynamics based on established archaeological and logistical logic; do not invent data.\n- **Consistency**: Ensure the grid state and resource levels evolve logically (e.g., budget only decreases or stays same, never increases spontaneously).\n- **Realism**: Account for site-specific factors like soil density, weather impacts, or tool wear-and-tear as described in the state.\n- **Encapsulation**: Strictly hide the internal state structure from the output. Only expose information that is explicitly returned by the action function.\n{{initial_state}}: {{\n  \"grid_map\": [\n    [\n      {{\n        \"depth_cm\": 0,\n        \"status\": \"completed\",\n        \"composition\": \"soil\",\n        \"unit_id\": \"N1000E1000\"\n      }},\n      {{\n        \"depth_cm\": 0,\n        \"status\": \"unexplored\",\n        \"composition\": \"clay\",\n        \"unit_id\": \"N1015E1008\"\n      }}\n    ]\n  ],\n  \"workforce\": {{\n    \"Team_A\": {{\n      \"id\": \"Team_A\",\n      \"assigned_cell\": \"N1000E1000\",\n      \"fatigue_index\": 75\n    }},\n    \"Team_B\": {{\n      \"id\": \"Team_B\",\n      \"assigned_cell\": null,\n      \"fatigue_index\": 12\n    }}\n  }},\n  \"logistics\": {{\n    \"remaining_budget\": 4500,\n    \"tool_durability_pct\": 85,\n    \"storage_capacity\": 100\n  }},\n  \"environment_factors\": {{\n    \"weather_condition\": \"overcast\",\n    \"daylight_remaining_hours\": 3\n  }},\n  \"discoveries\": []\n}}\n{{state_descriptions}}: {{\n  \"grid_map\": \"A 2D array representing the excavation site coordinates. Each cell contains 'depth_cm', 'status' (unexplored, surveyed, digging, completed), and 'composition' (soil, rock, clay).\",\n  \"workforce\": \"Status of archaeological teams, including 'id', 'assigned_cell', and 'fatigue_index'.\",\n  \"logistics\": \"Available resources including 'remaining_budget', 'tool_durability_pct', and 'storage_capacity'.\",\n  \"environment_factors\": \"External variables such as 'weather_condition' and 'daylight_remaining_hours'.\",\n  \"discoveries\": \"Internal record of artifacts found but not yet processed.\"\n}}\n{action_set_definitions}: {\n  \"get_environment_status\": {\n    \"description\": \"Retrieves external environmental variables including daylight and weather conditions.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"weather_condition\": \"sunny\",\n      \"daylight_remaining_hours\": 4.5\n    }\n  },\n  \"register_excavation_unit\": {\n    \"description\": \"Formalizes a new excavation unit based on coordinates and size, returning the official alphanumeric nomenclature/ID.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"sw_north\": {\n          \"type\": \"integer\",\n          \"description\": \"North coordinate of the Southwest corner.\"\n        },\n        \"sw_east\": {\n          \"type\": \"integer\",\n          \"description\": \"East coordinate of the Southwest corner.\"\n        },\n        \"size_m\": {\n          \"type\": \"integer\",\n          \"description\": \"Length of the square unit side in meters.\"\n        }\n      },\n      \"required\": [\n        \"sw_north\",\n        \"sw_east\",\n        \"size_m\"\n      ]\n    },\n    \"example_output\": {\n      \"unit_label\": \"1015N1008E-2\",\n      \"status\": \"unexplored\"\n    }\n  },\n  \"get_workforce_data\": {\n    \"description\": \"Lists all archaeological teams, their current assignments, and their fatigue indices.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"teams\": [\n        {\n          \"id\": \"TEAM_ALPHA\",\n          \"assigned_cell\": null,\n          \"fatigue_index\": 25\n        }\n      ]\n    }\n  },\n  \"assign_team_to_unit\": {\n    \"description\": \"Assigns a specific workforce team to a registered excavation unit.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"team_id\": {\n          \"type\": \"string\",\n          \"description\": \"Unique identifier of the workforce team.\"\n        },\n        \"unit_label\": {\n          \"type\": \"string\",\n          \"description\": \"Alphanumeric nomenclature of the unit.\"\n        }\n      },\n      \"required\": [\n        \"team_id\",\n        \"unit_label\"\n      ]\n    },\n    \"example_output\": {\n      \"success\": true,\n      \"assignment_timestamp\": \"2023-10-27T14:00:00Z\"\n    }\n  },\n  \"update_unit_status\": {\n    \"description\": \"Updates the status of an excavation unit (e.g., to 'surveyed', 'digging').\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"unit_label\": {\n          \"type\": \"string\",\n          \"description\": \"The alphanumeric nomenclature of the unit.\"\n        },\n        \"status\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"unexplored\",\n            \"surveyed\",\n            \"digging\",\n            \"completed\"\n          ],\n          \"description\": \"The new status for the unit.\"\n        }\n      },\n      \"required\": [\n        \"unit_label\",\n        \"status\"\n      ]\n    },\n    \"example_output\": {\n      \"unit_label\": \"1015N1008E-2\",\n      \"new_status\": \"surveyed\"\n    }\n  },\n  \"log_administrative_entry\": {\n    \"description\": \"Submits a formal log entry to the project records.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"entry_text\": {\n          \"type\": \"string\",\n          \"description\": \"Detailed text describing the completed administrative action.\"\n        }\n      },\n      \"required\": [\n        \"entry_text\"\n      ]\n    },\n    \"example_output\": {\n      \"log_id\": \"LOG-9928\",\n      \"status\": \"recorded\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_environment_status",
+      "description": "Retrieves external environmental variables including daylight and weather conditions.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "weather_condition": "sunny",
+        "daylight_remaining_hours": 4.5
+      }
+    },
+    {
+      "name": "register_excavation_unit",
+      "description": "Formalizes a new excavation unit based on coordinates and size, returning the official alphanumeric nomenclature/ID.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "sw_north": {
+            "type": "integer",
+            "description": "North coordinate of the Southwest corner."
+          },
+          "sw_east": {
+            "type": "integer",
+            "description": "East coordinate of the Southwest corner."
+          },
+          "size_m": {
+            "type": "integer",
+            "description": "Length of the square unit side in meters."
+          }
+        },
+        "required": [
+          "sw_north",
+          "sw_east",
+          "size_m"
+        ]
+      },
+      "example_output": {
+        "unit_label": "1015N1008E-2",
+        "status": "unexplored"
+      }
+    },
+    {
+      "name": "get_workforce_data",
+      "description": "Lists all archaeological teams, their current assignments, and their fatigue indices.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "teams": [
+          {
+            "id": "TEAM_ALPHA",
+            "assigned_cell": null,
+            "fatigue_index": 25
+          }
+        ]
+      }
+    },
+    {
+      "name": "assign_team_to_unit",
+      "description": "Assigns a specific workforce team to a registered excavation unit.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "team_id": {
+            "type": "string",
+            "description": "Unique identifier of the workforce team."
+          },
+          "unit_label": {
+            "type": "string",
+            "description": "Alphanumeric nomenclature of the unit."
+          }
+        },
+        "required": [
+          "team_id",
+          "unit_label"
+        ]
+      },
+      "example_output": {
+        "success": true,
+        "assignment_timestamp": "2023-10-27T14:00:00Z"
+      }
+    },
+    {
+      "name": "update_unit_status",
+      "description": "Updates the status of an excavation unit (e.g., to 'surveyed', 'digging').",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "unit_label": {
+            "type": "string",
+            "description": "The alphanumeric nomenclature of the unit."
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "unexplored",
+              "surveyed",
+              "digging",
+              "completed"
+            ],
+            "description": "The new status for the unit."
+          }
+        },
+        "required": [
+          "unit_label",
+          "status"
+        ]
+      },
+      "example_output": {
+        "unit_label": "1015N1008E-2",
+        "new_status": "surveyed"
+      }
+    },
+    {
+      "name": "log_administrative_entry",
+      "description": "Submits a formal log entry to the project records.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "entry_text": {
+            "type": "string",
+            "description": "Detailed text describing the completed administrative action."
+          }
+        },
+        "required": [
+          "entry_text"
+        ]
+      },
+      "example_output": {
+        "log_id": "LOG-9928",
+        "status": "recorded"
+      }
+    }
+  ],
+  "state_description": {
+    "grid_map": "A 2D array representing the excavation site coordinates. Each cell contains 'depth_cm', 'status' (unexplored, surveyed, digging, completed), and 'composition' (soil, rock, clay).",
+    "workforce": "Status of archaeological teams, including 'id', 'assigned_cell', and 'fatigue_index'.",
+    "logistics": "Available resources including 'remaining_budget', 'tool_durability_pct', and 'storage_capacity'.",
+    "environment_factors": "External variables such as 'weather_condition' and 'daylight_remaining_hours'.",
+    "discoveries": "Internal record of artifacts found but not yet processed."
+  },
+  "task_initial_state": {
+    "grid_map": [
+      [
+        {
+          "depth_cm": 0,
+          "status": "completed",
+          "composition": "soil",
+          "unit_id": "N1000E1000"
+        },
+        {
+          "depth_cm": 0,
+          "status": "unexplored",
+          "composition": "clay",
+          "unit_id": "N1015E1008"
+        }
+      ]
+    ],
+    "workforce": {
+      "Team_A": {
+        "id": "Team_A",
+        "assigned_cell": "N1000E1000",
+        "fatigue_index": 75
+      },
+      "Team_B": {
+        "id": "Team_B",
+        "assigned_cell": null,
+        "fatigue_index": 12
+      }
+    },
+    "logistics": {
+      "remaining_budget": 4500,
+      "tool_durability_pct": 85,
+      "storage_capacity": 100
+    },
+    "environment_factors": {
+      "weather_condition": "overcast",
+      "daylight_remaining_hours": 3
+    },
+    "discoveries": []
+  }
+}

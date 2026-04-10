@@ -1,0 +1,158 @@
+{
+  "environment_name": "env_b254e585613f",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: You act as a high-fidelity simulator for a Credit Card Fraud Investigation environment. Based on the current internal state $s_t$ and the Agent's action $a_t$, you must simulate the internal evolution of the investigation and generate the observation $o_{{t+1}}$ that an investigator would realistically receive. \n- **Emphasis**: You are the environment itself, not the investigator. You do not suggest actions or perform investigations; you only process actions and return observations while maintaining the integrity and consistency of the investigation's state.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nYou must maintain strict context consistency throughout the session. Every action must build upon the consequences of previous actions (e.g., if an account is locked in state $t$, it remains locked in state $t+1$ unless an explicit unlock action is performed).\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. You must parse this JSON to determine the environment's transition. The input format is:\n- `\"name\"`: The action function name.\n- `\"arguments\"`: A dictionary of parameter names and values.\n\nExample Input:\n```json\n{{\n \"name\": \"lookup_transaction_history\",\n \"arguments\": {{\n    \"card_number\": \"4111-XXXX-XXXX-1111\",\n    \"limit\": 5\n  }}\n}}\n```\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\n- If the Agent provides invalid parameters, calls a non-existent action, or attempts an action that contradicts the current state (e.g., calling a customer who has no phone number on file), return a structured error: `{{\"error\": \"Reason for failure\"}}`.\n- Do not fabricate data; if a record is not found in the simulated database, return an empty result or a 'not found' message as specified by the action logic.\n\n##### Output Assembly\nFor every action, you must return a structured JSON object containing **ONLY** the return fields defined in the action function's specification.\n\n**CRITICAL CONSTRAINT**: Your output must **NOT** contain the internal state `$s_t$`, the updated state, or any internal variables. The Agent must only receive the observation (the return values). State tracking is handled by you internally within the conversation history.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to JSON output for observations.\n- **Factuality**: Simulate realistic banking and investigative data (e.g., timestamps, merchant categories, IP addresses).\n- **Consistency**: Ensure that if a transaction is flagged as 'fraudulent', subsequent queries reflect this status.\n- **Realism**: Dynamics should reflect real-world constraints (e.g., some data might be redacted, or external verification might take multiple steps).\n- **Quality**: Ensure all generated observations are professional and align with the technical nature of fraud forensics.\n- **Encapsulation**: Never reveal the JSON structure of the internal state to the Agent. Only show what the action explicitly returns.\n{{initial_state}}: {{\n  \"investigation_id\": \"CASE-2024-88392\",\n  \"case_status\": \"RESOLVED_LEGITIMATE\",\n  \"risk_score\": 98,\n  \"flagged_transactions\": [\n    \"APP-PREM-9912\"\n  ],\n  \"account_restrictions\": [],\n  \"evidence_log\": [\n    \"SSN issuance date (2018) significantly post-dates stated DOB (1985)\",\n    \"Network analysis: IP address associated with known fraud farm\",\n    \"Address Velocity: 14 applications in 30 days\"\n  ],\n  \"customer_contact_attempts\": 0\n}}\n{{state_descriptions}}: {{\n  \"investigation_id\": \"The unique tracking identifier for the current fraud case.\",\n  \"case_status\": \"The current phase of the investigation (e.g., 'OPEN', 'PENDING_VERIFICATION', 'RESOLVED_FRAUD', 'RESOLVED_LEGITIMATE').\",\n  \"risk_score\": \"A calculated risk value (0-100) based on current evidence. Increases as suspicious patterns are found.\",\n  \"flagged_transactions\": \"A list of transaction IDs currently under suspicion.\",\n  \"account_restrictions\": \"List of active blocks on the account (e.g., 'ATM_BLOCK', 'ONLINE_RESTR').\",\n  \"evidence_log\": \"Internal record of confirmed findings (e.g., 'IP mismatch confirmed', 'Mule account identified').\",\n  \"customer_contact_attempts\": \"Number of times the environment has simulated a contact attempt with the cardholder.\"\n}}\n{action_set_definitions}: {\n  \"search_cases\": {\n    \"description\": \"Searches for investigation cases using a query string (e.g., 'Main Street'). Returns a list of cases including their IDs, current statuses, and brief summaries.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"query\": {\n          \"type\": \"string\",\n          \"description\": \"The search term, such as an address, name, or case attribute.\"\n        }\n      },\n      \"required\": [\n        \"query\"\n      ]\n    },\n    \"example_output\": {\n      \"results\": [\n        {\n          \"investigation_id\": \"CASE-442\",\n          \"case_status\": \"RESOLVED_LEGITIMATE\",\n          \"summary\": \"Application from 123 Main Street\"\n        },\n        {\n          \"investigation_id\": \"CASE-101\",\n          \"case_status\": \"OPEN\",\n          \"summary\": \"General inquiry - Main Street\"\n        }\n      ]\n    }\n  },\n  \"get_case_details\": {\n    \"description\": \"Retrieves the comprehensive internal state and evidence log for a specific investigation ID.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"investigation_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the case.\"\n        }\n      },\n      \"required\": [\n        \"investigation_id\"\n      ]\n    },\n    \"example_output\": {\n      \"investigation_id\": \"CASE-442\",\n      \"case_status\": \"RESOLVED_LEGITIMATE\",\n      \"risk_score\": 75,\n      \"flagged_transactions\": [\n        \"TXN_99\"\n      ],\n      \"account_restrictions\": [],\n      \"evidence_log\": [\n        \"IP mismatch confirmed\",\n        \"Mule account pattern detected\"\n      ],\n      \"customer_contact_attempts\": 1\n    }\n  },\n  \"update_case_status\": {\n    \"description\": \"Modifies the investigation status to ensure consistency with evidence. Used to correct or finalize the resolution.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"investigation_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the case.\"\n        },\n        \"new_status\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"OPEN\",\n            \"PENDING_VERIFICATION\",\n            \"RESOLVED_FRAUD\",\n            \"RESOLVED_LEGITIMATE\"\n          ],\n          \"description\": \"The corrected or final status.\"\n        },\n        \"justification\": {\n          \"type\": \"string\",\n          \"description\": \"The audit reasoning for the status change based on evidence.\"\n        }\n      },\n      \"required\": [\n        \"investigation_id\",\n        \"new_status\",\n        \"justification\"\n      ]\n    },\n    \"example_output\": {\n      \"success\": true,\n      \"final_status\": \"RESOLVED_FRAUD\"\n    }\n  },\n  \"apply_account_restriction\": {\n    \"description\": \"Applies security blocks to the account to mitigate identified risks.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"investigation_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the case.\"\n        },\n        \"restriction_type\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"ATM_BLOCK\",\n            \"ONLINE_RESTR\",\n            \"TOTAL_FREEZE\"\n          ],\n          \"description\": \"The type of restriction to enforce.\"\n        }\n      },\n      \"required\": [\n        \"investigation_id\",\n        \"restriction_type\"\n      ]\n    },\n    \"example_output\": {\n      \"success\": true,\n      \"current_restrictions\": [\n        \"TOTAL_FREEZE\"\n      ]\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "search_cases",
+      "description": "Searches for investigation cases using a query string (e.g., 'Main Street'). Returns a list of cases including their IDs, current statuses, and brief summaries.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "description": "The search term, such as an address, name, or case attribute."
+          }
+        },
+        "required": [
+          "query"
+        ]
+      },
+      "example_output": {
+        "results": [
+          {
+            "investigation_id": "CASE-442",
+            "case_status": "RESOLVED_LEGITIMATE",
+            "summary": "Application from 123 Main Street"
+          },
+          {
+            "investigation_id": "CASE-101",
+            "case_status": "OPEN",
+            "summary": "General inquiry - Main Street"
+          }
+        ]
+      }
+    },
+    {
+      "name": "get_case_details",
+      "description": "Retrieves the comprehensive internal state and evidence log for a specific investigation ID.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "investigation_id": {
+            "type": "string",
+            "description": "The unique identifier for the case."
+          }
+        },
+        "required": [
+          "investigation_id"
+        ]
+      },
+      "example_output": {
+        "investigation_id": "CASE-442",
+        "case_status": "RESOLVED_LEGITIMATE",
+        "risk_score": 75,
+        "flagged_transactions": [
+          "TXN_99"
+        ],
+        "account_restrictions": [],
+        "evidence_log": [
+          "IP mismatch confirmed",
+          "Mule account pattern detected"
+        ],
+        "customer_contact_attempts": 1
+      }
+    },
+    {
+      "name": "update_case_status",
+      "description": "Modifies the investigation status to ensure consistency with evidence. Used to correct or finalize the resolution.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "investigation_id": {
+            "type": "string",
+            "description": "The unique identifier for the case."
+          },
+          "new_status": {
+            "type": "string",
+            "enum": [
+              "OPEN",
+              "PENDING_VERIFICATION",
+              "RESOLVED_FRAUD",
+              "RESOLVED_LEGITIMATE"
+            ],
+            "description": "The corrected or final status."
+          },
+          "justification": {
+            "type": "string",
+            "description": "The audit reasoning for the status change based on evidence."
+          }
+        },
+        "required": [
+          "investigation_id",
+          "new_status",
+          "justification"
+        ]
+      },
+      "example_output": {
+        "success": true,
+        "final_status": "RESOLVED_FRAUD"
+      }
+    },
+    {
+      "name": "apply_account_restriction",
+      "description": "Applies security blocks to the account to mitigate identified risks.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "investigation_id": {
+            "type": "string",
+            "description": "The unique identifier for the case."
+          },
+          "restriction_type": {
+            "type": "string",
+            "enum": [
+              "ATM_BLOCK",
+              "ONLINE_RESTR",
+              "TOTAL_FREEZE"
+            ],
+            "description": "The type of restriction to enforce."
+          }
+        },
+        "required": [
+          "investigation_id",
+          "restriction_type"
+        ]
+      },
+      "example_output": {
+        "success": true,
+        "current_restrictions": [
+          "TOTAL_FREEZE"
+        ]
+      }
+    }
+  ],
+  "state_description": {
+    "investigation_id": "The unique tracking identifier for the current fraud case.",
+    "case_status": "The current phase of the investigation (e.g., 'OPEN', 'PENDING_VERIFICATION', 'RESOLVED_FRAUD', 'RESOLVED_LEGITIMATE').",
+    "risk_score": "A calculated risk value (0-100) based on current evidence. Increases as suspicious patterns are found.",
+    "flagged_transactions": "A list of transaction IDs currently under suspicion.",
+    "account_restrictions": "List of active blocks on the account (e.g., 'ATM_BLOCK', 'ONLINE_RESTR').",
+    "evidence_log": "Internal record of confirmed findings (e.g., 'IP mismatch confirmed', 'Mule account identified').",
+    "customer_contact_attempts": "Number of times the environment has simulated a contact attempt with the cardholder."
+  },
+  "task_initial_state": {
+    "investigation_id": "CASE-2024-88392",
+    "case_status": "RESOLVED_LEGITIMATE",
+    "risk_score": 98,
+    "flagged_transactions": [
+      "APP-PREM-9912"
+    ],
+    "account_restrictions": [],
+    "evidence_log": [
+      "SSN issuance date (2018) significantly post-dates stated DOB (1985)",
+      "Network analysis: IP address associated with known fraud farm",
+      "Address Velocity: 14 applications in 30 days"
+    ],
+    "customer_contact_attempts": 0
+  }
+}

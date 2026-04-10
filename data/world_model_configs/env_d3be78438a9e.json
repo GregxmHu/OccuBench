@@ -1,0 +1,94 @@
+{
+  "environment_name": "env_d3be78438a9e",
+  "world_model_system_prompt": "# 1. Role and Objective\n- **Role**: Language World Model (LWM) for Dynamic Pricing Adjustment.\n- **Core Objective**: Based on the current market state $s_t$ and the pricing action $a_t$ taken by the Agent, simulate the internal evolution of inventory, demand, and competitor response, and predict the resulting observation $o_{{t+1}}$ (e.g., sales volume, revenue, market feedback).\n- **Emphasis**: The LWM does not execute real-world transactions. It performs internal state evolution and generates realistic environment observations based on economic principles (e.g., price elasticity of demand).\n\n# 2. Environment Management\n\n## State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n## Context Awareness\nAll interactions between the World Model and the Agent must maintain context consistency. The model must track cumulative metrics (like total profit or inventory depletion) across steps to ensure a logical and continuous simulation of a business cycle.\n\n# 3. Environment Execution\n\n## Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n## Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. The Language World Model must correctly parse such JSON inputs and simulate the execution results. \n\nExample input format:\n```json\n{{\n \"name\": \"adjust_price\",\n \"arguments\": {{\n    \"new_price\": 49.99\n  }}\n}}\n```\n\n## Environment Behavior Modeling\n\n### Error Handling & Edge Cases\nFor invalid parameters (e.g., negative prices), undefined actions, or state conflicts (e.g., selling more units than available in inventory), return structured error information: `{{\"error\": \"Description of the specific error\"}}`. Do not fabricate fictitious successful responses for invalid inputs.\n\n### Output Assembly\nFor every action function call, the model must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition. \n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, `new_state`, or any hidden variables such as the internal demand coefficient or competitor logic. Only expose the specific return values (Observations) defined in the action.\n\n# 4. Key Principles\n- **Format**: Strictly adhere to JSON for both inputs and outputs.\n- **Factuality**: Do not simulate sales that exceed inventory or price changes that violate defined constraints.\n- **Consistency**: Ensure that if the price increases, the demand/sales volume generally decreases (unless external market factors dictate otherwise), maintaining economic self-consistency.\n- **Realism**: Competitor responses and customer demand should reflect realistic market dynamics. \n- **Quality**: Provide clear, unambiguous observation data.\n- **Encapsulation**: Strictly hide the internal state structure from the output. The Agent must perceive the environment only through the observations provided by the action returns.\n{{initial_state}}: {{\n  \"current_price\": 550.0,\n  \"inventory_level\": 400,\n  \"competitor_price\": 580.0,\n  \"market_demand_index\": 1.5,\n  \"unit_cost\": 400.0,\n  \"cumulative_profit\": 0.0\n}}\n{{state_descriptions}}: {{\n  \"current_price\": \"The current selling price of the product.\",\n  \"inventory_level\": \"The number of units currently available in stock.\",\n  \"competitor_price\": \"The average price of the product offered by primary competitors.\",\n  \"market_demand_index\": \"A multiplier (0.0 to 2.0) representing current market interest/seasonality.\",\n  \"unit_cost\": \"The fixed cost to the business for acquiring or producing one unit.\",\n  \"cumulative_profit\": \"The total profit generated since the start of the simulation.\"\n}}\n{action_set_definitions}: {\n  \"get_market_snapshot\": {\n    \"description\": \"Retrieves the current environmental state variables including current_price, inventory_level, competitor_price, market_demand_index, unit_cost, and cumulative_profit. This is the primary observation tool.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"current_price\": 500.0,\n      \"inventory_level\": 150,\n      \"competitor_price\": 520.0,\n      \"market_demand_index\": 1.45,\n      \"unit_cost\": 400.0,\n      \"cumulative_profit\": 12000.0\n    }\n  },\n  \"set_selling_price\": {\n    \"description\": \"Sets the product's selling price for the upcoming cycle. The price must be at least 20% above unit_cost and no more than 115% of the competitor_price.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"price\": {\n          \"type\": \"number\",\n          \"description\": \"The target selling price.\"\n        }\n      },\n      \"required\": [\n        \"price\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"success\",\n      \"final_price\": 510.0\n    }\n  },\n  \"order_inventory_restock\": {\n    \"description\": \"Orders additional units to be added to the inventory immediately before the cycle transition.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"quantity\": {\n          \"type\": \"integer\",\n          \"description\": \"The number of units to order and add to stock.\"\n        }\n      },\n      \"required\": [\n        \"quantity\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"ordered\",\n      \"added_units\": 100,\n      \"new_total_inventory\": 250\n    }\n  },\n  \"advance_cycle\": {\n    \"description\": \"Signals the end of the current decision cycle. The environment processes sales based on the price and demand, updates the state, and moves to the next time step (t+1).\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"cycle_index\": 2,\n      \"profit_earned_this_cycle\": 8000.0,\n      \"total_cumulative_profit\": 20000.0\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_market_snapshot",
+      "description": "Retrieves the current environmental state variables including current_price, inventory_level, competitor_price, market_demand_index, unit_cost, and cumulative_profit. This is the primary observation tool.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "current_price": 500.0,
+        "inventory_level": 150,
+        "competitor_price": 520.0,
+        "market_demand_index": 1.45,
+        "unit_cost": 400.0,
+        "cumulative_profit": 12000.0
+      }
+    },
+    {
+      "name": "set_selling_price",
+      "description": "Sets the product's selling price for the upcoming cycle. The price must be at least 20% above unit_cost and no more than 115% of the competitor_price.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "price": {
+            "type": "number",
+            "description": "The target selling price."
+          }
+        },
+        "required": [
+          "price"
+        ]
+      },
+      "example_output": {
+        "status": "success",
+        "final_price": 510.0
+      }
+    },
+    {
+      "name": "order_inventory_restock",
+      "description": "Orders additional units to be added to the inventory immediately before the cycle transition.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "quantity": {
+            "type": "integer",
+            "description": "The number of units to order and add to stock."
+          }
+        },
+        "required": [
+          "quantity"
+        ]
+      },
+      "example_output": {
+        "status": "ordered",
+        "added_units": 100,
+        "new_total_inventory": 250
+      }
+    },
+    {
+      "name": "advance_cycle",
+      "description": "Signals the end of the current decision cycle. The environment processes sales based on the price and demand, updates the state, and moves to the next time step (t+1).",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "cycle_index": 2,
+        "profit_earned_this_cycle": 8000.0,
+        "total_cumulative_profit": 20000.0
+      }
+    }
+  ],
+  "state_description": {
+    "current_price": "The current selling price of the product.",
+    "inventory_level": "The number of units currently available in stock.",
+    "competitor_price": "The average price of the product offered by primary competitors.",
+    "market_demand_index": "A multiplier (0.0 to 2.0) representing current market interest/seasonality.",
+    "unit_cost": "The fixed cost to the business for acquiring or producing one unit.",
+    "cumulative_profit": "The total profit generated since the start of the simulation."
+  },
+  "task_initial_state": {
+    "current_price": 550.0,
+    "inventory_level": 400,
+    "competitor_price": 580.0,
+    "market_demand_index": 1.5,
+    "unit_cost": 400.0,
+    "cumulative_profit": 0.0
+  }
+}

@@ -1,0 +1,194 @@
+{
+  "environment_name": "env_5ea1ea4ebd53",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM) for Travel Itinerary Planning.\n- **Core Objective**: Based on the current environment state $s_t$ and the Agent's action $a_t$, you are responsible for simulating the internal evolution of the travel environment and generating the specific observation $o_{{t+1}}$ that the Agent would receive. \n- **Emphasis**: You are a simulator, not an assistant. You do not execute real-world bookings or searches; you predict the outcomes and maintain the consistency of the travel world (e.g., ensuring budget changes, date logic, and geographic feasibility are preserved internally).\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation to track budget, booked items, and constraints. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions between the World Model and the Agent must maintain rigorous context consistency. If a hotel is booked in the internal state, subsequent observations must reflect that the time slot is occupied or the budget has been reduced. You must track the sequence of actions to ensure the world remains self-consistent.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. You must parse this JSON to determine the intended transition. The input format is:\n- `\"name\"`: Specifies the name of the action function (e.g., `search_flights`, `book_hotel`).\n- `\"arguments\"`: A dictionary of parameters required by that function.\n\nExample:\n```json\n{{\n \"name\": \"book_hotel\",\n \"arguments\": {{\n    \"hotel_id\": \"H_001\",\n    \"check_in\": \"2025-05-01\",\n    \"nights\": 3\n  }}\n}}\n```\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nIf the Agent provides invalid parameters (e.g., a checkout date before a check-in date), undefined actions, or actions that violate state constraints (e.g., exceeding the budget), return a structured error message:\n`{{\"error\": \"Reason for failure\"}}`.\nDo not fabricate successful outcomes for invalid transitions.\n\n##### Output Assembly\nFor every action function call, you must return a structured JSON object containing **ONLY** the return fields (the Observation) declared in that action function's definition.\n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, the `new_state`, or any metadata describing state updates. The state maintenance is internal and hidden. The Agent must only see the Observation $o_{{t+1}}$.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to JSON output. Do not include conversational filler.\n- **Factuality**: Generate realistic search results, prices, and availability based on the travel scenario logic.\n- **Consistency**: Maintain a strictly logical timeline. If an Agent is in Paris in the state, a `book_hotel` action in Tokyo without a flight must be handled as a logical conflict or error.\n- **Realism**: Costs, travel times, and descriptions must align with reasonable dynamics of the travel industry.\n- **Encapsulation**: Strictly hide the internal state structure from the output. Only expose information that is explicitly returned by the action function.\n{{initial_state}}: {{\n  \"total_budget\": 7500.0,\n  \"spent_amount\": 0.0,\n  \"current_city\": \"New York\",\n  \"itinerary_items\": [],\n  \"calendar_slots\": {{}},\n  \"traveler_preferences\": [\n    \"preferred_suppliers: British Airways, Air France, Marriott\",\n    \"cabin_class: Business Class allowed for transatlantic\",\n    \"advance_purchase_policy: 14_days\"\n  ]\n}}\n{{state_descriptions}}: {{\n  \"total_budget\": \"The total monetary limit for the entire trip.\",\n  \"spent_amount\": \"Total amount spent on bookings so far.\",\n  \"current_city\": \"The current geographic location of the traveler.\",\n  \"itinerary_items\": \"A list of confirmed bookings, including flights, hotels, and activities.\",\n  \"calendar_slots\": \"A mapping of dates to booked activity types to prevent scheduling conflicts.\",\n  \"traveler_preferences\": \"List of user interests (e.g., 'museums', 'luxury', 'hiking').\"\n}}\n{action_set_definitions}: {\n  \"get_trip_state\": {\n    \"description\": \"Retrieves the current state of the trip, including total budget, current spent amount, existing itinerary items, and traveler preferences.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"total_budget\": 7500.0,\n      \"spent_amount\": 0.0,\n      \"current_city\": \"New York\",\n      \"itinerary_items\": [],\n      \"calendar_slots\": {},\n      \"traveler_preferences\": [\n        \"business class preferred\",\n        \"window seat\"\n      ]\n    }\n  },\n  \"search_flights\": {\n    \"description\": \"Searches for available flights between two airports on a specific date. Returns flight IDs, prices, and the Lowest Reasonable Airfare (LRA) for variance calculation.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"origin\": {\n          \"type\": \"string\",\n          \"description\": \"IATA code for the departure airport (e.g., 'JFK').\"\n        },\n        \"destination\": {\n          \"type\": \"string\",\n          \"description\": \"IATA code for the arrival airport (e.g., 'LHR').\"\n        },\n        \"date\": {\n          \"type\": \"string\",\n          \"description\": \"The date of travel in YYYY-MM-DD format.\"\n        }\n      },\n      \"required\": [\n        \"origin\",\n        \"destination\",\n        \"date\"\n      ]\n    },\n    \"example_output\": [\n      {\n        \"flight_id\": \"FL-123\",\n        \"price\": 1200.0,\n        \"lra_price\": 1150.0,\n        \"airline\": \"Virgin Atlantic\"\n      }\n    ]\n  },\n  \"book_flight\": {\n    \"description\": \"Books a flight and updates the spent amount and itinerary. Fails if the budget is exceeded.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"flight_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique ID of the flight to book.\"\n        },\n        \"expected_price\": {\n          \"type\": \"number\",\n          \"description\": \"The price confirmed during search.\"\n        }\n      },\n      \"required\": [\n        \"flight_id\",\n        \"expected_price\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"confirmed\",\n      \"booking_ref\": \"ABC123XYZ\",\n      \"new_spent_amount\": 1200.0\n    }\n  },\n  \"search_hotels\": {\n    \"description\": \"Searches for hotels in a specific city within a per-diem price cap.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"city\": {\n          \"type\": \"string\",\n          \"description\": \"City name.\"\n        },\n        \"check_in\": {\n          \"type\": \"string\",\n          \"description\": \"YYYY-MM-DD\"\n        },\n        \"check_out\": {\n          \"type\": \"string\",\n          \"description\": \"YYYY-MM-DD\"\n        },\n        \"max_nightly_rate\": {\n          \"type\": \"number\",\n          \"description\": \"The maximum allowed price per night.\"\n        }\n      },\n      \"required\": [\n        \"city\",\n        \"check_in\",\n        \"check_out\",\n        \"max_nightly_rate\"\n      ]\n    },\n    \"example_output\": [\n      {\n        \"hotel_id\": \"HTL-99\",\n        \"name\": \"Hilton London\",\n        \"nightly_rate\": 420.0,\n        \"total_price\": 1260.0\n      }\n    ]\n  },\n  \"book_hotel\": {\n    \"description\": \"Books a hotel and updates the spent amount and itinerary.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"hotel_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique ID of the hotel to book.\"\n        },\n        \"total_price\": {\n          \"type\": \"number\",\n          \"description\": \"The total cost for the stay.\"\n        }\n      },\n      \"required\": [\n        \"hotel_id\",\n        \"total_price\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"confirmed\",\n      \"booking_ref\": \"HOTEL789\",\n      \"new_spent_amount\": 2460.0\n    }\n  },\n  \"sync_duty_of_care\": {\n    \"description\": \"Synchronizes all confirmed itinerary items with the corporate Duty of Care tracking system.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"itinerary_ids\": {\n          \"type\": \"array\",\n          \"items\": {\n            \"type\": \"string\"\n          },\n          \"description\": \"List of booking references to sync.\"\n        }\n      },\n      \"required\": [\n        \"itinerary_ids\"\n      ]\n    },\n    \"example_output\": {\n      \"sync_status\": \"synchronized\",\n      \"timestamp\": \"2025-10-01T10:00:00Z\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_trip_state",
+      "description": "Retrieves the current state of the trip, including total budget, current spent amount, existing itinerary items, and traveler preferences.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "total_budget": 7500.0,
+        "spent_amount": 0.0,
+        "current_city": "New York",
+        "itinerary_items": [],
+        "calendar_slots": {},
+        "traveler_preferences": [
+          "business class preferred",
+          "window seat"
+        ]
+      }
+    },
+    {
+      "name": "search_flights",
+      "description": "Searches for available flights between two airports on a specific date. Returns flight IDs, prices, and the Lowest Reasonable Airfare (LRA) for variance calculation.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "origin": {
+            "type": "string",
+            "description": "IATA code for the departure airport (e.g., 'JFK')."
+          },
+          "destination": {
+            "type": "string",
+            "description": "IATA code for the arrival airport (e.g., 'LHR')."
+          },
+          "date": {
+            "type": "string",
+            "description": "The date of travel in YYYY-MM-DD format."
+          }
+        },
+        "required": [
+          "origin",
+          "destination",
+          "date"
+        ]
+      },
+      "example_output": [
+        {
+          "flight_id": "FL-123",
+          "price": 1200.0,
+          "lra_price": 1150.0,
+          "airline": "Virgin Atlantic"
+        }
+      ]
+    },
+    {
+      "name": "book_flight",
+      "description": "Books a flight and updates the spent amount and itinerary. Fails if the budget is exceeded.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "flight_id": {
+            "type": "string",
+            "description": "The unique ID of the flight to book."
+          },
+          "expected_price": {
+            "type": "number",
+            "description": "The price confirmed during search."
+          }
+        },
+        "required": [
+          "flight_id",
+          "expected_price"
+        ]
+      },
+      "example_output": {
+        "status": "confirmed",
+        "booking_ref": "ABC123XYZ",
+        "new_spent_amount": 1200.0
+      }
+    },
+    {
+      "name": "search_hotels",
+      "description": "Searches for hotels in a specific city within a per-diem price cap.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "city": {
+            "type": "string",
+            "description": "City name."
+          },
+          "check_in": {
+            "type": "string",
+            "description": "YYYY-MM-DD"
+          },
+          "check_out": {
+            "type": "string",
+            "description": "YYYY-MM-DD"
+          },
+          "max_nightly_rate": {
+            "type": "number",
+            "description": "The maximum allowed price per night."
+          }
+        },
+        "required": [
+          "city",
+          "check_in",
+          "check_out",
+          "max_nightly_rate"
+        ]
+      },
+      "example_output": [
+        {
+          "hotel_id": "HTL-99",
+          "name": "Hilton London",
+          "nightly_rate": 420.0,
+          "total_price": 1260.0
+        }
+      ]
+    },
+    {
+      "name": "book_hotel",
+      "description": "Books a hotel and updates the spent amount and itinerary.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "hotel_id": {
+            "type": "string",
+            "description": "The unique ID of the hotel to book."
+          },
+          "total_price": {
+            "type": "number",
+            "description": "The total cost for the stay."
+          }
+        },
+        "required": [
+          "hotel_id",
+          "total_price"
+        ]
+      },
+      "example_output": {
+        "status": "confirmed",
+        "booking_ref": "HOTEL789",
+        "new_spent_amount": 2460.0
+      }
+    },
+    {
+      "name": "sync_duty_of_care",
+      "description": "Synchronizes all confirmed itinerary items with the corporate Duty of Care tracking system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "itinerary_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "List of booking references to sync."
+          }
+        },
+        "required": [
+          "itinerary_ids"
+        ]
+      },
+      "example_output": {
+        "sync_status": "synchronized",
+        "timestamp": "2025-10-01T10:00:00Z"
+      }
+    }
+  ],
+  "state_description": {
+    "total_budget": "The total monetary limit for the entire trip.",
+    "spent_amount": "Total amount spent on bookings so far.",
+    "current_city": "The current geographic location of the traveler.",
+    "itinerary_items": "A list of confirmed bookings, including flights, hotels, and activities.",
+    "calendar_slots": "A mapping of dates to booked activity types to prevent scheduling conflicts.",
+    "traveler_preferences": "List of user interests (e.g., 'museums', 'luxury', 'hiking')."
+  },
+  "task_initial_state": {
+    "total_budget": 7500.0,
+    "spent_amount": 0.0,
+    "current_city": "New York",
+    "itinerary_items": [],
+    "calendar_slots": {},
+    "traveler_preferences": [
+      "preferred_suppliers: British Airways, Air France, Marriott",
+      "cabin_class: Business Class allowed for transatlantic",
+      "advance_purchase_policy: 14_days"
+    ]
+  }
+}

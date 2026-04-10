@@ -1,0 +1,163 @@
+{
+  "environment_name": "env_44a7455ce07a",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: You are a high-fidelity simulator for a Dynamic Portfolio Rebalancing environment. Based on the current internal state $s_t$ and the action $a_t$ executed by the Agent, you must simulate the environment's evolution (state transition) and predict the observation $o_{{t+1}}$ returned to the Agent.\n- **Emphasis**: You are not a trading agent. You do not make investment decisions. You simulate market dynamics, update portfolio balances, calculate transaction costs, and provide the specific data requested by the Agent's action.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nYou must maintain perfect continuity of the environment. Every trade must deduct from cash and add to holdings (or vice-versa), and market prices must evolve logically or remain consistent with the simulation's timeline. All interactions must be self-consistent across the conversation history.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. You must parse this JSON to determine the transition:\n- `\"name\"`: The action function to execute (e.g., \"trade\", \"get_market_data\").\n- `\"arguments\"`: The parameters for the function.\n\nExample Input:\n```json\n{{\n \"name\": \"execute_trade\",\n \"arguments\": {{\n    \"symbol\": \"AAPL\",\n    \"side\": \"buy\",\n    \"quantity\": 10\n  }}\n}}\n```\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nReturn structured error information if the action cannot be completed. Examples:\n- Insufficient cash for a \"buy\" order.\n- Insufficient holdings for a \"sell\" order.\n- Invalid symbol or unknown action name.\n- Empty or malformed JSON inputs.\nFormat: `{{\"error\": \"Short description of the failure\"}}`.\n\n##### Output Assembly\nFor every action call, return a structured JSON object containing **ONLY** the return fields declared in that action function's definition. \n\n**CRITICAL CONSTRAINT**: You must **NOT** output the full internal state (e.g., the entire `holdings` map or `current_prices` list) unless the specific action definition explicitly requires it. The Agent only sees the Observation $o_{{t+1}}$. Do not output \"Internal State Updated\" or similar meta-commentary.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to JSON. No conversational filler.\n- **Factuality**: Use the provided state as the single source of truth. Do not invent symbols or cash balances not present in the state.\n- **Consistency**: Ensure that `Portfolio Value = Cash + sum(Quantity * Price)`. If an action changes one side, the others must remain consistent.\n- **Realism**: Simulate realistic constraints like transaction fees and market slippage if defined in the state/logic.\n- **Encapsulation**: Hide internal variables. The Agent must only receive the specific data requested via the action call.\n{{initial_state}}: {{\n  \"cash_balance\": 15000000.0,\n  \"holdings\": {{\n    \"CSAI\": 1200000,\n    \"BTH\": 500000\n  }},\n  \"market_prices\": {{\n    \"CSAI\": 10.0,\n    \"BTH\": 5.0\n  }},\n  \"transaction_fee_percentage\": 0.0,\n  \"timestamp\": 0\n}}\n{{state_descriptions}}: {{\n  \"cash_balance\": \"The amount of liquid currency available for purchasing assets.\",\n  \"holdings\": \"A mapping of asset symbols to the quantity currently held in the portfolio.\",\n  \"market_prices\": \"The current market price per unit for each supported asset symbol.\",\n  \"transaction_fee_percentage\": \"The percentage fee applied to the total value of each trade (e.g., 0.001 for 0.1%).\",\n  \"timestamp\": \"The current discrete time step of the simulation.\"\n}}\n{action_set_definitions}: {\n  \"get_portfolio_snapshot\": {\n    \"description\": \"Retrieves the current cash balance and all asset holdings within the portfolio.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"cash_balance\": 25000000,\n      \"holdings\": {\n        \"CSAI\": 450000,\n        \"OTHER\": 1000000\n      }\n    }\n  },\n  \"get_market_data\": {\n    \"description\": \"Retrieves current market prices and transaction fee details for assets.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"symbols\": {\n          \"type\": \"array\",\n          \"items\": {\n            \"type\": \"string\"\n          },\n          \"description\": \"List of asset symbols to query.\"\n        }\n      },\n      \"required\": [\n        \"symbols\"\n      ]\n    },\n    \"example_output\": {\n      \"market_prices\": {\n        \"CSAI\": 12.5\n      },\n      \"transaction_fee_percentage\": 0.001\n    }\n  },\n  \"get_company_research\": {\n    \"description\": \"Retrieves growth metrics, revenue data, and lead investor signals for a specific portfolio company.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"symbol\": {\n          \"type\": \"string\",\n          \"description\": \"The ticker or symbol of the company.\"\n        }\n      },\n      \"required\": [\n        \"symbol\"\n      ]\n    },\n    \"example_output\": {\n      \"growth_metrics\": {\n        \"yoy_revenue_growth\": 0.85,\n        \"net_burn_rate\": \"low\"\n      },\n      \"lead_investor_signal\": \"Tier 1 VC Lead\",\n      \"is_follow_on_round_open\": true\n    }\n  },\n  \"get_financing_notice\": {\n    \"description\": \"Retrieves the terms of the current financing round for a company, including the share price for the new investment.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"symbol\": {\n          \"type\": \"string\",\n          \"description\": \"The ticker or symbol of the company.\"\n        }\n      },\n      \"required\": [\n        \"symbol\"\n      ]\n    },\n    \"example_output\": {\n      \"offering_share_price\": 15.0,\n      \"round_valuation_cap\": 500000000\n    }\n  },\n  \"get_handbook_rules\": {\n    \"description\": \"Retrieves the investment allocation logic from the Venture Capital Portfolio Management handbook for specific categories.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"categories\": {\n          \"type\": \"array\",\n          \"items\": {\n            \"type\": \"string\"\n          },\n          \"description\": \"List of categories: 'Breakout', 'Contender', 'Pass'.\"\n        }\n      },\n      \"required\": [\n        \"categories\"\n      ]\n    },\n    \"example_output\": {\n      \"allocation_logic\": {\n        \"Breakout\": \"Invest maximum allowable up to concentration limit\",\n        \"Contender\": \"Maintain pro-rata share only\",\n        \"Pass\": \"No further investment\"\n      }\n    }\n  },\n  \"execute_follow_on_investment\": {\n    \"description\": \"Executes a purchase of additional shares in a company based on a USD amount.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"symbol\": {\n          \"type\": \"string\",\n          \"description\": \"The ticker or symbol of the company.\"\n        },\n        \"amount_usd\": {\n          \"type\": \"number\",\n          \"description\": \"The total dollar amount to invest.\"\n        }\n      },\n      \"required\": [\n        \"symbol\",\n        \"amount_usd\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"success\",\n      \"transaction_id\": \"tx_998877\",\n      \"shares_purchased\": 100000\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_portfolio_snapshot",
+      "description": "Retrieves the current cash balance and all asset holdings within the portfolio.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "cash_balance": 25000000,
+        "holdings": {
+          "CSAI": 450000,
+          "OTHER": 1000000
+        }
+      }
+    },
+    {
+      "name": "get_market_data",
+      "description": "Retrieves current market prices and transaction fee details for assets.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "symbols": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "List of asset symbols to query."
+          }
+        },
+        "required": [
+          "symbols"
+        ]
+      },
+      "example_output": {
+        "market_prices": {
+          "CSAI": 12.5
+        },
+        "transaction_fee_percentage": 0.001
+      }
+    },
+    {
+      "name": "get_company_research",
+      "description": "Retrieves growth metrics, revenue data, and lead investor signals for a specific portfolio company.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "symbol": {
+            "type": "string",
+            "description": "The ticker or symbol of the company."
+          }
+        },
+        "required": [
+          "symbol"
+        ]
+      },
+      "example_output": {
+        "growth_metrics": {
+          "yoy_revenue_growth": 0.85,
+          "net_burn_rate": "low"
+        },
+        "lead_investor_signal": "Tier 1 VC Lead",
+        "is_follow_on_round_open": true
+      }
+    },
+    {
+      "name": "get_financing_notice",
+      "description": "Retrieves the terms of the current financing round for a company, including the share price for the new investment.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "symbol": {
+            "type": "string",
+            "description": "The ticker or symbol of the company."
+          }
+        },
+        "required": [
+          "symbol"
+        ]
+      },
+      "example_output": {
+        "offering_share_price": 15.0,
+        "round_valuation_cap": 500000000
+      }
+    },
+    {
+      "name": "get_handbook_rules",
+      "description": "Retrieves the investment allocation logic from the Venture Capital Portfolio Management handbook for specific categories.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "categories": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "List of categories: 'Breakout', 'Contender', 'Pass'."
+          }
+        },
+        "required": [
+          "categories"
+        ]
+      },
+      "example_output": {
+        "allocation_logic": {
+          "Breakout": "Invest maximum allowable up to concentration limit",
+          "Contender": "Maintain pro-rata share only",
+          "Pass": "No further investment"
+        }
+      }
+    },
+    {
+      "name": "execute_follow_on_investment",
+      "description": "Executes a purchase of additional shares in a company based on a USD amount.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "symbol": {
+            "type": "string",
+            "description": "The ticker or symbol of the company."
+          },
+          "amount_usd": {
+            "type": "number",
+            "description": "The total dollar amount to invest."
+          }
+        },
+        "required": [
+          "symbol",
+          "amount_usd"
+        ]
+      },
+      "example_output": {
+        "status": "success",
+        "transaction_id": "tx_998877",
+        "shares_purchased": 100000
+      }
+    }
+  ],
+  "state_description": {
+    "cash_balance": "The amount of liquid currency available for purchasing assets.",
+    "holdings": "A mapping of asset symbols to the quantity currently held in the portfolio.",
+    "market_prices": "The current market price per unit for each supported asset symbol.",
+    "transaction_fee_percentage": "The percentage fee applied to the total value of each trade (e.g., 0.001 for 0.1%).",
+    "timestamp": "The current discrete time step of the simulation."
+  },
+  "task_initial_state": {
+    "cash_balance": 15000000.0,
+    "holdings": {
+      "CSAI": 1200000,
+      "BTH": 500000
+    },
+    "market_prices": {
+      "CSAI": 10.0,
+      "BTH": 5.0
+    },
+    "transaction_fee_percentage": 0.0,
+    "timestamp": 0
+  }
+}

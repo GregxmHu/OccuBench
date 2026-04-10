@@ -1,0 +1,159 @@
+{
+  "environment_name": "env_98ee25f94457",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: Based on the current internal state $s_t$ and the action $a_t$ performed by the Agent, simulate the internal evolution of the Library Catalog Search and Reservation system and predict the resulting observation $o_{{t+1}}$.\n- **Emphasis**: You are the engine of the environment. You do not provide advice or execute real-world code; you evolve the library's state (books availability, user records, reservation logs) and return only the specific data the Agent would see in a real system.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nYou must maintain the continuity of the library environment. If a book is reserved in step $T$, it must remain unavailable in step $T+1$ unless a cancellation action occurs. All interactions must be logically consistent with the history of the session.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. This JSON contains:\n- `\"name\"`: The name of the action (e.g., \"search_books\", \"reserve_item\").\n- `\"arguments\"`: The parameters for the action.\n\nExample:\n```json\n{{\n \"name\": \"reserve_item\",\n \"arguments\": {{\n    \"book_id\": \"ISBN-978-0123456789\",\n    \"user_id\": \"USER_42\"\n  }}\n}}\n```\nYou must parse this input, update the internal state $s_{{t+1}}$ accordingly, and generate the observation $o_{{t+1}}$.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nReturn structured error information if the action cannot be completed. Examples include:\n- Searching for a non-existent category: `{{\"error\": \"Category not found\"}}`\n- Reserving an already reserved book: `{{\"error\": \"Item already reserved by another user\"}}`\n- Invalid `user_id`: `{{\"error\": \"Authentication failed: User ID does not exist\"}}`\nDo not fabricate successful outcomes for failed logic.\n\n##### Output Assembly\nFor every action call, return a JSON object containing **ONLY** the return fields declared in the action function's definition. \n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the internal state `$s_t$`, the updated `new_state`, or the `{{state_descriptions}}`. The Agent must only receive the specific observation defined by the action (e.g., a list of search results or a confirmation status).\n\n### 4. Key Principles\n- **Format**: Strictly JSON-only for observations.\n- **Factuality**: Use the provided state as the ground truth. If a book's `status` is 'checked_out', it cannot be reserved.\n- **Consistency**: Ensure the library logic follows a linear timeline where actions have persistent effects.\n- **Realism**: Simulate realistic library behavior (e.g., timestamps for reservations, unique IDs).\n- **Encapsulation**: Never reveal the full database (internal state) to the Agent. Only show what the specific action output permits.\n{{initial_state}}: {{\n  \"catalog\": [\n    {{\n      \"book_id\": \"BK-ML-101\",\n      \"title\": \"Introduction to Machine Learning\",\n      \"author\": \"Dr. Sarah Hudson\",\n      \"status\": \"available\",\n      \"location\": \"Section A, Shelf 1\"\n    }},\n    {{\n      \"book_id\": \"BK-ML-202\",\n      \"title\": \"Introduction to Machine Learning\",\n      \"author\": \"Prof. Alexei Volkov\",\n      \"status\": \"available\",\n      \"location\": \"Section B, Shelf 4\"\n    }},\n    {{\n      \"book_id\": \"BK-ECON-001\",\n      \"title\": \"Principles of Economics\",\n      \"author\": \"N. Gregory Mankiw\",\n      \"status\": \"reserved\",\n      \"location\": \"Section E, Shelf 2\"\n    }},\n    {{\n      \"book_id\": \"BK-DS-505\",\n      \"title\": \"Data Structures and Algorithms\",\n      \"author\": \"Thomas H. Cormen\",\n      \"status\": \"reserved\",\n      \"location\": \"Section D, Shelf 10\"\n    }}\n  ],\n  \"user_database\": [\n    {{\n      \"user_id\": \"USER_V88\",\n      \"active_reservations\": [\n        \"BK-ECON-001\",\n        \"BK-DS-505\"\n      ],\n      \"reservation_limit\": 2\n    }}\n  ],\n  \"system_timestamp\": \"2024-05-15T14:30:00Z\"\n}}\n{{state_descriptions}}: {{\n  \"catalog\": \"List of books available in the library database\",\n  \"user_database\": \"Registered library users and their current activity\",\n  \"system_timestamp\": \"Current simulated date and time in the environment\"\n}}\n{action_set_definitions}: {\n  \"search_catalog\": {\n    \"description\": \"Searches the library catalog for books matching a title and location. Returns a list of matching book objects including their unique IDs.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"title\": {\n          \"type\": \"string\",\n          \"description\": \"The title or partial title of the book.\"\n        },\n        \"location\": {\n          \"type\": \"string\",\n          \"description\": \"The physical location in the library (e.g., 'Section B, Shelf 4').\"\n        }\n      },\n      \"required\": [\n        \"location\"\n      ]\n    },\n    \"example_output\": {\n      \"results\": [\n        {\n          \"book_id\": \"BK-9921\",\n          \"title\": \"Introduction to Machine Learning\",\n          \"location\": \"Section B, Shelf 4\",\n          \"status\": \"available\"\n        }\n      ]\n    }\n  },\n  \"get_user_info\": {\n    \"description\": \"Retrieves the current profile of a library patron, including their active reservation list and account status.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"user_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the library patron.\"\n        }\n      },\n      \"required\": [\n        \"user_id\"\n      ]\n    },\n    \"example_output\": {\n      \"user_id\": \"USER_V88\",\n      \"active_reservations\": [\n        \"BK-111\",\n        \"BK-222\"\n      ],\n      \"reservation_count\": 2\n    }\n  },\n  \"cancel_reservation\": {\n    \"description\": \"Cancels an existing book reservation for a specific user to free up account capacity.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"user_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the patron.\"\n        },\n        \"book_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique ID of the book to be removed from the user's reservations.\"\n        }\n      },\n      \"required\": [\n        \"user_id\",\n        \"book_id\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"success\",\n      \"message\": \"Reservation for BK-111 cancelled.\"\n    }\n  },\n  \"reserve_book\": {\n    \"description\": \"Creates a new reservation for a book. Fails if the user exceeds the system limit of 2 active reservations.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"user_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the patron.\"\n        },\n        \"book_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique ID of the book to reserve.\"\n        }\n      },\n      \"required\": [\n        \"user_id\",\n        \"book_id\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"confirmed\",\n      \"reservation_id\": \"RES-5542\",\n      \"book_id\": \"BK-9921\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "search_catalog",
+      "description": "Searches the library catalog for books matching a title and location. Returns a list of matching book objects including their unique IDs.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "description": "The title or partial title of the book."
+          },
+          "location": {
+            "type": "string",
+            "description": "The physical location in the library (e.g., 'Section B, Shelf 4')."
+          }
+        },
+        "required": [
+          "location"
+        ]
+      },
+      "example_output": {
+        "results": [
+          {
+            "book_id": "BK-9921",
+            "title": "Introduction to Machine Learning",
+            "location": "Section B, Shelf 4",
+            "status": "available"
+          }
+        ]
+      }
+    },
+    {
+      "name": "get_user_info",
+      "description": "Retrieves the current profile of a library patron, including their active reservation list and account status.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string",
+            "description": "The unique identifier for the library patron."
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      },
+      "example_output": {
+        "user_id": "USER_V88",
+        "active_reservations": [
+          "BK-111",
+          "BK-222"
+        ],
+        "reservation_count": 2
+      }
+    },
+    {
+      "name": "cancel_reservation",
+      "description": "Cancels an existing book reservation for a specific user to free up account capacity.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string",
+            "description": "The ID of the patron."
+          },
+          "book_id": {
+            "type": "string",
+            "description": "The unique ID of the book to be removed from the user's reservations."
+          }
+        },
+        "required": [
+          "user_id",
+          "book_id"
+        ]
+      },
+      "example_output": {
+        "status": "success",
+        "message": "Reservation for BK-111 cancelled."
+      }
+    },
+    {
+      "name": "reserve_book",
+      "description": "Creates a new reservation for a book. Fails if the user exceeds the system limit of 2 active reservations.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string",
+            "description": "The ID of the patron."
+          },
+          "book_id": {
+            "type": "string",
+            "description": "The unique ID of the book to reserve."
+          }
+        },
+        "required": [
+          "user_id",
+          "book_id"
+        ]
+      },
+      "example_output": {
+        "status": "confirmed",
+        "reservation_id": "RES-5542",
+        "book_id": "BK-9921"
+      }
+    }
+  ],
+  "state_description": {
+    "catalog": "List of books available in the library database",
+    "user_database": "Registered library users and their current activity",
+    "system_timestamp": "Current simulated date and time in the environment"
+  },
+  "task_initial_state": {
+    "catalog": [
+      {
+        "book_id": "BK-ML-101",
+        "title": "Introduction to Machine Learning",
+        "author": "Dr. Sarah Hudson",
+        "status": "available",
+        "location": "Section A, Shelf 1"
+      },
+      {
+        "book_id": "BK-ML-202",
+        "title": "Introduction to Machine Learning",
+        "author": "Prof. Alexei Volkov",
+        "status": "available",
+        "location": "Section B, Shelf 4"
+      },
+      {
+        "book_id": "BK-ECON-001",
+        "title": "Principles of Economics",
+        "author": "N. Gregory Mankiw",
+        "status": "reserved",
+        "location": "Section E, Shelf 2"
+      },
+      {
+        "book_id": "BK-DS-505",
+        "title": "Data Structures and Algorithms",
+        "author": "Thomas H. Cormen",
+        "status": "reserved",
+        "location": "Section D, Shelf 10"
+      }
+    ],
+    "user_database": [
+      {
+        "user_id": "USER_V88",
+        "active_reservations": [
+          "BK-ECON-001",
+          "BK-DS-505"
+        ],
+        "reservation_limit": 2
+      }
+    ],
+    "system_timestamp": "2024-05-15T14:30:00Z"
+  }
+}

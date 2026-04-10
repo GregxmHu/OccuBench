@@ -1,0 +1,175 @@
+{
+  "environment_name": "env_d3f81a699477",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: You act as a high-fidelity simulator for the 'Ship Cargo Loading Optimization' environment. Based on the current internal state $s_t$ and the Agent's action $a_t$, you must simulate the physical and logical evolution of the environment and predict the resulting observation $o_{{t+1}}$ obtained by the Agent.\n- **Emphasis**: You are a simulator, not an executor. You do not perform real-world shipping operations; you calculate state transitions (e.g., changes in vessel stability, weight distribution, and deck occupancy) and return only the structured observation defined by the action.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nYou must maintain strict context consistency throughout the session. Every action must build upon the state resulting from the previous action. You are responsible for tracking the 3D positioning of containers (Bay, Row, Tier) and the cumulative impact on the ship's center of gravity and hydrostatics.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. You must parse this JSON to determine the transition. The input format is:\n- `\"name\"`: The name of the action (e.g., load_container, move_crane).\n- `\"arguments\"`: A dictionary of parameters required for the action.\n\nExample:\n```json\n{{\n \"name\": \"load_container\",\n \"arguments\": {{\n    \"container_id\": \"CONT-102\",\n    \"weight\": 25.5,\n    \"position\": {{\"bay\": 1, \"row\": 2, \"tier\": 1}}\n  }}\n}}\n```\nYou must simulate the execution of these actions against the current internal ship state.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nIf the Agent attempts an illegal move (e.g., placing a heavy container on a light one, exceeding weight limits, stacking beyond maximum tier height, or accessing non-existent coordinates), you must return a structured error response:\n- Format: `{{\"error\": \"Specific description of the physical or logical violation\"}}`\n- Do not fabricate successful states for invalid actions.\n\n##### Output Assembly\nFor every action function call, return a structured JSON object containing **ONLY** the return fields declared in that action's definition. \n\n**CRITICAL CONSTRAINT**: You must **NOT** include the updated internal state, the full vessel manifest, or hidden stability variables in the output unless explicitly defined as a return field for that action. State maintenance is internal; the Agent only sees the Observation $o_{{t+1}}$.\n\n### 4. Key Principles\n- **Format**: All outputs must be strictly valid JSON.\n- **Factuality**: Simulations must adhere to the rules of maritime logistics and physics (gravity, load limits).\n- **Consistency**: The ship's list, trim, and stability (GM) must evolve logically. Removing a container from the port side must cause a corresponding change in the list calculation.\n- **Realism**: Actions take time and have physical consequences (e.g., crane travel time, structural stress).\n- **Quality**: Ensure error messages are diagnostic and observations are precise.\n- **Encapsulation**: Hide the full `bay_map` and internal weight distribution matrices. Only expose what the specific action returns.\n{{initial_state}}: {{\n  \"vessel_id\": \"MV-ARCTIC-LEADER\",\n  \"vessel_dimensions\": {{\n    \"max_bays\": 10,\n    \"max_rows\": 6,\n    \"max_tiers\": 4\n  }},\n  \"stability_metrics\": {{\n    \"metacentric_height\": 4.2,\n    \"trim_meters\": 0.05,\n    \"list_degrees\": 0.0\n  }},\n  \"total_deadweight_tons\": 340.0,\n  \"bay_occupancy_map\": {{\n    \"1-1-1\": {{\n      \"container_id\": \"EXIST-01\",\n      \"weight\": 20.0,\n      \"type\": \"deep-frozen\",\n      \"power_draw_kw\": 8.0\n    }},\n    \"1-6-1\": {{\n      \"container_id\": \"EXIST-02\",\n      \"weight\": 20.0,\n      \"type\": \"deep-frozen\",\n      \"power_draw_kw\": 8.0\n    }}\n  }},\n  \"crane_status\": {{\n    \"current_bay\": 1,\n    \"is_hoisting\": false\n  }}\n}}\n{{state_descriptions}}: {{\n  \"vessel_id\": \"Unique identifier of the cargo vessel.\",\n  \"vessel_dimensions\": \"Physical limits: max_bays, max_rows, max_tiers.\",\n  \"stability_metrics\": \"Calculated values for metacentric height (GM), trim (longitudinal), and list (transverse).\",\n  \"total_deadweight_tons\": \"The current aggregate weight of all loaded cargo.\",\n  \"bay_occupancy_map\": \"A mapping of coordinate strings 'B-R-T' to container data (ID and weight).\",\n  \"crane_status\": \"The current position and operational state of the loading crane.\"\n}}\n{action_set_definitions}: {\n  \"get_vessel_dimensions\": {\n    \"description\": \"Retrieves the physical limits of the vessel, including the range of bays, rows, and tiers available.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"vessel_id\": {\n          \"type\": \"string\",\n          \"description\": \"Unique identifier of the cargo vessel.\"\n        }\n      },\n      \"required\": [\n        \"vessel_id\"\n      ]\n    },\n    \"example_output\": {\n      \"max_bays\": 10,\n      \"max_rows\": 6,\n      \"max_tiers\": 5\n    }\n  },\n  \"get_bay_status\": {\n    \"description\": \"Returns detailed information about a specific bay, including current total power consumption, occupied slots, and the type/weight of containers in those slots.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"bay_id\": {\n          \"type\": \"integer\",\n          \"description\": \"The specific bay number to query.\"\n        }\n      },\n      \"required\": [\n        \"bay_id\"\n      ]\n    },\n    \"example_output\": {\n      \"current_power_kw\": 12.5,\n      \"occupied_slots\": [\n        {\n          \"coordinate\": \"01-02-01\",\n          \"container_id\": \"CONT-99\",\n          \"weight_tons\": 15,\n          \"cargo_type\": \"Deep-Frozen\"\n        }\n      ]\n    }\n  },\n  \"get_vessel_stability\": {\n    \"description\": \"Retrieves current stability metrics including metacentric height (GM), trim, and list.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"vessel_id\": {\n          \"type\": \"string\",\n          \"description\": \"Unique identifier of the vessel.\"\n        }\n      },\n      \"required\": [\n        \"vessel_id\"\n      ]\n    },\n    \"example_output\": {\n      \"gm\": 1.2,\n      \"trim\": 0.05,\n      \"list\": 0.01\n    }\n  },\n  \"simulate_loading_impact\": {\n    \"description\": \"Predicts the resulting vessel list and bay power levels if a set of containers were to be loaded at specific coordinates. Does not execute the move.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"placements\": {\n          \"type\": \"array\",\n          \"items\": {\n            \"type\": \"object\",\n            \"properties\": {\n              \"container_id\": {\n                \"type\": \"string\"\n              },\n              \"coordinate\": {\n                \"type\": \"string\",\n                \"description\": \"Format 'Bay-Row-Tier'\"\n              },\n              \"weight_tons\": {\n                \"type\": \"number\"\n              },\n              \"power_draw_kw\": {\n                \"type\": \"number\"\n              }\n            }\n          }\n        }\n      },\n      \"required\": [\n        \"placements\"\n      ]\n    },\n    \"example_output\": {\n      \"predicted_list\": 0.15,\n      \"bay_power_violations\": []\n    }\n  },\n  \"execute_load_operation\": {\n    \"description\": \"Permanently loads a container into the specified slot in the vessel state.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"container_id\": {\n          \"type\": \"string\"\n        },\n        \"coordinate\": {\n          \"type\": \"string\"\n        }\n      },\n      \"required\": [\n        \"container_id\",\n        \"coordinate\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"success\",\n      \"message\": \"Container loaded.\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_vessel_dimensions",
+      "description": "Retrieves the physical limits of the vessel, including the range of bays, rows, and tiers available.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "vessel_id": {
+            "type": "string",
+            "description": "Unique identifier of the cargo vessel."
+          }
+        },
+        "required": [
+          "vessel_id"
+        ]
+      },
+      "example_output": {
+        "max_bays": 10,
+        "max_rows": 6,
+        "max_tiers": 5
+      }
+    },
+    {
+      "name": "get_bay_status",
+      "description": "Returns detailed information about a specific bay, including current total power consumption, occupied slots, and the type/weight of containers in those slots.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "bay_id": {
+            "type": "integer",
+            "description": "The specific bay number to query."
+          }
+        },
+        "required": [
+          "bay_id"
+        ]
+      },
+      "example_output": {
+        "current_power_kw": 12.5,
+        "occupied_slots": [
+          {
+            "coordinate": "01-02-01",
+            "container_id": "CONT-99",
+            "weight_tons": 15,
+            "cargo_type": "Deep-Frozen"
+          }
+        ]
+      }
+    },
+    {
+      "name": "get_vessel_stability",
+      "description": "Retrieves current stability metrics including metacentric height (GM), trim, and list.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "vessel_id": {
+            "type": "string",
+            "description": "Unique identifier of the vessel."
+          }
+        },
+        "required": [
+          "vessel_id"
+        ]
+      },
+      "example_output": {
+        "gm": 1.2,
+        "trim": 0.05,
+        "list": 0.01
+      }
+    },
+    {
+      "name": "simulate_loading_impact",
+      "description": "Predicts the resulting vessel list and bay power levels if a set of containers were to be loaded at specific coordinates. Does not execute the move.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "placements": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "container_id": {
+                  "type": "string"
+                },
+                "coordinate": {
+                  "type": "string",
+                  "description": "Format 'Bay-Row-Tier'"
+                },
+                "weight_tons": {
+                  "type": "number"
+                },
+                "power_draw_kw": {
+                  "type": "number"
+                }
+              }
+            }
+          }
+        },
+        "required": [
+          "placements"
+        ]
+      },
+      "example_output": {
+        "predicted_list": 0.15,
+        "bay_power_violations": []
+      }
+    },
+    {
+      "name": "execute_load_operation",
+      "description": "Permanently loads a container into the specified slot in the vessel state.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "container_id": {
+            "type": "string"
+          },
+          "coordinate": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "container_id",
+          "coordinate"
+        ]
+      },
+      "example_output": {
+        "status": "success",
+        "message": "Container loaded."
+      }
+    }
+  ],
+  "state_description": {
+    "vessel_id": "Unique identifier of the cargo vessel.",
+    "vessel_dimensions": "Physical limits: max_bays, max_rows, max_tiers.",
+    "stability_metrics": "Calculated values for metacentric height (GM), trim (longitudinal), and list (transverse).",
+    "total_deadweight_tons": "The current aggregate weight of all loaded cargo.",
+    "bay_occupancy_map": "A mapping of coordinate strings 'B-R-T' to container data (ID and weight).",
+    "crane_status": "The current position and operational state of the loading crane."
+  },
+  "task_initial_state": {
+    "vessel_id": "MV-ARCTIC-LEADER",
+    "vessel_dimensions": {
+      "max_bays": 10,
+      "max_rows": 6,
+      "max_tiers": 4
+    },
+    "stability_metrics": {
+      "metacentric_height": 4.2,
+      "trim_meters": 0.05,
+      "list_degrees": 0.0
+    },
+    "total_deadweight_tons": 340.0,
+    "bay_occupancy_map": {
+      "1-1-1": {
+        "container_id": "EXIST-01",
+        "weight": 20.0,
+        "type": "deep-frozen",
+        "power_draw_kw": 8.0
+      },
+      "1-6-1": {
+        "container_id": "EXIST-02",
+        "weight": 20.0,
+        "type": "deep-frozen",
+        "power_draw_kw": 8.0
+      }
+    },
+    "crane_status": {
+      "current_bay": 1,
+      "is_hoisting": false
+    }
+  }
+}

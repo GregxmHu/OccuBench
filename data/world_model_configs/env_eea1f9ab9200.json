@@ -1,0 +1,194 @@
+{
+  "environment_name": "env_eea1f9ab9200",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: Based on the current state $s_t$ and the action $a_t$ taken by the Agent, simulate the evolution of the Excavation Site Grid Assignment environment and predict the resulting observation $o_{{t+1}}$.\n- **Emphasis**: You are a simulator. You do not execute real-world operations; you manage internal state transitions and generate realistic sensor/report data for the Agent.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state of the excavation site, grid statuses, and resource levels is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions between the World Model and the Agent must maintain rigorous context consistency. The evolution of the site (e.g., progress of an excavation, discovery of artifacts, or depletion of tools) must follow logically from the sequence of previous actions and the initial conditions.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set for managing the excavation site is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. You must parse this JSON to determine the intended behavior. The input will contain:\n- `\"name\"`: The name of the action function (e.g., `assign_team`, `excavate_cell`, `analyze_soil`).\n- Parameters: The specific arguments required for that function.\n\nExample Input:\n```json\n{{\n \"name\": \"assign_team\",\n \"arguments\": {{\n    \"grid_id\": \"B4\",\n    \"team_name\": \"Alpha-Scanner\"\n  }}\n}}\n```\nYou must simulate the consequences of this action on the internal state and generate the appropriate observation.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nIf the Agent provides invalid parameters (e.g., non-existent grid coordinates), attempts an undefined action, or requests an action that conflicts with the current state (e.g., excavating a grid already completed), you must return a structured error message:\n`{{\"error\": \"Reason for failure\"}}`\nDo not fabricate successful results for invalid actions.\n\n##### Output Assembly\nFor every action function call, return a structured JSON object containing **ONLY** the return fields declared in the action function's definition.\n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state $s_t$, the updated state, or any hidden environment variables. Only provide the specific observation fields defined in the action. Internal state maintenance is handled by you privately.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to JSON for all inputs and outputs.\n- **Factuality**: Do not simulate discoveries or environmental changes that contradict the site logic.\n- **Consistency**: Ensure that if a grid is marked as 'Rocky', subsequent excavation actions reflect increased difficulty or tool wear.\n- **Realism**: Dynamics must align with archaeological site management (e.g., weather delays, equipment failure, discovery probability).\n- **Quality**: Observations should be professional and informative.\n- **Encapsulation**: Never reveal the internal state structure in the output. Only provide the observation defined by the action.\n{{initial_state}}: {{\n  \"grid_layout\": [\n    {{\n      \"id\": \"G-202\",\n      \"target_n\": 1200.0,\n      \"target_e\": 1500.0,\n      \"status\": \"unassigned\",\n      \"soil_type\": \"Chalky Wash/Silt\"\n    }}\n  ],\n  \"available_teams\": [\n    \"Team Alpha (Expertise: Topographic Surveying, Workload: Low)\",\n    \"Team Beta (Expertise: Stratigraphic Excavation, Workload: High)\"\n  ],\n  \"site_resources\": {{\n    \"tools\": 100,\n    \"power_supply\": \"optimal\",\n    \"total_station_status\": {{\n      \"active_job\": \"BARROW_A_ARCHIVE\",\n      \"access_mode\": \"Read-Only/Archival\",\n      \"ppm_setting\": 0,\n      \"prism_offset\": -30,\n      \"level_check\": \"passed\"\n    }}\n  }},\n  \"environmental_conditions\": \"Severe Heat Shimmer; Ambient Temperature: 39C; Air Pressure: 1012hPa\"\n}}\n{{state_descriptions}}: {{\n  \"grid_layout\": \"A 2D array or list of objects representing the excavation coordinates, each containing status (e.g., unassigned, active, completed) and soil type.\",\n  \"available_teams\": \"List of specialized teams available for assignment, including their expertise level and current workload.\",\n  \"site_resources\": \"Inventory of equipment such as shovels, brushes, and scanners, including their remaining durability.\",\n  \"environmental_conditions\": \"Current weather or safety conditions at the site affecting operational efficiency.\"\n}}\n{action_set_definitions}: {\n  \"get_site_state\": {\n    \"description\": \"Queries the current environment state for specific categories such as 'environmental_conditions', 'grid_layout', or 'site_resources'.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"category\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"grid_layout\",\n            \"available_teams\",\n            \"site_resources\",\n            \"environmental_conditions\"\n          ],\n          \"description\": \"The category of state information to retrieve.\"\n        }\n      },\n      \"required\": [\n        \"category\"\n      ]\n    },\n    \"example_output\": {\n      \"environmental_conditions\": {\n        \"temperature_c\": 15.5,\n        \"pressure_hpa\": 1013.2,\n        \"wind_speed\": 5.0\n      }\n    }\n  },\n  \"get_project_config\": {\n    \"description\": \"Retrieves the required synchronization protocols and data-entry standards for a specific job archive.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"archive_id\": {\n          \"type\": \"string\",\n          \"description\": \"The name of the digital job file/archive (e.g., 'BARROW_A_ARCHIVE').\"\n        }\n      },\n      \"required\": [\n        \"archive_id\"\n      ]\n    },\n    \"example_output\": {\n      \"protocol_id\": \"ISO-ARCH-2023-B\",\n      \"sync_token\": \"SYNC_99210\"\n    }\n  },\n  \"set_instrument_atmospherics\": {\n    \"description\": \"Configures the Total Station with real-time temperature and pressure to ensure EDM accuracy.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"temperature\": {\n          \"type\": \"number\",\n          \"description\": \"Temperature in Celsius.\"\n        },\n        \"pressure\": {\n          \"type\": \"number\",\n          \"description\": \"Atmospheric pressure in hPa.\"\n        }\n      },\n      \"required\": [\n        \"temperature\",\n        \"pressure\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"success\",\n      \"ppm_correction\": 12.5\n    }\n  },\n  \"sync_entry_protocol\": {\n    \"description\": \"Synchronizes the local data-entry system with the project's central database using a protocol ID.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"protocol_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID or token retrieved from project configuration.\"\n        }\n      },\n      \"required\": [\n        \"protocol_id\"\n      ]\n    },\n    \"example_output\": {\n      \"synchronized\": true,\n      \"mode\": \"High-Precision-Validation\"\n    }\n  },\n  \"take_measurement\": {\n    \"description\": \"Triggers the Total Station to measure the coordinate of a target point.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"point_id\": {\n          \"type\": \"string\",\n          \"description\": \"Identifier for the grid point.\"\n        },\n        \"target_northing\": {\n          \"type\": \"number\",\n          \"description\": \"Target N coordinate.\"\n        },\n        \"target_easting\": {\n          \"type\": \"number\",\n          \"description\": \"Target E coordinate.\"\n        }\n      },\n      \"required\": [\n        \"point_id\",\n        \"target_northing\",\n        \"target_easting\"\n      ]\n    },\n    \"example_output\": {\n      \"actual_n\": 1200.001,\n      \"actual_e\": 1500.002,\n      \"horizontal_residual\": 0.002\n    }\n  },\n  \"archive_measurement\": {\n    \"description\": \"Permanently commits the verified measurement data to the digital job archive.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"archive_id\": {\n          \"type\": \"string\",\n          \"description\": \"Target archive name.\"\n        },\n        \"point_id\": {\n          \"type\": \"string\",\n          \"description\": \"Identifier for the grid point.\"\n        },\n        \"measurement_data\": {\n          \"type\": \"object\",\n          \"description\": \"The coordinate and residual data to store.\"\n        }\n      },\n      \"required\": [\n        \"archive_id\",\n        \"point_id\",\n        \"measurement_data\"\n      ]\n    },\n    \"example_output\": {\n      \"transaction_id\": \"TXN_BARROW_001\",\n      \"status\": \"COMMITTED\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_site_state",
+      "description": "Queries the current environment state for specific categories such as 'environmental_conditions', 'grid_layout', or 'site_resources'.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "category": {
+            "type": "string",
+            "enum": [
+              "grid_layout",
+              "available_teams",
+              "site_resources",
+              "environmental_conditions"
+            ],
+            "description": "The category of state information to retrieve."
+          }
+        },
+        "required": [
+          "category"
+        ]
+      },
+      "example_output": {
+        "environmental_conditions": {
+          "temperature_c": 15.5,
+          "pressure_hpa": 1013.2,
+          "wind_speed": 5.0
+        }
+      }
+    },
+    {
+      "name": "get_project_config",
+      "description": "Retrieves the required synchronization protocols and data-entry standards for a specific job archive.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "archive_id": {
+            "type": "string",
+            "description": "The name of the digital job file/archive (e.g., 'BARROW_A_ARCHIVE')."
+          }
+        },
+        "required": [
+          "archive_id"
+        ]
+      },
+      "example_output": {
+        "protocol_id": "ISO-ARCH-2023-B",
+        "sync_token": "SYNC_99210"
+      }
+    },
+    {
+      "name": "set_instrument_atmospherics",
+      "description": "Configures the Total Station with real-time temperature and pressure to ensure EDM accuracy.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "temperature": {
+            "type": "number",
+            "description": "Temperature in Celsius."
+          },
+          "pressure": {
+            "type": "number",
+            "description": "Atmospheric pressure in hPa."
+          }
+        },
+        "required": [
+          "temperature",
+          "pressure"
+        ]
+      },
+      "example_output": {
+        "status": "success",
+        "ppm_correction": 12.5
+      }
+    },
+    {
+      "name": "sync_entry_protocol",
+      "description": "Synchronizes the local data-entry system with the project's central database using a protocol ID.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "protocol_id": {
+            "type": "string",
+            "description": "The ID or token retrieved from project configuration."
+          }
+        },
+        "required": [
+          "protocol_id"
+        ]
+      },
+      "example_output": {
+        "synchronized": true,
+        "mode": "High-Precision-Validation"
+      }
+    },
+    {
+      "name": "take_measurement",
+      "description": "Triggers the Total Station to measure the coordinate of a target point.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "point_id": {
+            "type": "string",
+            "description": "Identifier for the grid point."
+          },
+          "target_northing": {
+            "type": "number",
+            "description": "Target N coordinate."
+          },
+          "target_easting": {
+            "type": "number",
+            "description": "Target E coordinate."
+          }
+        },
+        "required": [
+          "point_id",
+          "target_northing",
+          "target_easting"
+        ]
+      },
+      "example_output": {
+        "actual_n": 1200.001,
+        "actual_e": 1500.002,
+        "horizontal_residual": 0.002
+      }
+    },
+    {
+      "name": "archive_measurement",
+      "description": "Permanently commits the verified measurement data to the digital job archive.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "archive_id": {
+            "type": "string",
+            "description": "Target archive name."
+          },
+          "point_id": {
+            "type": "string",
+            "description": "Identifier for the grid point."
+          },
+          "measurement_data": {
+            "type": "object",
+            "description": "The coordinate and residual data to store."
+          }
+        },
+        "required": [
+          "archive_id",
+          "point_id",
+          "measurement_data"
+        ]
+      },
+      "example_output": {
+        "transaction_id": "TXN_BARROW_001",
+        "status": "COMMITTED"
+      }
+    }
+  ],
+  "state_description": {
+    "grid_layout": "A 2D array or list of objects representing the excavation coordinates, each containing status (e.g., unassigned, active, completed) and soil type.",
+    "available_teams": "List of specialized teams available for assignment, including their expertise level and current workload.",
+    "site_resources": "Inventory of equipment such as shovels, brushes, and scanners, including their remaining durability.",
+    "environmental_conditions": "Current weather or safety conditions at the site affecting operational efficiency."
+  },
+  "task_initial_state": {
+    "grid_layout": [
+      {
+        "id": "G-202",
+        "target_n": 1200.0,
+        "target_e": 1500.0,
+        "status": "unassigned",
+        "soil_type": "Chalky Wash/Silt"
+      }
+    ],
+    "available_teams": [
+      "Team Alpha (Expertise: Topographic Surveying, Workload: Low)",
+      "Team Beta (Expertise: Stratigraphic Excavation, Workload: High)"
+    ],
+    "site_resources": {
+      "tools": 100,
+      "power_supply": "optimal",
+      "total_station_status": {
+        "active_job": "BARROW_A_ARCHIVE",
+        "access_mode": "Read-Only/Archival",
+        "ppm_setting": 0,
+        "prism_offset": -30,
+        "level_check": "passed"
+      }
+    },
+    "environmental_conditions": "Severe Heat Shimmer; Ambient Temperature: 39C; Air Pressure: 1012hPa"
+  }
+}

@@ -1,0 +1,179 @@
+{
+  "environment_name": "env_f2c03e3d8191",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM) for Treatment Plan Sequencing.\n- **Core Objective**: Based on the current patient state $s_t$ and the medical action $a_t$ selected by the Agent, simulate the patient's physiological evolution and predict the observation $o_{{t+1}}$ (e.g., lab results, vital sign changes, or symptomatic reports) obtained by the Agent.\n- **Emphasis**: The LWM does not provide medical advice or execute real clinical procedures. It functions as a simulator that performs internal state evolution and observation generation based on clinical logic and task constraints.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation tracking the patient's health status and treatment trajectory. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions between the World Model and the Agent must maintain rigorous context consistency. The model must track cumulative side effects, drug-drug interactions, and the temporal progression of the disease based on the sequence of actions provided in the history.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling medical action functions (e.g., administering medication, ordering tests, or adjusting dosages). The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` returned for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. This JSON contains:\n- `\"name\"`: Specifies the name of the medical action function to execute.\n- The remaining fields are the parameter names and values required (e.g., `dosage`, `duration`).\n\nExample:\n```json\n{{\n \"name\": \"administer_treatment\",\n \"arguments\": {{\n    \"treatment_type\": \"Chemotherapy\",\n    \"dosage_mg\": 500\n  }}\n}}\n```\nThe Language World Model must parse this JSON, update the internal patient state (hidden), and simulate the resulting observation.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nFor invalid parameters (e.g., negative dosage), undefined actions, or actions that are clinically impossible in the current state (e.g., performing surgery on a deceased patient), return structured error information (e.g., `{{\"error\": \"Invalid dosage value\"}}`). Do not fabricate states or fictitious medical responses.\n\n##### Output Assembly\nFor every action function call, the model must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition (the Observation).\n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, `new_state`, or any hidden patient vitals not explicitly measured by the action. The Agent must only see the specific return values defined in the action. Do not output the state update process.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to specified JSON formats for both input parsing and output generation.\n- **Factuality**: Do not fabricate non-existent medical tests, physiological responses, or functions.\n- **Consistency**: The patient's response to treatment must be self-consistent (e.g., if a drug reduces blood pressure, the observation must reflect that decrease).\n- **Realism**: Simulated behaviors must align with reasonable medical dynamics, including latency in treatment effects and potential adverse reactions.\n- **Quality**: Language must be professional, clear, and structurally complete.\n- **Encapsulation**: Strictly hide the internal state structure. Only expose information that is explicitly returned as a result of the Agent's action.\n{{initial_state}}: {{\n  \"patient_vitals\": {{\n    \"heart_rate\": 74,\n    \"blood_pressure\": \"122/81\",\n    \"oxygen_sat\": 98,\n    \"quadrant_records\": {{\n      \"lower_left\": [\n        {{\n          \"position\": \"distal_to_canine\",\n          \"pd_max\": 3,\n          \"ept\": 18\n        }},\n        {{\n          \"position\": \"first_premolar\",\n          \"pd_max\": 4,\n          \"ept\": 20\n        }},\n        {{\n          \"position\": \"second_premolar\",\n          \"pd_max\": 3,\n          \"ept\": 22\n        }},\n        {{\n          \"position\": \"first_molar\",\n          \"pd_max\": 12,\n          \"ept\": 80\n        }},\n        {{\n          \"position\": \"second_molar\",\n          \"pd_max\": 3,\n          \"ept\": 15\n        }}\n      ]\n    }},\n    \"chief_complaint\": \"Swelling and pain in the back left of the mouth.\",\n    \"sinus_tract_presence\": true\n  }},\n  \"disease_severity_index\": 0.8,\n  \"toxicity_level\": 0.0,\n  \"treatment_history\": [],\n  \"current_step\": 1,\n  \"patient_status\": \"stable\"\n}}\n{{state_descriptions}}: {{\n  \"patient_vitals\": \"Current physiological indicators including heart rate, blood pressure, and oxygen saturation.\",\n  \"disease_severity_index\": \"A normalized score (0.0 to 1.0) representing the progression of the condition being treated.\",\n  \"toxicity_level\": \"Accumulated side effects or systemic toxicity from previous treatments (0.0 to 1.0).\",\n  \"treatment_history\": \"A chronological list of actions previously performed on the patient.\",\n  \"current_step\": \"The current time step or day in the treatment sequence.\",\n  \"patient_status\": \"The general clinical status of the patient (e.g., 'stable', 'deteriorating', 'critical').\"\n}}\n{action_set_definitions}: {\n  \"get_clinical_summary\": {\n    \"description\": \"Retrieves the current environmental state including patient vitals, disease severity, toxicity levels, and treatment history.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"patient_vitals\": \"BP: 120/80, HR: 72\",\n      \"disease_severity_index\": 0.75,\n      \"toxicity_level\": 0.1,\n      \"treatment_history\": [],\n      \"current_step\": 0,\n      \"patient_status\": \"stable\"\n    }\n  },\n  \"identify_target_tooth\": {\n    \"description\": \"Performs a visual and physical examination of a specific oral region to identify the exact tooth ID causing symptoms.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"region\": {\n          \"type\": \"string\",\n          \"description\": \"The anatomical region to examine (e.g., 'mandibular_left_posterior').\"\n        }\n      },\n      \"required\": [\n        \"region\"\n      ]\n    },\n    \"example_output\": {\n      \"tooth_id\": \"T18\",\n      \"visible_findings\": \"parulis (gum boil) buccal to tooth\"\n    }\n  },\n  \"conduct_diagnostics\": {\n    \"description\": \"Performs specific diagnostic tests on a tooth to determine vitality or morphology.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"tooth_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the tooth.\"\n        },\n        \"test_type\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"pulp_vitality_test\",\n            \"periodontal_probing\",\n            \"radiographic_imaging\"\n          ],\n          \"description\": \"The type of diagnostic test to run.\"\n        }\n      },\n      \"required\": [\n        \"tooth_id\",\n        \"test_type\"\n      ]\n    },\n    \"example_output\": {\n      \"result_value\": \"non-vital\",\n      \"probing_depths\": [\n        6,\n        4,\n        7\n      ],\n      \"interpretation\": \"Periapical radiolucency observed\"\n    }\n  },\n  \"administer_treatment\": {\n    \"description\": \"Executes a specific clinical procedure on the target tooth.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"tooth_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the tooth.\"\n        },\n        \"procedure_type\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"endodontic_therapy\",\n            \"scaling_and_root_planing\",\n            \"periodontal_flap_surgery\"\n          ],\n          \"description\": \"The treatment procedure to perform.\"\n        }\n      },\n      \"required\": [\n        \"tooth_id\",\n        \"procedure_type\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"success\",\n      \"impact_on_severity\": -0.2\n    }\n  },\n  \"advance_biological_clock\": {\n    \"description\": \"Simulates the passage of time required for biological healing and tissue reattachment.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"days\": {\n          \"type\": \"integer\",\n          \"description\": \"Number of days to advance (e.g., 28 for a 4-week healing cycle).\"\n        }\n      },\n      \"required\": [\n        \"days\"\n      ]\n    },\n    \"example_output\": {\n      \"new_step\": 28,\n      \"healing_status\": \"complete\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_clinical_summary",
+      "description": "Retrieves the current environmental state including patient vitals, disease severity, toxicity levels, and treatment history.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "patient_vitals": "BP: 120/80, HR: 72",
+        "disease_severity_index": 0.75,
+        "toxicity_level": 0.1,
+        "treatment_history": [],
+        "current_step": 0,
+        "patient_status": "stable"
+      }
+    },
+    {
+      "name": "identify_target_tooth",
+      "description": "Performs a visual and physical examination of a specific oral region to identify the exact tooth ID causing symptoms.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "region": {
+            "type": "string",
+            "description": "The anatomical region to examine (e.g., 'mandibular_left_posterior')."
+          }
+        },
+        "required": [
+          "region"
+        ]
+      },
+      "example_output": {
+        "tooth_id": "T18",
+        "visible_findings": "parulis (gum boil) buccal to tooth"
+      }
+    },
+    {
+      "name": "conduct_diagnostics",
+      "description": "Performs specific diagnostic tests on a tooth to determine vitality or morphology.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "tooth_id": {
+            "type": "string",
+            "description": "The unique identifier for the tooth."
+          },
+          "test_type": {
+            "type": "string",
+            "enum": [
+              "pulp_vitality_test",
+              "periodontal_probing",
+              "radiographic_imaging"
+            ],
+            "description": "The type of diagnostic test to run."
+          }
+        },
+        "required": [
+          "tooth_id",
+          "test_type"
+        ]
+      },
+      "example_output": {
+        "result_value": "non-vital",
+        "probing_depths": [
+          6,
+          4,
+          7
+        ],
+        "interpretation": "Periapical radiolucency observed"
+      }
+    },
+    {
+      "name": "administer_treatment",
+      "description": "Executes a specific clinical procedure on the target tooth.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "tooth_id": {
+            "type": "string",
+            "description": "The unique identifier for the tooth."
+          },
+          "procedure_type": {
+            "type": "string",
+            "enum": [
+              "endodontic_therapy",
+              "scaling_and_root_planing",
+              "periodontal_flap_surgery"
+            ],
+            "description": "The treatment procedure to perform."
+          }
+        },
+        "required": [
+          "tooth_id",
+          "procedure_type"
+        ]
+      },
+      "example_output": {
+        "status": "success",
+        "impact_on_severity": -0.2
+      }
+    },
+    {
+      "name": "advance_biological_clock",
+      "description": "Simulates the passage of time required for biological healing and tissue reattachment.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "days": {
+            "type": "integer",
+            "description": "Number of days to advance (e.g., 28 for a 4-week healing cycle)."
+          }
+        },
+        "required": [
+          "days"
+        ]
+      },
+      "example_output": {
+        "new_step": 28,
+        "healing_status": "complete"
+      }
+    }
+  ],
+  "state_description": {
+    "patient_vitals": "Current physiological indicators including heart rate, blood pressure, and oxygen saturation.",
+    "disease_severity_index": "A normalized score (0.0 to 1.0) representing the progression of the condition being treated.",
+    "toxicity_level": "Accumulated side effects or systemic toxicity from previous treatments (0.0 to 1.0).",
+    "treatment_history": "A chronological list of actions previously performed on the patient.",
+    "current_step": "The current time step or day in the treatment sequence.",
+    "patient_status": "The general clinical status of the patient (e.g., 'stable', 'deteriorating', 'critical')."
+  },
+  "task_initial_state": {
+    "patient_vitals": {
+      "heart_rate": 74,
+      "blood_pressure": "122/81",
+      "oxygen_sat": 98,
+      "quadrant_records": {
+        "lower_left": [
+          {
+            "position": "distal_to_canine",
+            "pd_max": 3,
+            "ept": 18
+          },
+          {
+            "position": "first_premolar",
+            "pd_max": 4,
+            "ept": 20
+          },
+          {
+            "position": "second_premolar",
+            "pd_max": 3,
+            "ept": 22
+          },
+          {
+            "position": "first_molar",
+            "pd_max": 12,
+            "ept": 80
+          },
+          {
+            "position": "second_molar",
+            "pd_max": 3,
+            "ept": 15
+          }
+        ]
+      },
+      "chief_complaint": "Swelling and pain in the back left of the mouth.",
+      "sinus_tract_presence": true
+    },
+    "disease_severity_index": 0.8,
+    "toxicity_level": 0.0,
+    "treatment_history": [],
+    "current_step": 1,
+    "patient_status": "stable"
+  }
+}

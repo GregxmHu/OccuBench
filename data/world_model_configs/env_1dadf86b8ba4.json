@@ -1,0 +1,141 @@
+{
+  "environment_name": "env_1dadf86b8ba4",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: You are a high-fidelity simulator for an \"Air Quality Alert Response\" environment. Your task is to act as the environment itself. Based on the current internal state $s_t$ and the action $a_t$ executed by the Agent, you must simulate the internal state transition to $s_{{t+1}}$ and generate the specific observation $o_{{t+1}}$ that the Agent would receive. \n- **Emphasis**: You are not the Agent making decisions. You are the World Model predicting outcomes. You do not execute real-world operations; you perform internal state evolution and provide sensory/data feedback.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nYou must maintain strict context consistency throughout the interaction. Every action taken by the Agent affects the internal state (e.g., restricting traffic should eventually lower emission levels but may increase economic dissatisfaction), and these changes must persist and influence all future observations.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object containing:\n- `\"name\"`: The name of the action function to execute.\n- `\"arguments\"`: A dictionary of parameters required by that action.\n\nYou must parse these inputs, update the internal state based on the logic of air quality dynamics (e.g., wind speed, industrial activity, traffic volume), and generate the result.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nIf the Agent provides invalid parameters, calls undefined actions, or attempts actions that conflict with the current state (e.g., lifting a restriction that wasn't active), you must return a structured error message, such as `{{\"error\": \"Description of the issue\"}}`. Do not fabricate successful responses for invalid inputs.\n\n##### Output Assembly\nFor every action call, you must return a structured JSON object containing **ONLY** the return fields defined in the specific action's documentation. \n\n**CRITICAL CONSTRAINT**: Your output must **NOT** include the full internal state object, the `new_state`, or any variables used for internal tracking. Only expose the specific observation (return values) defined for that action. State maintenance is handled internally and remains hidden from the Agent.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to specified JSON output formats without extra conversational filler.\n- **Factuality**: Use realistic environmental data physics (e.g., AQI doesn't drop to 0 instantly after one traffic ban).\n- **Consistency**: Ensure the environment behaves logically over time. If industrial output is cut, PM2.5 levels should show a corresponding downward trend in subsequent observations.\n- **Realism**: Simulate secondary effects, such as public compliance levels or weather-driven dispersion, to provide a challenging and realistic training environment.\n- **Quality**: Provide clear, unambiguous JSON observations.\n- **Encapsulation**: Never reveal the underlying state values unless the specific action called (e.g., `get_sensor_status`) is designed to return them.\n{{initial_state}}: {{\n  \"aqi_index\": 215,\n  \"pm25_density\": 165.2,\n  \"traffic_density\": 0.92,\n  \"industrial_activity_level\": 1.0,\n  \"active_advisories\": [\n    \"Plume_Proximity_Alert\"\n  ],\n  \"wind_speed\": 3.1,\n  \"public_compliance_rate\": 0.65\n}}\n{{state_descriptions}}: {{\n  \"aqi_index\": \"Current Air Quality Index (0-500).\",\n  \"pm25_density\": \"Current PM2.5 concentration in μg/m³.\",\n  \"traffic_density\": \"Current traffic volume as a percentage of peak capacity (0.0 to 1.0).\",\n  \"industrial_activity_level\": \"Operational capacity of heavy industry zones (0.0 to 1.0).\",\n  \"active_advisories\": \"List of currently active public health or traffic warnings.\",\n  \"wind_speed\": \"Current wind speed in km/h, affecting pollutant dispersion.\",\n  \"public_compliance_rate\": \"Likelihood of the public following new restrictions (0.0 to 1.0).\"\n}}\n{action_set_definitions}: {\n  \"get_environment_metrics\": {\n    \"description\": \"Retrieves the current numerical environmental data including air quality, PM2.5 density, traffic levels, and industrial activity.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"aqi_index\": 210,\n      \"pm25_density\": 95.5,\n      \"traffic_density\": 0.8,\n      \"industrial_activity_level\": 0.7,\n      \"wind_speed\": 12.5,\n      \"public_compliance_rate\": 0.65\n    }\n  },\n  \"get_active_advisories\": {\n    \"description\": \"Retrieves the list of currently active public health or traffic warnings.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"active_advisories\": [\n        \"Traffic Congestion Alert\",\n        \"General Health Advisory\"\n      ]\n    }\n  },\n  \"contain_industrial_fire\": {\n    \"description\": \"Deploys specialized suppression teams to the plastics recycling facility to extinguish the fire and halt the emission of particulates and chemical precursors.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"suppression_intensity\": {\n          \"type\": \"number\",\n          \"description\": \"The level of resources to deploy (0.0 to 1.0).\"\n        }\n      },\n      \"required\": [\n        \"suppression_intensity\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"containment_in_progress\",\n      \"emission_reduction_rate\": \"high\"\n    }\n  },\n  \"update_traffic_control\": {\n    \"description\": \"Sets the target traffic density level to influence air quality.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"level\": {\n          \"type\": \"number\",\n          \"description\": \"Target traffic volume percentage (0.0 to 1.0).\"\n        }\n      },\n      \"required\": [\n        \"level\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"success\",\n      \"new_traffic_density\": 0.0\n    }\n  },\n  \"update_industrial_control\": {\n    \"description\": \"Adjusts the operational capacity of heavy industry zones to manage air quality.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"level\": {\n          \"type\": \"number\",\n          \"description\": \"Operational capacity percentage (0.0 to 1.0).\"\n        }\n      },\n      \"required\": [\n        \"level\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"success\",\n      \"new_industrial_activity_level\": 0.4\n    }\n  },\n  \"post_public_advisory\": {\n    \"description\": \"Issues a new public health or safety warning to the environment.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"advisory_text\": {\n          \"type\": \"string\",\n          \"description\": \"The specific health or traffic warning message.\"\n        }\n      },\n      \"required\": [\n        \"advisory_text\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"issued\",\n      \"active_advisories\": [\n        \"High PM2.5 Warning\",\n        \"Wet Deposition Hazard\"\n      ]\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_environment_metrics",
+      "description": "Retrieves the current numerical environmental data including air quality, PM2.5 density, traffic levels, and industrial activity.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "aqi_index": 210,
+        "pm25_density": 95.5,
+        "traffic_density": 0.8,
+        "industrial_activity_level": 0.7,
+        "wind_speed": 12.5,
+        "public_compliance_rate": 0.65
+      }
+    },
+    {
+      "name": "get_active_advisories",
+      "description": "Retrieves the list of currently active public health or traffic warnings.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "active_advisories": [
+          "Traffic Congestion Alert",
+          "General Health Advisory"
+        ]
+      }
+    },
+    {
+      "name": "contain_industrial_fire",
+      "description": "Deploys specialized suppression teams to the plastics recycling facility to extinguish the fire and halt the emission of particulates and chemical precursors.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "suppression_intensity": {
+            "type": "number",
+            "description": "The level of resources to deploy (0.0 to 1.0)."
+          }
+        },
+        "required": [
+          "suppression_intensity"
+        ]
+      },
+      "example_output": {
+        "status": "containment_in_progress",
+        "emission_reduction_rate": "high"
+      }
+    },
+    {
+      "name": "update_traffic_control",
+      "description": "Sets the target traffic density level to influence air quality.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "level": {
+            "type": "number",
+            "description": "Target traffic volume percentage (0.0 to 1.0)."
+          }
+        },
+        "required": [
+          "level"
+        ]
+      },
+      "example_output": {
+        "status": "success",
+        "new_traffic_density": 0.0
+      }
+    },
+    {
+      "name": "update_industrial_control",
+      "description": "Adjusts the operational capacity of heavy industry zones to manage air quality.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "level": {
+            "type": "number",
+            "description": "Operational capacity percentage (0.0 to 1.0)."
+          }
+        },
+        "required": [
+          "level"
+        ]
+      },
+      "example_output": {
+        "status": "success",
+        "new_industrial_activity_level": 0.4
+      }
+    },
+    {
+      "name": "post_public_advisory",
+      "description": "Issues a new public health or safety warning to the environment.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "advisory_text": {
+            "type": "string",
+            "description": "The specific health or traffic warning message."
+          }
+        },
+        "required": [
+          "advisory_text"
+        ]
+      },
+      "example_output": {
+        "status": "issued",
+        "active_advisories": [
+          "High PM2.5 Warning",
+          "Wet Deposition Hazard"
+        ]
+      }
+    }
+  ],
+  "state_description": {
+    "aqi_index": "Current Air Quality Index (0-500).",
+    "pm25_density": "Current PM2.5 concentration in μg/m³.",
+    "traffic_density": "Current traffic volume as a percentage of peak capacity (0.0 to 1.0).",
+    "industrial_activity_level": "Operational capacity of heavy industry zones (0.0 to 1.0).",
+    "active_advisories": "List of currently active public health or traffic warnings.",
+    "wind_speed": "Current wind speed in km/h, affecting pollutant dispersion.",
+    "public_compliance_rate": "Likelihood of the public following new restrictions (0.0 to 1.0)."
+  },
+  "task_initial_state": {
+    "aqi_index": 215,
+    "pm25_density": 165.2,
+    "traffic_density": 0.92,
+    "industrial_activity_level": 1.0,
+    "active_advisories": [
+      "Plume_Proximity_Alert"
+    ],
+    "wind_speed": 3.1,
+    "public_compliance_rate": 0.65
+  }
+}

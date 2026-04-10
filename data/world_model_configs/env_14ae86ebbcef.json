@@ -1,0 +1,183 @@
+{
+  "environment_name": "env_14ae86ebbcef",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM) for Urban Traffic Signal Control.\n- **Core Objective**: Based on the current traffic state $s_t$ and the signal control action $a_t$ executed by the Agent, simulate the evolution of traffic flow (vehicle movement, queue accumulation, and dissipation) to predict the resulting observation $o_{{t+1}}$.\n- **Emphasis**: You are the environment simulator. You do not suggest actions; you calculate the consequences of actions on the traffic network and report back only what an intersection controller would 'see' through its sensors.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nYou must maintain the continuity of the traffic simulation. Every action affects vehicle positions and queue lengths. You must ensure that cars do not teleport or vanish, and that state transitions follow the laws of traffic physics (e.g., cars only move on green lights, congestion propagates upstream).\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the traffic environment by calling signal control functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object containing:\n- `\"name\"`: The name of the traffic control action (e.g., changing a phase or extending a timer).\n- Parameters required for that specific action.\n\nExample Input:\n```json\n{{\n \"name\": \"set_signal_phase\",\n \"arguments\": {{\n    \"intersection_id\": \"INT_001\",\n    \"phase_id\": \"NS_GREEN_WE_RED\"\n  }}\n}}\n```\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\n- If an `intersection_id` does not exist: Return `{{\"error\": \"Intersection ID not found\"}}`.\n- If a `phase_id` is invalid for the specific geometry: Return `{{\"error\": \"Invalid phase for this intersection\"}}`.\n- If the input is malformed: Return a descriptive error JSON. \n- Do not invent traffic data if the input is invalid.\n\n##### Output Assembly\nFor every action, return a structured JSON object containing **ONLY** the observation fields defined in the action function. \n\n**CRITICAL CONSTRAINT**: You must internalize the state update but **NOT** output the updated internal state `$s_{{t+1}}$`, hidden traffic variables, or full network metrics unless they are explicitly part of the observation definition. Your response must be strictly limited to the observation values (e.g., sensor counts, camera descriptions).\n\n### 4. Key Principles\n- **Format**: Strictly adhere to JSON output format.\n- **Factuality**: Simulate traffic based on realistic flow rates and signal timings provided in the state.\n- **Consistency**: If a queue was length 10 and the light stayed red, the queue must be $\\ge 10$ in the next step (accounting for arriving vehicles).\n- **Realism**: Account for yellow light intervals, vehicle startup lost time, and saturation flow rates.\n- **Quality**: Ensure descriptions of traffic conditions (if text-based) are precise and technical.\n- **Encapsulation**: Hide the internal state structure. The Agent only receives the observation $o_{{t+1}}$.\n{{initial_state}}: {{\n  \"intersections\": {{\n    \"INT_ALPHA_99\": {{\n      \"current_phase\": \"East-West Green\",\n      \"lanes\": [\n        {{\n          \"lane_id\": \"NB_THRU\",\n          \"queue_length\": 21,\n          \"avg_waiting_time\": 82.0\n        }},\n        {{\n          \"lane_id\": \"SB_THRU\",\n          \"queue_length\": 14,\n          \"avg_waiting_time\": 45.5\n        }},\n        {{\n          \"lane_id\": \"EB_THRU\",\n          \"queue_length\": 2,\n          \"avg_waiting_time\": 5.0\n        }},\n        {{\n          \"lane_id\": \"WB_THRU\",\n          \"queue_length\": 3,\n          \"avg_waiting_time\": 6.2\n        }}\n      ],\n      \"elapsed_time\": 55\n    }},\n    \"INT_BETA_22\": {{\n      \"current_phase\": \"North-South Green\",\n      \"lanes\": [\n        {{\n          \"lane_id\": \"NB_THRU\",\n          \"queue_length\": 11,\n          \"avg_waiting_time\": 15.4\n        }},\n        {{\n          \"lane_id\": \"SB_THRU\",\n          \"queue_length\": 8,\n          \"avg_waiting_time\": 12.1\n        }},\n        {{\n          \"lane_id\": \"EB_THRU\",\n          \"queue_length\": 19,\n          \"avg_waiting_time\": 58.0\n        }},\n        {{\n          \"lane_id\": \"WB_THRU\",\n          \"queue_length\": 17,\n          \"avg_waiting_time\": 54.5\n        }}\n      ],\n      \"elapsed_time\": 12\n    }}\n  }},\n  \"simulation_step\": 0,\n  \"global_parameters\": {{\n    \"vehicle_arrival_rate\": 26.8\n  }}\n}}\n{{state_descriptions}}: {{\n  \"intersections\": \"A map of intersection IDs to their current operational status.\",\n  \"simulation_step\": \"The current discrete time step of the simulation.\",\n  \"global_parameters\": \"Environment constants like arrival rates.\"\n}}\n{action_set_definitions}: {\n  \"get_environment_inventory\": {\n    \"description\": \"Retrieves the initial map of intersection IDs and global simulation parameters from the environment.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"intersections\": [\n        \"node_001\",\n        \"node_002\"\n      ],\n      \"simulation_step\": 0\n    }\n  },\n  \"get_network_topology\": {\n    \"description\": \"Determines the spatial relationship between intersections to identify which is the 'feeder' (upstream) and which is the 'bottleneck' (downstream) for a specific flow direction.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"direction\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"Northbound\",\n            \"Southbound\",\n            \"Eastbound\",\n            \"Westbound\"\n          ],\n          \"description\": \"The arterial flow direction being analyzed.\"\n        }\n      },\n      \"required\": [\n        \"direction\"\n      ]\n    },\n    \"example_output\": {\n      \"feeder_id\": \"node_001\",\n      \"bottleneck_id\": \"node_002\"\n    }\n  },\n  \"get_lane_queues\": {\n    \"description\": \"Retrieves current queue lengths for all cardinal directions at a specific intersection.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"intersection_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the intersection to query.\"\n        }\n      },\n      \"required\": [\n        \"intersection_id\"\n      ]\n    },\n    \"example_output\": {\n      \"nb_queue\": 15,\n      \"sb_queue\": 4,\n      \"eb_queue\": 2,\n      \"wb_queue\": 1,\n      \"max_queue\": 15\n    }\n  },\n  \"set_signal_phase\": {\n    \"description\": \"Updates the traffic signal phase for a specific intersection. NS_GREEN allows North-South flow; NS_RED stops North-South flow (typically allowing East-West flow).\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"intersection_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the intersection to update.\"\n        },\n        \"phase\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"NS_GREEN\",\n            \"NS_RED\"\n          ],\n          \"description\": \"The target signal phase.\"\n        }\n      },\n      \"required\": [\n        \"intersection_id\",\n        \"phase\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"success\"\n    }\n  },\n  \"step_simulation\": {\n    \"description\": \"Advances the simulation by a fixed duration to observe the results of applied actions.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"seconds\": {\n          \"type\": \"integer\",\n          \"description\": \"The number of simulation seconds to advance.\"\n        }\n      },\n      \"required\": [\n        \"seconds\"\n      ]\n    },\n    \"example_output\": {\n      \"new_step\": 10\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_environment_inventory",
+      "description": "Retrieves the initial map of intersection IDs and global simulation parameters from the environment.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "intersections": [
+          "node_001",
+          "node_002"
+        ],
+        "simulation_step": 0
+      }
+    },
+    {
+      "name": "get_network_topology",
+      "description": "Determines the spatial relationship between intersections to identify which is the 'feeder' (upstream) and which is the 'bottleneck' (downstream) for a specific flow direction.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "direction": {
+            "type": "string",
+            "enum": [
+              "Northbound",
+              "Southbound",
+              "Eastbound",
+              "Westbound"
+            ],
+            "description": "The arterial flow direction being analyzed."
+          }
+        },
+        "required": [
+          "direction"
+        ]
+      },
+      "example_output": {
+        "feeder_id": "node_001",
+        "bottleneck_id": "node_002"
+      }
+    },
+    {
+      "name": "get_lane_queues",
+      "description": "Retrieves current queue lengths for all cardinal directions at a specific intersection.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "intersection_id": {
+            "type": "string",
+            "description": "The ID of the intersection to query."
+          }
+        },
+        "required": [
+          "intersection_id"
+        ]
+      },
+      "example_output": {
+        "nb_queue": 15,
+        "sb_queue": 4,
+        "eb_queue": 2,
+        "wb_queue": 1,
+        "max_queue": 15
+      }
+    },
+    {
+      "name": "set_signal_phase",
+      "description": "Updates the traffic signal phase for a specific intersection. NS_GREEN allows North-South flow; NS_RED stops North-South flow (typically allowing East-West flow).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "intersection_id": {
+            "type": "string",
+            "description": "The ID of the intersection to update."
+          },
+          "phase": {
+            "type": "string",
+            "enum": [
+              "NS_GREEN",
+              "NS_RED"
+            ],
+            "description": "The target signal phase."
+          }
+        },
+        "required": [
+          "intersection_id",
+          "phase"
+        ]
+      },
+      "example_output": {
+        "status": "success"
+      }
+    },
+    {
+      "name": "step_simulation",
+      "description": "Advances the simulation by a fixed duration to observe the results of applied actions.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "seconds": {
+            "type": "integer",
+            "description": "The number of simulation seconds to advance."
+          }
+        },
+        "required": [
+          "seconds"
+        ]
+      },
+      "example_output": {
+        "new_step": 10
+      }
+    }
+  ],
+  "state_description": {
+    "intersections": "A map of intersection IDs to their current operational status.",
+    "simulation_step": "The current discrete time step of the simulation.",
+    "global_parameters": "Environment constants like arrival rates."
+  },
+  "task_initial_state": {
+    "intersections": {
+      "INT_ALPHA_99": {
+        "current_phase": "East-West Green",
+        "lanes": [
+          {
+            "lane_id": "NB_THRU",
+            "queue_length": 21,
+            "avg_waiting_time": 82.0
+          },
+          {
+            "lane_id": "SB_THRU",
+            "queue_length": 14,
+            "avg_waiting_time": 45.5
+          },
+          {
+            "lane_id": "EB_THRU",
+            "queue_length": 2,
+            "avg_waiting_time": 5.0
+          },
+          {
+            "lane_id": "WB_THRU",
+            "queue_length": 3,
+            "avg_waiting_time": 6.2
+          }
+        ],
+        "elapsed_time": 55
+      },
+      "INT_BETA_22": {
+        "current_phase": "North-South Green",
+        "lanes": [
+          {
+            "lane_id": "NB_THRU",
+            "queue_length": 11,
+            "avg_waiting_time": 15.4
+          },
+          {
+            "lane_id": "SB_THRU",
+            "queue_length": 8,
+            "avg_waiting_time": 12.1
+          },
+          {
+            "lane_id": "EB_THRU",
+            "queue_length": 19,
+            "avg_waiting_time": 58.0
+          },
+          {
+            "lane_id": "WB_THRU",
+            "queue_length": 17,
+            "avg_waiting_time": 54.5
+          }
+        ],
+        "elapsed_time": 12
+      }
+    },
+    "simulation_step": 0,
+    "global_parameters": {
+      "vehicle_arrival_rate": 26.8
+    }
+  }
+}

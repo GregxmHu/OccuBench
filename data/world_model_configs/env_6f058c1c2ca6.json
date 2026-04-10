@@ -1,0 +1,296 @@
+{
+  "environment_name": "env_6f058c1c2ca6",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: Based on the current warehouse state $s_t$ and the action $a_t$ performed by the Agent, simulate the internal evolution of the warehouse environment and predict the resulting observation $o_{{t+1}}$.\n- **Emphasis**: You are a simulator, not an executor. You do not carry out physical tasks but calculate the logical consequences of actions (e.g., inventory changes, agent movement, order status updates) and generate the data the Agent would perceive.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions between the World Model and the Agent must maintain context consistency. You must track the history of inventory movements, agent positions, and order progress to ensure that the environment logic remains self-consistent across multiple steps.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. This JSON contains:\n- `\"name\"`: Specifies the name of the action function (e.g., \"move_to\", \"pick_item\", \"pack_order\").\n- Remaining fields: The specific parameters for that action.\n\nExample:\n```json\n{{\n \"name\": \"pick_item\",\n \"arguments\": {{\n    \"agent_id\": \"robot_01\",\n    \"sku\": \"item_402\",\n    \"quantity\": 2\n  }}\n}}\n```\n\nYou must parse these requests and simulate the results based on the current logical state of the warehouse.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nIf an action is impossible (e.g., picking an item not in stock, moving to an occupied coordinate, or using an undefined agent), return a structured error message:\n`{{\"error\": \"Reason for failure\"}}`.\nDo not fabricate successful outcomes for failed logic.\n\n##### Output Assembly\nFor every action call, return a structured JSON object containing **ONLY** the specific observation fields declared in that action's definition.\n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `{{initial_state}}`, the updated state, or any internal variables like full inventory lists unless explicitly required by the action's observation definition. The Agent only sees the return value of the function.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to JSON for both inputs and outputs.\n- **Factuality**: Only simulate behaviors based on the provided state and valid action definitions.\n- **Consistency**: Ensure that if an item is moved, it is no longer at the source and is now at the destination in subsequent steps.\n- **Realism**: Adhere to warehouse constraints (e.g., agents have limited capacity, travel takes time/steps).\n- **Quality**: Responses must be structural, unambiguous, and professional.\n- **Encapsulation**: Strictly hide the internal state structure from the output. Only expose information explicitly returned by the action function. Do not output state update summaries.\n{{initial_state}}: {{\n  \"inventory\": {{\n    \"bin_99_A1\": {{\n      \"sku_id\": \"SKU-CB-01\",\n      \"name\": \"Heavy Duty Carabiner\",\n      \"quantity\": 12,\n      \"msu_id\": \"MSU-99\"\n    }},\n    \"bin_104_C3\": {{\n      \"sku_id\": \"SKU-CH-07\",\n      \"name\": \"Climbing Harness\",\n      \"quantity\": 5,\n      \"msu_id\": \"MSU-104\"\n    }}\n  }},\n  \"agents\": {{\n    \"AMR-05\": {{\n      \"id\": \"AMR-05\",\n      \"current_coord\": [\n        4,\n        4\n      ],\n      \"battery_soc\": 32,\n      \"current_load\": null,\n      \"status\": \"available\"\n    }}\n  }},\n  \"orders\": {{\n    \"ORD-5521\": {{\n      \"order_id\": \"ORD-5521\",\n      \"required_skus\": [\n        {{\n          \"sku_id\": \"SKU-CB-01\",\n          \"quantity\": 1\n        }},\n        {{\n          \"sku_id\": \"SKU-CH-07\",\n          \"quantity\": 1\n        }}\n      ],\n      \"fulfillment_status\": \"pending\",\n      \"target_station\": \"G2P_Station_North\"\n    }}\n  }},\n  \"layout\": {{\n    \"grid_dimensions\": [\n      10,\n      10\n    ],\n    \"msu_positions\": {{\n      \"MSU-99\": [\n        1,\n        1\n      ],\n      \"MSU-104\": [\n        8,\n        8\n      ]\n    }},\n    \"station_positions\": {{\n      \"G2P_Station_North\": [\n        0,\n        5\n      ]\n    }},\n    \"charging_stations\": [\n      [\n        5,\n        5\n      ]\n    ]\n  }}\n}}\n{{state_descriptions}}: {{\n  \"inventory\": \"A mapping of storage locations (e.g., bin IDs) to their contents, including SKU IDs and quantities.\",\n  \"agents\": \"The current status of all warehouse robots, including their coordinate positions, current load (SKUs carried), and availability status.\",\n  \"orders\": \"A list of customer orders containing required SKUs, quantities, and current fulfillment status (e.g., 'pending', 'picking', 'completed').\",\n  \"layout\": \"The static grid or map of the warehouse, defining walkable paths, picking zones, and packing stations.\"\n}}\n{action_set_definitions}: {\n  \"query_entity_details\": {\n    \"description\": \"Retrieves the full status and properties of a specific entity (Robot, Order, MSU, or Station) by its unique ID. Used to check current State of Charge (SoC), locations, and remaining items in an order.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"entity_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier of the entity (e.g., 'AMR-05', 'ORD-5521').\"\n        }\n      },\n      \"required\": [\n        \"entity_id\"\n      ]\n    },\n    \"example_output\": {\n      \"id\": \"AMR-05\",\n      \"type\": \"robot\",\n      \"properties\": {\n        \"battery_soc\": 85,\n        \"location_coords\": [\n          10.5,\n          20.1\n        ],\n        \"current_load\": null\n      }\n    }\n  },\n  \"search_entities_by_type\": {\n    \"description\": \"Returns a list of IDs and locations for all entities of a specific category (e.g., chargers, storage slots).\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"entity_type\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"charger\",\n            \"storage_slot\",\n            \"station\",\n            \"robot\",\n            \"msu\"\n          ],\n          \"description\": \"The category of entities to locate.\"\n        }\n      },\n      \"required\": [\n        \"entity_type\"\n      ]\n    },\n    \"example_output\": {\n      \"entities\": [\n        {\n          \"id\": \"Charger_North_1\",\n          \"location\": [\n            5,\n            5\n          ]\n        },\n        {\n          \"id\": \"Charger_South_1\",\n          \"location\": [\n            100,\n            100\n          ]\n        }\n      ]\n    }\n  },\n  \"move_robot\": {\n    \"description\": \"Navigates the robot to the location of a target entity ID. Movement consumes 'battery_soc'.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"robot_id\": {\n          \"type\": \"string\"\n        },\n        \"target_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the destination (e.g., 'MSU-99', 'Charger_North_1').\"\n        }\n      },\n      \"required\": [\n        \"robot_id\",\n        \"target_id\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"success\",\n      \"final_location\": [\n        5,\n        5\n      ],\n      \"battery_consumed\": 4.5\n    }\n  },\n  \"manage_msu_docking\": {\n    \"description\": \"Performs docking (lifting) or undocking (releasing) an MSU at the current location.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"robot_id\": {\n          \"type\": \"string\"\n        },\n        \"msu_id\": {\n          \"type\": \"string\"\n        },\n        \"operation\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"dock\",\n            \"undock\"\n          ]\n        }\n      },\n      \"required\": [\n        \"robot_id\",\n        \"msu_id\",\n        \"operation\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"completed\",\n      \"load_state\": \"carrying_MSU-99\"\n    }\n  },\n  \"charge_robot\": {\n    \"description\": \"Increases the 'battery_soc' of a robot while it is at a 'charger' entity. The process continues until the target_soc is reached.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"robot_id\": {\n          \"type\": \"string\"\n        },\n        \"target_soc\": {\n          \"type\": \"number\",\n          \"description\": \"The desired battery percentage (0-100).\"\n        }\n      },\n      \"required\": [\n        \"robot_id\",\n        \"target_soc\"\n      ]\n    },\n    \"example_output\": {\n      \"final_soc\": 95,\n      \"status\": \"charging_complete\"\n    }\n  },\n  \"execute_item_pick\": {\n    \"description\": \"Records the pick of a specific item from an MSU at a workstation for a specific order. Updates the order's internal progress.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"order_id\": {\n          \"type\": \"string\"\n        },\n        \"sku_id\": {\n          \"type\": \"string\"\n        },\n        \"msu_id\": {\n          \"type\": \"string\"\n        },\n        \"station_id\": {\n          \"type\": \"string\"\n        }\n      },\n      \"required\": [\n        \"order_id\",\n        \"sku_id\",\n        \"msu_id\",\n        \"station_id\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"picked\",\n      \"order_completion\": \"50%\"\n    }\n  },\n  \"update_order_status\": {\n    \"description\": \"Updates the fulfillment status of an order to 'completed'.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"order_id\": {\n          \"type\": \"string\"\n        },\n        \"status\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"pending\",\n            \"picking\",\n            \"completed\"\n          ]\n        }\n      },\n      \"required\": [\n        \"order_id\",\n        \"status\"\n      ]\n    },\n    \"example_output\": {\n      \"order_id\": \"ORD-5521\",\n      \"new_status\": \"completed\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "query_entity_details",
+      "description": "Retrieves the full status and properties of a specific entity (Robot, Order, MSU, or Station) by its unique ID. Used to check current State of Charge (SoC), locations, and remaining items in an order.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "entity_id": {
+            "type": "string",
+            "description": "The unique identifier of the entity (e.g., 'AMR-05', 'ORD-5521')."
+          }
+        },
+        "required": [
+          "entity_id"
+        ]
+      },
+      "example_output": {
+        "id": "AMR-05",
+        "type": "robot",
+        "properties": {
+          "battery_soc": 85,
+          "location_coords": [
+            10.5,
+            20.1
+          ],
+          "current_load": null
+        }
+      }
+    },
+    {
+      "name": "search_entities_by_type",
+      "description": "Returns a list of IDs and locations for all entities of a specific category (e.g., chargers, storage slots).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "entity_type": {
+            "type": "string",
+            "enum": [
+              "charger",
+              "storage_slot",
+              "station",
+              "robot",
+              "msu"
+            ],
+            "description": "The category of entities to locate."
+          }
+        },
+        "required": [
+          "entity_type"
+        ]
+      },
+      "example_output": {
+        "entities": [
+          {
+            "id": "Charger_North_1",
+            "location": [
+              5,
+              5
+            ]
+          },
+          {
+            "id": "Charger_South_1",
+            "location": [
+              100,
+              100
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "move_robot",
+      "description": "Navigates the robot to the location of a target entity ID. Movement consumes 'battery_soc'.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "robot_id": {
+            "type": "string"
+          },
+          "target_id": {
+            "type": "string",
+            "description": "The ID of the destination (e.g., 'MSU-99', 'Charger_North_1')."
+          }
+        },
+        "required": [
+          "robot_id",
+          "target_id"
+        ]
+      },
+      "example_output": {
+        "status": "success",
+        "final_location": [
+          5,
+          5
+        ],
+        "battery_consumed": 4.5
+      }
+    },
+    {
+      "name": "manage_msu_docking",
+      "description": "Performs docking (lifting) or undocking (releasing) an MSU at the current location.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "robot_id": {
+            "type": "string"
+          },
+          "msu_id": {
+            "type": "string"
+          },
+          "operation": {
+            "type": "string",
+            "enum": [
+              "dock",
+              "undock"
+            ]
+          }
+        },
+        "required": [
+          "robot_id",
+          "msu_id",
+          "operation"
+        ]
+      },
+      "example_output": {
+        "status": "completed",
+        "load_state": "carrying_MSU-99"
+      }
+    },
+    {
+      "name": "charge_robot",
+      "description": "Increases the 'battery_soc' of a robot while it is at a 'charger' entity. The process continues until the target_soc is reached.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "robot_id": {
+            "type": "string"
+          },
+          "target_soc": {
+            "type": "number",
+            "description": "The desired battery percentage (0-100)."
+          }
+        },
+        "required": [
+          "robot_id",
+          "target_soc"
+        ]
+      },
+      "example_output": {
+        "final_soc": 95,
+        "status": "charging_complete"
+      }
+    },
+    {
+      "name": "execute_item_pick",
+      "description": "Records the pick of a specific item from an MSU at a workstation for a specific order. Updates the order's internal progress.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "order_id": {
+            "type": "string"
+          },
+          "sku_id": {
+            "type": "string"
+          },
+          "msu_id": {
+            "type": "string"
+          },
+          "station_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "order_id",
+          "sku_id",
+          "msu_id",
+          "station_id"
+        ]
+      },
+      "example_output": {
+        "status": "picked",
+        "order_completion": "50%"
+      }
+    },
+    {
+      "name": "update_order_status",
+      "description": "Updates the fulfillment status of an order to 'completed'.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "order_id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "picking",
+              "completed"
+            ]
+          }
+        },
+        "required": [
+          "order_id",
+          "status"
+        ]
+      },
+      "example_output": {
+        "order_id": "ORD-5521",
+        "new_status": "completed"
+      }
+    }
+  ],
+  "state_description": {
+    "inventory": "A mapping of storage locations (e.g., bin IDs) to their contents, including SKU IDs and quantities.",
+    "agents": "The current status of all warehouse robots, including their coordinate positions, current load (SKUs carried), and availability status.",
+    "orders": "A list of customer orders containing required SKUs, quantities, and current fulfillment status (e.g., 'pending', 'picking', 'completed').",
+    "layout": "The static grid or map of the warehouse, defining walkable paths, picking zones, and packing stations."
+  },
+  "task_initial_state": {
+    "inventory": {
+      "bin_99_A1": {
+        "sku_id": "SKU-CB-01",
+        "name": "Heavy Duty Carabiner",
+        "quantity": 12,
+        "msu_id": "MSU-99"
+      },
+      "bin_104_C3": {
+        "sku_id": "SKU-CH-07",
+        "name": "Climbing Harness",
+        "quantity": 5,
+        "msu_id": "MSU-104"
+      }
+    },
+    "agents": {
+      "AMR-05": {
+        "id": "AMR-05",
+        "current_coord": [
+          4,
+          4
+        ],
+        "battery_soc": 32,
+        "current_load": null,
+        "status": "available"
+      }
+    },
+    "orders": {
+      "ORD-5521": {
+        "order_id": "ORD-5521",
+        "required_skus": [
+          {
+            "sku_id": "SKU-CB-01",
+            "quantity": 1
+          },
+          {
+            "sku_id": "SKU-CH-07",
+            "quantity": 1
+          }
+        ],
+        "fulfillment_status": "pending",
+        "target_station": "G2P_Station_North"
+      }
+    },
+    "layout": {
+      "grid_dimensions": [
+        10,
+        10
+      ],
+      "msu_positions": {
+        "MSU-99": [
+          1,
+          1
+        ],
+        "MSU-104": [
+          8,
+          8
+        ]
+      },
+      "station_positions": {
+        "G2P_Station_North": [
+          0,
+          5
+        ]
+      },
+      "charging_stations": [
+        [
+          5,
+          5
+        ]
+      ]
+    }
+  }
+}

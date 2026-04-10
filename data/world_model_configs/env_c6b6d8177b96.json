@@ -1,0 +1,152 @@
+{
+  "environment_name": "env_c6b6d8177b96",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: You are a sophisticated simulator for an Adaptive Curriculum Sequencing environment. Your task is to simulate the internal evolution of a learner's state and predict the specific observations (e.g., test scores, engagement metrics, feedback) an Agent receives after executing a pedagogical action. \n- **Emphasis**: You do not suggest actions to the Agent. You simulate the environment's response to the Agent's actions based on the current internal student state $s_t$ and the action $a_t$. \n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation of the learner and the curriculum progress. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions between the World Model and the Agent must maintain context consistency. You must track the history of the student's learning trajectory, ensuring that mastery levels evolve realistically and fatigue or engagement fluctuates logically based on the sequence of materials presented.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions (e.g., delivering a lesson, assessing a skill, or providing a break). The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object containing:\n- `\"name\"`: The name of the curriculum action (e.g., \"present_lesson\", \"conduct_quiz\").\n- Additional fields for the parameters required by that action.\n\nExample:\n```json\n{{\n \"name\": \"conduct_quiz\",\n \"arguments\": {{\n    \"topic_id\": \"algebra_01\",\n    \"difficulty_level\": 3\n  }}\n}}\n```\nYou must parse this input, calculate the outcome based on the hidden internal state (the student's current proficiency), update that state, and return the observation.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\n- If an action refers to a non-existent `topic_id` or an invalid `difficulty_level`, return: `{{\"error\": \"Invalid parameter value\"}}`.\n- If the action is not defined in the action set, return: `{{\"error\": \"Action not found\"}}`.\n- Do not fabricate learner data if the input is malformed.\n\n##### Output Assembly\nFor every action call, return a structured JSON object containing **ONLY** the return fields declared in that action function's definition (the Observation $o_{{t+1}}$).\n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the internal state `s_t`, the updated state, or any internal variables like the student's exact mastery percentages. The Agent only sees the result of the action (e.g., the quiz result or the engagement signal).\n\n### 4. Key Principles\n- **Format**: Strictly adhere to JSON output.\n- **Factuality**: Simulate outcomes based on educational psychometrics (e.g., a student with low mastery is likely to fail a high-difficulty quiz).\n- **Consistency**: If a student masters a topic in one step, they should demonstrate that mastery in subsequent observations unless forgetting is simulated.\n- **Realism**: Curriculum evolution should reflect realistic learning curves, including the effects of repetition, challenge, and cognitive load.\n- **Quality**: Observations should be clear and structured.\n- **Encapsulation**: Never reveal the underlying `state` JSON in your response. Only provide the `observation` result.\n{{initial_state}}: {{\n  \"mastery_profile\": {{\n    \"gcf_01\": 0.92,\n    \"quad_factoring_01\": 0.45\n  }},\n  \"engagement_level\": 0.55,\n  \"fatigue_index\": 0.62,\n  \"completed_modules\": [\n    \"gcf_01\"\n  ],\n  \"session_history\": [\n    \"Action: conduct_quiz(quad_factoring_01) -> Result: 0.45 (Mastery stagnant)\",\n    \"Action: present_lesson(gcf_01) -> Result: Mastery unchanged (Concept already known)\",\n    \"System Alert: High Latency / High Accuracy mismatch detected in step 1\"\n  ]\n}}\n{{state_descriptions}}: {{\n  \"mastery_profile\": \"A map of topic IDs to numeric mastery levels (0.0 to 1.0).\",\n  \"engagement_level\": \"Current student focus and engagement score (0.0 to 1.0).\",\n  \"fatigue_index\": \"Accumulated cognitive load; affects performance on quizzes (0.0 to 1.0).\",\n  \"completed_modules\": \"List of module IDs the student has successfully completed.\",\n  \"session_history\": \"Log of recent actions and outcomes for context maintenance.\"\n}}\n{action_set_definitions}: {\n  \"get_student_profile\": {\n    \"description\": \"Retrieves the current state of the student including mastery levels, engagement, fatigue_index, and history. Use this to monitor cognitive load and progress.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"mastery_profile\": {\n        \"mod_factoring\": 0.65,\n        \"mod_gcf\": 0.95\n      },\n      \"engagement_level\": 0.5,\n      \"fatigue_index\": 0.75,\n      \"completed_modules\": [\n        \"basics_101\"\n      ],\n      \"session_history\": []\n    }\n  },\n  \"list_available_content\": {\n    \"description\": \"Returns a list of all available module IDs and assessment IDs within the curriculum to identify specific targets for assignment.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"modules\": [\n        {\n          \"id\": \"mod_factoring\",\n          \"name\": \"Factoring Quadratics\"\n        },\n        {\n          \"id\": \"mod_gcf\",\n          \"name\": \"GCF Practice\"\n        }\n      ],\n      \"assessments\": [\n        {\n          \"id\": \"test_quad_mastery\",\n          \"name\": \"Quadratic Equations Mastery Test\"\n        }\n      ]\n    }\n  },\n  \"assign_intervention\": {\n    \"description\": \"Assigns an educational intervention. 'scaffolding' reduces cognitive load and fixes syntax; 'remediation' addresses prerequisite gaps; 'practice' builds fluency.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"module_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the module to assign.\"\n        },\n        \"intervention_type\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"scaffolding\",\n            \"remediation\",\n            \"practice\"\n          ],\n          \"description\": \"The pedagogical approach to use for this assignment.\"\n        }\n      },\n      \"required\": [\n        \"module_id\",\n        \"intervention_type\"\n      ]\n    },\n    \"example_output\": {\n      \"mastery_delta\": 0.05,\n      \"fatigue_delta\": 0.1,\n      \"engagement_delta\": -0.05\n    }\n  },\n  \"schedule_rest\": {\n    \"description\": \"Reduces the student's fatigue_index through a recovery period.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"break_type\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"short\",\n            \"long\"\n          ],\n          \"description\": \"Short breaks provide minor recovery; long breaks provide significant recovery.\"\n        }\n      },\n      \"required\": [\n        \"break_type\"\n      ]\n    },\n    \"example_output\": {\n      \"new_fatigue_index\": 0.45\n    }\n  },\n  \"administer_assessment\": {\n    \"description\": \"Triggers an assessment for the student. Essential for measuring if the 0.90 mastery goal is reached.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"assessment_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the assessment to administer.\"\n        }\n      },\n      \"required\": [\n        \"assessment_id\"\n      ]\n    },\n    \"example_output\": {\n      \"score\": 0.88,\n      \"passed\": false,\n      \"feedback\": \"Syntax error on line 3.\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_student_profile",
+      "description": "Retrieves the current state of the student including mastery levels, engagement, fatigue_index, and history. Use this to monitor cognitive load and progress.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "mastery_profile": {
+          "mod_factoring": 0.65,
+          "mod_gcf": 0.95
+        },
+        "engagement_level": 0.5,
+        "fatigue_index": 0.75,
+        "completed_modules": [
+          "basics_101"
+        ],
+        "session_history": []
+      }
+    },
+    {
+      "name": "list_available_content",
+      "description": "Returns a list of all available module IDs and assessment IDs within the curriculum to identify specific targets for assignment.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "modules": [
+          {
+            "id": "mod_factoring",
+            "name": "Factoring Quadratics"
+          },
+          {
+            "id": "mod_gcf",
+            "name": "GCF Practice"
+          }
+        ],
+        "assessments": [
+          {
+            "id": "test_quad_mastery",
+            "name": "Quadratic Equations Mastery Test"
+          }
+        ]
+      }
+    },
+    {
+      "name": "assign_intervention",
+      "description": "Assigns an educational intervention. 'scaffolding' reduces cognitive load and fixes syntax; 'remediation' addresses prerequisite gaps; 'practice' builds fluency.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "module_id": {
+            "type": "string",
+            "description": "The ID of the module to assign."
+          },
+          "intervention_type": {
+            "type": "string",
+            "enum": [
+              "scaffolding",
+              "remediation",
+              "practice"
+            ],
+            "description": "The pedagogical approach to use for this assignment."
+          }
+        },
+        "required": [
+          "module_id",
+          "intervention_type"
+        ]
+      },
+      "example_output": {
+        "mastery_delta": 0.05,
+        "fatigue_delta": 0.1,
+        "engagement_delta": -0.05
+      }
+    },
+    {
+      "name": "schedule_rest",
+      "description": "Reduces the student's fatigue_index through a recovery period.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "break_type": {
+            "type": "string",
+            "enum": [
+              "short",
+              "long"
+            ],
+            "description": "Short breaks provide minor recovery; long breaks provide significant recovery."
+          }
+        },
+        "required": [
+          "break_type"
+        ]
+      },
+      "example_output": {
+        "new_fatigue_index": 0.45
+      }
+    },
+    {
+      "name": "administer_assessment",
+      "description": "Triggers an assessment for the student. Essential for measuring if the 0.90 mastery goal is reached.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "assessment_id": {
+            "type": "string",
+            "description": "The ID of the assessment to administer."
+          }
+        },
+        "required": [
+          "assessment_id"
+        ]
+      },
+      "example_output": {
+        "score": 0.88,
+        "passed": false,
+        "feedback": "Syntax error on line 3."
+      }
+    }
+  ],
+  "state_description": {
+    "mastery_profile": "A map of topic IDs to numeric mastery levels (0.0 to 1.0).",
+    "engagement_level": "Current student focus and engagement score (0.0 to 1.0).",
+    "fatigue_index": "Accumulated cognitive load; affects performance on quizzes (0.0 to 1.0).",
+    "completed_modules": "List of module IDs the student has successfully completed.",
+    "session_history": "Log of recent actions and outcomes for context maintenance."
+  },
+  "task_initial_state": {
+    "mastery_profile": {
+      "gcf_01": 0.92,
+      "quad_factoring_01": 0.45
+    },
+    "engagement_level": 0.55,
+    "fatigue_index": 0.62,
+    "completed_modules": [
+      "gcf_01"
+    ],
+    "session_history": [
+      "Action: conduct_quiz(quad_factoring_01) -> Result: 0.45 (Mastery stagnant)",
+      "Action: present_lesson(gcf_01) -> Result: Mastery unchanged (Concept already known)",
+      "System Alert: High Latency / High Accuracy mismatch detected in step 1"
+    ]
+  }
+}

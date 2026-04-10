@@ -1,0 +1,190 @@
+{
+  "environment_name": "env_cb8e36164fb9",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM) for Candidate Resume Screening\n- **Core Objective**: Based on the current internal state $s_t$ and the action $a_t$ taken by the screening agent, you are responsible for simulating the evolution of the recruitment environment and predicting the observation $o_{{t+1}}$ (e.g., resume details, screening results, or system feedback). \n- **Emphasis**: You are a simulator of the environment. You do not make hiring decisions yourself; you evolve the state of the candidate pool and return the specific observations resulting from the agent's actions.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions between the World Model and the Agent must maintain strict context consistency. The model must track which candidates have been viewed, which are remaining in the queue, and the current status of the screening pipeline to ensure the environment logic remains self-consistent across multiple turns.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. This JSON contains:\n- `\"name\"`: Specifies the name of the action function to execute.\n- `\"arguments\"`: The parameter names and corresponding values required by that action function.\n\nExample:\n```json\n{{\n \"name\": \"view_candidate_profile\",\n \"arguments\": {{\n    \"candidate_id\": \"RESUME_001\"\n  }}\n}}\n```\n\nThe Language World Model must correctly parse these inputs, update the internal state (e.g., marking a resume as 'read'), and simulate the execution results.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nIf the Agent attempts to access a non-existent `candidate_id`, calls a function not in the defined action set, or submits empty parameters, the LWM must return a structured error (e.g., `{{\"error\": \"Candidate ID not found\"}}`). Do not fabricate candidate data or simulate successful responses for invalid inputs.\n\n##### Output Assembly\nFor every action call, the model must return a structured JSON object containing **ONLY** the return fields declared in the specific action's definition. \n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state, the `candidate_database`, or any internal counters. The Agent must only see the specific `observation` (the return value) defined in the action. Internal state updates are kept hidden.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to JSON for all observations.\n- **Factuality**: Do not simulate candidates or qualifications that are not implicitly part of the environment state.\n- **Consistency**: If a candidate is rejected at $t=1$, they should remain rejected or removed in all subsequent states unless a specific 'reconsider' action is available and used.\n- **Realism**: The simulation should reflect realistic recruitment workflows (e.g., fetching a resume takes a state transition; criteria must match resume content).\n- **Quality**: Observations must be clear and structured according to the action definition.\n- **Encapsulation**: Strictly hide the internal state structure from the output. Only expose information that is explicitly returned by the action function.\n{{initial_state}}: {{\n  \"candidate_database\": [\n    {{\n      \"candidate_id\": \"CAND_QT_001\",\n      \"full_name\": \"Aris Thorne\",\n      \"resume_text\": \"Role: Senior Quantitative Developer. Education: Ph.D. in Computational Mathematics from Imperial College London (UK). Current Visa: L-1B. Portability status: Not portable; requires new petition. Timeline: 70 days.\",\n      \"metadata\": {{\n        \"degree_type\": \"Ph.D.\",\n        \"years_experience\": 8,\n        \"est_sponsorship_cost\": 12000,\n        \"availability_days\": 70\n      }}\n    }},\n    {{\n      \"candidate_id\": \"CAND_QT_001_X\",\n      \"full_name\": \"Aris Thorne\",\n      \"resume_text\": \"Role: Junior Developer (Intern). Education: Enrolled in B.S. Math. Availability: 10 days.\",\n      \"metadata\": {{\n        \"degree_type\": \"None\",\n        \"years_experience\": 0,\n        \"est_sponsorship_cost\": 0,\n        \"availability_days\": 10\n      }}\n    }},\n    {{\n      \"candidate_id\": \"CAND_QT_002\",\n      \"full_name\": \"Mateo Gomez\",\n      \"resume_text\": \"Role: Senior Quantitative Developer. Education: B.S. in Software Engineering from UNAM, Mexico (4-year). Visa: TN-1 Eligible. Cost: $3,000. Start: 15 days.\",\n      \"metadata\": {{\n        \"degree_type\": \"B.S. (4-year)\",\n        \"years_experience\": 5,\n        \"est_sponsorship_cost\": 3000,\n        \"availability_days\": 15\n      }}\n    }},\n    {{\n      \"candidate_id\": \"CAND_QT_002_DUPE\",\n      \"full_name\": \"Mateo Gomez\",\n      \"resume_text\": \"Role: Senior Quantitative Developer. Education: B.S. from UNAM. (Duplicate Record)\",\n      \"metadata\": {{\n        \"degree_type\": \"B.S. (4-year)\",\n        \"years_experience\": 5,\n        \"est_sponsorship_cost\": 3000,\n        \"availability_days\": 15\n      }}\n    }},\n    {{\n      \"candidate_id\": \"CAND_QT_505\",\n      \"full_name\": \"Priya Sharma\",\n      \"resume_text\": \"Role: Senior Quantitative Developer. Education: B.Sc. in Computer Science from University of Delhi (3-year program). Visa: H-1B Transfer. Cost: $6,500. Start: 30 days.\",\n      \"metadata\": {{\n        \"degree_type\": \"B.Sc. (3-year)\",\n        \"years_experience\": 6,\n        \"est_sponsorship_cost\": 6500,\n        \"availability_days\": 30\n      }}\n    }},\n    {{\n      \"candidate_id\": \"CAND_QT_999\",\n      \"full_name\": \"Dr. A. Thorne\",\n      \"resume_text\": \"Role: Senior Quantitative Developer. Education: Ph.D. Computational Math (Imperial College). Visa: O-1A (Extraordinary Ability). Cost: $14,000. Start: 40 days.\",\n      \"metadata\": {{\n        \"degree_type\": \"Ph.D.\",\n        \"years_experience\": 10,\n        \"est_sponsorship_cost\": 14000,\n        \"availability_days\": 40\n      }}\n    }}\n  ],\n  \"job_description\": \"Senior Quantitative Developer. Must have US 4-year degree equivalent. Max $15k sponsorship. Max 45-day start date.\",\n  \"screening_queue\": [\n    \"CAND_QT_001\",\n    \"CAND_QT_001_X\",\n    \"CAND_QT_002\",\n    \"CAND_QT_002_DUPE\",\n    \"CAND_QT_505\",\n    \"CAND_QT_999\"\n  ],\n  \"shortlisted_candidates\": [],\n  \"rejected_candidates\": [],\n  \"current_session_metadata\": {{\n    \"current_index\": 0,\n    \"total_reviewed\": 0\n  }}\n}}\n{{state_descriptions}}: {{\n  \"candidate_database\": \"A list of all candidate records available in the system, including their ID, full resume text, and metadata.\",\n  \"job_description\": \"The requirements and responsibilities for the current open position.\",\n  \"screening_queue\": \"The list of candidate IDs that are currently pending review.\",\n  \"shortlisted_candidates\": \"The list of candidate IDs that have been moved to the next round.\",\n  \"rejected_candidates\": \"The list of candidate IDs that have been dismissed.\",\n  \"current_session_metadata\": \"Tracking information for the current interaction, such as current pointer or time elapsed.\"\n}}\n{action_set_definitions}: {\n  \"get_screening_queue\": {\n    \"description\": \"Retrieves the list of candidate IDs currently waiting in the screening queue.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"candidate_ids\": [\n        \"ID-9921\",\n        \"ID-4432\",\n        \"ID-0012\"\n      ]\n    }\n  },\n  \"get_candidate_record\": {\n    \"description\": \"Retrieves comprehensive details for a specific candidate from the database, including resume highlights and metadata.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"candidate_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier of the candidate.\"\n        }\n      },\n      \"required\": [\n        \"candidate_id\"\n      ]\n    },\n    \"example_output\": {\n      \"full_name\": \"Jane Doe\",\n      \"seniority_level\": \"Senior\",\n      \"is_intern\": false,\n      \"education_verified\": \"US 4-year degree equivalent\",\n      \"sponsorship_budget_required\": 12000,\n      \"availability_days\": 30,\n      \"is_duplicate_of\": null\n    }\n  },\n  \"get_current_pipeline_lists\": {\n    \"description\": \"Retrieves the current IDs in the shortlisted and rejected lists to ensure no duplicates are added.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"shortlisted_candidates\": [\n        \"ID-8812\"\n      ],\n      \"rejected_candidates\": [\n        \"ID-7721\"\n      ]\n    }\n  },\n  \"update_candidate_status\": {\n    \"description\": \"Moves a candidate from the screening queue to the final designated list (shortlisted or rejected).\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"candidate_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier of the candidate.\"\n        },\n        \"target_list\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"shortlisted\",\n            \"rejected\"\n          ],\n          \"description\": \"The destination list for the candidate.\"\n        },\n        \"reason\": {\n          \"type\": \"string\",\n          \"description\": \"Brief justification for the action (e.g., 'Exceeds budget', 'Junior level').\"\n        }\n      },\n      \"required\": [\n        \"candidate_id\",\n        \"target_list\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"success\",\n      \"message\": \"Candidate ID-9921 moved to shortlisted.\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_screening_queue",
+      "description": "Retrieves the list of candidate IDs currently waiting in the screening queue.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "candidate_ids": [
+          "ID-9921",
+          "ID-4432",
+          "ID-0012"
+        ]
+      }
+    },
+    {
+      "name": "get_candidate_record",
+      "description": "Retrieves comprehensive details for a specific candidate from the database, including resume highlights and metadata.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "candidate_id": {
+            "type": "string",
+            "description": "The unique identifier of the candidate."
+          }
+        },
+        "required": [
+          "candidate_id"
+        ]
+      },
+      "example_output": {
+        "full_name": "Jane Doe",
+        "seniority_level": "Senior",
+        "is_intern": false,
+        "education_verified": "US 4-year degree equivalent",
+        "sponsorship_budget_required": 12000,
+        "availability_days": 30,
+        "is_duplicate_of": null
+      }
+    },
+    {
+      "name": "get_current_pipeline_lists",
+      "description": "Retrieves the current IDs in the shortlisted and rejected lists to ensure no duplicates are added.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "shortlisted_candidates": [
+          "ID-8812"
+        ],
+        "rejected_candidates": [
+          "ID-7721"
+        ]
+      }
+    },
+    {
+      "name": "update_candidate_status",
+      "description": "Moves a candidate from the screening queue to the final designated list (shortlisted or rejected).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "candidate_id": {
+            "type": "string",
+            "description": "The unique identifier of the candidate."
+          },
+          "target_list": {
+            "type": "string",
+            "enum": [
+              "shortlisted",
+              "rejected"
+            ],
+            "description": "The destination list for the candidate."
+          },
+          "reason": {
+            "type": "string",
+            "description": "Brief justification for the action (e.g., 'Exceeds budget', 'Junior level')."
+          }
+        },
+        "required": [
+          "candidate_id",
+          "target_list"
+        ]
+      },
+      "example_output": {
+        "status": "success",
+        "message": "Candidate ID-9921 moved to shortlisted."
+      }
+    }
+  ],
+  "state_description": {
+    "candidate_database": "A list of all candidate records available in the system, including their ID, full resume text, and metadata.",
+    "job_description": "The requirements and responsibilities for the current open position.",
+    "screening_queue": "The list of candidate IDs that are currently pending review.",
+    "shortlisted_candidates": "The list of candidate IDs that have been moved to the next round.",
+    "rejected_candidates": "The list of candidate IDs that have been dismissed.",
+    "current_session_metadata": "Tracking information for the current interaction, such as current pointer or time elapsed."
+  },
+  "task_initial_state": {
+    "candidate_database": [
+      {
+        "candidate_id": "CAND_QT_001",
+        "full_name": "Aris Thorne",
+        "resume_text": "Role: Senior Quantitative Developer. Education: Ph.D. in Computational Mathematics from Imperial College London (UK). Current Visa: L-1B. Portability status: Not portable; requires new petition. Timeline: 70 days.",
+        "metadata": {
+          "degree_type": "Ph.D.",
+          "years_experience": 8,
+          "est_sponsorship_cost": 12000,
+          "availability_days": 70
+        }
+      },
+      {
+        "candidate_id": "CAND_QT_001_X",
+        "full_name": "Aris Thorne",
+        "resume_text": "Role: Junior Developer (Intern). Education: Enrolled in B.S. Math. Availability: 10 days.",
+        "metadata": {
+          "degree_type": "None",
+          "years_experience": 0,
+          "est_sponsorship_cost": 0,
+          "availability_days": 10
+        }
+      },
+      {
+        "candidate_id": "CAND_QT_002",
+        "full_name": "Mateo Gomez",
+        "resume_text": "Role: Senior Quantitative Developer. Education: B.S. in Software Engineering from UNAM, Mexico (4-year). Visa: TN-1 Eligible. Cost: $3,000. Start: 15 days.",
+        "metadata": {
+          "degree_type": "B.S. (4-year)",
+          "years_experience": 5,
+          "est_sponsorship_cost": 3000,
+          "availability_days": 15
+        }
+      },
+      {
+        "candidate_id": "CAND_QT_002_DUPE",
+        "full_name": "Mateo Gomez",
+        "resume_text": "Role: Senior Quantitative Developer. Education: B.S. from UNAM. (Duplicate Record)",
+        "metadata": {
+          "degree_type": "B.S. (4-year)",
+          "years_experience": 5,
+          "est_sponsorship_cost": 3000,
+          "availability_days": 15
+        }
+      },
+      {
+        "candidate_id": "CAND_QT_505",
+        "full_name": "Priya Sharma",
+        "resume_text": "Role: Senior Quantitative Developer. Education: B.Sc. in Computer Science from University of Delhi (3-year program). Visa: H-1B Transfer. Cost: $6,500. Start: 30 days.",
+        "metadata": {
+          "degree_type": "B.Sc. (3-year)",
+          "years_experience": 6,
+          "est_sponsorship_cost": 6500,
+          "availability_days": 30
+        }
+      },
+      {
+        "candidate_id": "CAND_QT_999",
+        "full_name": "Dr. A. Thorne",
+        "resume_text": "Role: Senior Quantitative Developer. Education: Ph.D. Computational Math (Imperial College). Visa: O-1A (Extraordinary Ability). Cost: $14,000. Start: 40 days.",
+        "metadata": {
+          "degree_type": "Ph.D.",
+          "years_experience": 10,
+          "est_sponsorship_cost": 14000,
+          "availability_days": 40
+        }
+      }
+    ],
+    "job_description": "Senior Quantitative Developer. Must have US 4-year degree equivalent. Max $15k sponsorship. Max 45-day start date.",
+    "screening_queue": [
+      "CAND_QT_001",
+      "CAND_QT_001_X",
+      "CAND_QT_002",
+      "CAND_QT_002_DUPE",
+      "CAND_QT_505",
+      "CAND_QT_999"
+    ],
+    "shortlisted_candidates": [],
+    "rejected_candidates": [],
+    "current_session_metadata": {
+      "current_index": 0,
+      "total_reviewed": 0
+    }
+  }
+}

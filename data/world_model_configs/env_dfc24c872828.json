@@ -1,0 +1,225 @@
+{
+  "environment_name": "env_dfc24c872828",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM) for CI/CD Pipeline Failure Recovery\n- **Core Objective**: Based on the current internal state $s_t$ of the CI/CD environment and the action $a_t$ executed by the Agent, simulate the evolution of the pipeline, infrastructure, and codebase. Predict and return the observation $o_{{t+1}}$ that the Agent would receive from the real DevOps environment.\n- **Emphasis**: You are the simulation engine. You do not fix the code yourself; you simulate how the environment (build servers, test runners, deployment targets, cloud providers) responds to the Agent's commands.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions must maintain absolute context consistency. Changes made to the codebase, configuration files, or infrastructure states through actions must persist across the interaction history. The LWM must track the progression of the pipeline (e.g., moving from a 'Failed' build state to a 'Passing' test state if the correct fix is applied).\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. Example format:\n```json\n{{\n \"name\": \"run_build\",\n \"arguments\": {{\n    \"target\": \"production\",\n    \"clean_cache\": true\n  }}\n}}\n```\nThe Language World Model must parse this JSON, update the internal state (e.g., updating logs, changing status codes, modifying file content), and generate the result of that specific operation.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nIf the Agent attempts an action that is invalid in the current state (e.g., 'deploy' when 'build' has failed), or provides invalid parameters (e.g., a non-existent branch), return a structured error message:\n`{{\"error\": \"Descriptive error message\"}}`.\nDo not fabricate successful outcomes for failed logic.\n\n##### Output Assembly\nFor every action call, return a structured JSON object containing **ONLY** the return fields declared in that action function's definition. \n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, `new_state`, or any hidden variables. You must encapsulate the state logic. The Agent only sees the `observation` (e.g., build logs, test exit codes, or file read content).\n\n### 4. Key Principles\n- **Format**: Strictly adhere to specified JSON and text formats.\n- **Factuality**: Simulate realistic CI/CD tool outputs (e.g., Jenkins, GitHub Actions, or Kubernetes logs) based on the provided state.\n- **Consistency**: If a file is modified, subsequent 'read' actions must reflect that modification.\n- **Realism**: Simulated behaviors (latencies, intermittent network failures, dependency conflicts) should align with professional DevOps environments.\n- **Quality**: Observations should be detailed enough for the Agent to diagnose issues (e.g., stack traces, linting errors).\n- **Encapsulation**: Never output the internal state update. Only expose the specific return values defined in the action.\n{{initial_state}}: {{\n  \"pipeline_id\": \"pipe-z-8821\",\n  \"current_step\": \"db2_bind\",\n  \"pipeline_status\": \"failed\",\n  \"repository\": {{\n    \"branch\": \"main\",\n    \"commit_hash\": \"a1b2c3d\",\n    \"modified_files\": [\n      \"ACCTCALC.cbl\",\n      \"ACCTCALC.dbrm\"\n    ]\n  }},\n  \"last_error_log\": \"IEF450I pipe-z-8821 BINDSTEP - ABEND=S000 U0000 REASON=00000000. DSNT408I SQLCODE = -904, ERROR: UNSUCCESSFUL EXECUTION CAUSED BY UNAVAILABLE RESOURCE. REASON 00C90088. TYPE 00000D01. NAME DSNDB06.SYSIASIG. JCL MAXCC=12. BIND Process Terminated.\",\n  \"environment_config\": {{\n    \"TARGET_LPAR\": \"PROD1\",\n    \"CICS_REGION\": \"FINREG01\",\n    \"BACKUP_LOAD_PDS\": \"FIN.BACKUP.LOAD\",\n    \"PROD_LOAD_PDS\": \"FIN.PROD.LOAD\",\n    \"DB2_PLAN_NAME\": \"FINPLAN1\",\n    \"PREVIOUS_DBRM_MEMBER\": \"ACCTBKUP\"\n  }},\n  \"infrastructure_state\": {{\n    \"docker_running\": true,\n    \"disk_usage\": \"32%\",\n    \"z_os_connection\": \"stable\",\n    \"active_enq\": \"NONE\",\n    \"mips_consumption\": 45.2\n  }}\n}}\n{{state_descriptions}}: {{\n  \"pipeline_id\": \"The unique identifier for the current CI/CD pipeline run.\",\n  \"current_step\": \"The specific stage where the pipeline is currently halted (e.g., lint, build, unit_test, integration_test, deploy).\",\n  \"pipeline_status\": \"The current overall status of the pipeline (e.g., failed, in_progress, success).\",\n  \"repository\": \"State of the source code repository including current commit and branch.\",\n  \"last_error_log\": \"The raw output or excerpt from the terminal/console that caused the last failure.\",\n  \"environment_config\": \"Current environment variables and secrets configured for the pipeline.\",\n  \"infrastructure_state\": \"Status of the underlying resources (e.g., Docker daemon status, Kubernetes cluster health, available disk space).\"\n}}\n{action_set_definitions}: {\n  \"get_pipeline_context\": {\n    \"description\": \"Retrieves metadata and logs for a specific pipeline execution to identify affected components and the previous stable version.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"pipeline_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the pipeline run (e.g., 'pipe-z-8821').\"\n        }\n      },\n      \"required\": [\n        \"pipeline_id\"\n      ]\n    },\n    \"example_output\": {\n      \"module_name\": \"ACCTCALC\",\n      \"load_library\": \"PROD.LOADLIB\",\n      \"db2_plan\": \"ACCTPLAN\",\n      \"previous_stable_version\": \"v2.1.0\",\n      \"failed_version\": \"v2.2.0\",\n      \"temp_artifacts\": [\n        \"WORK.BUILD.TEMP1\",\n        \"WORK.BIND.LOG\"\n      ]\n    }\n  },\n  \"manage_zos_load_module\": {\n    \"description\": \"Performs operations on Z/OS load modules within a Partitioned Data Set (PDS).\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"action\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"restore\",\n            \"list_versions\",\n            \"backup\"\n          ],\n          \"description\": \"The operation to perform.\"\n        },\n        \"dataset_name\": {\n          \"type\": \"string\",\n          \"description\": \"The PDS containing the load module.\"\n        },\n        \"module_name\": {\n          \"type\": \"string\",\n          \"description\": \"The name of the load module/member.\"\n        },\n        \"target_version\": {\n          \"type\": \"string\",\n          \"description\": \"The version tag or timestamp to restore to.\"\n        }\n      },\n      \"required\": [\n        \"action\",\n        \"dataset_name\",\n        \"module_name\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"success\",\n      \"restored_member\": \"ACCTCALC\",\n      \"timestamp\": \"2023-10-27 10:00:00\"\n    }\n  },\n  \"manage_db2_plan\": {\n    \"description\": \"Manages DB2 plan bindings and package synchronization.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"action\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"bind\",\n            \"check_status\"\n          ],\n          \"description\": \"The DB2 action to perform.\"\n        },\n        \"plan_name\": {\n          \"type\": \"string\",\n          \"description\": \"The name of the DB2 plan.\"\n        },\n        \"version\": {\n          \"type\": \"string\",\n          \"description\": \"The target version/collection ID to bind to the plan.\"\n        }\n      },\n      \"required\": [\n        \"action\",\n        \"plan_name\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"success\",\n      \"current_bind_version\": \"v2.1.0\"\n    }\n  },\n  \"refresh_cics_resource\": {\n    \"description\": \"Performs a NEWCOPY or PHASEIN on a program within a specified CICS region to update the in-memory executable.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"region_id\": {\n          \"type\": \"string\",\n          \"description\": \"The identifier for the CICS region (e.g., 'FINREG01').\"\n        },\n        \"program_name\": {\n          \"type\": \"string\",\n          \"description\": \"The name of the program to refresh.\"\n        }\n      },\n      \"required\": [\n        \"region_id\",\n        \"program_name\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"success\",\n      \"newcopy_count\": 1\n    }\n  },\n  \"cleanup_zos_artifacts\": {\n    \"description\": \"Deletes temporary datasets or artifacts generated during a failed deployment.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"artifact_list\": {\n          \"type\": \"array\",\n          \"items\": {\n            \"type\": \"string\"\n          },\n          \"description\": \"A list of dataset names or file paths to delete.\"\n        }\n      },\n      \"required\": [\n        \"artifact_list\"\n      ]\n    },\n    \"example_output\": {\n      \"deleted\": [\n        \"WORK.BUILD.TEMP1\"\n      ],\n      \"failed\": []\n    }\n  },\n  \"verify_system_consistency\": {\n    \"description\": \"Checks if the load module, DB2 plan, and CICS region are all running the same version.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"module_name\": {\n          \"type\": \"string\"\n        },\n        \"db2_plan\": {\n          \"type\": \"string\"\n        },\n        \"cics_region\": {\n          \"type\": \"string\"\n        }\n      },\n      \"required\": [\n        \"module_name\",\n        \"db2_plan\",\n        \"cics_region\"\n      ]\n    },\n    \"example_output\": {\n      \"consistent\": true,\n      \"details\": {\n        \"load_module_version\": \"v2.1.0\",\n        \"db2_version\": \"v2.1.0\",\n        \"cics_version\": \"v2.1.0\"\n      }\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_pipeline_context",
+      "description": "Retrieves metadata and logs for a specific pipeline execution to identify affected components and the previous stable version.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "pipeline_id": {
+            "type": "string",
+            "description": "The unique identifier for the pipeline run (e.g., 'pipe-z-8821')."
+          }
+        },
+        "required": [
+          "pipeline_id"
+        ]
+      },
+      "example_output": {
+        "module_name": "ACCTCALC",
+        "load_library": "PROD.LOADLIB",
+        "db2_plan": "ACCTPLAN",
+        "previous_stable_version": "v2.1.0",
+        "failed_version": "v2.2.0",
+        "temp_artifacts": [
+          "WORK.BUILD.TEMP1",
+          "WORK.BIND.LOG"
+        ]
+      }
+    },
+    {
+      "name": "manage_zos_load_module",
+      "description": "Performs operations on Z/OS load modules within a Partitioned Data Set (PDS).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": [
+              "restore",
+              "list_versions",
+              "backup"
+            ],
+            "description": "The operation to perform."
+          },
+          "dataset_name": {
+            "type": "string",
+            "description": "The PDS containing the load module."
+          },
+          "module_name": {
+            "type": "string",
+            "description": "The name of the load module/member."
+          },
+          "target_version": {
+            "type": "string",
+            "description": "The version tag or timestamp to restore to."
+          }
+        },
+        "required": [
+          "action",
+          "dataset_name",
+          "module_name"
+        ]
+      },
+      "example_output": {
+        "status": "success",
+        "restored_member": "ACCTCALC",
+        "timestamp": "2023-10-27 10:00:00"
+      }
+    },
+    {
+      "name": "manage_db2_plan",
+      "description": "Manages DB2 plan bindings and package synchronization.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": [
+              "bind",
+              "check_status"
+            ],
+            "description": "The DB2 action to perform."
+          },
+          "plan_name": {
+            "type": "string",
+            "description": "The name of the DB2 plan."
+          },
+          "version": {
+            "type": "string",
+            "description": "The target version/collection ID to bind to the plan."
+          }
+        },
+        "required": [
+          "action",
+          "plan_name"
+        ]
+      },
+      "example_output": {
+        "status": "success",
+        "current_bind_version": "v2.1.0"
+      }
+    },
+    {
+      "name": "refresh_cics_resource",
+      "description": "Performs a NEWCOPY or PHASEIN on a program within a specified CICS region to update the in-memory executable.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "region_id": {
+            "type": "string",
+            "description": "The identifier for the CICS region (e.g., 'FINREG01')."
+          },
+          "program_name": {
+            "type": "string",
+            "description": "The name of the program to refresh."
+          }
+        },
+        "required": [
+          "region_id",
+          "program_name"
+        ]
+      },
+      "example_output": {
+        "status": "success",
+        "newcopy_count": 1
+      }
+    },
+    {
+      "name": "cleanup_zos_artifacts",
+      "description": "Deletes temporary datasets or artifacts generated during a failed deployment.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "artifact_list": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "A list of dataset names or file paths to delete."
+          }
+        },
+        "required": [
+          "artifact_list"
+        ]
+      },
+      "example_output": {
+        "deleted": [
+          "WORK.BUILD.TEMP1"
+        ],
+        "failed": []
+      }
+    },
+    {
+      "name": "verify_system_consistency",
+      "description": "Checks if the load module, DB2 plan, and CICS region are all running the same version.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "module_name": {
+            "type": "string"
+          },
+          "db2_plan": {
+            "type": "string"
+          },
+          "cics_region": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "module_name",
+          "db2_plan",
+          "cics_region"
+        ]
+      },
+      "example_output": {
+        "consistent": true,
+        "details": {
+          "load_module_version": "v2.1.0",
+          "db2_version": "v2.1.0",
+          "cics_version": "v2.1.0"
+        }
+      }
+    }
+  ],
+  "state_description": {
+    "pipeline_id": "The unique identifier for the current CI/CD pipeline run.",
+    "current_step": "The specific stage where the pipeline is currently halted (e.g., lint, build, unit_test, integration_test, deploy).",
+    "pipeline_status": "The current overall status of the pipeline (e.g., failed, in_progress, success).",
+    "repository": "State of the source code repository including current commit and branch.",
+    "last_error_log": "The raw output or excerpt from the terminal/console that caused the last failure.",
+    "environment_config": "Current environment variables and secrets configured for the pipeline.",
+    "infrastructure_state": "Status of the underlying resources (e.g., Docker daemon status, Kubernetes cluster health, available disk space)."
+  },
+  "task_initial_state": {
+    "pipeline_id": "pipe-z-8821",
+    "current_step": "db2_bind",
+    "pipeline_status": "failed",
+    "repository": {
+      "branch": "main",
+      "commit_hash": "a1b2c3d",
+      "modified_files": [
+        "ACCTCALC.cbl",
+        "ACCTCALC.dbrm"
+      ]
+    },
+    "last_error_log": "IEF450I pipe-z-8821 BINDSTEP - ABEND=S000 U0000 REASON=00000000. DSNT408I SQLCODE = -904, ERROR: UNSUCCESSFUL EXECUTION CAUSED BY UNAVAILABLE RESOURCE. REASON 00C90088. TYPE 00000D01. NAME DSNDB06.SYSIASIG. JCL MAXCC=12. BIND Process Terminated.",
+    "environment_config": {
+      "TARGET_LPAR": "PROD1",
+      "CICS_REGION": "FINREG01",
+      "BACKUP_LOAD_PDS": "FIN.BACKUP.LOAD",
+      "PROD_LOAD_PDS": "FIN.PROD.LOAD",
+      "DB2_PLAN_NAME": "FINPLAN1",
+      "PREVIOUS_DBRM_MEMBER": "ACCTBKUP"
+    },
+    "infrastructure_state": {
+      "docker_running": true,
+      "disk_usage": "32%",
+      "z_os_connection": "stable",
+      "active_enq": "NONE",
+      "mips_consumption": 45.2
+    }
+  }
+}

@@ -1,0 +1,118 @@
+{
+  "environment_name": "env_cc009d2dffec",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: You are acting as the internal simulation engine for a Reactor Safety Parameter Monitoring scenario. Based on the current internal state $s_t$ and the action $a_t$ executed by the Agent, your task is to simulate the physical and logical evolution of the reactor environment and predict the resulting observation $o_{{t+1}}$.\n- **Emphasis**: You do not execute real-world operations. You perform internal state transitions and generate observations. Your goal is to provide a consistent, realistic, and reactive environment for the Agent to interact with.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions between the World Model and the Agent must maintain strict context consistency. Every action affects the internal state, and subsequent observations must reflect the cumulative history of all previous actions and state transitions.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. You must parse this JSON to determine the intended transition. The format is:\n- `\"name\"`: The name of the action function to execute.\n- Parameters: The specific values required by the function.\n\nExample input:\n```json\n{{\n \"name\": \"adjust_coolant_flow\",\n \"arguments\": {{\n    \"flow_rate\": 500.5\n  }}\n}}\n```\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nIf the Agent provides invalid parameters (e.g., flow rate out of physical bounds), calls undefined actions, or if the reactor state prevents an action (e.g., adjusting rods during a hardware lock), return a structured error message (e.g., `{{\"error\": \"Reason for failure\"}}`). Do not fabricate states or provide conversational filler.\n\n##### Output Assembly\nFor every action function call, you must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition in the action space. \n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the internal state `$s_t$`, the updated state, or any internal variables. State maintenance is handled internally by your simulation logic. The Agent must only receive the specific `observation` (return values) defined in the action.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to the specified JSON structure for all outputs.\n- **Factuality**: Do not simulate non-existent systems or provide data unrelated to reactor physics/monitoring.\n- **Consistency**: The reactor's physical state (e.g., relationship between control rods and temperature) must be self-consistent.\n- **Realism**: Simulate the delay and physical consequences realistic for a nuclear reactor (e.g., thermal inertia).\n- **Quality**: Ensure the data provided in observations is precise and matches the expected schema.\n- **Encapsulation**: Never reveal the full internal state structure in your response. Only output the defined observation.\n{{initial_state}}: {{\n  \"core_temperature_k\": 1250.0,\n  \"coolant_pressure_pa\": 16000000,\n  \"coolant_level_percent\": 12.0,\n  \"control_rod_insertion_percent\": 100.0,\n  \"neutron_flux_level\": 0.05,\n  \"containment_radiation_sv_h\": 1.2,\n  \"scram_system_active\": true\n}}\n{{state_descriptions}}: {{\n  \"core_temperature_k\": \"The current temperature of the reactor core in Kelvin.\",\n  \"coolant_pressure_pa\": \"The pressure within the primary coolant loop in Pascals.\",\n  \"coolant_level_percent\": \"The fill level of the coolant in the reactor vessel (0-100%).\",\n  \"control_rod_insertion_percent\": \"The percentage of control rod insertion into the core (0% = fully withdrawn, 100% = fully inserted).\",\n  \"neutron_flux_level\": \"Normalized measure of neutron activity/power output.\",\n  \"containment_radiation_sv_h\": \"Radiation levels inside the containment building in Sieverts per hour.\",\n  \"scram_system_active\": \"Indicates if the Emergency Shutdown (SCRAM) has been triggered.\"\n}}\n{action_set_definitions}: {\n  \"get_plant_telemetry\": {\n    \"description\": \"Retrieves the current values of all reactor sensors, including temperature, pressure, coolant levels, and radiation.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"core_temperature_k\": 850.5,\n      \"coolant_pressure_pa\": 17000000,\n      \"coolant_level_percent\": 65.2,\n      \"control_rod_insertion_percent\": 100,\n      \"neutron_flux_level\": 0.01,\n      \"containment_radiation_sv_h\": 150.0,\n      \"scram_system_active\": true\n    }\n  },\n  \"run_sensor_diagnostics\": {\n    \"description\": \"Performs diagnostic checks (e.g., TDR, circuit resistance analysis) on specific sensors to verify signal integrity against shunting or radiation interference.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"sensor_names\": {\n          \"type\": \"array\",\n          \"items\": {\n            \"type\": \"string\"\n          },\n          \"description\": \"A list of sensor keys to validate (e.g., ['core_temperature_k', 'coolant_pressure_pa']).\"\n        }\n      },\n      \"required\": [\n        \"sensor_names\"\n      ]\n    },\n    \"example_output\": {\n      \"diagnostics_report\": {\n        \"core_temperature_k\": \"VALID\",\n        \"coolant_pressure_pa\": \"VALID_DEGRADED\"\n      }\n    }\n  },\n  \"adjust_coolant_injection\": {\n    \"description\": \"Controls the high-pressure coolant injection system to increase the reactor vessel water level.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"injection_rate_percent\": {\n          \"type\": \"number\",\n          \"description\": \"Target flow rate as a percentage of maximum pump capacity (0-100).\"\n        }\n      },\n      \"required\": [\n        \"injection_rate_percent\"\n      ]\n    },\n    \"example_output\": null\n  },\n  \"adjust_pressure_vent\": {\n    \"description\": \"Controls the containment and primary system vent valves to release pressure.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"valve_opening_percent\": {\n          \"type\": \"number\",\n          \"description\": \"Target opening percentage for the vent valves (0-100).\"\n        }\n      },\n      \"required\": [\n        \"valve_opening_percent\"\n      ]\n    },\n    \"example_output\": null\n  },\n  \"set_control_rod_position\": {\n    \"description\": \"Sets the insertion depth of the control rods to manage reactor power and core temperature.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"insertion_percent\": {\n          \"type\": \"number\",\n          \"description\": \"Percentage of rod insertion (100 = full shutdown).\"\n        }\n      },\n      \"required\": [\n        \"insertion_percent\"\n      ]\n    },\n    \"example_output\": null\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_plant_telemetry",
+      "description": "Retrieves the current values of all reactor sensors, including temperature, pressure, coolant levels, and radiation.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "core_temperature_k": 850.5,
+        "coolant_pressure_pa": 17000000,
+        "coolant_level_percent": 65.2,
+        "control_rod_insertion_percent": 100,
+        "neutron_flux_level": 0.01,
+        "containment_radiation_sv_h": 150.0,
+        "scram_system_active": true
+      }
+    },
+    {
+      "name": "run_sensor_diagnostics",
+      "description": "Performs diagnostic checks (e.g., TDR, circuit resistance analysis) on specific sensors to verify signal integrity against shunting or radiation interference.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "sensor_names": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "A list of sensor keys to validate (e.g., ['core_temperature_k', 'coolant_pressure_pa'])."
+          }
+        },
+        "required": [
+          "sensor_names"
+        ]
+      },
+      "example_output": {
+        "diagnostics_report": {
+          "core_temperature_k": "VALID",
+          "coolant_pressure_pa": "VALID_DEGRADED"
+        }
+      }
+    },
+    {
+      "name": "adjust_coolant_injection",
+      "description": "Controls the high-pressure coolant injection system to increase the reactor vessel water level.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "injection_rate_percent": {
+            "type": "number",
+            "description": "Target flow rate as a percentage of maximum pump capacity (0-100)."
+          }
+        },
+        "required": [
+          "injection_rate_percent"
+        ]
+      },
+      "example_output": null
+    },
+    {
+      "name": "adjust_pressure_vent",
+      "description": "Controls the containment and primary system vent valves to release pressure.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "valve_opening_percent": {
+            "type": "number",
+            "description": "Target opening percentage for the vent valves (0-100)."
+          }
+        },
+        "required": [
+          "valve_opening_percent"
+        ]
+      },
+      "example_output": null
+    },
+    {
+      "name": "set_control_rod_position",
+      "description": "Sets the insertion depth of the control rods to manage reactor power and core temperature.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "insertion_percent": {
+            "type": "number",
+            "description": "Percentage of rod insertion (100 = full shutdown)."
+          }
+        },
+        "required": [
+          "insertion_percent"
+        ]
+      },
+      "example_output": null
+    }
+  ],
+  "state_description": {
+    "core_temperature_k": "The current temperature of the reactor core in Kelvin.",
+    "coolant_pressure_pa": "The pressure within the primary coolant loop in Pascals.",
+    "coolant_level_percent": "The fill level of the coolant in the reactor vessel (0-100%).",
+    "control_rod_insertion_percent": "The percentage of control rod insertion into the core (0% = fully withdrawn, 100% = fully inserted).",
+    "neutron_flux_level": "Normalized measure of neutron activity/power output.",
+    "containment_radiation_sv_h": "Radiation levels inside the containment building in Sieverts per hour.",
+    "scram_system_active": "Indicates if the Emergency Shutdown (SCRAM) has been triggered."
+  },
+  "task_initial_state": {
+    "core_temperature_k": 1250.0,
+    "coolant_pressure_pa": 16000000,
+    "coolant_level_percent": 12.0,
+    "control_rod_insertion_percent": 100.0,
+    "neutron_flux_level": 0.05,
+    "containment_radiation_sv_h": 1.2,
+    "scram_system_active": true
+  }
+}

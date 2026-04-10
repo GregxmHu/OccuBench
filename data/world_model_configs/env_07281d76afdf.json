@@ -1,0 +1,169 @@
+{
+  "environment_name": "env_07281d76afdf",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM) for Urban Traffic Signal Control.\n- **Core Objective**: Based on the current internal state $s_t$ (representing traffic conditions and signal phases) and the Agent's action $a_t$ (signal adjustments), simulate the evolution of the urban environment and predict the resulting observation $o_{{t+1}}$ at the next time step.\n- **Emphasis**: You are a simulator. You do not execute physical hardware commands. You perform internal state updates based on traffic flow logic and generate realistic sensor/report observations for the Agent.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions between the World Model and the Agent must maintain context consistency. You must track the cumulative effects of traffic flow, such as vehicle accumulation during red lights and dissipation during green lights, across the conversation history.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. This JSON must contain the following fields:\n- `\"name\"`: Specifies the name of the action function to execute.\n- Parameters: The corresponding values required by that action function.\n\nExample:\n```json\n{{\n \"name\": \"switch_signal_phase\",\n \"arguments\": {{\n    \"intersection_id\": \"INT_001\",\n    \"target_phase\": \"NORTH_SOUTH_GREEN\"\n  }}\n}}\n```\nYou must parse this JSON, update the internal traffic simulation (e.g., decrementing queues in the green direction, incrementing others based on arrival rates), and generate the observation.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\n- If an Agent attempts to switch to an invalid phase or references a non-existent intersection, return: `{{\"error\": \"Invalid intersection or phase transition requested\"}}`.\n- If parameters are missing, return a structured error message detailing the missing field.\n- Do not fabricate traffic data if the input is malformed.\n\n##### Output Assembly\nFor every action function call, the model must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition (the Observation).\n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the internal state `$s_t$`, the updated state, or hidden variables like exact arrival rates unless specifically defined as a return field in the action definition. The state update must remain implicit in your internal tracking.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to specified JSON and text formats.\n- **Factuality**: Simulate realistic traffic behavior (e.g., vehicles cannot move instantly; queues grow during red lights).\n- **Consistency**: If a signal is set to Red, the next observation must reflect an increase in queue length for that approach.\n- **Realism**: Dynamics should align with urban traffic patterns (e.g., peak hour flow vs. off-peak).\n- **Quality**: Ensure all observations are clear and structurally complete.\n- **Encapsulation**: Strictly hide the internal state structure from the output. Only expose information explicitly returned by the action function.\n{{initial_state}}: {{\n  \"intersections\": [\n    {{\n      \"intersection_id\": \"ST-MAIN-001\",\n      \"current_phase\": \"PHASE_2_GREEN\",\n      \"phase_duration_elapsed\": 12,\n      \"lanes\": {{\n        \"N\": 14,\n        \"S\": 18,\n        \"E\": 22,\n        \"W\": 20\n      }}\n    }},\n    {{\n      \"intersection_id\": \"BWAY-4TH-002\",\n      \"current_phase\": \"PHASE_8_THRU_CONCURRENT\",\n      \"phase_duration_elapsed\": 45,\n      \"lanes\": {{\n        \"N\": 96,\n        \"S\": 34,\n        \"E\": 41,\n        \"W\": 38\n      }}\n    }},\n    {{\n      \"intersection_id\": \"ELM-7TH-003\",\n      \"current_phase\": \"PHASE_4_RED\",\n      \"phase_duration_elapsed\": 5,\n      \"lanes\": {{\n        \"N\": 28,\n        \"S\": 22,\n        \"E\": 15,\n        \"W\": 12\n      }}\n    }}\n  ],\n  \"simulation_time\": 28800,\n  \"traffic_density_multiplier\": 2.0\n}}\n{{state_descriptions}}: {{\n  \"intersections\": \"List of all intersections under management.\",\n  \"simulation_time\": \"Total elapsed simulation time in seconds.\",\n  \"traffic_density_multiplier\": \"A factor representing the global traffic demand (e.g., 1.0 for normal, 2.0 for rush hour).\"\n}}\n{action_set_definitions}: {\n  \"get_intersections_list\": {\n    \"description\": \"Retrieves the list of all intersection identifiers within the managed urban traffic network.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"intersections\": [\n        \"INT_MAIN_5TH\",\n        \"INT_OAK_7TH\"\n      ]\n    }\n  },\n  \"get_traffic_metrics\": {\n    \"description\": \"Queries real-time traffic statistics for a specific intersection, including lane-specific queue counts.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"intersection_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the intersection.\"\n        }\n      },\n      \"required\": [\n        \"intersection_id\"\n      ]\n    },\n    \"example_output\": {\n      \"northbound_queue\": 92,\n      \"southbound_queue\": 45,\n      \"current_model\": \"Permissive\"\n    }\n  },\n  \"update_mmu_config\": {\n    \"description\": \"Updates the hardware Malfunction Management Unit (MMU) in the traffic cabinet to recognize and validate a new phase sequence, preventing emergency flash failures.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"intersection_id\": {\n          \"type\": \"string\",\n          \"description\": \"The identifier of the target intersection.\"\n        },\n        \"phase_sequence_mode\": {\n          \"type\": \"string\",\n          \"description\": \"The logic model to be programmed into the MMU (e.g., 'Fully Protected Temporal Separation').\"\n        }\n      },\n      \"required\": [\n        \"intersection_id\",\n        \"phase_sequence_mode\"\n      ]\n    },\n    \"example_output\": {\n      \"mmu_update_status\": \"Successful\",\n      \"checksum\": \"A1-FB-92\"\n    }\n  },\n  \"set_timing_parameters\": {\n    \"description\": \"Programs specific phase timing intervals including yellow change and all-red clearance, and sets the operational model.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"intersection_id\": {\n          \"type\": \"string\",\n          \"description\": \"The identifier of the target intersection.\"\n        },\n        \"yellow_change_interval\": {\n          \"type\": \"number\",\n          \"description\": \"The duration of the yellow light in seconds.\"\n        },\n        \"all_red_clearance\": {\n          \"type\": \"number\",\n          \"description\": \"The duration of the all-red clearance in seconds.\"\n        },\n        \"model_name\": {\n          \"type\": \"string\",\n          \"description\": \"The name of the control model to apply.\"\n        }\n      },\n      \"required\": [\n        \"intersection_id\",\n        \"yellow_change_interval\",\n        \"all_red_clearance\",\n        \"model_name\"\n      ]\n    },\n    \"example_output\": {\n      \"programming_status\": \"Complete\",\n      \"active_intervals\": {\n        \"yellow\": 3.0,\n        \"all_red\": 1.42\n      }\n    }\n  },\n  \"activate_signal_reconfiguration\": {\n    \"description\": \"Triggers the deployment and activation of the newly programmed signal settings and phase model at the intersection.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"intersection_id\": {\n          \"type\": \"string\",\n          \"description\": \"The identifier of the intersection to activate.\"\n        }\n      },\n      \"required\": [\n        \"intersection_id\"\n      ]\n    },\n    \"example_output\": {\n      \"operational_status\": \"Active\",\n      \"timestamp\": \"2023-11-01T14:30:00Z\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_intersections_list",
+      "description": "Retrieves the list of all intersection identifiers within the managed urban traffic network.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "intersections": [
+          "INT_MAIN_5TH",
+          "INT_OAK_7TH"
+        ]
+      }
+    },
+    {
+      "name": "get_traffic_metrics",
+      "description": "Queries real-time traffic statistics for a specific intersection, including lane-specific queue counts.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "intersection_id": {
+            "type": "string",
+            "description": "The unique identifier for the intersection."
+          }
+        },
+        "required": [
+          "intersection_id"
+        ]
+      },
+      "example_output": {
+        "northbound_queue": 92,
+        "southbound_queue": 45,
+        "current_model": "Permissive"
+      }
+    },
+    {
+      "name": "update_mmu_config",
+      "description": "Updates the hardware Malfunction Management Unit (MMU) in the traffic cabinet to recognize and validate a new phase sequence, preventing emergency flash failures.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "intersection_id": {
+            "type": "string",
+            "description": "The identifier of the target intersection."
+          },
+          "phase_sequence_mode": {
+            "type": "string",
+            "description": "The logic model to be programmed into the MMU (e.g., 'Fully Protected Temporal Separation')."
+          }
+        },
+        "required": [
+          "intersection_id",
+          "phase_sequence_mode"
+        ]
+      },
+      "example_output": {
+        "mmu_update_status": "Successful",
+        "checksum": "A1-FB-92"
+      }
+    },
+    {
+      "name": "set_timing_parameters",
+      "description": "Programs specific phase timing intervals including yellow change and all-red clearance, and sets the operational model.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "intersection_id": {
+            "type": "string",
+            "description": "The identifier of the target intersection."
+          },
+          "yellow_change_interval": {
+            "type": "number",
+            "description": "The duration of the yellow light in seconds."
+          },
+          "all_red_clearance": {
+            "type": "number",
+            "description": "The duration of the all-red clearance in seconds."
+          },
+          "model_name": {
+            "type": "string",
+            "description": "The name of the control model to apply."
+          }
+        },
+        "required": [
+          "intersection_id",
+          "yellow_change_interval",
+          "all_red_clearance",
+          "model_name"
+        ]
+      },
+      "example_output": {
+        "programming_status": "Complete",
+        "active_intervals": {
+          "yellow": 3.0,
+          "all_red": 1.42
+        }
+      }
+    },
+    {
+      "name": "activate_signal_reconfiguration",
+      "description": "Triggers the deployment and activation of the newly programmed signal settings and phase model at the intersection.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "intersection_id": {
+            "type": "string",
+            "description": "The identifier of the intersection to activate."
+          }
+        },
+        "required": [
+          "intersection_id"
+        ]
+      },
+      "example_output": {
+        "operational_status": "Active",
+        "timestamp": "2023-11-01T14:30:00Z"
+      }
+    }
+  ],
+  "state_description": {
+    "intersections": "List of all intersections under management.",
+    "simulation_time": "Total elapsed simulation time in seconds.",
+    "traffic_density_multiplier": "A factor representing the global traffic demand (e.g., 1.0 for normal, 2.0 for rush hour)."
+  },
+  "task_initial_state": {
+    "intersections": [
+      {
+        "intersection_id": "ST-MAIN-001",
+        "current_phase": "PHASE_2_GREEN",
+        "phase_duration_elapsed": 12,
+        "lanes": {
+          "N": 14,
+          "S": 18,
+          "E": 22,
+          "W": 20
+        }
+      },
+      {
+        "intersection_id": "BWAY-4TH-002",
+        "current_phase": "PHASE_8_THRU_CONCURRENT",
+        "phase_duration_elapsed": 45,
+        "lanes": {
+          "N": 96,
+          "S": 34,
+          "E": 41,
+          "W": 38
+        }
+      },
+      {
+        "intersection_id": "ELM-7TH-003",
+        "current_phase": "PHASE_4_RED",
+        "phase_duration_elapsed": 5,
+        "lanes": {
+          "N": 28,
+          "S": 22,
+          "E": 15,
+          "W": 12
+        }
+      }
+    ],
+    "simulation_time": 28800,
+    "traffic_density_multiplier": 2.0
+  }
+}

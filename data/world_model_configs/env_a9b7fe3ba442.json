@@ -1,0 +1,188 @@
+{
+  "environment_name": "env_a9b7fe3ba442",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM) for Mine Ventilation Control.\n- **Core Objective**: Based on the current internal state $s_t$ of the underground mine environment and the action $a_t$ executed by the control Agent, simulate the physical evolution of the environment and predict the resulting observation $o_{{t+1}}$ (sensor readings and system feedback).\n- **Emphasis**: You are a simulator. You do not execute real-world hardware commands. Your task is to maintain internal consistency regarding airflow dynamics, gas concentrations, and equipment status, and provide the Agent with the precise observations they would receive in a real mine.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions between the World Model and the Agent must maintain rigorous context consistency. Changes in fan speed or air door positions must logically influence downstream gas concentrations and airflow velocities over time based on the laws of fluid dynamics and mine safety principles.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. This JSON must contain the following fields:\n- `\"name\"`: Specifies the name of the action function to execute (e.g., \"adjust_fan_frequency\", \"set_door_angle\").\n- The remaining fields are the parameter names and corresponding values required by that action function.\n\nExample input:\n```json\n{{\n \"name\": \"adjust_fan_frequency\",\n \"arguments\": {{\n    \"fan_id\": \"MAIN_FAN_01\",\n    \"frequency_hz\": 45.5\n  }}\n}}\n```\n\nThe Language World Model must correctly parse such JSON inputs, update the internal state (e.g., changing the fan speed and subsequently updating airflow and gas levels in the simulated mine branches), and simulate the execution results.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nFor invalid parameters (e.g., frequency out of range), undefined actions, or physical conflicts (e.g., trying to operate a damaged door), return structured error information: `{{\"error\": \"Description of the issue\"}}`. Do not fabricate successful states for failed actions.\n\n##### Output Assembly\nFor every action function call, the model must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition.\n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, `new_state`, or any hidden variables like the entire mine's connectivity matrix. The Agent must only see the specific return values (Observations) defined in the action, such as a specific sensor reading or a success confirmation.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to specified JSON and text formats.\n- **Factuality**: Do not fabricate non-existent sensors, fans, or mine sectors.\n- **Consistency**: Ensure that if airflow is reduced in a specific sector, the gas concentration in that sector realistically increases over simulated time steps.\n- **Realism**: Simulated behaviors must align with the thermodynamics and fluid mechanics of mine ventilation (e.g., pressure drops, methane accumulation).\n- **Quality**: Language must be clear and professional, reflecting industrial control standards.\n- **Encapsulation**: Strictly hide the internal state structure. Only expose information that is explicitly returned by the action function. Do not output the state update process.\n{{initial_state}}: {{\n  \"fans\": {{\n    \"main_fan_01\": {{\n      \"status\": \"on\",\n      \"frequency\": 50.0,\n      \"power_kw\": 120.5\n    }},\n    \"fan_north_v2\": {{\n      \"status\": \"on\",\n      \"frequency\": 20.0,\n      \"power_kw\": 35.0\n    }},\n    \"fan_south_v1\": {{\n      \"status\": \"on\",\n      \"frequency\": 45.0,\n      \"power_kw\": 88.0\n    }}\n  }},\n  \"air_doors\": {{\n    \"reg_north_v2\": 20,\n    \"reg_south_v1\": 50\n  }},\n  \"gas_levels\": {{\n    \"north_heading_face\": {{\n      \"CH4\": 0.01,\n      \"CO\": 0.2\n    }},\n    \"south_heading_face\": {{\n      \"CH4\": 0.04,\n      \"CO\": 1.5\n    }}\n  }},\n  \"airflow_data\": {{\n    \"intake_shaft\": 115000,\n    \"north_heading_face\": 12500,\n    \"south_heading_face\": 28000\n  }},\n  \"alerts\": [\n    \"SYSTEM_LOG: North_Heading_Face is currently Production_Ready\",\n    \"MAINTENANCE_REPORT: UNIT_LHD_902 (Tier 4) - Status: DPF_HEALTHY\",\n    \"MAINTENANCE_REPORT: UNIT_LHD_404 (Tier 4) - Status: DPF_SUBSTRATE_CRACKED_GROUNDED\"\n  ]\n}}\n{{state_descriptions}}: {{\n  \"fans\": \"Status of all primary and local fans including frequency (Hz) and power consumption.\",\n  \"air_doors\": \"The opening percentage (0-100) of ventilation doors in various sectors.\",\n  \"gas_levels\": \"Concentrations of CH4 (%) and CO (ppm) across monitored locations.\",\n  \"airflow_data\": \"Air velocity (m/s) and volume (m3/min) in different mine tunnels.\",\n  \"alerts\": \"Current active safety alarms or equipment malfunctions.\"\n}}\n{action_set_definitions}: {\n  \"query_system_logs\": {\n    \"description\": \"Search system logs for specific status identifiers or heading states.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"search_term\": {\n          \"type\": \"string\",\n          \"description\": \"The keyword to search for (e.g., 'Production_Ready').\"\n        }\n      },\n      \"required\": [\n        \"search_term\"\n      ]\n    },\n    \"example_output\": {\n      \"results\": [\n        {\n          \"heading_id\": \"H-102\",\n          \"status\": \"Production_Ready\",\n          \"timestamp\": \"2023-10-27T08:00:00Z\"\n        }\n      ]\n    }\n  },\n  \"query_maintenance_reports\": {\n    \"description\": \"Retrieve maintenance history and health status for equipment units.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"equipment_type\": {\n          \"type\": \"string\",\n          \"description\": \"The type of equipment to check (e.g., 'Tier 4 LHD').\"\n        }\n      },\n      \"required\": [\n        \"equipment_type\"\n      ]\n    },\n    \"example_output\": {\n      \"reports\": [\n        {\n          \"unit_id\": \"LHD-05\",\n          \"condition\": \"Healthy\",\n          \"last_service\": \"2023-10-20\"\n        },\n        {\n          \"unit_id\": \"LHD-09\",\n          \"condition\": \"Grounded\",\n          \"failure_mode\": \"DPF failure\"\n        }\n      ]\n    }\n  },\n  \"get_equipment_specs\": {\n    \"description\": \"Get engineering specifications (like CFM requirements) for specific equipment models.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"unit_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique ID of the equipment unit.\"\n        }\n      },\n      \"required\": [\n        \"unit_id\"\n      ]\n    },\n    \"example_output\": {\n      \"cfm_rating\": 18500,\n      \"model\": \"T4-LHD-Super\"\n    }\n  },\n  \"get_ventilation_status\": {\n    \"description\": \"Get real-time sensor data for a specific heading, including airflow and fan metrics.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"heading_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the heading/tunnel.\"\n        }\n      },\n      \"required\": [\n        \"heading_id\"\n      ]\n    },\n    \"example_output\": {\n      \"airflow_cfm\": 32000,\n      \"sensor_id\": \"S-H102-AF\",\n      \"associated_fan_id\": \"FAN-AUX-22\",\n      \"fan_power_kw\": 110,\n      \"fan_freq_hz\": 45\n    }\n  },\n  \"adjust_ventilation_control\": {\n    \"description\": \"Modify fan frequency or air door positions to change airflow.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"device_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the fan or door to adjust.\"\n        },\n        \"control_type\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"fan_frequency\",\n            \"door_opening_pct\"\n          ],\n          \"description\": \"The type of adjustment to make.\"\n        },\n        \"target_value\": {\n          \"type\": \"number\",\n          \"description\": \"The new value (Hz for fans, percentage for doors).\"\n        }\n      },\n      \"required\": [\n        \"device_id\",\n        \"control_type\",\n        \"target_value\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"Success\",\n      \"new_value\": 52\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "query_system_logs",
+      "description": "Search system logs for specific status identifiers or heading states.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "search_term": {
+            "type": "string",
+            "description": "The keyword to search for (e.g., 'Production_Ready')."
+          }
+        },
+        "required": [
+          "search_term"
+        ]
+      },
+      "example_output": {
+        "results": [
+          {
+            "heading_id": "H-102",
+            "status": "Production_Ready",
+            "timestamp": "2023-10-27T08:00:00Z"
+          }
+        ]
+      }
+    },
+    {
+      "name": "query_maintenance_reports",
+      "description": "Retrieve maintenance history and health status for equipment units.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "equipment_type": {
+            "type": "string",
+            "description": "The type of equipment to check (e.g., 'Tier 4 LHD')."
+          }
+        },
+        "required": [
+          "equipment_type"
+        ]
+      },
+      "example_output": {
+        "reports": [
+          {
+            "unit_id": "LHD-05",
+            "condition": "Healthy",
+            "last_service": "2023-10-20"
+          },
+          {
+            "unit_id": "LHD-09",
+            "condition": "Grounded",
+            "failure_mode": "DPF failure"
+          }
+        ]
+      }
+    },
+    {
+      "name": "get_equipment_specs",
+      "description": "Get engineering specifications (like CFM requirements) for specific equipment models.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "unit_id": {
+            "type": "string",
+            "description": "The unique ID of the equipment unit."
+          }
+        },
+        "required": [
+          "unit_id"
+        ]
+      },
+      "example_output": {
+        "cfm_rating": 18500,
+        "model": "T4-LHD-Super"
+      }
+    },
+    {
+      "name": "get_ventilation_status",
+      "description": "Get real-time sensor data for a specific heading, including airflow and fan metrics.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "heading_id": {
+            "type": "string",
+            "description": "The ID of the heading/tunnel."
+          }
+        },
+        "required": [
+          "heading_id"
+        ]
+      },
+      "example_output": {
+        "airflow_cfm": 32000,
+        "sensor_id": "S-H102-AF",
+        "associated_fan_id": "FAN-AUX-22",
+        "fan_power_kw": 110,
+        "fan_freq_hz": 45
+      }
+    },
+    {
+      "name": "adjust_ventilation_control",
+      "description": "Modify fan frequency or air door positions to change airflow.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "device_id": {
+            "type": "string",
+            "description": "The ID of the fan or door to adjust."
+          },
+          "control_type": {
+            "type": "string",
+            "enum": [
+              "fan_frequency",
+              "door_opening_pct"
+            ],
+            "description": "The type of adjustment to make."
+          },
+          "target_value": {
+            "type": "number",
+            "description": "The new value (Hz for fans, percentage for doors)."
+          }
+        },
+        "required": [
+          "device_id",
+          "control_type",
+          "target_value"
+        ]
+      },
+      "example_output": {
+        "status": "Success",
+        "new_value": 52
+      }
+    }
+  ],
+  "state_description": {
+    "fans": "Status of all primary and local fans including frequency (Hz) and power consumption.",
+    "air_doors": "The opening percentage (0-100) of ventilation doors in various sectors.",
+    "gas_levels": "Concentrations of CH4 (%) and CO (ppm) across monitored locations.",
+    "airflow_data": "Air velocity (m/s) and volume (m3/min) in different mine tunnels.",
+    "alerts": "Current active safety alarms or equipment malfunctions."
+  },
+  "task_initial_state": {
+    "fans": {
+      "main_fan_01": {
+        "status": "on",
+        "frequency": 50.0,
+        "power_kw": 120.5
+      },
+      "fan_north_v2": {
+        "status": "on",
+        "frequency": 20.0,
+        "power_kw": 35.0
+      },
+      "fan_south_v1": {
+        "status": "on",
+        "frequency": 45.0,
+        "power_kw": 88.0
+      }
+    },
+    "air_doors": {
+      "reg_north_v2": 20,
+      "reg_south_v1": 50
+    },
+    "gas_levels": {
+      "north_heading_face": {
+        "CH4": 0.01,
+        "CO": 0.2
+      },
+      "south_heading_face": {
+        "CH4": 0.04,
+        "CO": 1.5
+      }
+    },
+    "airflow_data": {
+      "intake_shaft": 115000,
+      "north_heading_face": 12500,
+      "south_heading_face": 28000
+    },
+    "alerts": [
+      "SYSTEM_LOG: North_Heading_Face is currently Production_Ready",
+      "MAINTENANCE_REPORT: UNIT_LHD_902 (Tier 4) - Status: DPF_HEALTHY",
+      "MAINTENANCE_REPORT: UNIT_LHD_404 (Tier 4) - Status: DPF_SUBSTRATE_CRACKED_GROUNDED"
+    ]
+  }
+}

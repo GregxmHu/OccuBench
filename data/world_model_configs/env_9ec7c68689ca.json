@@ -1,0 +1,176 @@
+{
+  "environment_name": "env_9ec7c68689ca",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: You are a high-fidelity simulator for a Retail Inventory Synchronization system. Your task is to maintain the internal state $s_t$ of the warehouse inventory and, upon receiving an action $a_t$ from the Agent, simulate the environment's logic to produce the resulting observation $o_{{t+1}}$ and update the internal state to $s_{{t+1}}$.\n- **Emphasis**: You are the environment itself. You do not execute real-world logistics; you provide the logical and data-driven response that a real inventory system would provide. You must maintain the continuity of stock levels, pending orders, and synchronization logs.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions between the World Model and the Agent must maintain context consistency. Changes to stock levels, SKU availability, or system timestamps must persist across multiple turns of interaction to ensure a coherent simulation of a retail operation.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. You must parse this JSON to determine the intended operation. The JSON will contain:\n- `\"name\"`: Specifies the name of the action function (e.g., \"update_stock\", \"query_inventory\", \"sync_with_central_db\").\n- The remaining fields are the specific parameters required by that function.\n\nExample Agent Input:\n```json\n{{\n \"name\": \"update_stock\",\n \"arguments\": {{\n    \"sku_id\": \"PROD-102\",\n    \"quantity_change\": -5,\n    \"reason\": \"sale\"\n  }}\n}}\n```\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\n- **Insufficient Stock**: If an action attempts to reduce stock below zero (unless back-ordering is allowed in the schema), return an error observation: `{{\"error\": \"Insufficient stock for SKU [ID]\", \"available\": [count]}}`.\n- **Invalid SKU**: If a SKU ID is not found in the current state, return: `{{\"error\": \"SKU ID not found\"}}`.\n- **Undefined Actions**: For any action name not in the definition, return: `{{\"error\": \"Action 'xyz' not recognized\"}}`.\n- **Data Conflicts**: Do not allow simultaneous conflicting updates; resolve them based on logical consistency.\n\n##### Output Assembly\nFor every action call, return a JSON object containing **ONLY** the observation fields defined in the action function's documentation.\n\n**CRITICAL CONSTRAINT**: Your output must **NOT** include the full internal state object or the updated state variables. You must strictly encapsulate the internal state. The Agent only sees what the action's \"return value\" would be in a real system (the Observation).\n\n### 4. Key Principles\n- **Format**: Strictly adhere to JSON for all responses.\n- **Factuality**: Use the provided state as the source of truth; do not invent products that do not exist in the state.\n- **Consistency**: If stock is deducted in Turn 1, Turn 2's query must reflect that deduction.\n- **Realism**: Simulate realistic retail logic, such as updating last_sync timestamps when a synchronization action is performed.\n- **Quality**: Ensure error messages are helpful and structured.\n- **Encapsulation**: Never reveal the entire state tree to the Agent in a single response; only provide the specific data requested or the result of the action executed.\n{{initial_state}}: {{\n  \"inventory_items\": {{\n    \"GTX-PRK-BLK-L\": {{\n      \"stock_level\": 42,\n      \"reserved_stock\": 0,\n      \"unit_price\": 1200.0\n    }},\n    \"SKU-001\": {{\n      \"stock_level\": 150,\n      \"reserved_stock\": 10,\n      \"unit_price\": 29.99\n    }}\n  }},\n  \"sync_status\": \"PENDING_CHANGES\",\n  \"last_sync_time\": \"2023-10-27T10:00:00Z\",\n  \"pending_transactions\": [\n    {{\n      \"transaction_id\": \"TXN-9901\",\n      \"type\": \"RETURN_RESTOCK\",\n      \"sku_id\": \"GTX-PRK-BLK-L\",\n      \"quantity_change\": 1\n    }},\n    {{\n      \"transaction_id\": \"TXN-9902\",\n      \"type\": \"DAMAGE_WRITE_OFF\",\n      \"sku_id\": \"SKU-001\",\n      \"quantity_change\": -12\n    }}\n  ],\n  \"warehouse_metadata\": {{\n    \"warehouse_id\": \"WH-ALPHA-01\",\n    \"region\": \"North\"\n  }}\n}}\n{{state_descriptions}}: {{\n  \"inventory_items\": \"A mapping of SKU IDs to their current inventory details including stock_level, reserved_stock, and unit_price.\",\n  \"sync_status\": \"The current synchronization status with the central retail database (e.g., 'IN_SYNC', 'PENDING_CHANGES').\",\n  \"last_sync_time\": \"ISO 8601 timestamp of the last successful synchronization.\",\n  \"pending_transactions\": \"List of local inventory changes that have not yet been pushed to the central server.\",\n  \"warehouse_metadata\": \"Static information about the facility such as warehouse_id and location.\"\n}}\n{action_set_definitions}: {\n  \"get_inventory_status\": {\n    \"description\": \"Retrieves the current inventory details, synchronization status, and metadata for a specific warehouse.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"warehouse_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the warehouse (e.g., 'WH-ALPHA-01').\"\n        }\n      },\n      \"required\": [\n        \"warehouse_id\"\n      ]\n    },\n    \"example_output\": {\n      \"inventory_items\": {\n        \"SKU-ID-1\": {\n          \"stock_level\": 50,\n          \"reserved_stock\": 5,\n          \"unit_price\": 299.99\n        }\n      },\n      \"sync_status\": \"PENDING_CHANGES\",\n      \"last_sync_time\": \"2023-10-27T10:00:00Z\"\n    }\n  },\n  \"get_pending_transactions\": {\n    \"description\": \"Retrieves a list of local inventory changes that have not yet been synchronized with the central database.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"warehouse_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the warehouse.\"\n        }\n      },\n      \"required\": [\n        \"warehouse_id\"\n      ]\n    },\n    \"example_output\": {\n      \"pending_transactions\": [\n        {\n          \"transaction_id\": \"TXN-123\",\n          \"sku\": \"GTX-PRK-BLK-L\",\n          \"change_type\": \"INCREMENT\",\n          \"quantity\": 1\n        },\n        {\n          \"transaction_id\": \"TXN-124\",\n          \"sku\": \"OTHER-SKU\",\n          \"change_type\": \"DECREASE\",\n          \"quantity\": 2\n        }\n      ]\n    }\n  },\n  \"adjust_stock\": {\n    \"description\": \"Updates the local stock level for a specific SKU. Use positive values for returns/additions and negative values for removals.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"warehouse_id\": {\n          \"type\": \"string\",\n          \"description\": \"The warehouse ID.\"\n        },\n        \"sku\": {\n          \"type\": \"string\",\n          \"description\": \"The SKU to update.\"\n        },\n        \"quantity\": {\n          \"type\": \"number\",\n          \"description\": \"The amount to add to the current stock_level (must be positive for this task).\"\n        }\n      },\n      \"required\": [\n        \"warehouse_id\",\n        \"sku\",\n        \"quantity\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"SUCCESS\",\n      \"new_stock_level\": 51\n    }\n  },\n  \"cancel_pending_transaction\": {\n    \"description\": \"Removes a transaction from the pending queue to prevent it from being synchronized.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"transaction_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the transaction to cancel.\"\n        }\n      },\n      \"required\": [\n        \"transaction_id\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"DELETED\",\n      \"transaction_id\": \"TXN-124\"\n    }\n  },\n  \"sync_with_central_db\": {\n    \"description\": \"Pushes all remaining valid pending transactions to the central database and updates the system status to 'IN_SYNC'.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"warehouse_id\": {\n          \"type\": \"string\",\n          \"description\": \"The warehouse ID to synchronize.\"\n        }\n      },\n      \"required\": [\n        \"warehouse_id\"\n      ]\n    },\n    \"example_output\": {\n      \"sync_status\": \"IN_SYNC\",\n      \"last_sync_time\": \"2023-10-27T10:05:00Z\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_inventory_status",
+      "description": "Retrieves the current inventory details, synchronization status, and metadata for a specific warehouse.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "warehouse_id": {
+            "type": "string",
+            "description": "The unique identifier for the warehouse (e.g., 'WH-ALPHA-01')."
+          }
+        },
+        "required": [
+          "warehouse_id"
+        ]
+      },
+      "example_output": {
+        "inventory_items": {
+          "SKU-ID-1": {
+            "stock_level": 50,
+            "reserved_stock": 5,
+            "unit_price": 299.99
+          }
+        },
+        "sync_status": "PENDING_CHANGES",
+        "last_sync_time": "2023-10-27T10:00:00Z"
+      }
+    },
+    {
+      "name": "get_pending_transactions",
+      "description": "Retrieves a list of local inventory changes that have not yet been synchronized with the central database.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "warehouse_id": {
+            "type": "string",
+            "description": "The unique identifier for the warehouse."
+          }
+        },
+        "required": [
+          "warehouse_id"
+        ]
+      },
+      "example_output": {
+        "pending_transactions": [
+          {
+            "transaction_id": "TXN-123",
+            "sku": "GTX-PRK-BLK-L",
+            "change_type": "INCREMENT",
+            "quantity": 1
+          },
+          {
+            "transaction_id": "TXN-124",
+            "sku": "OTHER-SKU",
+            "change_type": "DECREASE",
+            "quantity": 2
+          }
+        ]
+      }
+    },
+    {
+      "name": "adjust_stock",
+      "description": "Updates the local stock level for a specific SKU. Use positive values for returns/additions and negative values for removals.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "warehouse_id": {
+            "type": "string",
+            "description": "The warehouse ID."
+          },
+          "sku": {
+            "type": "string",
+            "description": "The SKU to update."
+          },
+          "quantity": {
+            "type": "number",
+            "description": "The amount to add to the current stock_level (must be positive for this task)."
+          }
+        },
+        "required": [
+          "warehouse_id",
+          "sku",
+          "quantity"
+        ]
+      },
+      "example_output": {
+        "status": "SUCCESS",
+        "new_stock_level": 51
+      }
+    },
+    {
+      "name": "cancel_pending_transaction",
+      "description": "Removes a transaction from the pending queue to prevent it from being synchronized.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "transaction_id": {
+            "type": "string",
+            "description": "The ID of the transaction to cancel."
+          }
+        },
+        "required": [
+          "transaction_id"
+        ]
+      },
+      "example_output": {
+        "status": "DELETED",
+        "transaction_id": "TXN-124"
+      }
+    },
+    {
+      "name": "sync_with_central_db",
+      "description": "Pushes all remaining valid pending transactions to the central database and updates the system status to 'IN_SYNC'.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "warehouse_id": {
+            "type": "string",
+            "description": "The warehouse ID to synchronize."
+          }
+        },
+        "required": [
+          "warehouse_id"
+        ]
+      },
+      "example_output": {
+        "sync_status": "IN_SYNC",
+        "last_sync_time": "2023-10-27T10:05:00Z"
+      }
+    }
+  ],
+  "state_description": {
+    "inventory_items": "A mapping of SKU IDs to their current inventory details including stock_level, reserved_stock, and unit_price.",
+    "sync_status": "The current synchronization status with the central retail database (e.g., 'IN_SYNC', 'PENDING_CHANGES').",
+    "last_sync_time": "ISO 8601 timestamp of the last successful synchronization.",
+    "pending_transactions": "List of local inventory changes that have not yet been pushed to the central server.",
+    "warehouse_metadata": "Static information about the facility such as warehouse_id and location."
+  },
+  "task_initial_state": {
+    "inventory_items": {
+      "GTX-PRK-BLK-L": {
+        "stock_level": 42,
+        "reserved_stock": 0,
+        "unit_price": 1200.0
+      },
+      "SKU-001": {
+        "stock_level": 150,
+        "reserved_stock": 10,
+        "unit_price": 29.99
+      }
+    },
+    "sync_status": "PENDING_CHANGES",
+    "last_sync_time": "2023-10-27T10:00:00Z",
+    "pending_transactions": [
+      {
+        "transaction_id": "TXN-9901",
+        "type": "RETURN_RESTOCK",
+        "sku_id": "GTX-PRK-BLK-L",
+        "quantity_change": 1
+      },
+      {
+        "transaction_id": "TXN-9902",
+        "type": "DAMAGE_WRITE_OFF",
+        "sku_id": "SKU-001",
+        "quantity_change": -12
+      }
+    ],
+    "warehouse_metadata": {
+      "warehouse_id": "WH-ALPHA-01",
+      "region": "North"
+    }
+  }
+}

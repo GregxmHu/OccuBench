@@ -1,0 +1,309 @@
+{
+  "environment_name": "env_4b6165c7d458",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM) for Food Recall Traceability.\n- **Core Objective**: Based on the current state $s_t$ and the action $a_t$ executed by the Agent, simulate the evolution of the food supply chain environment and predict the resulting observation $o_{{t+1}}$.\n- **Emphasis**: You are the engine of the environment. You do not provide advice or execute real-world logistics; you calculate the internal state transition of the food tracking system and generate the data the Agent would realistically see.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation to track the movement, safety status, and provenance of food products. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions must maintain absolute continuity. If a batch of food is moved from a 'Processing Plant' to a 'Distributor' in step $t$, it must remain at the 'Distributor' in step $t+1$ unless another action changes it. Histories of shipments, lab results, and contamination sources must be logically consistent.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the food traceability system by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. You must parse this JSON to identify the action and its parameters.\n\nExample Input:\n```json\n{{\n \"name\": \"trace_upstream\",\n \"arguments\": {{\n    \"batch_id\": \"LOT-99283\",\n    \"depth\": 2\n  }}\n}}\n```\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\n- If an Agent queries a `batch_id` that does not exist in the state: Return `{{\"error\": \"Batch ID not found in traceability ledger\"}}`.\n- If an action lacks required parameters: Return `{{\"error\": \"Missing required argument: [param_name]\"}}`.\n- If a recall is issued for an already recalled item: Return a notification of redundancy.\n- Do not fabricate data; if the supply chain path ends at a specific farm, do not invent a previous source.\n\n##### Output Assembly\nFor every action, return a structured JSON object containing **ONLY** the return fields declared in the action function's definition. \n\n**CRITICAL CONSTRAINT**: Your response must contain the observation only. Do **NOT** include the updated internal state `{{new_state}}` or any background logic in your output. The Agent must only receive the specific data requested or the result of their operation.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to JSON for both input parsing and output generation.\n- **Factuality**: Use the provided state as the ground truth for shipment histories, locations, and safety statuses.\n- **Consistency**: Ensure that 'Trace-Back' and 'Trace-Forward' operations align with the defined movement history in the state.\n- **Realism**: Simulate realistic delays or multi-hop logistics if the state data implies complex distribution networks.\n- **Quality**: Ensure all ID strings and timestamps are handled with precision.\n- **Encapsulation**: Never reveal the full internal database/state to the Agent. Only expose the specific observation result of the called function.\n{{initial_state}}: {{\n  \"batches\": {{\n    \"LOT-505-X\": {{\n      \"product_type\": \"FreshBite Deli Sliced Turkey\",\n      \"gtin\": \"0081234567890\",\n      \"origin_id\": \"PRC-99\",\n      \"current_location\": \"Distributed\",\n      \"production_date\": \"2023-10-10\"\n    }}\n  }},\n  \"ledger\": [\n    {{\n      \"timestamp\": \"2023-10-11T08:00:00Z\",\n      \"event\": \"transfer\",\n      \"batch_id\": \"LOT-505-X\",\n      \"from\": \"PRC-99\",\n      \"to\": \"DIST-01\"\n    }},\n    {{\n      \"timestamp\": \"2023-10-12T06:00:00Z\",\n      \"event\": \"transfer\",\n      \"batch_id\": \"LOT-505-X\",\n      \"from\": \"DIST-01\",\n      \"to\": \"RETAIL-402\"\n    }},\n    {{\n      \"timestamp\": \"2023-10-12T14:20:00Z\",\n      \"event\": \"sale\",\n      \"gtin\": \"0081234567890\",\n      \"scid\": \"CUST-7721\",\n      \"location\": \"RETAIL-402\",\n      \"amount\": 5.99\n    }},\n    {{\n      \"timestamp\": \"2023-10-12T16:45:00Z\",\n      \"event\": \"sale\",\n      \"gtin\": \"0081234567890\",\n      \"scid\": \"CUST-0000\",\n      \"location\": \"RETAIL-402\",\n      \"amount\": 5.99\n    }},\n    {{\n      \"timestamp\": \"2023-10-13T09:15:00Z\",\n      \"event\": \"sale\",\n      \"gtin\": \"0081234567890\",\n      \"scid\": \"CUST-8675\",\n      \"location\": \"RETAIL-402\",\n      \"amount\": 11.98\n    }},\n    {{\n      \"timestamp\": \"2023-10-13T11:00:00Z\",\n      \"event\": \"sale\",\n      \"gtin\": \"0081234567890\",\n      \"scid\": \"CUST-1244\",\n      \"location\": \"RETAIL-402\",\n      \"amount\": 5.99\n    }}\n  ],\n  \"entities\": {{\n    \"PRC-99\": {{\n      \"name\": \"FreshBite Processor\",\n      \"type\": \"Processor\",\n      \"license\": \"ACTIVE\"\n    }},\n    \"RETAIL-402\": {{\n      \"name\": \"Mid-Atlantic Grocery Store 402\",\n      \"type\": \"Retailer\",\n      \"license\": \"ACTIVE\"\n    }},\n    \"CUST-7721\": {{\n      \"type\": \"Customer\",\n      \"email\": \"j.doe@email.com\",\n      \"phone\": \"555-0102\",\n      \"daily_transaction_avg\": 0.2,\n      \"opt_out_marketing\": false\n    }},\n    \"CUST-8675\": {{\n      \"type\": \"Customer\",\n      \"email\": \"generic@community-center.org\",\n      \"phone\": \"555-9999\",\n      \"daily_transaction_avg\": 14.5,\n      \"opt_out_marketing\": true\n    }},\n    \"CUST-1244\": {{\n      \"type\": \"Customer\",\n      \"email\": null,\n      \"phone\": null,\n      \"daily_transaction_avg\": 0.5,\n      \"opt_out_marketing\": false\n    }}\n  }},\n  \"safety_records\": {{\n    \"LOT-505-X\": {{\n      \"test_type\": \"Pathogen Screening\",\n      \"agent\": \"Listeria monocytogenes\",\n      \"result\": \"POSITIVE\",\n      \"severity\": \"Class I\",\n      \"timestamp\": \"2023-10-15T13:00:00Z\"\n    }}\n  }},\n  \"active_recalls\": []\n}}\n{{state_descriptions}}: {{\n  \"batches\": \"A registry of food batches keyed by BatchID, containing product type, origin_id, current_location, and production_date.\",\n  \"ledger\": \"A chronological list of shipment records (transfer of custody) between entities in the supply chain.\",\n  \"entities\": \"Details of supply chain participants (Farms, Processors, Distributors, Retailers) including their location and license status.\",\n  \"safety_records\": \"Mapping of BatchIDs to laboratory test results, inspection logs, and temperature sensor alerts.\",\n  \"active_recalls\": \"A list of BatchIDs or Product Categories currently under official recall notice.\"\n}}\n{action_set_definitions}: {\n  \"get_supply_chain_trace\": {\n    \"description\": \"Retrieves the list of entities (retailers, distributors) that received a specific batch of product based on ledger records.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"batch_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the product batch (e.g., LOT-505-X).\"\n        }\n      },\n      \"required\": [\n        \"batch_id\"\n      ]\n    },\n    \"example_output\": {\n      \"impacted_entities\": [\n        {\n          \"entity_id\": \"RETAIL-99\",\n          \"entity_type\": \"Retailer\",\n          \"received_date\": \"2023-10-01\"\n        }\n      ]\n    }\n  },\n  \"get_impacted_transactions\": {\n    \"description\": \"Queries a specific retailer's point-of-sale data to find all transactions involving a specific GTIN and Batch ID.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"entity_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the retailer to query.\"\n        },\n        \"gtin\": {\n          \"type\": \"string\",\n          \"description\": \"Global Trade Item Number.\"\n        },\n        \"batch_id\": {\n          \"type\": \"string\",\n          \"description\": \"The specific lot/batch number.\"\n        }\n      },\n      \"required\": [\n        \"entity_id\",\n        \"gtin\",\n        \"batch_id\"\n      ]\n    },\n    \"example_output\": {\n      \"transactions\": [\n        {\n          \"transaction_id\": \"TXN-12345\",\n          \"customer_id\": \"CUST-001\",\n          \"timestamp\": \"2023-10-05T14:00:00Z\"\n        }\n      ]\n    }\n  },\n  \"get_customer_profile\": {\n    \"description\": \"Retrieves customer contact info, loyalty status, and transaction history to determine account type and risk profile.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"customer_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the customer.\"\n        }\n      },\n      \"required\": [\n        \"customer_id\"\n      ]\n    },\n    \"example_output\": {\n      \"contact_info\": {\n        \"email\": \"user@example.com\",\n        \"phone\": \"+123456789\",\n        \"has_app\": true\n      },\n      \"transaction_frequency_score\": 0.85,\n      \"is_community_card\": false,\n      \"risk_level\": \"standard\"\n    }\n  },\n  \"send_emergency_notification\": {\n    \"description\": \"Sends high-priority alerts via SMS, Email, and Push notifications.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"customer_id\": {\n          \"type\": \"string\",\n          \"description\": \"Recipient ID.\"\n        },\n        \"message_type\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"STANDARD_LOYALTY\",\n            \"COMMUNITY_SENSITIVE\"\n          ],\n          \"description\": \"The tone/template of the message based on card type.\"\n        },\n        \"urgency\": {\n          \"type\": \"string\",\n          \"description\": \"Severity level of the alert.\"\n        }\n      },\n      \"required\": [\n        \"customer_id\",\n        \"message_type\",\n        \"urgency\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"delivered\",\n      \"channels_used\": [\n        \"sms\",\n        \"push\"\n      ]\n    }\n  },\n  \"process_batch_refund\": {\n    \"description\": \"Automates the reversal of charges for specific impacted transactions.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"transaction_id\": {\n          \"type\": \"string\",\n          \"description\": \"The transaction ID to refund.\"\n        }\n      },\n      \"required\": [\n        \"transaction_id\"\n      ]\n    },\n    \"example_output\": {\n      \"refund_id\": \"REF-777\",\n      \"status\": \"success\"\n    }\n  },\n  \"enforce_terminal_lockout\": {\n    \"description\": \"Locks an account's ability to transact at POS terminals; used for high-risk or unreachable consumers to prevent consumption.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"customer_id\": {\n          \"type\": \"string\",\n          \"description\": \"The customer account to lock.\"\n        },\n        \"reason\": {\n          \"type\": \"string\",\n          \"description\": \"Mandatory reason for lockout.\"\n        }\n      },\n      \"required\": [\n        \"customer_id\",\n        \"reason\"\n      ]\n    },\n    \"example_output\": {\n      \"lock_status\": \"active\",\n      \"lock_timestamp\": \"2023-10-10T10:00:00Z\"\n    }\n  },\n  \"update_recall_registry\": {\n    \"description\": \"Updates the global active_recalls state with progress and log details.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"batch_id\": {\n          \"type\": \"string\"\n        },\n        \"status\": {\n          \"type\": \"string\"\n        },\n        \"actions_taken\": {\n          \"type\": \"array\",\n          \"items\": {\n            \"type\": \"string\"\n          }\n        }\n      },\n      \"required\": [\n        \"batch_id\",\n        \"status\"\n      ]\n    },\n    \"example_output\": null\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_supply_chain_trace",
+      "description": "Retrieves the list of entities (retailers, distributors) that received a specific batch of product based on ledger records.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "batch_id": {
+            "type": "string",
+            "description": "The unique identifier for the product batch (e.g., LOT-505-X)."
+          }
+        },
+        "required": [
+          "batch_id"
+        ]
+      },
+      "example_output": {
+        "impacted_entities": [
+          {
+            "entity_id": "RETAIL-99",
+            "entity_type": "Retailer",
+            "received_date": "2023-10-01"
+          }
+        ]
+      }
+    },
+    {
+      "name": "get_impacted_transactions",
+      "description": "Queries a specific retailer's point-of-sale data to find all transactions involving a specific GTIN and Batch ID.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "entity_id": {
+            "type": "string",
+            "description": "The ID of the retailer to query."
+          },
+          "gtin": {
+            "type": "string",
+            "description": "Global Trade Item Number."
+          },
+          "batch_id": {
+            "type": "string",
+            "description": "The specific lot/batch number."
+          }
+        },
+        "required": [
+          "entity_id",
+          "gtin",
+          "batch_id"
+        ]
+      },
+      "example_output": {
+        "transactions": [
+          {
+            "transaction_id": "TXN-12345",
+            "customer_id": "CUST-001",
+            "timestamp": "2023-10-05T14:00:00Z"
+          }
+        ]
+      }
+    },
+    {
+      "name": "get_customer_profile",
+      "description": "Retrieves customer contact info, loyalty status, and transaction history to determine account type and risk profile.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "customer_id": {
+            "type": "string",
+            "description": "The unique identifier for the customer."
+          }
+        },
+        "required": [
+          "customer_id"
+        ]
+      },
+      "example_output": {
+        "contact_info": {
+          "email": "user@example.com",
+          "phone": "+123456789",
+          "has_app": true
+        },
+        "transaction_frequency_score": 0.85,
+        "is_community_card": false,
+        "risk_level": "standard"
+      }
+    },
+    {
+      "name": "send_emergency_notification",
+      "description": "Sends high-priority alerts via SMS, Email, and Push notifications.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "customer_id": {
+            "type": "string",
+            "description": "Recipient ID."
+          },
+          "message_type": {
+            "type": "string",
+            "enum": [
+              "STANDARD_LOYALTY",
+              "COMMUNITY_SENSITIVE"
+            ],
+            "description": "The tone/template of the message based on card type."
+          },
+          "urgency": {
+            "type": "string",
+            "description": "Severity level of the alert."
+          }
+        },
+        "required": [
+          "customer_id",
+          "message_type",
+          "urgency"
+        ]
+      },
+      "example_output": {
+        "status": "delivered",
+        "channels_used": [
+          "sms",
+          "push"
+        ]
+      }
+    },
+    {
+      "name": "process_batch_refund",
+      "description": "Automates the reversal of charges for specific impacted transactions.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "transaction_id": {
+            "type": "string",
+            "description": "The transaction ID to refund."
+          }
+        },
+        "required": [
+          "transaction_id"
+        ]
+      },
+      "example_output": {
+        "refund_id": "REF-777",
+        "status": "success"
+      }
+    },
+    {
+      "name": "enforce_terminal_lockout",
+      "description": "Locks an account's ability to transact at POS terminals; used for high-risk or unreachable consumers to prevent consumption.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "customer_id": {
+            "type": "string",
+            "description": "The customer account to lock."
+          },
+          "reason": {
+            "type": "string",
+            "description": "Mandatory reason for lockout."
+          }
+        },
+        "required": [
+          "customer_id",
+          "reason"
+        ]
+      },
+      "example_output": {
+        "lock_status": "active",
+        "lock_timestamp": "2023-10-10T10:00:00Z"
+      }
+    },
+    {
+      "name": "update_recall_registry",
+      "description": "Updates the global active_recalls state with progress and log details.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "batch_id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "actions_taken": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "batch_id",
+          "status"
+        ]
+      },
+      "example_output": null
+    }
+  ],
+  "state_description": {
+    "batches": "A registry of food batches keyed by BatchID, containing product type, origin_id, current_location, and production_date.",
+    "ledger": "A chronological list of shipment records (transfer of custody) between entities in the supply chain.",
+    "entities": "Details of supply chain participants (Farms, Processors, Distributors, Retailers) including their location and license status.",
+    "safety_records": "Mapping of BatchIDs to laboratory test results, inspection logs, and temperature sensor alerts.",
+    "active_recalls": "A list of BatchIDs or Product Categories currently under official recall notice."
+  },
+  "task_initial_state": {
+    "batches": {
+      "LOT-505-X": {
+        "product_type": "FreshBite Deli Sliced Turkey",
+        "gtin": "0081234567890",
+        "origin_id": "PRC-99",
+        "current_location": "Distributed",
+        "production_date": "2023-10-10"
+      }
+    },
+    "ledger": [
+      {
+        "timestamp": "2023-10-11T08:00:00Z",
+        "event": "transfer",
+        "batch_id": "LOT-505-X",
+        "from": "PRC-99",
+        "to": "DIST-01"
+      },
+      {
+        "timestamp": "2023-10-12T06:00:00Z",
+        "event": "transfer",
+        "batch_id": "LOT-505-X",
+        "from": "DIST-01",
+        "to": "RETAIL-402"
+      },
+      {
+        "timestamp": "2023-10-12T14:20:00Z",
+        "event": "sale",
+        "gtin": "0081234567890",
+        "scid": "CUST-7721",
+        "location": "RETAIL-402",
+        "amount": 5.99
+      },
+      {
+        "timestamp": "2023-10-12T16:45:00Z",
+        "event": "sale",
+        "gtin": "0081234567890",
+        "scid": "CUST-0000",
+        "location": "RETAIL-402",
+        "amount": 5.99
+      },
+      {
+        "timestamp": "2023-10-13T09:15:00Z",
+        "event": "sale",
+        "gtin": "0081234567890",
+        "scid": "CUST-8675",
+        "location": "RETAIL-402",
+        "amount": 11.98
+      },
+      {
+        "timestamp": "2023-10-13T11:00:00Z",
+        "event": "sale",
+        "gtin": "0081234567890",
+        "scid": "CUST-1244",
+        "location": "RETAIL-402",
+        "amount": 5.99
+      }
+    ],
+    "entities": {
+      "PRC-99": {
+        "name": "FreshBite Processor",
+        "type": "Processor",
+        "license": "ACTIVE"
+      },
+      "RETAIL-402": {
+        "name": "Mid-Atlantic Grocery Store 402",
+        "type": "Retailer",
+        "license": "ACTIVE"
+      },
+      "CUST-7721": {
+        "type": "Customer",
+        "email": "j.doe@email.com",
+        "phone": "555-0102",
+        "daily_transaction_avg": 0.2,
+        "opt_out_marketing": false
+      },
+      "CUST-8675": {
+        "type": "Customer",
+        "email": "generic@community-center.org",
+        "phone": "555-9999",
+        "daily_transaction_avg": 14.5,
+        "opt_out_marketing": true
+      },
+      "CUST-1244": {
+        "type": "Customer",
+        "email": null,
+        "phone": null,
+        "daily_transaction_avg": 0.5,
+        "opt_out_marketing": false
+      }
+    },
+    "safety_records": {
+      "LOT-505-X": {
+        "test_type": "Pathogen Screening",
+        "agent": "Listeria monocytogenes",
+        "result": "POSITIVE",
+        "severity": "Class I",
+        "timestamp": "2023-10-15T13:00:00Z"
+      }
+    },
+    "active_recalls": []
+  }
+}

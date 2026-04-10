@@ -1,0 +1,289 @@
+{
+  "environment_name": "env_2639723475b2",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: You act as the backend simulator for a Warehouse Order Fulfillment environment. Based on the current internal state $s_t$ and the action $a_t$ executed by the Agent, you must simulate the evolution of the warehouse (inventory changes, order status updates, robot/picker movements) and predict the observation $o_{{t+1}}$ obtained by the Agent.\n- **Emphasis**: You are a simulator, not an executor. You do not perform real-world logistics but generate logically consistent state transitions and observations. \n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nYou must maintain perfect temporal and logical consistency. Every action must build upon the results of previous actions. For example, if an item is picked from a shelf, the inventory in that specific bin must decrease in your internal tracking for all subsequent steps.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the warehouse environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. This JSON will contain:\n- `\"name\"`: The name of the warehouse action (e.g., `move_robot`, `pick_item`, `scan_barcode`).\n- `\"arguments\"`: A dictionary of parameters required for that action.\n\nExample Input:\n```json\n{{\n \"name\": \"pick_item\",\n \"arguments\": {{\n    \"bin_id\": \"B-101\",\n    \"sku\": \"APP-001\",\n    \"quantity\": 2\n  }}\n}}\n```\nYou must parse this input, validate it against the current state, and simulate the result.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nYou must return structured error information if:\n- The SKU does not exist in the specified bin.\n- The requested quantity exceeds available stock.\n- The robot/picker is not at the correct location to perform the action.\n- The action name is undefined.\n- Parameters are missing or of the wrong type.\n\nExample Error:\n`{{\"error\": \"Insufficient stock: SKU 'APP-001' only has 1 unit in Bin 'B-101'.\"}}`\n\n##### Output Assembly\nFor every action, return a structured JSON object containing **ONLY** the return fields declared in the action function's definition (the Observation).\n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state $s_t$, the `new_state`, or any hidden variables like the full inventory manifest unless the action specifically requests a `report`. The Agent must only see the specific return values defined in the action. Do not explain the state update in text.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to JSON for both inputs and outputs.\n- **Factuality**: Do not invent items, orders, or locations that haven't been established in the state or action context.\n- **Consistency**: Ensure that stock levels, order statuses (Pending -> Picking -> Packed -> Shipped), and worker positions are updated logically.\n- **Realism**: Simulate realistic delays or constraints (e.g., a robot cannot be in two places at once).\n- **Quality**: Ensure all simulated responses are clear and unambiguous.\n- **Encapsulation**: Strictly hide the internal state structure. Only expose information explicitly returned by the action function.\n{{initial_state}}: {{\n  \"inventory\": {{\n    \"ZONE-COLD-VAULT\": {{\n      \"SKU-BIO-007\": 1\n    }},\n    \"ZONE-FREEZER-BRICK\": {{\n      \"PCM-5C-BRICK\": 15\n    }},\n    \"ZONE-SUPPLY-SHELF\": {{\n      \"VIP-COOLER-MD\": 5,\n      \"CORRUGATED-BUFFER\": 40,\n      \"DATA-LOGGER-DIGITAL\": 8\n    }}\n  }},\n  \"orders\": {{\n    \"ORD-990\": {{\n      \"items\": [\n        {{\n          \"sku\": \"SKU-BIO-007\",\n          \"quantity\": 1\n        }}\n      ],\n      \"status\": \"awaiting_lane_validation\"\n    }}\n  }},\n  \"robots\": {{\n    \"ROBOT-AMR-TCF\": {{\n      \"location\": \"ChargingStation\",\n      \"battery\": 100,\n      \"held_items\": []\n    }}\n  }},\n  \"warehouse_map\": {{\n    \"ChargingStation\": [\n      \"ZONE-COLD-VAULT\",\n      \"ZONE-SUPPLY-SHELF\"\n    ],\n    \"ZONE-COLD-VAULT\": [\n      \"ChargingStation\",\n      \"PACKING-STATION-TCF\"\n    ],\n    \"ZONE-FREEZER-BRICK\": [\n      \"PACKING-STATION-TCF\"\n    ],\n    \"ZONE-SUPPLY-SHELF\": [\n      \"ChargingStation\",\n      \"PACKING-STATION-TCF\"\n    ],\n    \"PACKING-STATION-TCF\": [\n      \"ZONE-COLD-VAULT\",\n      \"ZONE-FREEZER-BRICK\",\n      \"ZONE-SUPPLY-SHELF\",\n      \"Chilled-Dock\"\n    ],\n    \"Chilled-Dock\": [\n      \"PACKING-STATION-TCF\"\n    ]\n  }}\n}}\n{{state_descriptions}}: {{\n  \"inventory\": \"A map where keys are Bin IDs and values are objects containing SKU IDs and their current quantities.\",\n  \"orders\": \"A map of Order IDs to their current details, including items requested and status (e.g., 'pending', 'picking', 'packed', 'shipped').\",\n  \"robots\": \"Current status and location of autonomous mobile robots (AMRs) in the warehouse.\",\n  \"warehouse_map\": \"Connectivity graph of locations within the warehouse to validate movement actions.\"\n}}\n{action_set_definitions}: {\n  \"get_order_details\": {\n    \"description\": \"Retrieves information for a specific order, including required items and destination.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"order_id\": {\n          \"type\": \"string\",\n          \"description\": \"The order ID, e.g., 'ORD-990'.\"\n        }\n      },\n      \"required\": [\n        \"order_id\"\n      ]\n    },\n    \"example_output\": {\n      \"order_id\": \"ORD-990\",\n      \"sku\": \"SKU-BIO-007\",\n      \"destination\": \"Phoenix, AZ\"\n    }\n  },\n  \"get_sop_requirements\": {\n    \"description\": \"Retrieves the protocol for a specific SOP code to identify temperature constraints and required materials.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"sop_id\": {\n          \"type\": \"string\",\n          \"description\": \"The SOP code, e.g., 'TCF-04'.\"\n        }\n      },\n      \"required\": [\n        \"sop_id\"\n      ]\n    },\n    \"example_output\": {\n      \"sop_id\": \"TCF-04\",\n      \"threshold_temp_c\": 35,\n      \"max_exposure_minutes\": 30,\n      \"packaging_types\": [\n        \"insulated_cooler\",\n        \"phase_change_material\",\n        \"data_logger\"\n      ]\n    }\n  },\n  \"get_inventory_by_zone\": {\n    \"description\": \"Searches for specific SKUs within a designated warehouse zone to retrieve their Bin IDs and stock levels.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"zone_id\": {\n          \"type\": \"string\",\n          \"description\": \"The warehouse zone, e.g., 'ZONE-SUPPLY-SHELF'.\"\n        },\n        \"sku_list\": {\n          \"type\": \"array\",\n          \"items\": {\n            \"type\": \"string\"\n          },\n          \"description\": \"List of target SKUs to find (e.g., ['VIP-COOLER-MD', 'DATA-LOGGER-DIGITAL']).\"\n        }\n      },\n      \"required\": [\n        \"zone_id\",\n        \"sku_list\"\n      ]\n    },\n    \"example_output\": {\n      \"results\": [\n        {\n          \"sku\": \"VIP-COOLER-MD\",\n          \"bin_id\": \"BIN-S-101\",\n          \"quantity\": 15\n        },\n        {\n          \"sku\": \"DATA-LOGGER-DIGITAL\",\n          \"bin_id\": \"BIN-S-202\",\n          \"quantity\": 50\n        }\n      ]\n    }\n  },\n  \"locate_sku_storage\": {\n    \"description\": \"Returns the specific storage location (Bin ID) and environment type for a particular SKU.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"sku_id\": {\n          \"type\": \"string\",\n          \"description\": \"The SKU to locate.\"\n        }\n      },\n      \"required\": [\n        \"sku_id\"\n      ]\n    },\n    \"example_output\": {\n      \"bin_id\": \"COLD-STORAGE-07\",\n      \"environment\": \"Chilled\"\n    }\n  },\n  \"get_facility_node\": {\n    \"description\": \"Retrieves the Node ID for specific warehouse functional locations such as docks.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"location_type\": {\n          \"type\": \"string\",\n          \"description\": \"Type of location, e.g., 'Chilled-Dock'.\"\n        }\n      },\n      \"required\": [\n        \"location_type\"\n      ]\n    },\n    \"example_output\": {\n      \"node_id\": \"DOCK-NODE-CHILL-A\"\n    }\n  },\n  \"find_available_robot\": {\n    \"description\": \"Identifies an idle AMR (Autonomous Mobile Robot) suitable for handling the task.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"status\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"idle\"\n          ]\n        }\n      },\n      \"required\": [\n        \"status\"\n      ]\n    },\n    \"example_output\": {\n      \"robot_id\": \"AMR-94\"\n    }\n  },\n  \"execute_robot_move\": {\n    \"description\": \"Dispatches a robot to a specific Bin ID or Node ID.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"robot_id\": {\n          \"type\": \"string\"\n        },\n        \"target_id\": {\n          \"type\": \"string\"\n        }\n      },\n      \"required\": [\n        \"robot_id\",\n        \"target_id\"\n      ]\n    }\n  },\n  \"execute_robot_pick\": {\n    \"description\": \"Commands a robot to pick an item from a bin. Picking temperature-controlled items triggers the custody clock.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"robot_id\": {\n          \"type\": \"string\"\n        },\n        \"sku_id\": {\n          \"type\": \"string\"\n        },\n        \"bin_id\": {\n          \"type\": \"string\"\n        }\n      },\n      \"required\": [\n        \"robot_id\",\n        \"sku_id\",\n        \"bin_id\"\n      ]\n    }\n  },\n  \"execute_pack_and_stage\": {\n    \"description\": \"Finalizes the order by applying specified packaging materials and staging the payload at the designated dock. This action stops the Cold Chain clock.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"robot_id\": {\n          \"type\": \"string\"\n        },\n        \"order_id\": {\n          \"type\": \"string\"\n        },\n        \"packaging_skus\": {\n          \"type\": \"array\",\n          \"items\": {\n            \"type\": \"string\"\n          },\n          \"description\": \"List of all packaging/monitoring SKUs used.\"\n        },\n        \"dock_id\": {\n          \"type\": \"string\"\n        }\n      },\n      \"required\": [\n        \"robot_id\",\n        \"order_id\",\n        \"packaging_skus\",\n        \"dock_id\"\n      ]\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_order_details",
+      "description": "Retrieves information for a specific order, including required items and destination.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "order_id": {
+            "type": "string",
+            "description": "The order ID, e.g., 'ORD-990'."
+          }
+        },
+        "required": [
+          "order_id"
+        ]
+      },
+      "example_output": {
+        "order_id": "ORD-990",
+        "sku": "SKU-BIO-007",
+        "destination": "Phoenix, AZ"
+      }
+    },
+    {
+      "name": "get_sop_requirements",
+      "description": "Retrieves the protocol for a specific SOP code to identify temperature constraints and required materials.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "sop_id": {
+            "type": "string",
+            "description": "The SOP code, e.g., 'TCF-04'."
+          }
+        },
+        "required": [
+          "sop_id"
+        ]
+      },
+      "example_output": {
+        "sop_id": "TCF-04",
+        "threshold_temp_c": 35,
+        "max_exposure_minutes": 30,
+        "packaging_types": [
+          "insulated_cooler",
+          "phase_change_material",
+          "data_logger"
+        ]
+      }
+    },
+    {
+      "name": "get_inventory_by_zone",
+      "description": "Searches for specific SKUs within a designated warehouse zone to retrieve their Bin IDs and stock levels.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "zone_id": {
+            "type": "string",
+            "description": "The warehouse zone, e.g., 'ZONE-SUPPLY-SHELF'."
+          },
+          "sku_list": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "List of target SKUs to find (e.g., ['VIP-COOLER-MD', 'DATA-LOGGER-DIGITAL'])."
+          }
+        },
+        "required": [
+          "zone_id",
+          "sku_list"
+        ]
+      },
+      "example_output": {
+        "results": [
+          {
+            "sku": "VIP-COOLER-MD",
+            "bin_id": "BIN-S-101",
+            "quantity": 15
+          },
+          {
+            "sku": "DATA-LOGGER-DIGITAL",
+            "bin_id": "BIN-S-202",
+            "quantity": 50
+          }
+        ]
+      }
+    },
+    {
+      "name": "locate_sku_storage",
+      "description": "Returns the specific storage location (Bin ID) and environment type for a particular SKU.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "sku_id": {
+            "type": "string",
+            "description": "The SKU to locate."
+          }
+        },
+        "required": [
+          "sku_id"
+        ]
+      },
+      "example_output": {
+        "bin_id": "COLD-STORAGE-07",
+        "environment": "Chilled"
+      }
+    },
+    {
+      "name": "get_facility_node",
+      "description": "Retrieves the Node ID for specific warehouse functional locations such as docks.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "location_type": {
+            "type": "string",
+            "description": "Type of location, e.g., 'Chilled-Dock'."
+          }
+        },
+        "required": [
+          "location_type"
+        ]
+      },
+      "example_output": {
+        "node_id": "DOCK-NODE-CHILL-A"
+      }
+    },
+    {
+      "name": "find_available_robot",
+      "description": "Identifies an idle AMR (Autonomous Mobile Robot) suitable for handling the task.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "idle"
+            ]
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "example_output": {
+        "robot_id": "AMR-94"
+      }
+    },
+    {
+      "name": "execute_robot_move",
+      "description": "Dispatches a robot to a specific Bin ID or Node ID.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "robot_id": {
+            "type": "string"
+          },
+          "target_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "robot_id",
+          "target_id"
+        ]
+      }
+    },
+    {
+      "name": "execute_robot_pick",
+      "description": "Commands a robot to pick an item from a bin. Picking temperature-controlled items triggers the custody clock.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "robot_id": {
+            "type": "string"
+          },
+          "sku_id": {
+            "type": "string"
+          },
+          "bin_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "robot_id",
+          "sku_id",
+          "bin_id"
+        ]
+      }
+    },
+    {
+      "name": "execute_pack_and_stage",
+      "description": "Finalizes the order by applying specified packaging materials and staging the payload at the designated dock. This action stops the Cold Chain clock.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "robot_id": {
+            "type": "string"
+          },
+          "order_id": {
+            "type": "string"
+          },
+          "packaging_skus": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "List of all packaging/monitoring SKUs used."
+          },
+          "dock_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "robot_id",
+          "order_id",
+          "packaging_skus",
+          "dock_id"
+        ]
+      }
+    }
+  ],
+  "state_description": {
+    "inventory": "A map where keys are Bin IDs and values are objects containing SKU IDs and their current quantities.",
+    "orders": "A map of Order IDs to their current details, including items requested and status (e.g., 'pending', 'picking', 'packed', 'shipped').",
+    "robots": "Current status and location of autonomous mobile robots (AMRs) in the warehouse.",
+    "warehouse_map": "Connectivity graph of locations within the warehouse to validate movement actions."
+  },
+  "task_initial_state": {
+    "inventory": {
+      "ZONE-COLD-VAULT": {
+        "SKU-BIO-007": 1
+      },
+      "ZONE-FREEZER-BRICK": {
+        "PCM-5C-BRICK": 15
+      },
+      "ZONE-SUPPLY-SHELF": {
+        "VIP-COOLER-MD": 5,
+        "CORRUGATED-BUFFER": 40,
+        "DATA-LOGGER-DIGITAL": 8
+      }
+    },
+    "orders": {
+      "ORD-990": {
+        "items": [
+          {
+            "sku": "SKU-BIO-007",
+            "quantity": 1
+          }
+        ],
+        "status": "awaiting_lane_validation"
+      }
+    },
+    "robots": {
+      "ROBOT-AMR-TCF": {
+        "location": "ChargingStation",
+        "battery": 100,
+        "held_items": []
+      }
+    },
+    "warehouse_map": {
+      "ChargingStation": [
+        "ZONE-COLD-VAULT",
+        "ZONE-SUPPLY-SHELF"
+      ],
+      "ZONE-COLD-VAULT": [
+        "ChargingStation",
+        "PACKING-STATION-TCF"
+      ],
+      "ZONE-FREEZER-BRICK": [
+        "PACKING-STATION-TCF"
+      ],
+      "ZONE-SUPPLY-SHELF": [
+        "ChargingStation",
+        "PACKING-STATION-TCF"
+      ],
+      "PACKING-STATION-TCF": [
+        "ZONE-COLD-VAULT",
+        "ZONE-FREEZER-BRICK",
+        "ZONE-SUPPLY-SHELF",
+        "Chilled-Dock"
+      ],
+      "Chilled-Dock": [
+        "PACKING-STATION-TCF"
+      ]
+    }
+  }
+}

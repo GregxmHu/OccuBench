@@ -1,0 +1,232 @@
+{
+  "environment_name": "env_ea9e114098bb",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM) for Expense Report Auditing.\n- **Core Objective**: Based on the current internal state $s_t$ and the Agent's action $a_t$, simulate the evolution of the auditing environment and predict the observation $o_{{t+1}}$ obtained by the Agent. \n- **Emphasis**: The LWM does not perform actual financial transactions or real-world auditing; it only simulates internal state transitions (e.g., updating report status, logging audit trails) and generates the resulting observations.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions between the World Model and the Agent must maintain strict context consistency. The model must track which reports have been reviewed, which receipts have been verified, and ensure that the auditing logic (e.g., once a report is 'Approved', it cannot be 'Rejected' without a reset) remains consistent throughout the session.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. This JSON must contain the following fields:\n- `\"name\"`: Specifies the name of the action function to execute.\n- The remaining fields are parameters required by that specific action function.\n\nExample:\n```json\n{{\n \"name\": \"verify_receipt\",\n \"arguments\": {{\n    \"report_id\": \"EXP-1001\",\n    \"item_index\": 0\n  }}\n}}\n```\n\nThe Language World Model must correctly parse such JSON inputs, update the internal audit state, and simulate the execution results.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nFor invalid parameters (e.g., non-existent `report_id`), undefined actions, state conflicts (e.g., auditing a report that has already been finalized), or empty inputs, return structured error information (e.g., `{{\"error\": \"Report ID 'EXP-999' not found\"}}`). Do not fabricate states or fictitious data outside the defined environment parameters.\n\n##### Output Assembly\nFor every action function call, the model must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition.\n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, `new_state`, or any hidden variables like the `audit_policy` or `database_index`. The state maintenance is implicit in the interaction history. The Agent must only see the specific return values (the Observation) defined in the action.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to specified JSON and text formats.\n- **Factuality**: Do not fabricate non-existent audit reports, policy rules, or system responses.\n- **Consistency**: State evolution must be logical (e.g., if a receipt is marked as 'Missing', the verification observation should reflect that until a new receipt is uploaded).\n- **Realism**: Simulated behaviors must align with professional auditing dynamics, including compliance checks and budget constraints.\n- **Quality**: Language must be professional, clear, and structurally complete.\n- **Encapsulation**: Strictly hide the internal state structure from the output. Only expose information explicitly returned by the action function.\n{{initial_state}}: {{\n  \"pending_reports\": [\n    {{\n      \"report_id\": \"EXP-4402\",\n      \"employee\": \"Li Wei\",\n      \"amount\": 120.0,\n      \"category\": \"Business Entertainment\",\n      \"location\": \"China\",\n      \"date\": \"2023-10-12\"\n    }}\n  ],\n  \"receipt_vault\": {{\n    \"EXP-4402\": [\n      {{\n        \"vendor\": \"Shanghai Jade Garden\",\n        \"total_amount\": 120.0,\n        \"attendees\": [\n          \"Li Wei (Regional Manager)\",\n          \"Zhang Wei (Chief Procurement Officer, Z-Tech Solutions)\"\n        ],\n        \"items\": [\n          {{\n            \"description\": \"Fixed Menu Business Dinner\",\n            \"amount\": 120.0\n          }}\n        ]\n      }}\n    ]\n  }},\n  \"audit_policy\": {{\n    \"meal_limit_default\": 50.0,\n    \"regional_adjustments\": {{\n      \"China\": 60.0,\n      \"Kazakhstan\": 45.0,\n      \"Brazil\": 55.0\n    }},\n    \"soe_master_list\": [\n      \"Z-Tech Solutions\",\n      \"National Power Grid\",\n      \"Petro-State Corp\"\n    ],\n    \"global_fo_annual_threshold\": 500.0,\n    \"required_documentation\": \"Itemized Receipt\"\n  }},\n  \"audit_log\": [\n    {{\n      \"log_id\": \"PREV-102\",\n      \"date\": \"2023-04-15\",\n      \"employee\": \"Li Wei\",\n      \"recipient\": \"Zhang Wei\",\n      \"amount\": 450.0,\n      \"status\": \"Approved\",\n      \"description\": \"Technical Seminar Hospitality\"\n    }}\n  ],\n  \"system_status\": \"active\"\n}}\n{{state_descriptions}}: {{\n  \"pending_reports\": \"A list of expense report objects currently awaiting audit, including ID, employee, total amount, and category.\",\n  \"receipt_vault\": \"A mapping of report IDs to lists of receipt data/metadata for verification.\",\n  \"audit_policy\": \"The set of rules defining spending limits and required documentation per category.\",\n  \"audit_log\": \"An internal record of all actions taken and their outcomes for consistency tracking.\",\n  \"system_status\": \"The current operational mode of the auditing environment (e.g., 'active', 'session_closed').\"\n}}\n{action_set_definitions}: {\n  \"get_report_details\": {\n    \"description\": \"Retrieves the core information for a specific expense report from the pending list.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"report_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier of the expense report (e.g., 'EXP-4402').\"\n        }\n      },\n      \"required\": [\n        \"report_id\"\n      ]\n    },\n    \"example_output\": {\n      \"report_id\": \"EXP-4402\",\n      \"employee\": \"Li Wei\",\n      \"total_amount\": 1200.0,\n      \"category\": \"Business Meals\",\n      \"submission_date\": \"2023-10-15\"\n    }\n  },\n  \"get_receipt_metadata\": {\n    \"description\": \"Retrieves detailed receipt data and metadata for a specific report to identify participants, region, and third-party entities.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"report_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier of the expense report.\"\n        }\n      },\n      \"required\": [\n        \"report_id\"\n      ]\n    },\n    \"example_output\": {\n      \"receipts\": [\n        {\n          \"merchant\": \"Grand Hotel\",\n          \"region\": \"APAC-China\",\n          \"third_party_entity\": \"State Energy Corp\",\n          \"recipient_name\": \"Zhang San\",\n          \"attendee_count\": 4\n        }\n      ]\n    }\n  },\n  \"get_regulatory_status\": {\n    \"description\": \"Checks the anti-bribery and corruption (ABC) status of a third-party entity or individual recipient.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"entity_name\": {\n          \"type\": \"string\",\n          \"description\": \"The name of the organization or individual to check.\"\n        }\n      },\n      \"required\": [\n        \"entity_name\"\n      ]\n    },\n    \"example_output\": {\n      \"entity_name\": \"State Energy Corp\",\n      \"regulatory_status\": \"Government-Owned Entity (SOE)\",\n      \"risk_level\": \"High\"\n    }\n  },\n  \"get_audit_policy\": {\n    \"description\": \"Retrieves the spending limits and compliance rules based on region, expense category, and the regulatory status of the recipient.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"region\": {\n          \"type\": \"string\",\n          \"description\": \"The geographic region associated with the expense.\"\n        },\n        \"category\": {\n          \"type\": \"string\",\n          \"description\": \"The expense category (e.g., 'Gifts', 'Business Meals').\"\n        },\n        \"regulatory_status\": {\n          \"type\": \"string\",\n          \"description\": \"The status of the recipient (e.g., 'Private', 'Government-Owned').\"\n        }\n      },\n      \"required\": [\n        \"region\",\n        \"category\",\n        \"regulatory_status\"\n      ]\n    },\n    \"example_output\": {\n      \"per_capita_limit\": 150.0,\n      \"annual_cumulative_limit\": 500.0,\n      \"requires_pre_approval\": true\n    }\n  },\n  \"get_cumulative_benefit_history\": {\n    \"description\": \"Calculates the total value of benefits provided to a specific individual recipient during the current fiscal year.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"recipient_name\": {\n          \"type\": \"string\",\n          \"description\": \"The name of the individual recipient.\"\n        },\n        \"fiscal_year\": {\n          \"type\": \"string\",\n          \"description\": \"The fiscal year to query (e.g., '2023').\"\n        }\n      },\n      \"required\": [\n        \"recipient_name\",\n        \"fiscal_year\"\n      ]\n    },\n    \"example_output\": {\n      \"recipient_name\": \"Zhang San\",\n      \"total_benefit_to_date\": 350.0\n    }\n  },\n  \"submit_audit_decision\": {\n    \"description\": \"Updates the expense report status with a final disposition and logs the reasoning in the audit log.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"report_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier of the report.\"\n        },\n        \"decision\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"APPROVED\",\n            \"REJECTED\",\n            \"ESCALATED\"\n          ],\n          \"description\": \"The final audit determination.\"\n        },\n        \"reasoning\": {\n          \"type\": \"string\",\n          \"description\": \"Detailed explanation of the decision based on policy checks.\"\n        }\n      },\n      \"required\": [\n        \"report_id\",\n        \"decision\",\n        \"reasoning\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"success\",\n      \"update_timestamp\": \"2023-10-16T10:00:00Z\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_report_details",
+      "description": "Retrieves the core information for a specific expense report from the pending list.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "report_id": {
+            "type": "string",
+            "description": "The unique identifier of the expense report (e.g., 'EXP-4402')."
+          }
+        },
+        "required": [
+          "report_id"
+        ]
+      },
+      "example_output": {
+        "report_id": "EXP-4402",
+        "employee": "Li Wei",
+        "total_amount": 1200.0,
+        "category": "Business Meals",
+        "submission_date": "2023-10-15"
+      }
+    },
+    {
+      "name": "get_receipt_metadata",
+      "description": "Retrieves detailed receipt data and metadata for a specific report to identify participants, region, and third-party entities.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "report_id": {
+            "type": "string",
+            "description": "The unique identifier of the expense report."
+          }
+        },
+        "required": [
+          "report_id"
+        ]
+      },
+      "example_output": {
+        "receipts": [
+          {
+            "merchant": "Grand Hotel",
+            "region": "APAC-China",
+            "third_party_entity": "State Energy Corp",
+            "recipient_name": "Zhang San",
+            "attendee_count": 4
+          }
+        ]
+      }
+    },
+    {
+      "name": "get_regulatory_status",
+      "description": "Checks the anti-bribery and corruption (ABC) status of a third-party entity or individual recipient.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "entity_name": {
+            "type": "string",
+            "description": "The name of the organization or individual to check."
+          }
+        },
+        "required": [
+          "entity_name"
+        ]
+      },
+      "example_output": {
+        "entity_name": "State Energy Corp",
+        "regulatory_status": "Government-Owned Entity (SOE)",
+        "risk_level": "High"
+      }
+    },
+    {
+      "name": "get_audit_policy",
+      "description": "Retrieves the spending limits and compliance rules based on region, expense category, and the regulatory status of the recipient.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "region": {
+            "type": "string",
+            "description": "The geographic region associated with the expense."
+          },
+          "category": {
+            "type": "string",
+            "description": "The expense category (e.g., 'Gifts', 'Business Meals')."
+          },
+          "regulatory_status": {
+            "type": "string",
+            "description": "The status of the recipient (e.g., 'Private', 'Government-Owned')."
+          }
+        },
+        "required": [
+          "region",
+          "category",
+          "regulatory_status"
+        ]
+      },
+      "example_output": {
+        "per_capita_limit": 150.0,
+        "annual_cumulative_limit": 500.0,
+        "requires_pre_approval": true
+      }
+    },
+    {
+      "name": "get_cumulative_benefit_history",
+      "description": "Calculates the total value of benefits provided to a specific individual recipient during the current fiscal year.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "recipient_name": {
+            "type": "string",
+            "description": "The name of the individual recipient."
+          },
+          "fiscal_year": {
+            "type": "string",
+            "description": "The fiscal year to query (e.g., '2023')."
+          }
+        },
+        "required": [
+          "recipient_name",
+          "fiscal_year"
+        ]
+      },
+      "example_output": {
+        "recipient_name": "Zhang San",
+        "total_benefit_to_date": 350.0
+      }
+    },
+    {
+      "name": "submit_audit_decision",
+      "description": "Updates the expense report status with a final disposition and logs the reasoning in the audit log.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "report_id": {
+            "type": "string",
+            "description": "The unique identifier of the report."
+          },
+          "decision": {
+            "type": "string",
+            "enum": [
+              "APPROVED",
+              "REJECTED",
+              "ESCALATED"
+            ],
+            "description": "The final audit determination."
+          },
+          "reasoning": {
+            "type": "string",
+            "description": "Detailed explanation of the decision based on policy checks."
+          }
+        },
+        "required": [
+          "report_id",
+          "decision",
+          "reasoning"
+        ]
+      },
+      "example_output": {
+        "status": "success",
+        "update_timestamp": "2023-10-16T10:00:00Z"
+      }
+    }
+  ],
+  "state_description": {
+    "pending_reports": "A list of expense report objects currently awaiting audit, including ID, employee, total amount, and category.",
+    "receipt_vault": "A mapping of report IDs to lists of receipt data/metadata for verification.",
+    "audit_policy": "The set of rules defining spending limits and required documentation per category.",
+    "audit_log": "An internal record of all actions taken and their outcomes for consistency tracking.",
+    "system_status": "The current operational mode of the auditing environment (e.g., 'active', 'session_closed')."
+  },
+  "task_initial_state": {
+    "pending_reports": [
+      {
+        "report_id": "EXP-4402",
+        "employee": "Li Wei",
+        "amount": 120.0,
+        "category": "Business Entertainment",
+        "location": "China",
+        "date": "2023-10-12"
+      }
+    ],
+    "receipt_vault": {
+      "EXP-4402": [
+        {
+          "vendor": "Shanghai Jade Garden",
+          "total_amount": 120.0,
+          "attendees": [
+            "Li Wei (Regional Manager)",
+            "Zhang Wei (Chief Procurement Officer, Z-Tech Solutions)"
+          ],
+          "items": [
+            {
+              "description": "Fixed Menu Business Dinner",
+              "amount": 120.0
+            }
+          ]
+        }
+      ]
+    },
+    "audit_policy": {
+      "meal_limit_default": 50.0,
+      "regional_adjustments": {
+        "China": 60.0,
+        "Kazakhstan": 45.0,
+        "Brazil": 55.0
+      },
+      "soe_master_list": [
+        "Z-Tech Solutions",
+        "National Power Grid",
+        "Petro-State Corp"
+      ],
+      "global_fo_annual_threshold": 500.0,
+      "required_documentation": "Itemized Receipt"
+    },
+    "audit_log": [
+      {
+        "log_id": "PREV-102",
+        "date": "2023-04-15",
+        "employee": "Li Wei",
+        "recipient": "Zhang Wei",
+        "amount": 450.0,
+        "status": "Approved",
+        "description": "Technical Seminar Hospitality"
+      }
+    ],
+    "system_status": "active"
+  }
+}

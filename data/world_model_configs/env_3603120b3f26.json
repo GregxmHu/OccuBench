@@ -1,0 +1,173 @@
+{
+  "environment_name": "env_3603120b3f26",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: You are the simulation engine for an Escalation Workflow Management system. Based on the current internal state $s_t$ and the action $a_t$ provided by the Agent, your task is to simulate the internal environment evolution and predict the resulting observation $o_{{t+1}}$ that the Agent would receive.\n- **Emphasis**: You do not execute real-world database operations or send actual emails. You perform internal state evolution and generate structured observations based on the logic of a professional ticketing and escalation system.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation tracking ticket status, agent assignments, SLA timers, and priority levels. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions between the World Model and the Agent must maintain context consistency. You must track the history of ticket transitions, ensuring that a ticket moved to 'Resolved' cannot suddenly be 'Escalated' without first being 'Reopened', and that SLA timestamps remain chronologically logical.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object containing:\n- `\"name\"`: Specifies the name of the action function (e.g., \"assign_ticket\", \"escalate_to_tier_2\", \"update_priority\").\n- The remaining fields are parameters required by that action.\n\nExample:\n```json\n{{\n \"name\": \"escalate_case\",\n \"arguments\": {{\n    \"ticket_id\": \"TICKET-1024\",\n    \"reason\": \"SLA breach imminent\",\n    \"target_tier\": 2\n  }}\n}}\n```\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nIf the Agent attempts an illegal transition (e.g., escalating a ticket that is already at the highest level), provides an invalid ticket ID, or misses required parameters, you must return a structured error message:\n`{{\"error\": \"Reason for failure\"}}`. \nDo not fabricate successful responses for failed logic.\n\n##### Output Assembly\nFor every action call, you must return a structured JSON object containing **ONLY** the return fields declared in the specific action's definition within the `{{action_set_definitions}}`.\n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, `new_state`, or any hidden state variables. You must maintain the state internally in your conversation history. The Agent must only see the specific Return Values/Observations defined for the action.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to JSON for all outputs.\n- **Factuality**: Do not simulate outcomes that contradict the defined escalation policies or workflow rules.\n- **Consistency**: Ensure that if a ticket is assigned to \"Agent_A\", the next observation regarding that ticket reflects \"Agent_A\" as the owner.\n- **Realism**: Simulate realistic delays in SLA or status changes consistent with enterprise support environments.\n- **Quality**: Observations should be professional, clear, and structurally complete.\n- **Encapsulation**: Strictly hide the internal state structure from the output. Only expose information that is explicitly returned by the action function.\n{{initial_state}}: {{\n  \"tickets\": [\n    {{\n      \"ticket_id\": \"TICKET-8842\",\n      \"status\": \"open\",\n      \"priority\": \"high\",\n      \"assignee\": \"Agent_01\",\n      \"tier_level\": 1,\n      \"sla_deadline\": \"2024-05-20T14:00:00Z\",\n      \"metadata\": {{\n        \"customer_name\": \"Nexus Bank\",\n        \"arr\": 2500000,\n        \"last_message\": \"The unauthorized access to our payment gateway logs is a direct breach of our DPA. Our attorneys are currently preparing a formal filing for the SEC and we will pursue full damages for this operational negligence.\"\n      }}\n    }}\n  ],\n  \"agents\": [\n    {{\n      \"agent_id\": \"Agent_01\",\n      \"tier\": 1,\n      \"current_load\": 4,\n      \"status\": \"active\"\n    }},\n    {{\n      \"agent_id\": \"REM_Manager_J\",\n      \"tier\": 2,\n      \"current_load\": 2,\n      \"status\": \"active\"\n    }},\n    {{\n      \"agent_id\": \"Legal_Ops_Counsel\",\n      \"tier\": 3,\n      \"current_load\": 1,\n      \"status\": \"active\"\n    }}\n  ],\n  \"system_time\": \"2024-05-20T10:05:00Z\"\n}}\n{{state_descriptions}}: {{\n  \"tickets\": \"A list of active tickets in the system including their metadata.\",\n  \"agents\": \"The registry of available agents and their current capacity.\",\n  \"system_time\": \"The current simulation clock time in ISO format.\"\n}}\n{action_set_definitions}: {\n  \"get_ticket_info\": {\n    \"description\": \"Retrieves the full metadata and current status for a specific ticket from the environment.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"ticket_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier of the ticket (e.g., 'TICKET-8842').\"\n        }\n      },\n      \"required\": [\n        \"ticket_id\"\n      ]\n    },\n    \"example_output\": {\n      \"ticket_id\": \"TICKET-8842\",\n      \"status\": \"Open\",\n      \"priority\": \"Medium\",\n      \"current_phase\": \"Triage\",\n      \"metadata\": {\n        \"client\": \"Nexus Bank\",\n        \"tags\": []\n      }\n    }\n  },\n  \"list_agents\": {\n    \"description\": \"Searches the agent registry for personnel matching specific roles or departments to identify escalation targets.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"role\": {\n          \"type\": \"string\",\n          \"description\": \"The professional role to filter by (e.g., 'Legal Counsel', 'Senior Oversight').\"\n        },\n        \"department\": {\n          \"type\": \"string\",\n          \"description\": \"The department to filter by (e.g., 'Legal', 'Compliance').\"\n        }\n      },\n      \"required\": [\n        \"role\"\n      ]\n    },\n    \"example_output\": {\n      \"agents\": [\n        {\n          \"agent_id\": \"AGT-552\",\n          \"name\": \"Sarah Jennings\",\n          \"role\": \"Chief Legal Counsel\"\n        }\n      ]\n    }\n  },\n  \"update_ticket\": {\n    \"description\": \"Modifies ticket attributes including status, priority, workflow phase, and assignee.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"ticket_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier of the ticket.\"\n        },\n        \"status\": {\n          \"type\": \"string\",\n          \"description\": \"The new status of the ticket.\"\n        },\n        \"priority\": {\n          \"type\": \"string\",\n          \"description\": \"The new priority level (e.g., 'Critical', 'High').\"\n        },\n        \"phase\": {\n          \"type\": \"string\",\n          \"description\": \"The workflow phase (e.g., 'Containment', 'Legal Handoff').\"\n        },\n        \"assignee_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the agent to whom the ticket is being assigned.\"\n        }\n      },\n      \"required\": [\n        \"ticket_id\"\n      ]\n    },\n    \"example_output\": {\n      \"success\": true,\n      \"updated_fields\": [\n        \"status\",\n        \"phase\"\n      ]\n    }\n  },\n  \"add_legal_note\": {\n    \"description\": \"Adds a strictly formatted internal note to a ticket documenting legal threats or regulatory notices without admitting fault, adhering to communication protocols.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"ticket_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier of the ticket.\"\n        },\n        \"note_content\": {\n          \"type\": \"string\",\n          \"description\": \"The factual description of the event (e.g., 'Received formal notice of suspected breach').\"\n        },\n        \"compliance_flag\": {\n          \"type\": \"boolean\",\n          \"description\": \"Must be true to confirm no admission of fault is included.\"\n        }\n      },\n      \"required\": [\n        \"ticket_id\",\n        \"note_content\",\n        \"compliance_flag\"\n      ]\n    },\n    \"example_output\": {\n      \"note_id\": \"NOTE-1092\",\n      \"timestamp\": \"2023-10-27T10:00:00Z\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_ticket_info",
+      "description": "Retrieves the full metadata and current status for a specific ticket from the environment.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "ticket_id": {
+            "type": "string",
+            "description": "The unique identifier of the ticket (e.g., 'TICKET-8842')."
+          }
+        },
+        "required": [
+          "ticket_id"
+        ]
+      },
+      "example_output": {
+        "ticket_id": "TICKET-8842",
+        "status": "Open",
+        "priority": "Medium",
+        "current_phase": "Triage",
+        "metadata": {
+          "client": "Nexus Bank",
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "list_agents",
+      "description": "Searches the agent registry for personnel matching specific roles or departments to identify escalation targets.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "role": {
+            "type": "string",
+            "description": "The professional role to filter by (e.g., 'Legal Counsel', 'Senior Oversight')."
+          },
+          "department": {
+            "type": "string",
+            "description": "The department to filter by (e.g., 'Legal', 'Compliance')."
+          }
+        },
+        "required": [
+          "role"
+        ]
+      },
+      "example_output": {
+        "agents": [
+          {
+            "agent_id": "AGT-552",
+            "name": "Sarah Jennings",
+            "role": "Chief Legal Counsel"
+          }
+        ]
+      }
+    },
+    {
+      "name": "update_ticket",
+      "description": "Modifies ticket attributes including status, priority, workflow phase, and assignee.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "ticket_id": {
+            "type": "string",
+            "description": "The unique identifier of the ticket."
+          },
+          "status": {
+            "type": "string",
+            "description": "The new status of the ticket."
+          },
+          "priority": {
+            "type": "string",
+            "description": "The new priority level (e.g., 'Critical', 'High')."
+          },
+          "phase": {
+            "type": "string",
+            "description": "The workflow phase (e.g., 'Containment', 'Legal Handoff')."
+          },
+          "assignee_id": {
+            "type": "string",
+            "description": "The ID of the agent to whom the ticket is being assigned."
+          }
+        },
+        "required": [
+          "ticket_id"
+        ]
+      },
+      "example_output": {
+        "success": true,
+        "updated_fields": [
+          "status",
+          "phase"
+        ]
+      }
+    },
+    {
+      "name": "add_legal_note",
+      "description": "Adds a strictly formatted internal note to a ticket documenting legal threats or regulatory notices without admitting fault, adhering to communication protocols.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "ticket_id": {
+            "type": "string",
+            "description": "The unique identifier of the ticket."
+          },
+          "note_content": {
+            "type": "string",
+            "description": "The factual description of the event (e.g., 'Received formal notice of suspected breach')."
+          },
+          "compliance_flag": {
+            "type": "boolean",
+            "description": "Must be true to confirm no admission of fault is included."
+          }
+        },
+        "required": [
+          "ticket_id",
+          "note_content",
+          "compliance_flag"
+        ]
+      },
+      "example_output": {
+        "note_id": "NOTE-1092",
+        "timestamp": "2023-10-27T10:00:00Z"
+      }
+    }
+  ],
+  "state_description": {
+    "tickets": "A list of active tickets in the system including their metadata.",
+    "agents": "The registry of available agents and their current capacity.",
+    "system_time": "The current simulation clock time in ISO format."
+  },
+  "task_initial_state": {
+    "tickets": [
+      {
+        "ticket_id": "TICKET-8842",
+        "status": "open",
+        "priority": "high",
+        "assignee": "Agent_01",
+        "tier_level": 1,
+        "sla_deadline": "2024-05-20T14:00:00Z",
+        "metadata": {
+          "customer_name": "Nexus Bank",
+          "arr": 2500000,
+          "last_message": "The unauthorized access to our payment gateway logs is a direct breach of our DPA. Our attorneys are currently preparing a formal filing for the SEC and we will pursue full damages for this operational negligence."
+        }
+      }
+    ],
+    "agents": [
+      {
+        "agent_id": "Agent_01",
+        "tier": 1,
+        "current_load": 4,
+        "status": "active"
+      },
+      {
+        "agent_id": "REM_Manager_J",
+        "tier": 2,
+        "current_load": 2,
+        "status": "active"
+      },
+      {
+        "agent_id": "Legal_Ops_Counsel",
+        "tier": 3,
+        "current_load": 1,
+        "status": "active"
+      }
+    ],
+    "system_time": "2024-05-20T10:05:00Z"
+  }
+}

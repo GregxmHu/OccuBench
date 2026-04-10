@@ -1,0 +1,231 @@
+{
+  "environment_name": "env_97d0f4db8e7e",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: Based on the current internal state $s_t$ of the Automated Storage Retrieval Scheduling (ASRS) environment and the action $a_t$ submitted by the Agent, simulate the evolution of the environment and predict the observation $o_{{t+1}}$ obtained by the Agent. \n- **Emphasis**: You are a simulator. You do not execute real-world hardware commands but perform internal logic state transitions and generate the resulting sensor data or status reports (observations).\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions between the World Model and the Agent must maintain strict context consistency. The position of robots, the inventory levels at specific coordinates, and the status of retrieval orders must persist and evolve logically across the interaction history.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. This JSON contains:\n- `\"name\"`: The name of the scheduling or control action function.\n- Remaining fields: Parameters required by that function (e.g., `robot_id`, `target_coordinate`).\n\nYou must parse this JSON, calculate the internal state transition, and determine the resulting observation.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nYou must return structured error information (e.g., `{{\"error\": \"Robot path blocked\"}}`, `{{\"error\": \"SKU not found at location\"}}`) in the following cases:\n- The robot attempts to move to an occupied coordinate.\n- The robot attempts to pick an item from an empty shelf.\n- The robot's battery is insufficient for the commanded distance.\n- Invalid parameters or undefined action names.\nDo not fabricate successful responses for failed logic.\n\n##### Output Assembly\nFor every action function call, return a structured JSON object containing **ONLY** the return fields declared in that action function's definition. \n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state $s_t$, the updated state, or any hidden variables like the full warehouse map or all robot statuses unless specifically requested by an observation-gathering function. You must strictly hide the internal state structure from the output. Only expose information that is explicitly returned by the action function (the Observation).\n\n### 4. Key Principles\n- **Format**: Strictly adhere to specified JSON and text formats.\n- **Factuality**: Do not fabricate non-existent storage locations or items.\n- **Consistency**: Robot trajectories and inventory counts must be self-consistent (e.g., an item removed from a shelf must no longer exist at that coordinate until restocked).\n- **Realism**: Simulated behaviors must align with logistics dynamics (e.g., travel time, mechanical constraints).\n- **Quality**: Language must be clear and structurally complete.\n- **Encapsulation**: Do not output the state update process. Only output the resulting observation.\n{{initial_state}}: {{\n  \"robots\": {{\n    \"R-101\": {{\n      \"location\": [\n        0,\n        0\n      ],\n      \"battery_level\": 32,\n      \"carrying_sku_id\": \"STALE_DATA_CONTAINER\"\n    }}\n  }},\n  \"storage_grid\": {{\n    \"7,7\": {{\n      \"sku_id\": \"SKU-2020\",\n      \"quantity\": 10\n    }},\n    \"1,1\": {{\n      \"sku_id\": \"SKU-888\",\n      \"quantity\": 1\n    }},\n    \"4,4\": {{\n      \"sku_id\": null,\n      \"quantity\": 0\n    }},\n    \"5,5\": {{\n      \"sku_id\": null,\n      \"quantity\": 0\n    }}\n  }},\n  \"order_queue\": [],\n  \"system_timestamp\": 0\n}}\n{{state_descriptions}}: {{\n  \"robots\": \"A map of robot IDs to their current status including 'location' (x, y), 'battery_level', and 'carrying_sku_id'.\",\n  \"storage_grid\": \"A mapping of coordinate strings (e.g., 'x,y') to SKU information currently stored there.\",\n  \"order_queue\": \"A list of pending retrieval or storage tasks containing SKU ID and target destination.\",\n  \"system_timestamp\": \"The cumulative simulation steps or time elapsed in the environment.\"\n}}\n{action_set_definitions}: {\n  \"get_robot_status\": {\n    \"description\": \"Retrieves the current state of a specific robot including location [x, y], battery_level (0-100), and carrying_sku_id.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"robot_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique ID of the robot.\"\n        }\n      },\n      \"required\": [\n        \"robot_id\"\n      ]\n    },\n    \"example_output\": {\n      \"location\": [\n        5,\n        5\n      ],\n      \"battery_level\": 42.0,\n      \"carrying_sku_id\": null\n    }\n  },\n  \"get_grid_status\": {\n    \"description\": \"Checks the storage grid at a specific coordinate to see if an SKU is present.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"x\": {\n          \"type\": \"integer\"\n        },\n        \"y\": {\n          \"type\": \"integer\"\n        }\n      },\n      \"required\": [\n        \"x\",\n        \"y\"\n      ]\n    },\n    \"example_output\": {\n      \"sku_id\": \"SKU-999\"\n    }\n  },\n  \"get_system_time\": {\n    \"description\": \"Returns the current cumulative system timestamp.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"system_timestamp\": 10\n    }\n  },\n  \"scan_for_empty_slot\": {\n    \"description\": \"Returns the coordinates of the nearest empty grid slot for temporary relocation of obstructing items.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"x\": 0,\n      \"y\": 5\n    }\n  },\n  \"charge_robot\": {\n    \"description\": \"Commands the robot to go to the nearest charging station and charge to a specific battery percentage. Updates system_timestamp and robot location.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"robot_id\": {\n          \"type\": \"string\"\n        },\n        \"target_battery_level\": {\n          \"type\": \"number\"\n        }\n      },\n      \"required\": [\n        \"robot_id\",\n        \"target_battery_level\"\n      ]\n    },\n    \"example_output\": {\n      \"battery_level\": 90.0,\n      \"timestamp_after\": 45\n    }\n  },\n  \"move_robot\": {\n    \"description\": \"Moves the robot to a target coordinate. Consumes battery (1% per distance unit) and time.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"robot_id\": {\n          \"type\": \"string\"\n        },\n        \"target_x\": {\n          \"type\": \"integer\"\n        },\n        \"target_y\": {\n          \"type\": \"integer\"\n        }\n      },\n      \"required\": [\n        \"robot_id\",\n        \"target_x\",\n        \"target_y\"\n      ]\n    },\n    \"example_output\": {\n      \"final_location\": [\n        7,\n        7\n      ],\n      \"battery_remaining\": 35.0,\n      \"timestamp_after\": 50\n    }\n  },\n  \"pickup_sku\": {\n    \"description\": \"Robot picks up the SKU at its current location.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"robot_id\": {\n          \"type\": \"string\"\n        },\n        \"sku_id\": {\n          \"type\": \"string\"\n        },\n        \"x\": {\n          \"type\": \"integer\"\n        },\n        \"y\": {\n          \"type\": \"integer\"\n        }\n      },\n      \"required\": [\n        \"robot_id\",\n        \"sku_id\",\n        \"x\",\n        \"y\"\n      ]\n    },\n    \"example_output\": {\n      \"success\": true,\n      \"carrying_sku_id\": \"SKU-2020\"\n    }\n  },\n  \"dropoff_sku\": {\n    \"description\": \"Robot drops off the currently carried SKU at the current coordinate.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"robot_id\": {\n          \"type\": \"string\"\n        },\n        \"sku_id\": {\n          \"type\": \"string\"\n        },\n        \"x\": {\n          \"type\": \"integer\"\n        },\n        \"y\": {\n          \"type\": \"integer\"\n        }\n      },\n      \"required\": [\n        \"robot_id\",\n        \"sku_id\",\n        \"x\",\n        \"y\"\n      ]\n    },\n    \"example_output\": {\n      \"success\": true,\n      \"carrying_sku_id\": null\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_robot_status",
+      "description": "Retrieves the current state of a specific robot including location [x, y], battery_level (0-100), and carrying_sku_id.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "robot_id": {
+            "type": "string",
+            "description": "The unique ID of the robot."
+          }
+        },
+        "required": [
+          "robot_id"
+        ]
+      },
+      "example_output": {
+        "location": [
+          5,
+          5
+        ],
+        "battery_level": 42.0,
+        "carrying_sku_id": null
+      }
+    },
+    {
+      "name": "get_grid_status",
+      "description": "Checks the storage grid at a specific coordinate to see if an SKU is present.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "x": {
+            "type": "integer"
+          },
+          "y": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "x",
+          "y"
+        ]
+      },
+      "example_output": {
+        "sku_id": "SKU-999"
+      }
+    },
+    {
+      "name": "get_system_time",
+      "description": "Returns the current cumulative system timestamp.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "system_timestamp": 10
+      }
+    },
+    {
+      "name": "scan_for_empty_slot",
+      "description": "Returns the coordinates of the nearest empty grid slot for temporary relocation of obstructing items.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "x": 0,
+        "y": 5
+      }
+    },
+    {
+      "name": "charge_robot",
+      "description": "Commands the robot to go to the nearest charging station and charge to a specific battery percentage. Updates system_timestamp and robot location.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "robot_id": {
+            "type": "string"
+          },
+          "target_battery_level": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "robot_id",
+          "target_battery_level"
+        ]
+      },
+      "example_output": {
+        "battery_level": 90.0,
+        "timestamp_after": 45
+      }
+    },
+    {
+      "name": "move_robot",
+      "description": "Moves the robot to a target coordinate. Consumes battery (1% per distance unit) and time.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "robot_id": {
+            "type": "string"
+          },
+          "target_x": {
+            "type": "integer"
+          },
+          "target_y": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "robot_id",
+          "target_x",
+          "target_y"
+        ]
+      },
+      "example_output": {
+        "final_location": [
+          7,
+          7
+        ],
+        "battery_remaining": 35.0,
+        "timestamp_after": 50
+      }
+    },
+    {
+      "name": "pickup_sku",
+      "description": "Robot picks up the SKU at its current location.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "robot_id": {
+            "type": "string"
+          },
+          "sku_id": {
+            "type": "string"
+          },
+          "x": {
+            "type": "integer"
+          },
+          "y": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "robot_id",
+          "sku_id",
+          "x",
+          "y"
+        ]
+      },
+      "example_output": {
+        "success": true,
+        "carrying_sku_id": "SKU-2020"
+      }
+    },
+    {
+      "name": "dropoff_sku",
+      "description": "Robot drops off the currently carried SKU at the current coordinate.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "robot_id": {
+            "type": "string"
+          },
+          "sku_id": {
+            "type": "string"
+          },
+          "x": {
+            "type": "integer"
+          },
+          "y": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "robot_id",
+          "sku_id",
+          "x",
+          "y"
+        ]
+      },
+      "example_output": {
+        "success": true,
+        "carrying_sku_id": null
+      }
+    }
+  ],
+  "state_description": {
+    "robots": "A map of robot IDs to their current status including 'location' (x, y), 'battery_level', and 'carrying_sku_id'.",
+    "storage_grid": "A mapping of coordinate strings (e.g., 'x,y') to SKU information currently stored there.",
+    "order_queue": "A list of pending retrieval or storage tasks containing SKU ID and target destination.",
+    "system_timestamp": "The cumulative simulation steps or time elapsed in the environment."
+  },
+  "task_initial_state": {
+    "robots": {
+      "R-101": {
+        "location": [
+          0,
+          0
+        ],
+        "battery_level": 32,
+        "carrying_sku_id": "STALE_DATA_CONTAINER"
+      }
+    },
+    "storage_grid": {
+      "7,7": {
+        "sku_id": "SKU-2020",
+        "quantity": 10
+      },
+      "1,1": {
+        "sku_id": "SKU-888",
+        "quantity": 1
+      },
+      "4,4": {
+        "sku_id": null,
+        "quantity": 0
+      },
+      "5,5": {
+        "sku_id": null,
+        "quantity": 0
+      }
+    },
+    "order_queue": [],
+    "system_timestamp": 0
+  }
+}

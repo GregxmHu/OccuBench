@@ -1,0 +1,260 @@
+{
+  "environment_name": "env_97dc5e10f2d2",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM) for Travel Itinerary Planning.\n- **Core Objective**: Based on the current itinerary state $s_t$ and the Agent's planning action $a_t$, simulate the environment's response, update internal logistics (budget, time-slots, locations), and predict the observation $o_{{t+1}}$ obtained by the Agent.\n- **Emphasis**: You are the simulation engine. You do not offer advice or act as a travel agent; you maintain the integrity of the travel world and provide the feedback (observations) resulting from specific actions.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation to ensure logical consistency across multi-day planning. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions between the World Model and the Agent must maintain context consistency. You must track the chronological flow of the itinerary, the remaining budget, and the geographical feasibility of sequential activities.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object containing:\n- `\"name\"`: The name of the action function (e.g., `search_flights`, `book_hotel`, `add_activity`).\n- Additional fields for parameters required by that action.\n\nExample:\n```json\n{{\n \"name\": \"book_hotel\",\n \"arguments\": {{\n    \"hotel_name\": \"Grand Plaza\",\n    \"check_in\": \"2025-05-01\",\n    \"nights\": 3\n  }}\n}}\n```\n\nYou must parse this input, check it against the current internal state (e.g., Is there enough budget? Is the date within the trip range?), and simulate the execution.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nReturn structured error information if:\n- Parameters are invalid or missing.\n- Actions result in logical conflicts (e.g., booking two flights at the same time, exceeding total budget, or booking a hotel in a city the traveler hasn't reached).\n- Example: `{{\"error\": \"Insufficient budget for this activity. Remaining: $50, Required: $120\"}}`.\nDo not fabricate successful responses for failed constraints.\n\n##### Output Assembly\nFor every action call, you must return a structured JSON object containing **ONLY** the return fields declared in the action function's definition.\n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t` or the `new_state`. The state update is handled internally by you. The Agent must only receive the Observation (the specific result of the action).\n\n### 4. Key Principles\n- **Format**: Strictly adhere to specified JSON and text formats.\n- **Factuality**: Use realistic pricing and travel times if specific data is not provided in the state, but stay consistent once a value is established.\n- **Consistency**: Ensure that if a hotel is booked for Day 2, the `current_location` or `itinerary` internally reflects this for Day 3 actions.\n- **Realism**: Simulate real-world constraints like travel duration between cities and check-in/check-out time limits.\n- **Quality**: Language must be clear and structured.\n- **Encapsulation**: Strictly hide the internal state structure from the output. Only expose the `observation` JSON.\n{{initial_state}}: {{\n  \"itinerary_list\": [\n    {{\n      \"day\": 1,\n      \"event\": \"Arrival and Villa Check-in\",\n      \"location\": \"San Casciano\",\n      \"cost\": 0\n    }},\n    {{\n      \"day\": 2,\n      \"event\": \"Chianti Wine Tour (Seniors remained at Villa)\",\n      \"location\": \"Greve\",\n      \"cost\": 850\n    }},\n    {{\n      \"day\": 3,\n      \"event\": \"Siena Walking Tour\",\n      \"location\": \"Siena\",\n      \"cost\": 1200\n    }},\n    {{\n      \"day\": 4,\n      \"event\": \"Villa Rest Day & Private Cooking Class\",\n      \"location\": \"San Casciano\",\n      \"cost\": 1400\n    }}\n  ],\n  \"total_budget\": 15000,\n  \"spent_amount\": 13200,\n  \"current_city_position\": \"Villa Le Corti, San Casciano\",\n  \"trip_duration_days\": 10,\n  \"booked_time_slots\": [],\n  \"traveler_preferences\": {{\n    \"group_size\": 9,\n    \"composition\": \"2 Seniors (MQ 4), 4 Adults, 2 Teens, 1 Toddler\",\n    \"pacing\": {{\n      \"max_daily_steps_seniors\": 5000,\n      \"shoulder_buffer_minutes\": 45,\n      \"required_gci_range\": [\n        0.4,\n        0.6\n      ]\n    }},\n    \"logistics\": {{\n      \"primary_transport\": \"Private 9-pax Minibus\",\n      \"basecamp_location\": \"San Casciano\",\n      \"destination_city\": \"Florence\"\n    }},\n    \"facility_uncertainty\": {{\n      \"target\": \"Florence Cathedral Elevator\",\n      \"status_check_required\": true\n    }}\n  }}\n}}\n{{state_descriptions}}: {{\n  \"itinerary_list\": \"A chronological list of all confirmed bookings and activities.\",\n  \"total_budget\": \"The total monetary limit for the entire trip.\",\n  \"spent_amount\": \"The total amount of money spent so far based on bookings.\",\n  \"current_city_position\": \"The current geographical location of the traveler at the end of the current planned itinerary.\",\n  \"trip_duration_days\": \"The total number of days planned for the trip.\",\n  \"booked_time_slots\": \"A list of occupied time ranges to prevent scheduling overlaps.\",\n  \"traveler_preferences\": \"Specific user constraints like dietary needs, preferred hotel star rating, or airline loyalty.\"\n}}\n{action_set_definitions}: {\n  \"get_environment_info\": {\n    \"description\": \"Retrieves the current state of the trip, including the group composition (seniors, adults, toddlers), starting location, and the remaining budget allocation.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"remaining_budget\": 1500,\n      \"current_location\": \"San Casciano Villa\",\n      \"group_members\": {\n        \"seniors\": 4,\n        \"toddlers\": 1,\n        \"adults\": 4\n      }\n    }\n  },\n  \"check_poi_status\": {\n    \"description\": \"Checks the operational status of specific infrastructure at a Point of Interest (POI).\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"poi_name\": {\n          \"type\": \"string\",\n          \"description\": \"Name of the location.\"\n        },\n        \"feature_name\": {\n          \"type\": \"string\",\n          \"description\": \"Specific feature to check (e.g., 'primary accessibility elevator').\"\n        }\n      },\n      \"required\": [\n        \"poi_name\",\n        \"feature_name\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"operational\",\n      \"details\": \"Fully functional since 8:00 AM.\"\n    }\n  },\n  \"search_activities\": {\n    \"description\": \"Searches for available activities, tours, or tickets in a specific city with details on cost and accessibility.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"city\": {\n          \"type\": \"string\"\n        },\n        \"query\": {\n          \"type\": \"string\",\n          \"description\": \"Search term (e.g., 'Cathedral climb', 'accessible gallery tour').\"\n        },\n        \"is_accessible\": {\n          \"type\": \"boolean\"\n        }\n      },\n      \"required\": [\n        \"city\",\n        \"query\"\n      ]\n    },\n    \"example_output\": {\n      \"activities\": [\n        {\n          \"id\": \"act_101\",\n          \"name\": \"Duomo Climb\",\n          \"cost_per_person\": 30,\n          \"duration_mins\": 90\n        }\n      ]\n    }\n  },\n  \"calculate_transport_cost\": {\n    \"description\": \"Calculates the transport cost and travel time for a specific group size and distance.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"origin\": {\n          \"type\": \"string\"\n        },\n        \"destination\": {\n          \"type\": \"string\"\n        },\n        \"group_size\": {\n          \"type\": \"integer\"\n        },\n        \"requires_mobility_aid_support\": {\n          \"type\": \"boolean\"\n        }\n      },\n      \"required\": [\n        \"origin\",\n        \"destination\",\n        \"group_size\"\n      ]\n    },\n    \"example_output\": {\n      \"one_way_cost\": 150,\n      \"travel_time_mins\": 40\n    }\n  },\n  \"validate_itinerary_constraints\": {\n    \"description\": \"Simulates a proposed plan to check budget, Group Cohesion Index (GCI), and mandatory shoulder buffers. Validates time gaps between arrival, activities, and departure.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"activities\": {\n          \"type\": \"array\",\n          \"items\": {\n            \"type\": \"object\",\n            \"properties\": {\n              \"activity_id\": {\n                \"type\": \"string\"\n              },\n              \"start_time\": {\n                \"type\": \"string\",\n                \"description\": \"24h format (e.g., '10:30')\"\n              },\n              \"duration_mins\": {\n                \"type\": \"integer\"\n              },\n              \"cost_total\": {\n                \"type\": \"number\"\n              },\n              \"participants_count\": {\n                \"type\": \"integer\"\n              }\n            }\n          }\n        },\n        \"arrival_time\": {\n          \"type\": \"string\",\n          \"description\": \"Time the group arrives at the first city destination (e.g., '09:00').\"\n        },\n        \"return_transport_departure_time\": {\n          \"type\": \"string\",\n          \"description\": \"Time the return transport leaves (e.g., '18:00').\"\n        },\n        \"total_transport_cost\": {\n          \"type\": \"number\"\n        },\n        \"shoulder_buffer_mins\": {\n          \"type\": \"integer\",\n          \"description\": \"Mandatory gap required between every transition.\"\n        }\n      },\n      \"required\": [\n        \"activities\",\n        \"arrival_time\",\n        \"return_transport_departure_time\",\n        \"total_transport_cost\",\n        \"shoulder_buffer_mins\"\n      ]\n    },\n    \"example_output\": {\n      \"is_valid\": true,\n      \"gci_percentage\": 50,\n      \"total_expenditure\": 1200,\n      \"buffer_violations\": [],\n      \"errors\": []\n    }\n  },\n  \"finalize_itinerary\": {\n    \"description\": \"Confirms and books the final plan for the specified day.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"day_number\": {\n          \"type\": \"integer\"\n        },\n        \"final_plan\": {\n          \"type\": \"object\"\n        }\n      },\n      \"required\": [\n        \"day_number\",\n        \"final_plan\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"confirmed\",\n      \"booking_reference\": \"FLR-HARRISON-D5\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_environment_info",
+      "description": "Retrieves the current state of the trip, including the group composition (seniors, adults, toddlers), starting location, and the remaining budget allocation.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "remaining_budget": 1500,
+        "current_location": "San Casciano Villa",
+        "group_members": {
+          "seniors": 4,
+          "toddlers": 1,
+          "adults": 4
+        }
+      }
+    },
+    {
+      "name": "check_poi_status",
+      "description": "Checks the operational status of specific infrastructure at a Point of Interest (POI).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "poi_name": {
+            "type": "string",
+            "description": "Name of the location."
+          },
+          "feature_name": {
+            "type": "string",
+            "description": "Specific feature to check (e.g., 'primary accessibility elevator')."
+          }
+        },
+        "required": [
+          "poi_name",
+          "feature_name"
+        ]
+      },
+      "example_output": {
+        "status": "operational",
+        "details": "Fully functional since 8:00 AM."
+      }
+    },
+    {
+      "name": "search_activities",
+      "description": "Searches for available activities, tours, or tickets in a specific city with details on cost and accessibility.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "city": {
+            "type": "string"
+          },
+          "query": {
+            "type": "string",
+            "description": "Search term (e.g., 'Cathedral climb', 'accessible gallery tour')."
+          },
+          "is_accessible": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "city",
+          "query"
+        ]
+      },
+      "example_output": {
+        "activities": [
+          {
+            "id": "act_101",
+            "name": "Duomo Climb",
+            "cost_per_person": 30,
+            "duration_mins": 90
+          }
+        ]
+      }
+    },
+    {
+      "name": "calculate_transport_cost",
+      "description": "Calculates the transport cost and travel time for a specific group size and distance.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "origin": {
+            "type": "string"
+          },
+          "destination": {
+            "type": "string"
+          },
+          "group_size": {
+            "type": "integer"
+          },
+          "requires_mobility_aid_support": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "origin",
+          "destination",
+          "group_size"
+        ]
+      },
+      "example_output": {
+        "one_way_cost": 150,
+        "travel_time_mins": 40
+      }
+    },
+    {
+      "name": "validate_itinerary_constraints",
+      "description": "Simulates a proposed plan to check budget, Group Cohesion Index (GCI), and mandatory shoulder buffers. Validates time gaps between arrival, activities, and departure.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "activities": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "activity_id": {
+                  "type": "string"
+                },
+                "start_time": {
+                  "type": "string",
+                  "description": "24h format (e.g., '10:30')"
+                },
+                "duration_mins": {
+                  "type": "integer"
+                },
+                "cost_total": {
+                  "type": "number"
+                },
+                "participants_count": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "arrival_time": {
+            "type": "string",
+            "description": "Time the group arrives at the first city destination (e.g., '09:00')."
+          },
+          "return_transport_departure_time": {
+            "type": "string",
+            "description": "Time the return transport leaves (e.g., '18:00')."
+          },
+          "total_transport_cost": {
+            "type": "number"
+          },
+          "shoulder_buffer_mins": {
+            "type": "integer",
+            "description": "Mandatory gap required between every transition."
+          }
+        },
+        "required": [
+          "activities",
+          "arrival_time",
+          "return_transport_departure_time",
+          "total_transport_cost",
+          "shoulder_buffer_mins"
+        ]
+      },
+      "example_output": {
+        "is_valid": true,
+        "gci_percentage": 50,
+        "total_expenditure": 1200,
+        "buffer_violations": [],
+        "errors": []
+      }
+    },
+    {
+      "name": "finalize_itinerary",
+      "description": "Confirms and books the final plan for the specified day.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "day_number": {
+            "type": "integer"
+          },
+          "final_plan": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "day_number",
+          "final_plan"
+        ]
+      },
+      "example_output": {
+        "status": "confirmed",
+        "booking_reference": "FLR-HARRISON-D5"
+      }
+    }
+  ],
+  "state_description": {
+    "itinerary_list": "A chronological list of all confirmed bookings and activities.",
+    "total_budget": "The total monetary limit for the entire trip.",
+    "spent_amount": "The total amount of money spent so far based on bookings.",
+    "current_city_position": "The current geographical location of the traveler at the end of the current planned itinerary.",
+    "trip_duration_days": "The total number of days planned for the trip.",
+    "booked_time_slots": "A list of occupied time ranges to prevent scheduling overlaps.",
+    "traveler_preferences": "Specific user constraints like dietary needs, preferred hotel star rating, or airline loyalty."
+  },
+  "task_initial_state": {
+    "itinerary_list": [
+      {
+        "day": 1,
+        "event": "Arrival and Villa Check-in",
+        "location": "San Casciano",
+        "cost": 0
+      },
+      {
+        "day": 2,
+        "event": "Chianti Wine Tour (Seniors remained at Villa)",
+        "location": "Greve",
+        "cost": 850
+      },
+      {
+        "day": 3,
+        "event": "Siena Walking Tour",
+        "location": "Siena",
+        "cost": 1200
+      },
+      {
+        "day": 4,
+        "event": "Villa Rest Day & Private Cooking Class",
+        "location": "San Casciano",
+        "cost": 1400
+      }
+    ],
+    "total_budget": 15000,
+    "spent_amount": 13200,
+    "current_city_position": "Villa Le Corti, San Casciano",
+    "trip_duration_days": 10,
+    "booked_time_slots": [],
+    "traveler_preferences": {
+      "group_size": 9,
+      "composition": "2 Seniors (MQ 4), 4 Adults, 2 Teens, 1 Toddler",
+      "pacing": {
+        "max_daily_steps_seniors": 5000,
+        "shoulder_buffer_minutes": 45,
+        "required_gci_range": [
+          0.4,
+          0.6
+        ]
+      },
+      "logistics": {
+        "primary_transport": "Private 9-pax Minibus",
+        "basecamp_location": "San Casciano",
+        "destination_city": "Florence"
+      },
+      "facility_uncertainty": {
+        "target": "Florence Cathedral Elevator",
+        "status_check_required": true
+      }
+    }
+  }
+}

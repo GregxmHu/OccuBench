@@ -1,0 +1,107 @@
+{
+  "environment_name": "env_1fcb4846b37a",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: Based on the current internal state $s_t$ and the action $a_t$ executed by the Agent, simulate the physical and logic evolution of the Pipeline Pressure Anomaly Response system. You are responsible for predicting the next observation $o_{{t+1}}$ that the Agent will receive.\n- **Emphasis**: You are a simulator, not an executor. You do not perform real-world operations; you compute the internal state transition and generate the resulting sensor readings or system responses.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions must maintain strict context consistency. The LWM must track cumulative changes to pressure, flow, and mechanical status over time. Subsequent observations must reflect the consequences of previous actions (e.g., if a valve was closed in $t-1$, the pressure in $t$ should reflect that restriction).\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object containing:\n- `\"name\"`: The name of the action function.\n- `\"arguments\"`: A dictionary of parameters for that action.\n\nExample Input:\n```json\n{{\n \"name\": \"set_valve_position\",\n \"arguments\": {{\n    \"valve_id\": \"V-101\",\n    \"position\": 45\n  }}\n}}\n```\n\n#### Environment Behavior Modeling\n- **Physical Logic**: Pressure changes should follow simplified fluid dynamics (e.g., closing a downstream valve increases upstream pressure; increasing pump RPM increases flow and pressure). \n- **Response Latency**: Some actions may have delayed effects or gradual transitions which should be reflected in the observations.\n- **Anomaly Simulation**: If the internal state reaches critical thresholds (e.g., pressure > max_limit), the environment should trigger appropriate observations like \"ALARM_HIGH\" or \"STRUCTURAL_FAILURE\".\n\n##### Error Handling & Edge Cases\n- If an action refers to a non-existent `valve_id` or `pump_id`, return: `{{\"error\": \"Device ID not found\"}}`.\n- If parameters are out of range (e.g., valve position 150%), return an error or clamp to the maximum allowed value, following realistic safety protocol logic.\n- Do not fabricate data or success messages for invalid inputs.\n\n##### Output Assembly\nFor every action function call, the model must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition.\n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state $s_t$, `new_state`, or any hidden variables. You must encapsulate the state. The Agent only receives the specific `observation` (e.g., current sensor reading) defined in the action's return signature.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to JSON output for observations.\n- **Factuality**: Do not invent system components not present in the state or action definitions.\n- **Consistency**: Ensure that if the pressure is rising, it continues to rise unless a counter-action is taken.\n- **Realism**: Simulate realistic industrial control feedback, including minor fluctuations or steady-state noise if applicable.\n- **Encapsulation**: Never reveal the raw state JSON in the output. Only provide the observation resulting from the action.\n{{initial_state}}: {{\n  \"system_pressure_psi\": 92.4,\n  \"flow_rate_m3h\": 58.1,\n  \"main_valve_status\": 100,\n  \"pump_rpm\": 1500,\n  \"safety_vent_active\": false,\n  \"alarm_system_level\": \"CRITICAL\"\n}}\n{{state_descriptions}}: {{\n  \"system_pressure_psi\": \"Current pressure in the pipeline measured in Pounds per Square Inch.\",\n  \"flow_rate_m3h\": \"Current fluid flow rate in cubic meters per hour.\",\n  \"main_valve_status\": \"The opening percentage of the main control valve (0-100).\",\n  \"pump_rpm\": \"Current revolutions per minute of the primary delivery pump.\",\n  \"safety_vent_active\": \"Indicates if the emergency pressure relief vent is currently open.\",\n  \"alarm_system_level\": \"Current system alarm status: 'NOMINAL', 'CAUTION', 'CRITICAL'.\"\n}}\n{action_set_definitions}: {\n  \"get_system_telemetry\": {\n    \"description\": \"Retrieves the current real-time telemetry from the pipeline system, including pressure, flow rates, and alarm statuses.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"system_pressure_psi\": 850.5,\n      \"flow_rate_m3h\": 1200.0,\n      \"main_valve_status\": 100,\n      \"pump_rpm\": 3200,\n      \"safety_vent_active\": false,\n      \"alarm_system_level\": \"CRITICAL\"\n    }\n  },\n  \"get_acoustic_wave_data\": {\n    \"description\": \"Retrieves high-resolution timestamps of the pressure wave arrival at Station Alpha and Station Beta to facilitate leak localization.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"alpha_arrival_time_ms\": 1715432000100,\n      \"beta_arrival_time_ms\": 1715432000150,\n      \"time_difference_seconds\": 0.05,\n      \"segment_length_meters\": 120000\n    }\n  },\n  \"list_pipeline_valves\": {\n    \"description\": \"Lists all Mainline Block Valves (MLBVs) between Station Alpha and Station Beta, including their names and precise Kilometer Post (KP) locations.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"valves\": [\n        {\n          \"valve_id\": \"MLBV_120_1\",\n          \"kp_location\": 12.5,\n          \"status\": \"OPEN\"\n        },\n        {\n          \"valve_id\": \"MLBV_120_2\",\n          \"kp_location\": 25.0,\n          \"status\": \"OPEN\"\n        }\n      ]\n    }\n  },\n  \"set_valve_state\": {\n    \"description\": \"Commands a specific pipeline valve to a target state (OPEN or CLOSED).\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"valve_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the valve.\"\n        },\n        \"target_state\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"OPEN\",\n            \"CLOSED\"\n          ],\n          \"description\": \"The desired state of the valve.\"\n        }\n      },\n      \"required\": [\n        \"valve_id\",\n        \"target_state\"\n      ]\n    },\n    \"example_output\": {\n      \"success\": true,\n      \"valve_id\": \"MLBV_120_1\",\n      \"current_state\": \"CLOSED\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_system_telemetry",
+      "description": "Retrieves the current real-time telemetry from the pipeline system, including pressure, flow rates, and alarm statuses.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "system_pressure_psi": 850.5,
+        "flow_rate_m3h": 1200.0,
+        "main_valve_status": 100,
+        "pump_rpm": 3200,
+        "safety_vent_active": false,
+        "alarm_system_level": "CRITICAL"
+      }
+    },
+    {
+      "name": "get_acoustic_wave_data",
+      "description": "Retrieves high-resolution timestamps of the pressure wave arrival at Station Alpha and Station Beta to facilitate leak localization.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "alpha_arrival_time_ms": 1715432000100,
+        "beta_arrival_time_ms": 1715432000150,
+        "time_difference_seconds": 0.05,
+        "segment_length_meters": 120000
+      }
+    },
+    {
+      "name": "list_pipeline_valves",
+      "description": "Lists all Mainline Block Valves (MLBVs) between Station Alpha and Station Beta, including their names and precise Kilometer Post (KP) locations.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "valves": [
+          {
+            "valve_id": "MLBV_120_1",
+            "kp_location": 12.5,
+            "status": "OPEN"
+          },
+          {
+            "valve_id": "MLBV_120_2",
+            "kp_location": 25.0,
+            "status": "OPEN"
+          }
+        ]
+      }
+    },
+    {
+      "name": "set_valve_state",
+      "description": "Commands a specific pipeline valve to a target state (OPEN or CLOSED).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "valve_id": {
+            "type": "string",
+            "description": "The unique identifier for the valve."
+          },
+          "target_state": {
+            "type": "string",
+            "enum": [
+              "OPEN",
+              "CLOSED"
+            ],
+            "description": "The desired state of the valve."
+          }
+        },
+        "required": [
+          "valve_id",
+          "target_state"
+        ]
+      },
+      "example_output": {
+        "success": true,
+        "valve_id": "MLBV_120_1",
+        "current_state": "CLOSED"
+      }
+    }
+  ],
+  "state_description": {
+    "system_pressure_psi": "Current pressure in the pipeline measured in Pounds per Square Inch.",
+    "flow_rate_m3h": "Current fluid flow rate in cubic meters per hour.",
+    "main_valve_status": "The opening percentage of the main control valve (0-100).",
+    "pump_rpm": "Current revolutions per minute of the primary delivery pump.",
+    "safety_vent_active": "Indicates if the emergency pressure relief vent is currently open.",
+    "alarm_system_level": "Current system alarm status: 'NOMINAL', 'CAUTION', 'CRITICAL'."
+  },
+  "task_initial_state": {
+    "system_pressure_psi": 92.4,
+    "flow_rate_m3h": 58.1,
+    "main_valve_status": 100,
+    "pump_rpm": 1500,
+    "safety_vent_active": false,
+    "alarm_system_level": "CRITICAL"
+  }
+}

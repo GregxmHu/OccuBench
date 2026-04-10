@@ -1,0 +1,249 @@
+{
+  "environment_name": "env_2fc1c8ef529f",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM) for Network Capacity Planning\n- **Core Objective**: Based on the current network state $s_t$ and the capacity planning action $a_t$ taken by the Agent, simulate the internal evolution of the network infrastructure and predict the resulting observation $o_{{t+1}}$.\n- **Emphasis**: You are the simulation engine. You do not suggest actions; you calculate the physical and logical consequences of the Agent's decisions on the network topology, traffic distribution, and performance metrics.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions between the World Model and the Agent must maintain strict context consistency. Any changes to link capacities, topology, or routing protocols must persist and influence all subsequent observations until further modified.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. This JSON must contain the following fields:\n- `\"name\"`: Specifies the name of the capacity planning action (e.g., upgrading a link, adding a node, or adjusting routing weights).\n- The remaining fields are the specific parameters (e.g., link_id, capacity_value, node_coordinates).\n\nExample:\n```json\n{{\n \"name\": \"upgrade_link\",\n \"arguments\": {{\n    \"link_id\": \"L-102\",\n    \"new_bandwidth_gbps\": 100\n  }}\n}}\n```\n\nThe Language World Model must correctly parse such JSON inputs and simulate the resulting network state change (e.g., reduced congestion, updated costs, or modified latency).\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nIf the Agent attempts an action that is physically or logically impossible (e.g., exceeding total budget, connecting non-existent nodes, or setting negative bandwidth), return a structured error response: `{{\"error\": \"Description of the network constraint violation\"}}`. Do not fabricate successful outcomes for invalid inputs.\n\n##### Output Assembly\nFor every action function call, return a structured JSON object containing **ONLY** the return fields declared in the action function's definition.\n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, `new_state`, or any hidden variables like the global topology map unless explicitly requested by a \"query\" action. State maintenance is handled internally by you. The Agent must only see the specific return values (Observations) defined for that action.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to the specified JSON structure.\n- **Factuality**: Use realistic network engineering principles (e.g., Queuing Theory for latency, Flow Conservation for traffic).\n- **Consistency**: If a link is saturated in state $t$, it must remain saturated in $t+1$ unless capacity is increased or traffic is rerouted.\n- **Realism**: Simulate realistic network behaviors including propagation delay, overhead, and cost scaling.\n- **Quality**: Ensure all diagnostic messages or observations are technically precise.\n- **Encapsulation**: Strictly hide the internal state structure. The Agent only perceives what its \"sensors\" (action returns) allow.\n{{initial_state}}: {{\n  \"topology\": {{\n    \"nodes\": [\n      {{\n        \"id\": \"AP-C-N1\",\n        \"type\": \"access_point\",\n        \"location\": \"Gate C10\",\n        \"model\": \"HD-Omni-v2\"\n      }},\n      {{\n        \"id\": \"AP-C-N2\",\n        \"type\": \"access_point\",\n        \"location\": \"Gate C12\",\n        \"model\": \"HD-Omni-v2\"\n      }},\n      {{\n        \"id\": \"AP-C-N3\",\n        \"type\": \"access_point\",\n        \"location\": \"Concourse C Lounge\",\n        \"model\": \"HD-Omni-v2\"\n      }},\n      {{\n        \"id\": \"Switch-C-01\",\n        \"type\": \"switch\",\n        \"location\": \"IDF-C\"\n      }}\n    ],\n    \"links\": [\n      {{\n        \"id\": \"L-C10\",\n        \"source\": \"AP-C-N1\",\n        \"target\": \"Switch-C-01\",\n        \"bandwidth_gbps\": 1\n      }},\n      {{\n        \"id\": \"L-C12\",\n        \"source\": \"AP-C-N2\",\n        \"target\": \"Switch-C-01\",\n        \"bandwidth_gbps\": 1\n      }},\n      {{\n        \"id\": \"L-C-Lounge\",\n        \"source\": \"AP-C-N3\",\n        \"target\": \"Switch-C-01\",\n        \"bandwidth_gbps\": 1\n      }}\n    ]\n  }},\n  \"link_utilization\": {{\n    \"L-C10\": 12.5,\n    \"L-C12\": 14.2,\n    \"L-C-Lounge\": 8.1,\n    \"Ch-1\": 78.4,\n    \"Ch-6\": 82.1,\n    \"Ch-11\": 79.5\n  }},\n  \"traffic_matrix\": [\n    {{\n      \"source\": \"Gate-C10-Users\",\n      \"destination\": \"External\",\n      \"throughput_mbps\": 120\n    }},\n    {{\n      \"source\": \"Gate-C12-Users\",\n      \"destination\": \"External\",\n      \"throughput_mbps\": 145\n    }},\n    {{\n      \"source\": \"Lounge-Users\",\n      \"destination\": \"External\",\n      \"throughput_mbps\": 65\n    }}\n  ],\n  \"network_latency_ms\": {{\n    \"average_latency\": 185.0,\n    \"peak_latency\": 940.0,\n    \"area_retry_rate\": 38.5,\n    \"management_overhead_airtime\": 42.0\n  }},\n  \"remaining_budget\": 12000,\n  \"operational_costs\": 450\n}}\n{{state_descriptions}}: {{\n  \"topology\": \"A graph representation of the network including nodes (routers/switches) and links.\",\n  \"link_utilization\": \"Mapping of link IDs to their current percentage of bandwidth utilization.\",\n  \"traffic_matrix\": \"A matrix representing current traffic demand (throughput) between all node pairs.\",\n  \"network_latency_ms\": \"Average and peak latency metrics across specific paths or the entire network.\",\n  \"remaining_budget\": \"The capital expenditure (CAPEX) remaining for network upgrades.\",\n  \"operational_costs\": \"Current cumulative operational expenditure (OPEX) based on active equipment and power.\"\n}}\n{action_set_definitions}: {\n  \"get_infrastructure_inventory\": {\n    \"description\": \"Retrieves a list of all radio units and network nodes within a specified location.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"location_id\": {\n          \"type\": \"string\",\n          \"description\": \"The specific area name, e.g., 'Concourse C North'.\"\n        }\n      },\n      \"required\": [\n        \"location_id\"\n      ]\n    },\n    \"example_output\": {\n      \"radio_units\": [\n        \"AP-C-01\",\n        \"AP-C-02\",\n        \"AP-C-03\"\n      ]\n    }\n  },\n  \"get_radio_performance_data\": {\n    \"description\": \"Fetches current performance metrics for a specific radio unit, including SNR, utilization, and retry rates.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"radio_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique ID of the radio unit.\"\n        }\n      },\n      \"required\": [\n        \"radio_id\"\n      ]\n    },\n    \"example_output\": {\n      \"channel_utilization_pct\": 52.0,\n      \"retry_rate_pct\": 15.5,\n      \"min_client_snr_db\": 22,\n      \"is_desensitized\": true,\n      \"current_channel\": 52\n    }\n  },\n  \"get_site_noise_floor\": {\n    \"description\": \"Measures the real-time ambient noise floor at the location of a specific radio unit to aid in sensitivity recalibration.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"radio_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique ID of the radio unit.\"\n        }\n      },\n      \"required\": [\n        \"radio_id\"\n      ]\n    },\n    \"example_output\": {\n      \"noise_floor_dbm\": -95\n    }\n  },\n  \"get_constraints_and_budget\": {\n    \"description\": \"Retrieves the remaining CAPEX budget and the list of DFS-restricted channels for the current regulatory domain.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {}\n    },\n    \"example_output\": {\n      \"remaining_budget\": 1200.0,\n      \"dfs_restricted_channels\": [\n        52,\n        56,\n        60,\n        100,\n        140\n      ],\n      \"non_dfs_allowed_channels\": [\n        36,\n        40,\n        44,\n        48,\n        149,\n        153,\n        157,\n        161\n      ]\n    }\n  },\n  \"update_radio_settings\": {\n    \"description\": \"Applies new configuration settings to a radio unit, including threshold adjustments, channel changes, and data rate disabling.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"radio_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique ID of the radio unit.\"\n        },\n        \"rx_sensitivity_threshold_dbm\": {\n          \"type\": \"number\",\n          \"description\": \"The recalibrated sensitivity threshold (based on noise floor).\"\n        },\n        \"target_channel\": {\n          \"type\": \"integer\",\n          \"description\": \"The channel to assign (must be non-DFS).\"\n        },\n        \"disabled_data_rates_mbps\": {\n          \"type\": \"array\",\n          \"items\": {\n            \"type\": \"number\"\n          },\n          \"description\": \"List of legacy rates to disable (e.g., [1, 2, 5.5, 11]).\"\n        }\n      },\n      \"required\": [\n        \"radio_id\",\n        \"rx_sensitivity_threshold_dbm\",\n        \"target_channel\",\n        \"disabled_data_rates_mbps\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"success\",\n      \"execution_cost\": 150.0\n    }\n  },\n  \"verify_area_metrics\": {\n    \"description\": \"Performs an area-wide audit of all radios in a location to verify aggregate and individual performance targets.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"location_id\": {\n          \"type\": \"string\",\n          \"description\": \"The location to audit.\"\n        }\n      },\n      \"required\": [\n        \"location_id\"\n      ]\n    },\n    \"example_output\": {\n      \"avg_utilization_pct\": 41.2,\n      \"avg_retry_rate_pct\": 9.8,\n      \"all_units_snr_compliant\": true,\n      \"failed_units\": []\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_infrastructure_inventory",
+      "description": "Retrieves a list of all radio units and network nodes within a specified location.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "location_id": {
+            "type": "string",
+            "description": "The specific area name, e.g., 'Concourse C North'."
+          }
+        },
+        "required": [
+          "location_id"
+        ]
+      },
+      "example_output": {
+        "radio_units": [
+          "AP-C-01",
+          "AP-C-02",
+          "AP-C-03"
+        ]
+      }
+    },
+    {
+      "name": "get_radio_performance_data",
+      "description": "Fetches current performance metrics for a specific radio unit, including SNR, utilization, and retry rates.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "radio_id": {
+            "type": "string",
+            "description": "The unique ID of the radio unit."
+          }
+        },
+        "required": [
+          "radio_id"
+        ]
+      },
+      "example_output": {
+        "channel_utilization_pct": 52.0,
+        "retry_rate_pct": 15.5,
+        "min_client_snr_db": 22,
+        "is_desensitized": true,
+        "current_channel": 52
+      }
+    },
+    {
+      "name": "get_site_noise_floor",
+      "description": "Measures the real-time ambient noise floor at the location of a specific radio unit to aid in sensitivity recalibration.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "radio_id": {
+            "type": "string",
+            "description": "The unique ID of the radio unit."
+          }
+        },
+        "required": [
+          "radio_id"
+        ]
+      },
+      "example_output": {
+        "noise_floor_dbm": -95
+      }
+    },
+    {
+      "name": "get_constraints_and_budget",
+      "description": "Retrieves the remaining CAPEX budget and the list of DFS-restricted channels for the current regulatory domain.",
+      "parameters": {
+        "type": "object",
+        "properties": {}
+      },
+      "example_output": {
+        "remaining_budget": 1200.0,
+        "dfs_restricted_channels": [
+          52,
+          56,
+          60,
+          100,
+          140
+        ],
+        "non_dfs_allowed_channels": [
+          36,
+          40,
+          44,
+          48,
+          149,
+          153,
+          157,
+          161
+        ]
+      }
+    },
+    {
+      "name": "update_radio_settings",
+      "description": "Applies new configuration settings to a radio unit, including threshold adjustments, channel changes, and data rate disabling.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "radio_id": {
+            "type": "string",
+            "description": "The unique ID of the radio unit."
+          },
+          "rx_sensitivity_threshold_dbm": {
+            "type": "number",
+            "description": "The recalibrated sensitivity threshold (based on noise floor)."
+          },
+          "target_channel": {
+            "type": "integer",
+            "description": "The channel to assign (must be non-DFS)."
+          },
+          "disabled_data_rates_mbps": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            },
+            "description": "List of legacy rates to disable (e.g., [1, 2, 5.5, 11])."
+          }
+        },
+        "required": [
+          "radio_id",
+          "rx_sensitivity_threshold_dbm",
+          "target_channel",
+          "disabled_data_rates_mbps"
+        ]
+      },
+      "example_output": {
+        "status": "success",
+        "execution_cost": 150.0
+      }
+    },
+    {
+      "name": "verify_area_metrics",
+      "description": "Performs an area-wide audit of all radios in a location to verify aggregate and individual performance targets.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "location_id": {
+            "type": "string",
+            "description": "The location to audit."
+          }
+        },
+        "required": [
+          "location_id"
+        ]
+      },
+      "example_output": {
+        "avg_utilization_pct": 41.2,
+        "avg_retry_rate_pct": 9.8,
+        "all_units_snr_compliant": true,
+        "failed_units": []
+      }
+    }
+  ],
+  "state_description": {
+    "topology": "A graph representation of the network including nodes (routers/switches) and links.",
+    "link_utilization": "Mapping of link IDs to their current percentage of bandwidth utilization.",
+    "traffic_matrix": "A matrix representing current traffic demand (throughput) between all node pairs.",
+    "network_latency_ms": "Average and peak latency metrics across specific paths or the entire network.",
+    "remaining_budget": "The capital expenditure (CAPEX) remaining for network upgrades.",
+    "operational_costs": "Current cumulative operational expenditure (OPEX) based on active equipment and power."
+  },
+  "task_initial_state": {
+    "topology": {
+      "nodes": [
+        {
+          "id": "AP-C-N1",
+          "type": "access_point",
+          "location": "Gate C10",
+          "model": "HD-Omni-v2"
+        },
+        {
+          "id": "AP-C-N2",
+          "type": "access_point",
+          "location": "Gate C12",
+          "model": "HD-Omni-v2"
+        },
+        {
+          "id": "AP-C-N3",
+          "type": "access_point",
+          "location": "Concourse C Lounge",
+          "model": "HD-Omni-v2"
+        },
+        {
+          "id": "Switch-C-01",
+          "type": "switch",
+          "location": "IDF-C"
+        }
+      ],
+      "links": [
+        {
+          "id": "L-C10",
+          "source": "AP-C-N1",
+          "target": "Switch-C-01",
+          "bandwidth_gbps": 1
+        },
+        {
+          "id": "L-C12",
+          "source": "AP-C-N2",
+          "target": "Switch-C-01",
+          "bandwidth_gbps": 1
+        },
+        {
+          "id": "L-C-Lounge",
+          "source": "AP-C-N3",
+          "target": "Switch-C-01",
+          "bandwidth_gbps": 1
+        }
+      ]
+    },
+    "link_utilization": {
+      "L-C10": 12.5,
+      "L-C12": 14.2,
+      "L-C-Lounge": 8.1,
+      "Ch-1": 78.4,
+      "Ch-6": 82.1,
+      "Ch-11": 79.5
+    },
+    "traffic_matrix": [
+      {
+        "source": "Gate-C10-Users",
+        "destination": "External",
+        "throughput_mbps": 120
+      },
+      {
+        "source": "Gate-C12-Users",
+        "destination": "External",
+        "throughput_mbps": 145
+      },
+      {
+        "source": "Lounge-Users",
+        "destination": "External",
+        "throughput_mbps": 65
+      }
+    ],
+    "network_latency_ms": {
+      "average_latency": 185.0,
+      "peak_latency": 940.0,
+      "area_retry_rate": 38.5,
+      "management_overhead_airtime": 42.0
+    },
+    "remaining_budget": 12000,
+    "operational_costs": 450
+  }
+}

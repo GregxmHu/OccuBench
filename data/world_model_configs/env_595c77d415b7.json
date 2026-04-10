@@ -1,0 +1,257 @@
+{
+  "environment_name": "env_595c77d415b7",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: Based on the current state $s_t$ and the action $a_t$ provided by the Agent, simulate the internal evolution of the Automated Storage Retrieval Scheduling environment and predict the resulting observation $o_{{t+1}}$.\n- **Emphasis**: You are the simulator. You do not execute real-world warehouse operations. Your goal is to maintain a self-consistent logic of robot movements, inventory changes, and task completions, providing accurate feedback to the Agent as if it were interacting with a physical warehouse system.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions between the World Model and the Agent must maintain rigorous context consistency. Every action depends on the cumulative state changes from previous steps (e.g., a robot's current position is the result of all prior movement actions).\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. You must parse this JSON to determine the intended behavior. The format is:\n- `\"name\"`: The name of the action function.\n- Remaining fields: Parameters for the function.\n\nExample input:\n```json\n{{\n \"name\": \"move_robot\",\n \"arguments\": {{\n    \"robot_id\": \"AGV_01\",\n    \"target_coords\": [5, 12]\n  }}\n}}\n```\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nIf the Agent attempts an invalid operation—such as moving a robot into a wall, retrieving from an empty bin, or using an undefined robot ID—you must return a structured error message (e.g., `{{\"error\": \"Collision detected at [x,y]\"}}` or `{{\"error\": \"Robot AGV_99 not found\"}}`). Do not fabricate successful outcomes for invalid actions.\n\n##### Output Assembly\nFor every action function call, you must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition. \n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, the updated `new_state`, or any metadata regarding your internal transition logic. The Agent must only receive the specific Observation (return values) defined in the action function. State maintenance is handled internally and implicitly by you.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to specified JSON formats for both inputs and outputs.\n- **Factuality**: Do not simulate resources, robots, or items that do not exist in the state.\n- **Consistency**: Ensure robot positions, battery levels, and inventory counts transition logically (e.g., a robot cannot be in two places at once).\n- **Realism**: Dynamics should reflect physical constraints (e.g., movement takes time/steps, robots have limited capacity).\n- **Quality**: Provide clear, unambiguous JSON responses.\n- **Encapsulation**: Strictly hide the internal state structure from the output. Only expose information explicitly returned by the action function.\n{{initial_state}}: {{\n  \"warehouse_grid\": {{\n    \"width\": 20,\n    \"height\": 20,\n    \"blocked_cells\": [\n      [\n        12,\n        12\n      ]\n    ]\n  }},\n  \"robots\": [\n    {{\n      \"robot_id\": \"R1\",\n      \"position\": [\n        0,\n        0\n      ],\n      \"battery\": 19,\n      \"status\": \"busy\",\n      \"carrying\": \"PALLET_X\"\n    }}\n  ],\n  \"inventory_bins\": {{\n    \"bin_15_15\": {{\n      \"item_id\": \"ITEM_A\",\n      \"quantity\": 1\n    }},\n    \"bin_05_05\": {{\n      \"item_id\": \"ITEM_B\",\n      \"quantity\": 1\n    }}\n  }},\n  \"pending_orders\": [\n    {{\n      \"order_id\": \"ORD_501\",\n      \"item_id\": \"ITEM_A\",\n      \"quantity\": 1,\n      \"target_station\": \"STATION_NORTH\"\n    }},\n    {{\n      \"order_id\": \"ORD_502\",\n      \"item_id\": \"ITEM_B\",\n      \"quantity\": 1,\n      \"target_station\": \"STATION_NORTH\"\n    }}\n  ],\n  \"time_step\": 0\n}}\n{{state_descriptions}}: {{\n  \"warehouse_grid\": \"Dimensions and layout of the warehouse, including obstacle locations.\",\n  \"robots\": \"List of active Autonomous Guided Vehicles (AGVs) and their current status.\",\n  \"inventory_bins\": \"Mapping of bin coordinates to stored item details.\",\n  \"pending_orders\": \"Queue of retrieval tasks currently assigned to the system.\",\n  \"time_step\": \"Current logical time step of the simulation.\"\n}}\n{action_set_definitions}: {\n  \"get_facility_coordinates\": {\n    \"description\": \"Retrieves the [x, y] coordinates for a named facility station (e.g., 'STATION_NORTH', 'P&D_STATION').\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"station_name\": {\n          \"type\": \"string\",\n          \"description\": \"The name of the station to locate.\"\n        }\n      },\n      \"required\": [\n        \"station_name\"\n      ]\n    },\n    \"example_output\": {\n      \"coordinates\": [\n        0,\n        0\n      ]\n    }\n  },\n  \"query_robot_state\": {\n    \"description\": \"Returns the current location and battery percentage of the specified robot.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"robot_id\": {\n          \"type\": \"string\",\n          \"description\": \"The identifier of the robot.\"\n        }\n      },\n      \"required\": [\n        \"robot_id\"\n      ]\n    },\n    \"example_output\": {\n      \"location\": [\n        5,\n        10\n      ],\n      \"battery_level\": 45.5\n    }\n  },\n  \"query_item_position\": {\n    \"description\": \"Locates the storage coordinates for a specific order or item.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"item_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the item or order (e.g., 'ITEM_A').\"\n        }\n      },\n      \"required\": [\n        \"item_id\"\n      ]\n    },\n    \"example_output\": {\n      \"coordinates\": [\n        15,\n        20\n      ]\n    }\n  },\n  \"inspect_bin_status\": {\n    \"description\": \"Checks if a specific bin coordinate is obstructed by obstacles.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"coordinates\": {\n          \"type\": \"array\",\n          \"items\": {\n            \"type\": \"integer\"\n          },\n          \"description\": \"The [x, y] coordinates to inspect.\"\n        }\n      },\n      \"required\": [\n        \"coordinates\"\n      ]\n    },\n    \"example_output\": {\n      \"is_obstructed\": false\n    }\n  },\n  \"calculate_power_requirement\": {\n    \"description\": \"Calculates if the robot has enough battery to reach a target destination and then return to a safety station (P&D), including a safety margin.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"robot_id\": {\n          \"type\": \"string\"\n        },\n        \"target_coordinates\": {\n          \"type\": \"array\",\n          \"items\": {\n            \"type\": \"integer\"\n          }\n        },\n        \"safety_station_coordinates\": {\n          \"type\": \"array\",\n          \"items\": {\n            \"type\": \"integer\"\n          }\n        }\n      },\n      \"required\": [\n        \"robot_id\",\n        \"target_coordinates\",\n        \"safety_station_coordinates\"\n      ]\n    },\n    \"example_output\": {\n      \"is_sufficient\": true,\n      \"estimated_remaining_after_roundtrip\": 18.5\n    }\n  },\n  \"move_robot\": {\n    \"description\": \"Commands the robot to move to specified coordinates.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"robot_id\": {\n          \"type\": \"string\"\n        },\n        \"destination\": {\n          \"type\": \"array\",\n          \"items\": {\n            \"type\": \"integer\"\n          }\n        }\n      },\n      \"required\": [\n        \"robot_id\",\n        \"destination\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"reached_destination\"\n    }\n  },\n  \"handle_load\": {\n    \"description\": \"Performs a pick-up or drop-off action at the robot's current location.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"robot_id\": {\n          \"type\": \"string\"\n        },\n        \"action_type\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"PICK\",\n            \"DROP\"\n          ]\n        },\n        \"load_id\": {\n          \"type\": \"string\"\n        }\n      },\n      \"required\": [\n        \"robot_id\",\n        \"action_type\",\n        \"load_id\"\n      ]\n    },\n    \"example_output\": {\n      \"success\": true\n    }\n  },\n  \"execute_handshake\": {\n    \"description\": \"Performs the mandatory system handshake/charging protocol at the P&D station.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"robot_id\": {\n          \"type\": \"string\"\n        }\n      },\n      \"required\": [\n        \"robot_id\"\n      ]\n    },\n    \"example_output\": {\n      \"handshake_complete\": true\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_facility_coordinates",
+      "description": "Retrieves the [x, y] coordinates for a named facility station (e.g., 'STATION_NORTH', 'P&D_STATION').",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "station_name": {
+            "type": "string",
+            "description": "The name of the station to locate."
+          }
+        },
+        "required": [
+          "station_name"
+        ]
+      },
+      "example_output": {
+        "coordinates": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "name": "query_robot_state",
+      "description": "Returns the current location and battery percentage of the specified robot.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "robot_id": {
+            "type": "string",
+            "description": "The identifier of the robot."
+          }
+        },
+        "required": [
+          "robot_id"
+        ]
+      },
+      "example_output": {
+        "location": [
+          5,
+          10
+        ],
+        "battery_level": 45.5
+      }
+    },
+    {
+      "name": "query_item_position",
+      "description": "Locates the storage coordinates for a specific order or item.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "item_id": {
+            "type": "string",
+            "description": "The ID of the item or order (e.g., 'ITEM_A')."
+          }
+        },
+        "required": [
+          "item_id"
+        ]
+      },
+      "example_output": {
+        "coordinates": [
+          15,
+          20
+        ]
+      }
+    },
+    {
+      "name": "inspect_bin_status",
+      "description": "Checks if a specific bin coordinate is obstructed by obstacles.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "coordinates": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "description": "The [x, y] coordinates to inspect."
+          }
+        },
+        "required": [
+          "coordinates"
+        ]
+      },
+      "example_output": {
+        "is_obstructed": false
+      }
+    },
+    {
+      "name": "calculate_power_requirement",
+      "description": "Calculates if the robot has enough battery to reach a target destination and then return to a safety station (P&D), including a safety margin.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "robot_id": {
+            "type": "string"
+          },
+          "target_coordinates": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            }
+          },
+          "safety_station_coordinates": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            }
+          }
+        },
+        "required": [
+          "robot_id",
+          "target_coordinates",
+          "safety_station_coordinates"
+        ]
+      },
+      "example_output": {
+        "is_sufficient": true,
+        "estimated_remaining_after_roundtrip": 18.5
+      }
+    },
+    {
+      "name": "move_robot",
+      "description": "Commands the robot to move to specified coordinates.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "robot_id": {
+            "type": "string"
+          },
+          "destination": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            }
+          }
+        },
+        "required": [
+          "robot_id",
+          "destination"
+        ]
+      },
+      "example_output": {
+        "status": "reached_destination"
+      }
+    },
+    {
+      "name": "handle_load",
+      "description": "Performs a pick-up or drop-off action at the robot's current location.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "robot_id": {
+            "type": "string"
+          },
+          "action_type": {
+            "type": "string",
+            "enum": [
+              "PICK",
+              "DROP"
+            ]
+          },
+          "load_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "robot_id",
+          "action_type",
+          "load_id"
+        ]
+      },
+      "example_output": {
+        "success": true
+      }
+    },
+    {
+      "name": "execute_handshake",
+      "description": "Performs the mandatory system handshake/charging protocol at the P&D station.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "robot_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "robot_id"
+        ]
+      },
+      "example_output": {
+        "handshake_complete": true
+      }
+    }
+  ],
+  "state_description": {
+    "warehouse_grid": "Dimensions and layout of the warehouse, including obstacle locations.",
+    "robots": "List of active Autonomous Guided Vehicles (AGVs) and their current status.",
+    "inventory_bins": "Mapping of bin coordinates to stored item details.",
+    "pending_orders": "Queue of retrieval tasks currently assigned to the system.",
+    "time_step": "Current logical time step of the simulation."
+  },
+  "task_initial_state": {
+    "warehouse_grid": {
+      "width": 20,
+      "height": 20,
+      "blocked_cells": [
+        [
+          12,
+          12
+        ]
+      ]
+    },
+    "robots": [
+      {
+        "robot_id": "R1",
+        "position": [
+          0,
+          0
+        ],
+        "battery": 19,
+        "status": "busy",
+        "carrying": "PALLET_X"
+      }
+    ],
+    "inventory_bins": {
+      "bin_15_15": {
+        "item_id": "ITEM_A",
+        "quantity": 1
+      },
+      "bin_05_05": {
+        "item_id": "ITEM_B",
+        "quantity": 1
+      }
+    },
+    "pending_orders": [
+      {
+        "order_id": "ORD_501",
+        "item_id": "ITEM_A",
+        "quantity": 1,
+        "target_station": "STATION_NORTH"
+      },
+      {
+        "order_id": "ORD_502",
+        "item_id": "ITEM_B",
+        "quantity": 1,
+        "target_station": "STATION_NORTH"
+      }
+    ],
+    "time_step": 0
+  }
+}

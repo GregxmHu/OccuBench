@@ -1,0 +1,196 @@
+{
+  "environment_name": "env_41686c1da57b",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM) for Credit Card Fraud Investigation.\n- **Core Objective**: Based on the current internal investigation state $s_t$ and the investigator's (Agent) action $a_t$, simulate the bank's backend systems, transaction databases, and external entities (merchants, customers) to predict the environment evolution and generate the specific observation $o_{{t+1}}$ obtained by the Agent.\n- **Emphasis**: The LWM does not perform actual data retrieval or law enforcement; it simulates the responses of a banking environment and the logical consequences of investigative actions within a sandbox.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions between the World Model and the Agent must maintain strict context consistency. The model must track the progress of the investigation, ensuring that information revealed in previous steps (e.g., a merchant's location or a customer's phone number) remains constant and logically linked throughout the session.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object containing:\n- `\"name\"`: The name of the investigation action (e.g., \"query_transaction_details\", \"contact_customer\").\n- `\"arguments\"`: A dictionary of parameters required for the action.\n\nThe Language World Model must parse this JSON and simulate the result based on the internal state $s_t$.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nIf the Agent attempts to access non-existent transaction IDs, requests data without proper authorization (within the logic of the simulation), or provides invalid parameters, the model must return a structured error, e.g., `{{\"error\": \"Transaction ID 'TXN-001' not found in database\"}}`. Do not fabricate successful responses for invalid inputs.\n\n##### Output Assembly\nFor every action function call, the model must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition. \n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the internal state $s_t$, the `new_state`, or hidden variables like the 'true_fraud_status' unless explicitly queried by a specific 'verdict' action. The investigator only sees the Observation $o_{{t+1}}$.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to the specified JSON structure.\n- **Factuality**: Do not invent transaction data or customer behaviors that contradict the established state.\n- **Consistency**: If a transaction is flagged as 'International' in one step, it must remain 'International' in all subsequent steps.\n- **Realism**: Simulate realistic banking responses (e.g., response delays, encrypted data, or unavailable customers).\n- **Quality**: Use precise banking and investigative terminology.\n- **Encapsulation**: Strictly hide the internal state structure. Only expose information that is explicitly returned by the action function.\n{{initial_state}}: {{\n  \"case_id\": \"CASE-5502\",\n  \"case_status\": \"IN_PROGRESS\",\n  \"customer_profile\": {{\n    \"user_id\": \"USER_330\",\n    \"risk_score\": 18,\n    \"home_location\": \"San Francisco, CA\",\n    \"trusted_devices\": [\n      \"iPhone_15_Pro\"\n    ]\n  }},\n  \"transaction_ledger\": [\n    {{\n      \"txn_id\": \"TXN-881\",\n      \"amount\": 450.0,\n      \"type\": \"SALE\",\n      \"date\": \"2023-11-05\",\n      \"eci\": \"07\",\n      \"avs_status\": \"Y\",\n      \"cvv_status\": \"M\",\n      \"description\": \"Premium Audio Suite\",\n      \"shipping_address\": \"888 Brannan St, San Francisco, CA\",\n      \"billing_address\": \"888 Brannan St, San Francisco, CA\"\n    }},\n    {{\n      \"txn_id\": \"TXN-902\",\n      \"amount\": -450.0,\n      \"type\": \"REFUND\",\n      \"date\": \"2023-11-12\",\n      \"linked_txn\": \"TXN-880\",\n      \"status\": \"SUCCESS\",\n      \"description\": \"Customer return processed via automated portal\"\n    }}\n  ],\n  \"evidence_vault\": {{\n    \"dispute_details\": {{\n      \"txn_id\": \"TXN-881\",\n      \"reason_code\": \"10.4\",\n      \"dispute_amount\": 450.0,\n      \"date_received\": \"2023-11-20\",\n      \"arn\": \"ARN-77665544\",\n      \"scheme\": \"Visa\"\n    }},\n    \"shipping_docs\": {{\n      \"carrier\": \"UPS\",\n      \"tracking_number\": \"1Z999AA10123456784\",\n      \"status\": \"DELIVERED\",\n      \"signature_required\": true,\n      \"signature_name\": \"USER_330\"\n    }}\n  }},\n  \"is_fraud_ground_truth\": false\n}}\n{{state_descriptions}}: {{\n  \"case_id\": \"Unique identifier for the current fraud investigation case.\",\n  \"case_status\": \"Current status of the investigation (e.g., 'IN_PROGRESS', 'RESOLVED').\",\n  \"customer_profile\": \"Internal record of the customer's known behavior, risk score, and historical activity.\",\n  \"transaction_ledger\": \"The 'ground truth' list of all transactions associated with the account, including hidden labels.\",\n  \"evidence_vault\": \"Information already uncovered by the investigator that affects subsequent observations.\",\n  \"is_fraud_ground_truth\": \"The hidden fact of whether the case actually involves fraud (used to maintain simulation consistency).\"\n}}\n{action_set_definitions}: {\n  \"get_case_details\": {\n    \"description\": \"Retrieves the core details of a specific fraud case, including the associated user ID and current investigation status.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"case_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the case (e.g., 'CASE-5502').\"\n        }\n      },\n      \"required\": [\n        \"case_id\"\n      ]\n    },\n    \"example_output\": {\n      \"case_id\": \"CASE-5502\",\n      \"user_id\": \"USER_330\",\n      \"status\": \"IN_PROGRESS\",\n      \"disputed_amount\": 199.99,\n      \"item_description\": \"Premium Audio Suite\"\n    }\n  },\n  \"get_customer_profile\": {\n    \"description\": \"Retrieves internal records regarding a user's behavior, risk scores, and historical transaction success rates.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"user_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the user.\"\n        }\n      },\n      \"required\": [\n        \"user_id\"\n      ]\n    },\n    \"example_output\": {\n      \"risk_score\": 15,\n      \"account_age_days\": 450,\n      \"previous_chargebacks\": 0,\n      \"trust_level\": \"HIGH\"\n    }\n  },\n  \"get_transaction_history\": {\n    \"description\": \"Queries the transaction ledger for all records associated with a user to identify the original charge and any subsequent refunds or duplicate credits.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"user_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the user.\"\n        }\n      },\n      \"required\": [\n        \"user_id\"\n      ]\n    },\n    \"example_output\": {\n      \"transactions\": [\n        {\n          \"transaction_id\": \"TXN-881\",\n          \"amount\": 199.99,\n          \"status\": \"SETTLED\",\n          \"item\": \"Premium Audio Suite\",\n          \"is_refunded\": false\n        }\n      ]\n    }\n  },\n  \"get_evidence_vault\": {\n    \"description\": \"Accesses the digital evidence related to a case, such as proof of delivery, IP logs, and communication records.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"case_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the case.\"\n        }\n      },\n      \"required\": [\n        \"case_id\"\n      ]\n    },\n    \"example_output\": {\n      \"delivery_status\": \"DELIVERED\",\n      \"signed_by\": \"USER_330\",\n      \"ip_match\": true,\n      \"download_logs\": \"Completed 100%\"\n    }\n  },\n  \"resolve_dispute\": {\n    \"description\": \"Finalizes the investigation by submitting a formal resolution. This updates the case status and determines the financial outcome.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"case_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the case.\"\n        },\n        \"resolution_action\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"CHALLENGE\",\n            \"ACCEPT\",\n            \"REFUNDED_ALREADY\"\n          ],\n          \"description\": \"The action to take: CHALLENGE (if evidence is strong), ACCEPT (if fraud is likely), or REFUNDED_ALREADY (to prevent double payment).\"\n        },\n        \"justification\": {\n          \"type\": \"string\",\n          \"description\": \"Detailed reasoning based on the audit of ledger and evidence.\"\n        }\n      },\n      \"required\": [\n        \"case_id\",\n        \"resolution_action\",\n        \"justification\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"RESOLVED\",\n      \"final_action\": \"CHALLENGE\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_case_details",
+      "description": "Retrieves the core details of a specific fraud case, including the associated user ID and current investigation status.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "case_id": {
+            "type": "string",
+            "description": "The unique identifier for the case (e.g., 'CASE-5502')."
+          }
+        },
+        "required": [
+          "case_id"
+        ]
+      },
+      "example_output": {
+        "case_id": "CASE-5502",
+        "user_id": "USER_330",
+        "status": "IN_PROGRESS",
+        "disputed_amount": 199.99,
+        "item_description": "Premium Audio Suite"
+      }
+    },
+    {
+      "name": "get_customer_profile",
+      "description": "Retrieves internal records regarding a user's behavior, risk scores, and historical transaction success rates.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string",
+            "description": "The unique identifier for the user."
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      },
+      "example_output": {
+        "risk_score": 15,
+        "account_age_days": 450,
+        "previous_chargebacks": 0,
+        "trust_level": "HIGH"
+      }
+    },
+    {
+      "name": "get_transaction_history",
+      "description": "Queries the transaction ledger for all records associated with a user to identify the original charge and any subsequent refunds or duplicate credits.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string",
+            "description": "The unique identifier for the user."
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      },
+      "example_output": {
+        "transactions": [
+          {
+            "transaction_id": "TXN-881",
+            "amount": 199.99,
+            "status": "SETTLED",
+            "item": "Premium Audio Suite",
+            "is_refunded": false
+          }
+        ]
+      }
+    },
+    {
+      "name": "get_evidence_vault",
+      "description": "Accesses the digital evidence related to a case, such as proof of delivery, IP logs, and communication records.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "case_id": {
+            "type": "string",
+            "description": "The unique identifier for the case."
+          }
+        },
+        "required": [
+          "case_id"
+        ]
+      },
+      "example_output": {
+        "delivery_status": "DELIVERED",
+        "signed_by": "USER_330",
+        "ip_match": true,
+        "download_logs": "Completed 100%"
+      }
+    },
+    {
+      "name": "resolve_dispute",
+      "description": "Finalizes the investigation by submitting a formal resolution. This updates the case status and determines the financial outcome.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "case_id": {
+            "type": "string",
+            "description": "The unique identifier for the case."
+          },
+          "resolution_action": {
+            "type": "string",
+            "enum": [
+              "CHALLENGE",
+              "ACCEPT",
+              "REFUNDED_ALREADY"
+            ],
+            "description": "The action to take: CHALLENGE (if evidence is strong), ACCEPT (if fraud is likely), or REFUNDED_ALREADY (to prevent double payment)."
+          },
+          "justification": {
+            "type": "string",
+            "description": "Detailed reasoning based on the audit of ledger and evidence."
+          }
+        },
+        "required": [
+          "case_id",
+          "resolution_action",
+          "justification"
+        ]
+      },
+      "example_output": {
+        "status": "RESOLVED",
+        "final_action": "CHALLENGE"
+      }
+    }
+  ],
+  "state_description": {
+    "case_id": "Unique identifier for the current fraud investigation case.",
+    "case_status": "Current status of the investigation (e.g., 'IN_PROGRESS', 'RESOLVED').",
+    "customer_profile": "Internal record of the customer's known behavior, risk score, and historical activity.",
+    "transaction_ledger": "The 'ground truth' list of all transactions associated with the account, including hidden labels.",
+    "evidence_vault": "Information already uncovered by the investigator that affects subsequent observations.",
+    "is_fraud_ground_truth": "The hidden fact of whether the case actually involves fraud (used to maintain simulation consistency)."
+  },
+  "task_initial_state": {
+    "case_id": "CASE-5502",
+    "case_status": "IN_PROGRESS",
+    "customer_profile": {
+      "user_id": "USER_330",
+      "risk_score": 18,
+      "home_location": "San Francisco, CA",
+      "trusted_devices": [
+        "iPhone_15_Pro"
+      ]
+    },
+    "transaction_ledger": [
+      {
+        "txn_id": "TXN-881",
+        "amount": 450.0,
+        "type": "SALE",
+        "date": "2023-11-05",
+        "eci": "07",
+        "avs_status": "Y",
+        "cvv_status": "M",
+        "description": "Premium Audio Suite",
+        "shipping_address": "888 Brannan St, San Francisco, CA",
+        "billing_address": "888 Brannan St, San Francisco, CA"
+      },
+      {
+        "txn_id": "TXN-902",
+        "amount": -450.0,
+        "type": "REFUND",
+        "date": "2023-11-12",
+        "linked_txn": "TXN-880",
+        "status": "SUCCESS",
+        "description": "Customer return processed via automated portal"
+      }
+    ],
+    "evidence_vault": {
+      "dispute_details": {
+        "txn_id": "TXN-881",
+        "reason_code": "10.4",
+        "dispute_amount": 450.0,
+        "date_received": "2023-11-20",
+        "arn": "ARN-77665544",
+        "scheme": "Visa"
+      },
+      "shipping_docs": {
+        "carrier": "UPS",
+        "tracking_number": "1Z999AA10123456784",
+        "status": "DELIVERED",
+        "signature_required": true,
+        "signature_name": "USER_330"
+      }
+    },
+    "is_fraud_ground_truth": false
+  }
+}

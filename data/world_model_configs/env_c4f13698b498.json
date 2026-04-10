@@ -1,0 +1,85 @@
+{
+  "environment_name": "env_c4f13698b498",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: You act as a high-fidelity simulator for the 'Pipeline Pressure Anomaly Response' scenario. Based on the current internal state $s_t$ and the Agent's action $a_t$, you simulate the physical and logic evolution of the pipeline environment to predict the resulting observation $o_{{t+1}}$ for the Agent.\n- **Emphasis**: You are a simulator, not an executor. Your goal is to maintain the internal logic and physical consistency of the pipeline system (e.g., pressure-flow relationships, valve mechanics) and generate realistic feedback. Do not perform real-world operations.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state of the pipeline system is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nYou must maintain strict context consistency throughout the interaction. Every action taken by the Agent affects the internal state, and subsequent observations must reflect the cumulative effects of all previous actions and the natural progression of the environmental anomaly (e.g., a leak causing a steady drop in pressure over time).\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the pipeline environment by calling specific action functions. The available action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` returned for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. You must parse this JSON to determine the intended transition. The input format is:\n- `\"name\"`: The name of the action function.\n- `\"arguments\"`: A dictionary of parameter names and values.\n\nExample Input:\n```json\n{{\n \"name\": \"adjust_valve\",\n \"arguments\": {{\n    \"valve_id\": \"V-101\",\n    \"opening_percentage\": 45.0\n  }}\n}}\n```\nYou must simulate the consequences of this action on the internal pipeline dynamics (e.g., how closing a valve increases upstream pressure).\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nIf the Agent provides invalid parameters (e.g., valve percentage > 100), calls an undefined function, or attempts an action impossible in the current state (e.g., adjusting a valve that has suffered a mechanical seizure), return a structured error response:\n`{{\"error\": \"Reason for failure\"}}`.\nDo not fabricate states or allow the simulation to proceed into logically impossible configurations.\n\n##### Output Assembly\nFor every action function call, you must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition in `{{action_set_definitions}}`.\n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `$s_t$`, the updated state, or any hidden system variables. You must maintain the state internally. The Agent must only receive the specific `observation` (return values) defined for the action. Do not append explanatory text or state updates outside the JSON observation.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to JSON output. No conversational filler.\n- **Factuality**: Simulate based on the provided state schema and action definitions. Do not invent new sensors or pipeline components.\n- **Consistency**: Ensure that if a valve is closed, the flow rate decreases and pressure changes according to fluid dynamics logic.\n- **Realism**: Anomalies should behave realistically (e.g., a rupture causes pressure to drop faster as the hole expands or flow increases).\n- **Quality**: Observations should be precise and structurally complete.\n- **Encapsulation**: Strictly hide the internal state structure. The Agent must infer the state only through the provided observations.\n{{initial_state}}: {{\n  \"current_pressure_psi\": 980.0,\n  \"inflow_rate_lps\": 145.5,\n  \"outflow_rate_lps\": 110.0,\n  \"main_valve_position\": 85.0,\n  \"emergency_shutdown_status\": \"INACTIVE\",\n  \"leak_sensor_reading\": 0.12,\n  \"ambient_temperature_c\": 28.5,\n  \"pump_vibration_level\": 5.5\n}}\n{{state_descriptions}}: {{\n  \"current_pressure_psi\": \"The current internal pressure of the monitored pipeline section in Pounds per Square Inch.\",\n  \"inflow_rate_lps\": \"The rate of fluid entering the section in Liters per Second.\",\n  \"outflow_rate_lps\": \"The rate of fluid exiting the section in Liters per Second.\",\n  \"main_valve_position\": \"The current percentage opening of the main isolation valve (0-100).\",\n  \"emergency_shutdown_status\": \"Status of the Emergency Shutdown (ESD) system. Values: 'INACTIVE', 'ARMED', 'TRIGGERED'.\",\n  \"leak_sensor_reading\": \"Acoustic sensor reading for leak detection (0.0 to 1.0, where > 0.7 indicates high probability of leak).\",\n  \"ambient_temperature_c\": \"The external temperature surrounding the pipeline in Celsius.\",\n  \"pump_vibration_level\": \"Vibration intensity of the upstream pump (mm/s).\"\n}}\n{action_set_definitions}: {\n  \"get_system_telemetry\": {\n    \"description\": \"Retrieves the current telemetry data from the pipeline system, including pressure, flow rates, valve positions, vibration levels, and ESD status.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"current_pressure_psi\": 820.5,\n      \"inflow_rate_lps\": 15.2,\n      \"outflow_rate_lps\": 14.8,\n      \"main_valve_position\": 45.0,\n      \"emergency_shutdown_status\": \"INACTIVE\",\n      \"pump_vibration_level\": 4.2,\n      \"leak_sensor_reading\": 0.05\n    }\n  },\n  \"adjust_main_valve\": {\n    \"description\": \"Adjusts the opening percentage of the main isolation valve. Increasing the opening typically reduces internal pressure by increasing outflow.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"target_position_percent\": {\n          \"type\": \"number\",\n          \"description\": \"The desired valve position from 0.0 (closed) to 100.0 (fully open). Note: Must remain >= 20.0 per safety constraints.\"\n        }\n      },\n      \"required\": [\n        \"target_position_percent\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"SUCCESS\",\n      \"new_valve_position\": 50.0\n    }\n  },\n  \"set_pump_inflow_rate\": {\n    \"description\": \"Adjusts the upstream pump house settings to modify the inflow rate. Reducing inflow helps lower pipeline pressure.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"target_inflow_lps\": {\n          \"type\": \"number\",\n          \"description\": \"The desired fluid inflow rate in Liters per Second.\"\n        }\n      },\n      \"required\": [\n        \"target_inflow_lps\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"SUCCESS\",\n      \"new_inflow_rate\": 12.5,\n      \"current_vibration\": 4.5\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_system_telemetry",
+      "description": "Retrieves the current telemetry data from the pipeline system, including pressure, flow rates, valve positions, vibration levels, and ESD status.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "current_pressure_psi": 820.5,
+        "inflow_rate_lps": 15.2,
+        "outflow_rate_lps": 14.8,
+        "main_valve_position": 45.0,
+        "emergency_shutdown_status": "INACTIVE",
+        "pump_vibration_level": 4.2,
+        "leak_sensor_reading": 0.05
+      }
+    },
+    {
+      "name": "adjust_main_valve",
+      "description": "Adjusts the opening percentage of the main isolation valve. Increasing the opening typically reduces internal pressure by increasing outflow.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "target_position_percent": {
+            "type": "number",
+            "description": "The desired valve position from 0.0 (closed) to 100.0 (fully open). Note: Must remain >= 20.0 per safety constraints."
+          }
+        },
+        "required": [
+          "target_position_percent"
+        ]
+      },
+      "example_output": {
+        "status": "SUCCESS",
+        "new_valve_position": 50.0
+      }
+    },
+    {
+      "name": "set_pump_inflow_rate",
+      "description": "Adjusts the upstream pump house settings to modify the inflow rate. Reducing inflow helps lower pipeline pressure.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "target_inflow_lps": {
+            "type": "number",
+            "description": "The desired fluid inflow rate in Liters per Second."
+          }
+        },
+        "required": [
+          "target_inflow_lps"
+        ]
+      },
+      "example_output": {
+        "status": "SUCCESS",
+        "new_inflow_rate": 12.5,
+        "current_vibration": 4.5
+      }
+    }
+  ],
+  "state_description": {
+    "current_pressure_psi": "The current internal pressure of the monitored pipeline section in Pounds per Square Inch.",
+    "inflow_rate_lps": "The rate of fluid entering the section in Liters per Second.",
+    "outflow_rate_lps": "The rate of fluid exiting the section in Liters per Second.",
+    "main_valve_position": "The current percentage opening of the main isolation valve (0-100).",
+    "emergency_shutdown_status": "Status of the Emergency Shutdown (ESD) system. Values: 'INACTIVE', 'ARMED', 'TRIGGERED'.",
+    "leak_sensor_reading": "Acoustic sensor reading for leak detection (0.0 to 1.0, where > 0.7 indicates high probability of leak).",
+    "ambient_temperature_c": "The external temperature surrounding the pipeline in Celsius.",
+    "pump_vibration_level": "Vibration intensity of the upstream pump (mm/s)."
+  },
+  "task_initial_state": {
+    "current_pressure_psi": 980.0,
+    "inflow_rate_lps": 145.5,
+    "outflow_rate_lps": 110.0,
+    "main_valve_position": 85.0,
+    "emergency_shutdown_status": "INACTIVE",
+    "leak_sensor_reading": 0.12,
+    "ambient_temperature_c": 28.5,
+    "pump_vibration_level": 5.5
+  }
+}

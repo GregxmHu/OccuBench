@@ -1,0 +1,223 @@
+{
+  "environment_name": "env_cea19ff7b676",
+  "world_model_system_prompt": "## 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: You are responsible for simulating the environment of an Audio Mixing Session. Based on the current internal state $s_t$ and the action $a_t$ provided by the Agent, you must simulate the evolution of the audio session and predict the observation $o_{{t+1}}$ returned to the Agent. \n- **Emphasis**: You do not perform actual digital signal processing (DSP) or audio rendering. Your task is to maintain the logical consistency of the session parameters (e.g., volume levels, routing, plugin states) and generate structured observations.\n\n## 2. Environment Management\n\n### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n### Context Awareness\nYou must maintain strict context consistency across all interactions. Changes made to tracks, faders, or effects must persist in the internal environment logic. All subsequent observations must reflect the cumulative history of actions taken during the session.\n\n## 3. Environment Execution\n\n### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object containing a `\"name\"` field and an `\"arguments\"` field. You must parse this JSON and simulate the logic of the corresponding audio engineering task.\n\nExample Input:\n```json\n{{\n \"name\": \"set_fader_level\",\n \"arguments\": {{\n    \"track_id\": \"vox_01\",\n    \"gain_db\": -3.5\n  }}\n}}\n```\n\n### Environment Behavior Modeling\n\n#### Error Handling & Edge Cases\nIf the Agent attempts an action on a non-existent track, provides out-of-range parameters (e.g., panning beyond -100 to +100), or submits malformed JSON, you must return a structured error response. \n- Example: `{{\"status\": \"error\", \"message\": \"Track ID 'drum_bus' not found\"}}`\n- **Do not fabricate** successful states if the input is invalid.\n\n#### Output Assembly\nFor every action function call, you must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition (the Observation).\n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state $s_t$, the updated state, or any hidden variables. The state maintenance is internal to your logic. The Agent must only see the specific return values (Observation) defined for the action.\n\n## 4. Key Principles\n- **Format**: Strictly adhere to JSON for both input parsing and output generation.\n- **Factuality**: Simulate audio environment behaviors realistically (e.g., if a track is muted, its output level in a sum-bus observation should be zero).\n- **Consistency**: Ensure the internal logic of the mixing desk (solo-in-place logic, signal routing) remains self-consistent.\n- **Realism**: Values should align with standard Digital Audio Workstation (DAW) conventions (dB scales, panning laws, etc.).\n- **Quality**: Ensure all simulated responses are unambiguous and complete.\n- **Encapsulation**: Strictly hide the internal state structure from the output. Only expose information that is explicitly returned by the action function. Do not output the state update process.\n{{initial_state}}: {{\n  \"tracks\": [\n    {{\n      \"track_id\": \"vox_lead_dry_v1\",\n      \"name\": \"Lead Vox (Old)\",\n      \"type\": \"audio\",\n      \"peak_dbfs\": -10.0,\n      \"rms_dbfs\": -22.0,\n      \"fader_db\": 0.0,\n      \"routing\": \"vocal_bus_archive\"\n    }},\n    {{\n      \"track_id\": \"vox_lead_dry_v2\",\n      \"name\": \"Lead Vox (Active)\",\n      \"type\": \"audio\",\n      \"peak_dbfs\": -1.5,\n      \"rms_dbfs\": -9.0,\n      \"fader_db\": 0.0,\n      \"routing\": \"vocal_bus_01\"\n    }},\n    {{\n      \"track_id\": \"vox_lead_dry_v2_dup\",\n      \"name\": \"Lead Vox (Copy)\",\n      \"type\": \"audio\",\n      \"peak_dbfs\": -1.5,\n      \"rms_dbfs\": -9.0,\n      \"fader_db\": -96.0,\n      \"routing\": \"vocal_bus_01\"\n    }},\n    {{\n      \"track_id\": \"vox_dub_L_final\",\n      \"name\": \"Vocal Double L\",\n      \"type\": \"audio\",\n      \"peak_dbfs\": -4.0,\n      \"rms_dbfs\": -14.0,\n      \"fader_db\": 0.0,\n      \"routing\": \"vocal_bus_01\"\n    }},\n    {{\n      \"track_id\": \"vox_dub_R_final\",\n      \"name\": \"Vocal Double R\",\n      \"type\": \"audio\",\n      \"peak_dbfs\": -4.0,\n      \"rms_dbfs\": -14.0,\n      \"fader_db\": 0.0,\n      \"routing\": \"vocal_bus_01\"\n    }},\n    {{\n      \"track_id\": \"vocal_bus_archive\",\n      \"name\": \"Vocal Bus (RETIRED)\",\n      \"type\": \"bus\",\n      \"peak_dbfs\": -20.0,\n      \"rms_dbfs\": -32.0,\n      \"fader_db\": 0.0,\n      \"routing\": \"none\"\n    }},\n    {{\n      \"track_id\": \"vocal_bus_01\",\n      \"name\": \"Vocal Bus Main\",\n      \"type\": \"bus\",\n      \"peak_dbfs\": 3.2,\n      \"rms_dbfs\": -4.5,\n      \"fader_db\": 0.0,\n      \"routing\": \"master_bus\",\n      \"active_plugins\": [\n        {{\n          \"slot\": 1,\n          \"name\": \"British-Console-Strip\",\n          \"type\": \"analog-modeled\",\n          \"reference_level_dbfs\": -18.0\n        }}\n      ]\n    }},\n    {{\n      \"track_id\": \"vocal_bus_01_parallel\",\n      \"name\": \"Vocal Bus (Parallel Crush)\",\n      \"type\": \"bus\",\n      \"peak_dbfs\": -5.0,\n      \"rms_dbfs\": -12.0,\n      \"fader_db\": -96.0,\n      \"routing\": \"master_bus\"\n    }}\n  ],\n  \"master_bus\": {{\n    \"volume_db\": 0.0,\n    \"is_clipped\": true,\n    \"peak_dbfs\": 2.8,\n    \"rms_dbfs\": -7.5\n  }},\n  \"transport\": {{\n    \"status\": \"stopped\",\n    \"cursor_ms\": 0\n  }},\n  \"solo_bus\": []\n}}\n{{state_descriptions}}: {{\n  \"tracks\": \"A list of objects representing individual audio tracks and their current parameters.\",\n  \"master_bus\": \"The state of the master output channel, including volume and master effects.\",\n  \"transport\": \"The playback state of the session.\",\n  \"solo_bus\": \"List of track IDs currently in 'Solo' mode.\"\n}}\n{action_set_definitions}: {\n  \"get_session_inventory\": {\n    \"description\": \"Retrieves a comprehensive list of all tracks, buses, and the Master Bus, including their current names, activity status (muted/active), and fader positions.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"items\": [\n        {\n          \"id\": \"trk_01\",\n          \"name\": \"Lead Vocal\",\n          \"type\": \"track\",\n          \"is_active\": true,\n          \"fader_db\": 0.0\n        },\n        {\n          \"id\": \"bus_02\",\n          \"name\": \"Neon Horizons Vocals\",\n          \"type\": \"bus\",\n          \"is_active\": true,\n          \"fader_db\": 0.0\n        }\n      ]\n    }\n  },\n  \"get_signal_routing\": {\n    \"description\": \"Identifies the output destination of a specific entity and lists all unique IDs of tracks or buses currently routed into it.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"entity_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique ID of the track or bus to query.\"\n        }\n      },\n      \"required\": [\n        \"entity_id\"\n      ]\n    },\n    \"example_output\": {\n      \"destination_id\": \"master_bus_id\",\n      \"source_ids\": [\n        \"trk_01\",\n        \"trk_05\"\n      ]\n    }\n  },\n  \"get_plugin_architecture\": {\n    \"description\": \"Analyzes the plugin chain of a specified bus to categorize it as either 'analog-modeled' or 'linear digital'.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"bus_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique ID of the bus to analyze.\"\n        }\n      },\n      \"required\": [\n        \"bus_id\"\n      ]\n    },\n    \"example_output\": {\n      \"architecture\": \"analog-modeled\",\n      \"plugin_list\": [\n        \"VintageCompressor\",\n        \"TubeSaturation\"\n      ]\n    }\n  },\n  \"get_metering_data\": {\n    \"description\": \"Captures precise RMS, Peak, and True Peak measurements for a specific track or bus.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"entity_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique ID of the track or bus to measure.\"\n        }\n      },\n      \"required\": [\n        \"entity_id\"\n      ]\n    },\n    \"example_output\": {\n      \"rms\": -22.4,\n      \"peak\": -8.1,\n      \"true_peak\": -7.5\n    }\n  },\n  \"adjust_track_gain\": {\n    \"description\": \"Sets the input gain (pre-fader) for a source track. This does not modify the fader position.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"track_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique ID of the source track.\"\n        },\n        \"gain_change_db\": {\n          \"type\": \"number\",\n          \"description\": \"The amount of gain in dB to add (positive) or subtract (negative).\"\n        }\n      },\n      \"required\": [\n        \"track_id\",\n        \"gain_change_db\"\n      ]\n    },\n    \"example_output\": null\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_session_inventory",
+      "description": "Retrieves a comprehensive list of all tracks, buses, and the Master Bus, including their current names, activity status (muted/active), and fader positions.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "items": [
+          {
+            "id": "trk_01",
+            "name": "Lead Vocal",
+            "type": "track",
+            "is_active": true,
+            "fader_db": 0.0
+          },
+          {
+            "id": "bus_02",
+            "name": "Neon Horizons Vocals",
+            "type": "bus",
+            "is_active": true,
+            "fader_db": 0.0
+          }
+        ]
+      }
+    },
+    {
+      "name": "get_signal_routing",
+      "description": "Identifies the output destination of a specific entity and lists all unique IDs of tracks or buses currently routed into it.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "entity_id": {
+            "type": "string",
+            "description": "The unique ID of the track or bus to query."
+          }
+        },
+        "required": [
+          "entity_id"
+        ]
+      },
+      "example_output": {
+        "destination_id": "master_bus_id",
+        "source_ids": [
+          "trk_01",
+          "trk_05"
+        ]
+      }
+    },
+    {
+      "name": "get_plugin_architecture",
+      "description": "Analyzes the plugin chain of a specified bus to categorize it as either 'analog-modeled' or 'linear digital'.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "bus_id": {
+            "type": "string",
+            "description": "The unique ID of the bus to analyze."
+          }
+        },
+        "required": [
+          "bus_id"
+        ]
+      },
+      "example_output": {
+        "architecture": "analog-modeled",
+        "plugin_list": [
+          "VintageCompressor",
+          "TubeSaturation"
+        ]
+      }
+    },
+    {
+      "name": "get_metering_data",
+      "description": "Captures precise RMS, Peak, and True Peak measurements for a specific track or bus.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "entity_id": {
+            "type": "string",
+            "description": "The unique ID of the track or bus to measure."
+          }
+        },
+        "required": [
+          "entity_id"
+        ]
+      },
+      "example_output": {
+        "rms": -22.4,
+        "peak": -8.1,
+        "true_peak": -7.5
+      }
+    },
+    {
+      "name": "adjust_track_gain",
+      "description": "Sets the input gain (pre-fader) for a source track. This does not modify the fader position.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "track_id": {
+            "type": "string",
+            "description": "The unique ID of the source track."
+          },
+          "gain_change_db": {
+            "type": "number",
+            "description": "The amount of gain in dB to add (positive) or subtract (negative)."
+          }
+        },
+        "required": [
+          "track_id",
+          "gain_change_db"
+        ]
+      },
+      "example_output": null
+    }
+  ],
+  "state_description": {
+    "tracks": "A list of objects representing individual audio tracks and their current parameters.",
+    "master_bus": "The state of the master output channel, including volume and master effects.",
+    "transport": "The playback state of the session.",
+    "solo_bus": "List of track IDs currently in 'Solo' mode."
+  },
+  "task_initial_state": {
+    "tracks": [
+      {
+        "track_id": "vox_lead_dry_v1",
+        "name": "Lead Vox (Old)",
+        "type": "audio",
+        "peak_dbfs": -10.0,
+        "rms_dbfs": -22.0,
+        "fader_db": 0.0,
+        "routing": "vocal_bus_archive"
+      },
+      {
+        "track_id": "vox_lead_dry_v2",
+        "name": "Lead Vox (Active)",
+        "type": "audio",
+        "peak_dbfs": -1.5,
+        "rms_dbfs": -9.0,
+        "fader_db": 0.0,
+        "routing": "vocal_bus_01"
+      },
+      {
+        "track_id": "vox_lead_dry_v2_dup",
+        "name": "Lead Vox (Copy)",
+        "type": "audio",
+        "peak_dbfs": -1.5,
+        "rms_dbfs": -9.0,
+        "fader_db": -96.0,
+        "routing": "vocal_bus_01"
+      },
+      {
+        "track_id": "vox_dub_L_final",
+        "name": "Vocal Double L",
+        "type": "audio",
+        "peak_dbfs": -4.0,
+        "rms_dbfs": -14.0,
+        "fader_db": 0.0,
+        "routing": "vocal_bus_01"
+      },
+      {
+        "track_id": "vox_dub_R_final",
+        "name": "Vocal Double R",
+        "type": "audio",
+        "peak_dbfs": -4.0,
+        "rms_dbfs": -14.0,
+        "fader_db": 0.0,
+        "routing": "vocal_bus_01"
+      },
+      {
+        "track_id": "vocal_bus_archive",
+        "name": "Vocal Bus (RETIRED)",
+        "type": "bus",
+        "peak_dbfs": -20.0,
+        "rms_dbfs": -32.0,
+        "fader_db": 0.0,
+        "routing": "none"
+      },
+      {
+        "track_id": "vocal_bus_01",
+        "name": "Vocal Bus Main",
+        "type": "bus",
+        "peak_dbfs": 3.2,
+        "rms_dbfs": -4.5,
+        "fader_db": 0.0,
+        "routing": "master_bus",
+        "active_plugins": [
+          {
+            "slot": 1,
+            "name": "British-Console-Strip",
+            "type": "analog-modeled",
+            "reference_level_dbfs": -18.0
+          }
+        ]
+      },
+      {
+        "track_id": "vocal_bus_01_parallel",
+        "name": "Vocal Bus (Parallel Crush)",
+        "type": "bus",
+        "peak_dbfs": -5.0,
+        "rms_dbfs": -12.0,
+        "fader_db": -96.0,
+        "routing": "master_bus"
+      }
+    ],
+    "master_bus": {
+      "volume_db": 0.0,
+      "is_clipped": true,
+      "peak_dbfs": 2.8,
+      "rms_dbfs": -7.5
+    },
+    "transport": {
+      "status": "stopped",
+      "cursor_ms": 0
+    },
+    "solo_bus": []
+  }
+}

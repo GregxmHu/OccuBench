@@ -1,0 +1,149 @@
+{
+  "environment_name": "env_62a4d00e6bbf",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: Based on the current state $s_t$ and the forecast adjustment action $a_t$ provided by the Agent, simulate the internal evolution of the demand environment and predict the resulting observation $o_{{t+1}}$.\n- **Emphasis**: You are a simulator. You do not execute real-world supply chain operations; you calculate the logical consequences of actions within the demand forecasting context and generate the corresponding feedback (observations) for the Agent.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation to track forecast accuracy, inventory levels, and environmental variables. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nYou must maintain strict context consistency across all interactions. Every action taken by the Agent influences the internal state (e.g., changing a forecast value alters the projected inventory gap), and subsequent observations must reflect these cumulative changes.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the demand forecasting environment by calling action functions defined below:\n```json\n{{action_set_definitions}}\n```\nThe `observation` returned for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. You must parse this JSON to determine the intended transition. The input format is:\n- `\"name\"`: The name of the forecasting/adjustment action function.\n- Other fields: Parameters required by that specific function (e.g., `sku_id`, `adjustment_coefficient`, `period`).\n\nExample Input:\n```json\n{{\n \"name\": \"adjust_forecast_by_factor\",\n \"arguments\": {{\n    \"sku_id\": \"SKU-990\",\n    \"factor\": 1.15\n  }}\n}}\n```\nYou must simulate the internal logic of this action and return the observation defined in the action's schema.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\n- If the Agent provides invalid parameters (e.g., a negative adjustment factor where only positive values are allowed) or calls an undefined action, return: `{{\"error\": \"Description of the specific error\"}}`.\n- Do not fabricate data; if the internal state $s_t$ does not contain a specific SKU requested by the Agent, return an error.\n\n##### Output Assembly\nFor every action function call, you must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition. \n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state $s_t$, the updated state $s_{{t+1}}$, or any hidden internal variables. You only output the \"Observation\" $o_{{t+1}}$. The Agent must never see the raw internal state structure in your response.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to JSON output for observations.\n- **Factuality**: Use the provided state and mathematical logic to derive results; do not hallucinate outcomes.\n- **Consistency**: If a forecast is increased, subsequent inventory alerts or demand observations must logically reflect that increase.\n- **Realism**: Simulated impacts (e.g., the effect of a promotion on demand) should follow realistic market dynamics within the bounds of the provided scenario.\n- **Encapsulation**: Strictly hide the internal state logic. Only expose observation fields.\n{{initial_state}}: {{\n  \"current_forecast_values\": [\n    250,\n    250,\n    250,\n    250\n  ],\n  \"historical_actual_demand\": [\n    245,\n    255,\n    250,\n    248\n  ],\n  \"inventory_on_hand\": 410,\n  \"active_market_factors\": [\n    \"Gateway_Delta_Strike_Active\",\n    \"IPI_Embargo_Route_Alpha\",\n    \"TRI_Exceeds_Threshold_22pct\",\n    \"Distressed_High_Cube_Retail_Category\"\n  ],\n  \"forecast_error_metric\": 0.055\n}}\n{{state_descriptions}}: {{\n  \"current_forecast_values\": \"A sequence of predicted demand units for the next N time periods.\",\n  \"historical_actual_demand\": \"The actual demand recorded in previous time periods for baseline comparison.\",\n  \"inventory_on_hand\": \"The current number of physical units available in the warehouse.\",\n  \"active_market_factors\": \"A list of current environmental conditions affecting demand (e.g., 'holiday_season', 'competitor_promo').\",\n  \"forecast_error_metric\": \"The calculated Mean Absolute Percentage Error (MAPE) from the previous period.\"\n}}\n{action_set_definitions}: {\n  \"get_distressed_product_info\": {\n    \"description\": \"Retrieves information about products currently flagged as 'distressed' or under alert, including the specific hub location and product identifiers.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"location_filter\": {\n          \"type\": \"string\",\n          \"description\": \"The specific hub or gateway to filter alerts for (e.g., 'Pennsylvania hub').\"\n        }\n      },\n      \"required\": [\n        \"location_filter\"\n      ]\n    },\n    \"example_output\": {\n      \"product_id\": \"PROD-9902\",\n      \"status\": \"distressed\",\n      \"incident_log\": \"Labor action at primary maritime gateway\"\n    }\n  },\n  \"get_market_intelligence\": {\n    \"description\": \"Fetches current market indicators including Rail Embargo statuses and the Tender Rejection Index (TRI) levels.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"class_1_rail_embargo_active\": true,\n      \"tender_rejection_index_percent\": 22.5,\n      \"regional_congestion_score\": 8.5\n    }\n  },\n  \"get_sop_protocols\": {\n    \"description\": \"Retrieves specific Standard Operating Procedure (SOP) instructions for shipping mode transitions and safety stock logic.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"protocol_category\": {\n          \"type\": \"string\",\n          \"description\": \"The category of rules to retrieve (e.g., 'transload_trucking_thresholds').\"\n        }\n      },\n      \"required\": [\n        \"protocol_category\"\n      ]\n    },\n    \"example_output\": {\n      \"tri_threshold_for_trucking\": 20.0,\n      \"embargo_protocol\": \"transition_to_transload\",\n      \"safety_threshold_units\": 120\n    }\n  },\n  \"get_product_state_metrics\": {\n    \"description\": \"Retrieves the current inventory levels, existing forecast sequence, and historical demand for a specific product ID.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"product_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the product line.\"\n        }\n      },\n      \"required\": [\n        \"product_id\"\n      ]\n    },\n    \"example_output\": {\n      \"inventory_on_hand\": 150,\n      \"current_forecast_values\": [\n        40,\n        45,\n        50,\n        42\n      ],\n      \"lead_time_days\": 14\n    }\n  },\n  \"update_demand_forecast\": {\n    \"description\": \"Submits the adjusted demand forecast values for the upcoming four periods to the system.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"product_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the product line.\"\n        },\n        \"new_forecast_values\": {\n          \"type\": \"array\",\n          \"items\": {\n            \"type\": \"number\"\n          },\n          \"description\": \"The adjusted 4-period demand values.\"\n        },\n        \"adjustment_notes\": {\n          \"type\": \"string\",\n          \"description\": \"Brief explanation of factors applied (e.g., volumetric factor, lead time delay).\"\n        }\n      },\n      \"required\": [\n        \"product_id\",\n        \"new_forecast_values\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"success\",\n      \"updated_at\": \"2023-10-27T10:00:00Z\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_distressed_product_info",
+      "description": "Retrieves information about products currently flagged as 'distressed' or under alert, including the specific hub location and product identifiers.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "location_filter": {
+            "type": "string",
+            "description": "The specific hub or gateway to filter alerts for (e.g., 'Pennsylvania hub')."
+          }
+        },
+        "required": [
+          "location_filter"
+        ]
+      },
+      "example_output": {
+        "product_id": "PROD-9902",
+        "status": "distressed",
+        "incident_log": "Labor action at primary maritime gateway"
+      }
+    },
+    {
+      "name": "get_market_intelligence",
+      "description": "Fetches current market indicators including Rail Embargo statuses and the Tender Rejection Index (TRI) levels.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "class_1_rail_embargo_active": true,
+        "tender_rejection_index_percent": 22.5,
+        "regional_congestion_score": 8.5
+      }
+    },
+    {
+      "name": "get_sop_protocols",
+      "description": "Retrieves specific Standard Operating Procedure (SOP) instructions for shipping mode transitions and safety stock logic.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "protocol_category": {
+            "type": "string",
+            "description": "The category of rules to retrieve (e.g., 'transload_trucking_thresholds')."
+          }
+        },
+        "required": [
+          "protocol_category"
+        ]
+      },
+      "example_output": {
+        "tri_threshold_for_trucking": 20.0,
+        "embargo_protocol": "transition_to_transload",
+        "safety_threshold_units": 120
+      }
+    },
+    {
+      "name": "get_product_state_metrics",
+      "description": "Retrieves the current inventory levels, existing forecast sequence, and historical demand for a specific product ID.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "product_id": {
+            "type": "string",
+            "description": "The unique identifier for the product line."
+          }
+        },
+        "required": [
+          "product_id"
+        ]
+      },
+      "example_output": {
+        "inventory_on_hand": 150,
+        "current_forecast_values": [
+          40,
+          45,
+          50,
+          42
+        ],
+        "lead_time_days": 14
+      }
+    },
+    {
+      "name": "update_demand_forecast",
+      "description": "Submits the adjusted demand forecast values for the upcoming four periods to the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "product_id": {
+            "type": "string",
+            "description": "The unique identifier for the product line."
+          },
+          "new_forecast_values": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            },
+            "description": "The adjusted 4-period demand values."
+          },
+          "adjustment_notes": {
+            "type": "string",
+            "description": "Brief explanation of factors applied (e.g., volumetric factor, lead time delay)."
+          }
+        },
+        "required": [
+          "product_id",
+          "new_forecast_values"
+        ]
+      },
+      "example_output": {
+        "status": "success",
+        "updated_at": "2023-10-27T10:00:00Z"
+      }
+    }
+  ],
+  "state_description": {
+    "current_forecast_values": "A sequence of predicted demand units for the next N time periods.",
+    "historical_actual_demand": "The actual demand recorded in previous time periods for baseline comparison.",
+    "inventory_on_hand": "The current number of physical units available in the warehouse.",
+    "active_market_factors": "A list of current environmental conditions affecting demand (e.g., 'holiday_season', 'competitor_promo').",
+    "forecast_error_metric": "The calculated Mean Absolute Percentage Error (MAPE) from the previous period."
+  },
+  "task_initial_state": {
+    "current_forecast_values": [
+      250,
+      250,
+      250,
+      250
+    ],
+    "historical_actual_demand": [
+      245,
+      255,
+      250,
+      248
+    ],
+    "inventory_on_hand": 410,
+    "active_market_factors": [
+      "Gateway_Delta_Strike_Active",
+      "IPI_Embargo_Route_Alpha",
+      "TRI_Exceeds_Threshold_22pct",
+      "Distressed_High_Cube_Retail_Category"
+    ],
+    "forecast_error_metric": 0.055
+  }
+}

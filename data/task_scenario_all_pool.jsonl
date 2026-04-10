@@ -1,0 +1,100 @@
+{"category": "Business & Enterprise", "domain": "Human Resources", "task_scenario_name": "Candidate Resume Screening"}
+{"category": "Business & Enterprise", "domain": "Human Resources", "task_scenario_name": "Employee Onboarding Workflow"}
+{"category": "Business & Enterprise", "domain": "Finance", "task_scenario_name": "Expense Report Auditing"}
+{"category": "Business & Enterprise", "domain": "Finance", "task_scenario_name": "Credit Card Fraud Investigation"}
+{"category": "Business & Enterprise", "domain": "Finance", "task_scenario_name": "Dynamic Portfolio Rebalancing"}
+{"category": "Business & Enterprise", "domain": "Legal", "task_scenario_name": "NDA Contract Review"}
+{"category": "Business & Enterprise", "domain": "Legal", "task_scenario_name": "Contract Due Diligence"}
+{"category": "Business & Enterprise", "domain": "Administration", "task_scenario_name": "Meeting Room Scheduling"}
+{"category": "Business & Enterprise", "domain": "Banking", "task_scenario_name": "Loan Risk Assessment"}
+{"category": "Business & Enterprise", "domain": "Banking", "task_scenario_name": "Anti-Money Laundering Alert Review"}
+{"category": "Business & Enterprise", "domain": "Insurance", "task_scenario_name": "Insurance Claim Adjudication"}
+{"category": "Business & Enterprise", "domain": "Insurance", "task_scenario_name": "Policy Underwriting Review"}
+{"category": "Business & Enterprise", "domain": "Real Estate", "task_scenario_name": "Property Valuation Assessment"}
+{"category": "Business & Enterprise", "domain": "Real Estate", "task_scenario_name": "Tenant Lease Renewal Processing"}
+{"category": "Business & Enterprise", "domain": "Accounting", "task_scenario_name": "General Ledger Reconciliation"}
+{"category": "Business & Enterprise", "domain": "Project Management", "task_scenario_name": "Sprint Backlog Prioritization"}
+{"category": "Business & Enterprise", "domain": "Customer Support", "task_scenario_name": "Escalation Workflow Management"}
+{"category": "Business & Enterprise", "domain": "Compliance", "task_scenario_name": "GDPR Data Deletion Request Processing"}
+{"category": "Business & Enterprise", "domain": "Compliance", "task_scenario_name": "Regulatory Filing Submission"}
+{"category": "Technology & IT", "domain": "DevOps", "task_scenario_name": "Linux Server Troubleshooting"}
+{"category": "Technology & IT", "domain": "DevOps", "task_scenario_name": "CI/CD Pipeline Failure Recovery"}
+{"category": "Technology & IT", "domain": "Software Engineering", "task_scenario_name": "Python Script Debugging"}
+{"category": "Technology & IT", "domain": "Software Engineering", "task_scenario_name": "Git Merge Conflict Resolution"}
+{"category": "Technology & IT", "domain": "Database", "task_scenario_name": "SQL Query Optimization"}
+{"category": "Technology & IT", "domain": "Database", "task_scenario_name": "Database Migration Rollback"}
+{"category": "Technology & IT", "domain": "Cybersecurity", "task_scenario_name": "Network Intrusion Response"}
+{"category": "Technology & IT", "domain": "Cybersecurity", "task_scenario_name": "Firewall Policy Configuration"}
+{"category": "Technology & IT", "domain": "Cloud Computing", "task_scenario_name": "Cloud Infrastructure Provisioning"}
+{"category": "Technology & IT", "domain": "Cloud Computing", "task_scenario_name": "Kubernetes Pod Autoscaling"}
+{"category": "Technology & IT", "domain": "Telecommunications", "task_scenario_name": "Network Capacity Planning"}
+{"category": "Technology & IT", "domain": "Telecommunications", "task_scenario_name": "Customer Service Ticket Routing"}
+{"category": "Technology & IT", "domain": "Smart Home", "task_scenario_name": "Home Energy Consumption Optimization"}
+{"category": "Technology & IT", "domain": "Smart Home", "task_scenario_name": "Multi-Device Scene Configuration"}
+{"category": "Technology & IT", "domain": "Robotics", "task_scenario_name": "Warehouse Robot Task Assignment"}
+{"category": "Technology & IT", "domain": "Warehouse Automation", "task_scenario_name": "Automated Storage Retrieval Scheduling"}
+{"category": "Healthcare & Life Sciences", "domain": "Healthcare", "task_scenario_name": "Emergency Department Triage"}
+{"category": "Healthcare & Life Sciences", "domain": "Healthcare", "task_scenario_name": "Clinical Diagnostic Reasoning"}
+{"category": "Healthcare & Life Sciences", "domain": "Healthcare", "task_scenario_name": "Pharmacy Prescription Verification"}
+{"category": "Healthcare & Life Sciences", "domain": "Pharmaceutical", "task_scenario_name": "Drug Interaction Screening"}
+{"category": "Healthcare & Life Sciences", "domain": "Pharmaceutical", "task_scenario_name": "Clinical Trial Eligibility Matching"}
+{"category": "Healthcare & Life Sciences", "domain": "Veterinary", "task_scenario_name": "Animal Patient Triage"}
+{"category": "Healthcare & Life Sciences", "domain": "Dental", "task_scenario_name": "Treatment Plan Sequencing"}
+{"category": "Industrial & Engineering", "domain": "Manufacturing", "task_scenario_name": "Factory Production Scheduling"}
+{"category": "Industrial & Engineering", "domain": "Manufacturing", "task_scenario_name": "Quality Defect Root Cause Analysis"}
+{"category": "Industrial & Engineering", "domain": "Energy", "task_scenario_name": "Power Grid Load Balancing"}
+{"category": "Industrial & Engineering", "domain": "Energy", "task_scenario_name": "Renewable Energy Dispatch Optimization"}
+{"category": "Industrial & Engineering", "domain": "Construction", "task_scenario_name": "Building Inspection Compliance"}
+{"category": "Industrial & Engineering", "domain": "Construction", "task_scenario_name": "Project Resource Allocation"}
+{"category": "Industrial & Engineering", "domain": "Mining", "task_scenario_name": "Mine Ventilation Control"}
+{"category": "Industrial & Engineering", "domain": "Oil and Gas", "task_scenario_name": "Pipeline Pressure Anomaly Response"}
+{"category": "Industrial & Engineering", "domain": "Chemical Engineering", "task_scenario_name": "Batch Reactor Process Control"}
+{"category": "Industrial & Engineering", "domain": "Nuclear", "task_scenario_name": "Reactor Safety Parameter Monitoring"}
+{"category": "Industrial & Engineering", "domain": "Automotive", "task_scenario_name": "Vehicle Diagnostic Troubleshooting"}
+{"category": "Industrial & Engineering", "domain": "Automotive", "task_scenario_name": "Autonomous Driving Scenario Planning"}
+{"category": "Transportation & Logistics", "domain": "Logistics", "task_scenario_name": "Last-Mile Delivery Routing"}
+{"category": "Transportation & Logistics", "domain": "Logistics", "task_scenario_name": "Warehouse Order Fulfillment"}
+{"category": "Transportation & Logistics", "domain": "Supply Chain", "task_scenario_name": "Supplier Evaluation Scoring"}
+{"category": "Transportation & Logistics", "domain": "Supply Chain", "task_scenario_name": "Demand Forecast Adjustment"}
+{"category": "Transportation & Logistics", "domain": "Transportation", "task_scenario_name": "Urban Traffic Signal Control"}
+{"category": "Transportation & Logistics", "domain": "Transportation", "task_scenario_name": "Public Transit Schedule Recovery"}
+{"category": "Transportation & Logistics", "domain": "Air Traffic Control", "task_scenario_name": "Runway Arrival Sequencing"}
+{"category": "Transportation & Logistics", "domain": "Maritime", "task_scenario_name": "Ship Cargo Loading Optimization"}
+{"category": "Transportation & Logistics", "domain": "Rail Operations", "task_scenario_name": "Train Dispatch Conflict Resolution"}
+{"category": "Transportation & Logistics", "domain": "Aviation Maintenance", "task_scenario_name": "Aircraft Component Inspection"}
+{"category": "Transportation & Logistics", "domain": "Space Operations", "task_scenario_name": "Satellite Orbit Correction Planning"}
+{"category": "Public Service & Governance", "domain": "Government", "task_scenario_name": "Permit Application Processing"}
+{"category": "Public Service & Governance", "domain": "Government", "task_scenario_name": "Tax Return Verification"}
+{"category": "Public Service & Governance", "domain": "Customs", "task_scenario_name": "Import Declaration Review"}
+{"category": "Public Service & Governance", "domain": "Election", "task_scenario_name": "Ballot Counting Discrepancy Resolution"}
+{"category": "Public Service & Governance", "domain": "Urban Planning", "task_scenario_name": "Zoning Variance Application Review"}
+{"category": "Public Service & Governance", "domain": "Disaster Management", "task_scenario_name": "Wildfire Evacuation Coordination"}
+{"category": "Public Service & Governance", "domain": "Emergency Response", "task_scenario_name": "Search and Rescue Mission Coordination"}
+{"category": "Commerce & Consumer", "domain": "E-commerce", "task_scenario_name": "Order Return Authorization"}
+{"category": "Commerce & Consumer", "domain": "E-commerce", "task_scenario_name": "Product Listing Moderation"}
+{"category": "Commerce & Consumer", "domain": "Retail", "task_scenario_name": "Retail Inventory Synchronization"}
+{"category": "Commerce & Consumer", "domain": "Retail", "task_scenario_name": "Dynamic Pricing Adjustment"}
+{"category": "Commerce & Consumer", "domain": "Hospitality", "task_scenario_name": "Hotel Room Revenue Management"}
+{"category": "Commerce & Consumer", "domain": "Hospitality", "task_scenario_name": "Restaurant Table Reservation Optimization"}
+{"category": "Commerce & Consumer", "domain": "Travel", "task_scenario_name": "Travel Itinerary Planning"}
+{"category": "Commerce & Consumer", "domain": "Travel", "task_scenario_name": "Flight Disruption Rebooking"}
+{"category": "Commerce & Consumer", "domain": "Food Safety", "task_scenario_name": "Food Recall Traceability"}
+{"category": "Science & Research", "domain": "Research", "task_scenario_name": "Academic Literature Review"}
+{"category": "Science & Research", "domain": "Research", "task_scenario_name": "Experiment Protocol Design"}
+{"category": "Science & Research", "domain": "Astronomy", "task_scenario_name": "Telescope Observation Scheduling"}
+{"category": "Science & Research", "domain": "Archaeology", "task_scenario_name": "Excavation Site Grid Assignment"}
+{"category": "Agriculture & Environment", "domain": "Agriculture", "task_scenario_name": "Greenhouse Irrigation Control"}
+{"category": "Agriculture & Environment", "domain": "Agriculture", "task_scenario_name": "Crop Disease Diagnosis"}
+{"category": "Agriculture & Environment", "domain": "Environmental", "task_scenario_name": "Air Quality Alert Response"}
+{"category": "Agriculture & Environment", "domain": "Environmental", "task_scenario_name": "Wastewater Treatment Optimization"}
+{"category": "Agriculture & Environment", "domain": "Aquaculture", "task_scenario_name": "Fish Farm Water Quality Control"}
+{"category": "Agriculture & Environment", "domain": "Forestry", "task_scenario_name": "Timber Harvest Planning"}
+{"category": "Agriculture & Environment", "domain": "Wildlife Conservation", "task_scenario_name": "Endangered Species Monitoring"}
+{"category": "Education & Culture", "domain": "Education", "task_scenario_name": "Student Grade Reporting"}
+{"category": "Education & Culture", "domain": "Education", "task_scenario_name": "Adaptive Curriculum Sequencing"}
+{"category": "Education & Culture", "domain": "Library", "task_scenario_name": "Library Catalog Search and Reservation"}
+{"category": "Education & Culture", "domain": "Journalism", "task_scenario_name": "News Source Fact Checking"}
+{"category": "Education & Culture", "domain": "Journalism", "task_scenario_name": "Breaking News Prioritization"}
+{"category": "Education & Culture", "domain": "Sports", "task_scenario_name": "Game Strategy Simulation"}
+{"category": "Education & Culture", "domain": "Media", "task_scenario_name": "Content Recommendation Curation"}
+{"category": "Education & Culture", "domain": "Music Production", "task_scenario_name": "Audio Mixing Session Management"}

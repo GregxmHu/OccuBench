@@ -1,0 +1,75 @@
+{
+  "environment_name": "env_c8f80f53b359",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: Based on the current internal state $s_t$ and the action $a_t$ performed by the Agent, your task is to simulate the internal evolution of the Greenhouse Irrigation Control environment and predict the resulting observation $o_{{t+1}}$ for the Agent. \n- **Emphasis**: You are a simulator. You do not execute real-world hardware commands; you calculate state transitions (e.g., how soil moisture rises when a valve is open) and provide the sensory output defined by the action functions.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions must maintain strict context consistency. Each state transition must be logically derived from the previous state and the impact of the Agent's actions (e.g., evaporation over time vs. moisture gain from irrigation).\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. You must parse this JSON to determine the evolution of the environment. The format will be:\n- `\"name\"`: The specific irrigation control action (e.g., `open_valve`, `read_moisture`).\n- `\"arguments\"`: Parameters for the action.\n\nExample:\n```json\n{{\n \"name\": \"irrigate\",\n \"arguments\": {{\n    \"duration_seconds\": 30,\n    \"zone\": \"A1\"\n  }}\n}}\n```\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\n- If an action refers to an empty water tank, return an error observation: `{{\"error\": \"Insufficient water in tank\"}}`.\n- If an action is called with invalid parameters, return: `{{\"error\": \"Invalid arguments for action X\"}}`.\n- Do not fabricate data or exit the JSON format.\n\n##### Output Assembly\nFor every action call, you must return a structured JSON object containing **ONLY** the return fields declared in the action function's definition. \n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, `new_state`, or hidden variables like the exact internal tank volume unless the action explicitly returns it. You maintain the state internally through the conversation history. Only expose the Observation defined in the action schema.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to specified JSON and text formats.\n- **Factuality**: Do not fabricate non-existent sensors or control functions.\n- **Consistency**: Soil moisture cannot increase without a valve being open; water tank levels must decrease proportionally to irrigation duration.\n- **Realism**: Simulate realistic greenhouse dynamics (e.g., high temperatures increase evaporation rates).\n- **Quality**: Ensure all simulated readings are precise and structurally complete.\n- **Encapsulation**: Strictly hide the internal state structure from the output. Only expose information explicitly returned by the action function.\n{{initial_state}}: {{\n  \"soil_moisture_percent\": 45.0,\n  \"ambient_temperature_celsius\": 30.0,\n  \"water_tank_liters\": 450.0,\n  \"valve_is_open\": false,\n  \"system_runtime_minutes\": 0\n}}\n{{state_descriptions}}: {{\n  \"soil_moisture_percent\": \"Current moisture level in the soil as a percentage (0-100).\",\n  \"ambient_temperature_celsius\": \"The air temperature inside the greenhouse.\",\n  \"water_tank_liters\": \"The volume of water remaining in the supply tank.\",\n  \"valve_is_open\": \"The current status of the irrigation valve (true for open, false for closed).\",\n  \"system_runtime_minutes\": \"Total elapsed time of the simulation in minutes.\"\n}}\n{action_set_definitions}: {\n  \"get_system_state\": {\n    \"description\": \"Retrieves the current values for soil moisture, ambient temperature, remaining water in the tank, valve status, and total system runtime.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"soil_moisture_percent\": 55.0,\n      \"ambient_temperature_celsius\": 30.0,\n      \"water_tank_liters\": 100.0,\n      \"valve_is_open\": false,\n      \"system_runtime_minutes\": 0\n    }\n  },\n  \"set_valve_state\": {\n    \"description\": \"Changes the irrigation valve to either 'open' or 'closed'.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"open\": {\n          \"type\": \"boolean\",\n          \"description\": \"True to open the valve, False to close it.\"\n        }\n      },\n      \"required\": [\n        \"open\"\n      ]\n    },\n    \"example_output\": {\n      \"success\": true,\n      \"current_valve_is_open\": true\n    }\n  },\n  \"skip_time\": {\n    \"description\": \"Advances the simulation clock by a specific number of minutes. Use this to wait for moisture levels to change.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"minutes\": {\n          \"type\": \"integer\",\n          \"description\": \"Number of minutes to advance (minimum 1).\"\n        }\n      },\n      \"required\": [\n        \"minutes\"\n      ]\n    },\n    \"example_output\": {\n      \"new_runtime\": 5\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_system_state",
+      "description": "Retrieves the current values for soil moisture, ambient temperature, remaining water in the tank, valve status, and total system runtime.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "soil_moisture_percent": 55.0,
+        "ambient_temperature_celsius": 30.0,
+        "water_tank_liters": 100.0,
+        "valve_is_open": false,
+        "system_runtime_minutes": 0
+      }
+    },
+    {
+      "name": "set_valve_state",
+      "description": "Changes the irrigation valve to either 'open' or 'closed'.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "open": {
+            "type": "boolean",
+            "description": "True to open the valve, False to close it."
+          }
+        },
+        "required": [
+          "open"
+        ]
+      },
+      "example_output": {
+        "success": true,
+        "current_valve_is_open": true
+      }
+    },
+    {
+      "name": "skip_time",
+      "description": "Advances the simulation clock by a specific number of minutes. Use this to wait for moisture levels to change.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "minutes": {
+            "type": "integer",
+            "description": "Number of minutes to advance (minimum 1)."
+          }
+        },
+        "required": [
+          "minutes"
+        ]
+      },
+      "example_output": {
+        "new_runtime": 5
+      }
+    }
+  ],
+  "state_description": {
+    "soil_moisture_percent": "Current moisture level in the soil as a percentage (0-100).",
+    "ambient_temperature_celsius": "The air temperature inside the greenhouse.",
+    "water_tank_liters": "The volume of water remaining in the supply tank.",
+    "valve_is_open": "The current status of the irrigation valve (true for open, false for closed).",
+    "system_runtime_minutes": "Total elapsed time of the simulation in minutes."
+  },
+  "task_initial_state": {
+    "soil_moisture_percent": 45.0,
+    "ambient_temperature_celsius": 30.0,
+    "water_tank_liters": 450.0,
+    "valve_is_open": false,
+    "system_runtime_minutes": 0
+  }
+}

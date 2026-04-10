@@ -1,0 +1,176 @@
+{
+  "environment_name": "env_319adff0090f",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: You are the internal engine simulating an Animal Patient Triage environment. Based on the current internal state $s_t$ and the action $a_t$ executed by the Agent (triage officer/veterinarian), you must simulate the physiological and environmental evolution and predict the observation $o_{{t+1}}$ obtained by the Agent.\n- **Emphasis**: You do not perform the triage yourself; you calculate how the animal patients respond to actions and how the clinic environment changes. You generate the sensory feedback and diagnostic results the Agent would see.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation tracking the physiological status of animal patients and clinic resources. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nYou must maintain perfect continuity of the patients' medical conditions, the progression of time, and the exhaustion of medical supplies throughout the interaction history. If a patient's vitals are deteriorating, they must continue to worsen unless a corrective action is taken.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object containing:\n- `\"name\"`: The name of the triage or diagnostic action.\n- The specific parameters (e.g., `patient_id`, `medication_type`).\n\nExample:\n```json\n{{\n \"name\": \"measure_vitals\",\n \"arguments\": {{\n    \"patient_id\": \"A742\",\n    \"vitals_type\": [\"heart_rate\", \"spo2\"]\n  }}\n}}\n```\nYou must parse this, update the internal state of the patient, and generate the resulting clinical observation.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\n- If the Agent attempts to treat a non-existent `patient_id`, return `{{\"error\": \"Patient ID not found\"}}`.\n- If an action requires supplies that are exhausted in the internal state, return an error indicating lack of resources.\n- Do not fabricate clinical data that contradicts the patient's species or initial condition.\n\n##### Output Assembly\nFor every action function call, you must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition.\n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, the `new_state`, or any hidden physiological variables. The Agent must only see the specific clinical observations (the Observation) resulting from their action. Do not output the updated state dictionary.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to JSON for all observations and errors.\n- **Factuality**: Medical outcomes must reflect the biological reality of the species (e.g., normal heart rates for dogs vs. cats vs. birds).\n- **Consistency**: If a patient is stabilized, subsequent observations must reflect that stability until a new event occurs.\n- **Realism**: Simulate realistic time progression and urgency. Critical patients should deteriorate if ignored.\n- **Encapsulation**: Hide the \"internal mechanics\" of the patient's health score. Only provide the symptoms or vital signs requested.\n{{initial_state}}: {{\n  \"patients\": {{\n    \"F-221\": {{\n      \"species\": \"Canine (Beagle)\",\n      \"vitals\": {{\n        \"heart_rate\": 0,\n        \"respiratory_rate\": 0,\n        \"temp\": 99.1,\n        \"etco2\": 0\n      }},\n      \"symptoms\": [\n        \"lateral recumbency\",\n        \"apnea\",\n        \"absence of palpable femoral pulse\",\n        \"ECG monitor displaying 'SIGNAL ERROR: CHECK ELECTRODES'\"\n      ],\n      \"code_status\": \"Green\",\n      \"hidden_health_stability\": 5\n    }}\n  }},\n  \"clinic_resources\": {{\n    \"oxygen_units\": 100,\n    \"trauma_kits\": 5,\n    \"defibrillator_status\": \"ready\",\n    \"epinephrine_vials\": 10\n  }},\n  \"triage_queue\": [\n    \"F-221\"\n  ],\n  \"current_time\": \"11:05\"\n}}\n{{state_descriptions}}: {{\n  \"patients\": \"A dictionary where keys are patient IDs and values are objects containing species, vitals (heart_rate, respiratory_rate, temp), symptoms, and hidden health_stability scores.\",\n  \"clinic_resources\": \"Available medical supplies such as 'oxygen', 'bandages', and 'epinephrine' levels.\",\n  \"triage_queue\": \"List of patient IDs ordered by arrival time.\",\n  \"current_time\": \"Simulated time in the clinic (HH:MM).\"\n}}\n{action_set_definitions}: {\n  \"get_patient_details\": {\n    \"description\": \"Retrieves the clinical record for a specific patient ID, including species, current vitals, and documented symptoms.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"patient_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the patient (e.g., 'F-221').\"\n        }\n      },\n      \"required\": [\n        \"patient_id\"\n      ]\n    },\n    \"example_output\": {\n      \"species\": \"canine\",\n      \"vitals\": {\n        \"heart_rate\": 0,\n        \"respiratory_rate\": 0,\n        \"temp\": \"37.5C\"\n      },\n      \"symptoms\": [\n        \"collapsed\",\n        \"pulseless\"\n      ]\n    }\n  },\n  \"scan_clinic_inventory\": {\n    \"description\": \"Returns the current levels of available medical supplies and medications in the clinic.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {}\n    },\n    \"example_output\": {\n      \"oxygen\": \"high\",\n      \"epinephrine\": 15,\n      \"atropine\": 5,\n      \"defibrillator_charged\": true\n    }\n  },\n  \"get_current_clinic_time\": {\n    \"description\": \"Retrieves the current simulated time to track the duration of medical interventions and cycles.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {}\n    },\n    \"example_output\": {\n      \"current_time\": \"14:30\"\n    }\n  },\n  \"perform_cpr_cycle\": {\n    \"description\": \"Executes a standardized 2-minute cycle of chest compressions and ventilation as per RECOVER guidelines.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"patient_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the patient receiving CPR.\"\n        },\n        \"ventilation_type\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"room_air\",\n            \"oxygen\"\n          ],\n          \"description\": \"The source of ventilation used during the cycle.\"\n        }\n      },\n      \"required\": [\n        \"patient_id\",\n        \"ventilation_type\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"completed\",\n      \"duration_minutes\": 2\n    }\n  },\n  \"administer_medication\": {\n    \"description\": \"Administers a specified dose of medication to a patient.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"patient_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the patient.\"\n        },\n        \"medication_name\": {\n          \"type\": \"string\",\n          \"description\": \"Name of the drug (e.g., 'epinephrine').\"\n        },\n        \"dose_amount\": {\n          \"type\": \"string\",\n          \"description\": \"The quantity or dosage level to be administered.\"\n        }\n      },\n      \"required\": [\n        \"patient_id\",\n        \"medication_name\",\n        \"dose_amount\"\n      ]\n    },\n    \"example_output\": {\n      \"administration_status\": \"success\",\n      \"timestamp\": \"14:32\"\n    }\n  },\n  \"assess_cardiac_monitoring\": {\n    \"description\": \"Reads the patient's current heart rhythm and End-Tidal CO2 (EtCO2) levels from the monitor.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"patient_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the patient being monitored.\"\n        }\n      },\n      \"required\": [\n        \"patient_id\"\n      ]\n    },\n    \"example_output\": {\n      \"heart_rhythm\": \"VF\",\n      \"etco2\": 12,\n      \"is_sustained\": false\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_patient_details",
+      "description": "Retrieves the clinical record for a specific patient ID, including species, current vitals, and documented symptoms.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "patient_id": {
+            "type": "string",
+            "description": "The unique identifier for the patient (e.g., 'F-221')."
+          }
+        },
+        "required": [
+          "patient_id"
+        ]
+      },
+      "example_output": {
+        "species": "canine",
+        "vitals": {
+          "heart_rate": 0,
+          "respiratory_rate": 0,
+          "temp": "37.5C"
+        },
+        "symptoms": [
+          "collapsed",
+          "pulseless"
+        ]
+      }
+    },
+    {
+      "name": "scan_clinic_inventory",
+      "description": "Returns the current levels of available medical supplies and medications in the clinic.",
+      "parameters": {
+        "type": "object",
+        "properties": {}
+      },
+      "example_output": {
+        "oxygen": "high",
+        "epinephrine": 15,
+        "atropine": 5,
+        "defibrillator_charged": true
+      }
+    },
+    {
+      "name": "get_current_clinic_time",
+      "description": "Retrieves the current simulated time to track the duration of medical interventions and cycles.",
+      "parameters": {
+        "type": "object",
+        "properties": {}
+      },
+      "example_output": {
+        "current_time": "14:30"
+      }
+    },
+    {
+      "name": "perform_cpr_cycle",
+      "description": "Executes a standardized 2-minute cycle of chest compressions and ventilation as per RECOVER guidelines.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "patient_id": {
+            "type": "string",
+            "description": "The ID of the patient receiving CPR."
+          },
+          "ventilation_type": {
+            "type": "string",
+            "enum": [
+              "room_air",
+              "oxygen"
+            ],
+            "description": "The source of ventilation used during the cycle."
+          }
+        },
+        "required": [
+          "patient_id",
+          "ventilation_type"
+        ]
+      },
+      "example_output": {
+        "status": "completed",
+        "duration_minutes": 2
+      }
+    },
+    {
+      "name": "administer_medication",
+      "description": "Administers a specified dose of medication to a patient.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "patient_id": {
+            "type": "string",
+            "description": "The ID of the patient."
+          },
+          "medication_name": {
+            "type": "string",
+            "description": "Name of the drug (e.g., 'epinephrine')."
+          },
+          "dose_amount": {
+            "type": "string",
+            "description": "The quantity or dosage level to be administered."
+          }
+        },
+        "required": [
+          "patient_id",
+          "medication_name",
+          "dose_amount"
+        ]
+      },
+      "example_output": {
+        "administration_status": "success",
+        "timestamp": "14:32"
+      }
+    },
+    {
+      "name": "assess_cardiac_monitoring",
+      "description": "Reads the patient's current heart rhythm and End-Tidal CO2 (EtCO2) levels from the monitor.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "patient_id": {
+            "type": "string",
+            "description": "The ID of the patient being monitored."
+          }
+        },
+        "required": [
+          "patient_id"
+        ]
+      },
+      "example_output": {
+        "heart_rhythm": "VF",
+        "etco2": 12,
+        "is_sustained": false
+      }
+    }
+  ],
+  "state_description": {
+    "patients": "A dictionary where keys are patient IDs and values are objects containing species, vitals (heart_rate, respiratory_rate, temp), symptoms, and hidden health_stability scores.",
+    "clinic_resources": "Available medical supplies such as 'oxygen', 'bandages', and 'epinephrine' levels.",
+    "triage_queue": "List of patient IDs ordered by arrival time.",
+    "current_time": "Simulated time in the clinic (HH:MM)."
+  },
+  "task_initial_state": {
+    "patients": {
+      "F-221": {
+        "species": "Canine (Beagle)",
+        "vitals": {
+          "heart_rate": 0,
+          "respiratory_rate": 0,
+          "temp": 99.1,
+          "etco2": 0
+        },
+        "symptoms": [
+          "lateral recumbency",
+          "apnea",
+          "absence of palpable femoral pulse",
+          "ECG monitor displaying 'SIGNAL ERROR: CHECK ELECTRODES'"
+        ],
+        "code_status": "Green",
+        "hidden_health_stability": 5
+      }
+    },
+    "clinic_resources": {
+      "oxygen_units": 100,
+      "trauma_kits": 5,
+      "defibrillator_status": "ready",
+      "epinephrine_vials": 10
+    },
+    "triage_queue": [
+      "F-221"
+    ],
+    "current_time": "11:05"
+  }
+}

@@ -1,0 +1,155 @@
+{
+  "environment_name": "env_baae62a10f06",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: Based on the current state $s_t$ and the action $a_t$ taken by the Agent, simulate the internal evolution of the Restaurant Table Reservation environment and predict the resulting observation $o_{{t+1}}$.\n- **Emphasis**: You are the simulation engine. You do not provide advice or execute real-world bookings. Your responsibility is to maintain the logical consistency of table availability, reservation conflicts, and guest flows, then return the specific observation resulting from an action.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation to track table occupancy and guest schedules. The initial state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nYou must maintain perfect continuity. Every action executed affects the internal state (e.g., booking a table changes its status for a specific time slot). Subsequent observations must reflect all prior successful actions and the passage of simulated time.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the restaurant system by calling the following action functions:\n```json\n{{action_set_definitions}}\n```\nThe `observation` returned for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. You must parse this JSON to determine the transition.\n\nExample Input:\n```json\n{{\n \"name\": \"reserve_table\",\n \"arguments\": {{\n    \"customer_name\": \"John Doe\",\n    \"party_size\": 4,\n    \"start_time\": \"19:00\"\n  }}\n}}\n```\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nSimulate realistic constraints and return structured errors for exceptions:\n- **Capacity Constraints**: If a party size exceeds available table capacities, return an error or a 'no availability' status.\n- **Double Booking**: If a table is already occupied or reserved for the requested slot, the action must fail with a descriptive JSON error.\n- **Invalid Inputs**: For non-existent action names or missing parameters, return: `{{\"error\": \"Invalid action or missing arguments\"}}`.\n- **Logic Conflicts**: If an Agent tries to 'seat' a party that has no reservation, return a state-logic error.\n\n##### Output Assembly\nFor every action function call, you must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition (the Observation).\n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state, the `new_state`, or any metadata about how the state was updated. You are an API; the Agent only sees the result of the call, not the database behind it.\n\n### 4. Key Principles\n- **Format**: Strictly output only the observation JSON.\n- **Factuality**: Reservation outcomes must strictly follow the rules of the restaurant's capacity and schedule.\n- **Consistency**: If a table is marked as 'Occupied' in $s_t$, it cannot be 'Available' in $s_{{t+1}}$ unless a 'clear_table' or 'checkout' action occurs.\n- **Realism**: Simulate realistic restaurant dynamics, such as buffer times between reservations and party size matching.\n- **Encapsulation**: Never reveal the underlying state JSON structure in your response. Only provide the defined observation fields.\n{{initial_state}}: {{\n  \"tables\": [\n    {{\n      \"id\": \"T1\",\n      \"capacity\": 4,\n      \"status\": \"reserved\"\n    }},\n    {{\n      \"id\": \"T2\",\n      \"capacity\": 2,\n      \"status\": \"reserved\"\n    }},\n    {{\n      \"id\": \"T3\",\n      \"capacity\": 2,\n      \"status\": \"occupied\"\n    }},\n    {{\n      \"id\": \"T4\",\n      \"capacity\": 2,\n      \"status\": \"occupied\"\n    }}\n  ],\n  \"active_reservations\": [\n    {{\n      \"guest_name\": \"Miller\",\n      \"party_size\": 4,\n      \"table_id\": \"T1\",\n      \"time_slot\": \"19:00\"\n    }},\n    {{\n      \"guest_name\": \"Davis\",\n      \"party_size\": 2,\n      \"table_id\": \"T2\",\n      \"time_slot\": \"19:15\"\n    }}\n  ],\n  \"current_simulated_time\": \"19:15\",\n  \"waitlist\": [\n    {{\n      \"name\": \"Veblen\",\n      \"party_size\": 2\n    }},\n    {{\n      \"name\": \"Smith\",\n      \"party_size\": 2\n    }},\n    {{\n      \"name\": \"Garcia\",\n      \"party_size\": 2\n    }}\n  ],\n  \"restaurant_status\": \"open\"\n}}\n{{state_descriptions}}: {{\n  \"tables\": \"A list of all physical tables in the restaurant, including their unique ID, seating capacity, and current status (e.g., 'available', 'occupied', 'reserved').\",\n  \"active_reservations\": \"A registry of confirmed bookings containing guest names, party sizes, assigned table IDs, and time slots.\",\n  \"current_simulated_time\": \"The current time within the simulation (24-hour format HH:MM).\",\n  \"waitlist\": \"A queue of parties waiting for a table to become available when the restaurant is at full capacity.\",\n  \"restaurant_status\": \"The overall status of the restaurant (e.g., 'open', 'closed', 'fully_booked').\"\n}}\n{action_set_definitions}: {\n  \"get_restaurant_snapshot\": {\n    \"description\": \"Retrieves the complete current state of the restaurant environment, including table statuses, active reservations, the waitlist, and the current simulated time.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"current_simulated_time\": \"19:15\",\n      \"restaurant_status\": \"open\",\n      \"tables\": [\n        {\n          \"id\": \"T1\",\n          \"capacity\": 4,\n          \"status\": \"reserved\"\n        }\n      ],\n      \"active_reservations\": [\n        {\n          \"reservation_id\": \"RES_001\",\n          \"guest_name\": \"Doe\",\n          \"party_size\": 4,\n          \"table_id\": \"T1\",\n          \"time\": \"18:30\"\n        }\n      ],\n      \"waitlist\": [\n        {\n          \"party_name\": \"Veblen\",\n          \"party_size\": 6\n        }\n      ]\n    }\n  },\n  \"cancel_reservation\": {\n    \"description\": \"Cancels an existing reservation, typically used for no-shows. This action will update the associated table status to 'available'.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"reservation_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier of the reservation to be cancelled.\"\n        }\n      },\n      \"required\": [\n        \"reservation_id\"\n      ]\n    },\n    \"example_output\": {\n      \"success\": true,\n      \"cancelled_reservation_id\": \"RES_001\",\n      \"freed_table_id\": \"T1\"\n    }\n  },\n  \"assign_tables_to_party\": {\n    \"description\": \"Seats a party from the waitlist at one or more tables. Use multiple table IDs to accommodate larger parties through combining tables.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"party_name\": {\n          \"type\": \"string\",\n          \"description\": \"The name of the party from the waitlist.\"\n        },\n        \"table_ids\": {\n          \"type\": \"array\",\n          \"items\": {\n            \"type\": \"string\"\n          },\n          \"description\": \"A list of one or more table IDs to be assigned to this party.\"\n        }\n      },\n      \"required\": [\n        \"party_name\",\n        \"table_ids\"\n      ]\n    },\n    \"example_output\": {\n      \"success\": true,\n      \"seated_party\": \"Veblen\",\n      \"assigned_tables\": [\n        \"T1\",\n        \"T2\"\n      ]\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_restaurant_snapshot",
+      "description": "Retrieves the complete current state of the restaurant environment, including table statuses, active reservations, the waitlist, and the current simulated time.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "current_simulated_time": "19:15",
+        "restaurant_status": "open",
+        "tables": [
+          {
+            "id": "T1",
+            "capacity": 4,
+            "status": "reserved"
+          }
+        ],
+        "active_reservations": [
+          {
+            "reservation_id": "RES_001",
+            "guest_name": "Doe",
+            "party_size": 4,
+            "table_id": "T1",
+            "time": "18:30"
+          }
+        ],
+        "waitlist": [
+          {
+            "party_name": "Veblen",
+            "party_size": 6
+          }
+        ]
+      }
+    },
+    {
+      "name": "cancel_reservation",
+      "description": "Cancels an existing reservation, typically used for no-shows. This action will update the associated table status to 'available'.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "reservation_id": {
+            "type": "string",
+            "description": "The unique identifier of the reservation to be cancelled."
+          }
+        },
+        "required": [
+          "reservation_id"
+        ]
+      },
+      "example_output": {
+        "success": true,
+        "cancelled_reservation_id": "RES_001",
+        "freed_table_id": "T1"
+      }
+    },
+    {
+      "name": "assign_tables_to_party",
+      "description": "Seats a party from the waitlist at one or more tables. Use multiple table IDs to accommodate larger parties through combining tables.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "party_name": {
+            "type": "string",
+            "description": "The name of the party from the waitlist."
+          },
+          "table_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "A list of one or more table IDs to be assigned to this party."
+          }
+        },
+        "required": [
+          "party_name",
+          "table_ids"
+        ]
+      },
+      "example_output": {
+        "success": true,
+        "seated_party": "Veblen",
+        "assigned_tables": [
+          "T1",
+          "T2"
+        ]
+      }
+    }
+  ],
+  "state_description": {
+    "tables": "A list of all physical tables in the restaurant, including their unique ID, seating capacity, and current status (e.g., 'available', 'occupied', 'reserved').",
+    "active_reservations": "A registry of confirmed bookings containing guest names, party sizes, assigned table IDs, and time slots.",
+    "current_simulated_time": "The current time within the simulation (24-hour format HH:MM).",
+    "waitlist": "A queue of parties waiting for a table to become available when the restaurant is at full capacity.",
+    "restaurant_status": "The overall status of the restaurant (e.g., 'open', 'closed', 'fully_booked')."
+  },
+  "task_initial_state": {
+    "tables": [
+      {
+        "id": "T1",
+        "capacity": 4,
+        "status": "reserved"
+      },
+      {
+        "id": "T2",
+        "capacity": 2,
+        "status": "reserved"
+      },
+      {
+        "id": "T3",
+        "capacity": 2,
+        "status": "occupied"
+      },
+      {
+        "id": "T4",
+        "capacity": 2,
+        "status": "occupied"
+      }
+    ],
+    "active_reservations": [
+      {
+        "guest_name": "Miller",
+        "party_size": 4,
+        "table_id": "T1",
+        "time_slot": "19:00"
+      },
+      {
+        "guest_name": "Davis",
+        "party_size": 2,
+        "table_id": "T2",
+        "time_slot": "19:15"
+      }
+    ],
+    "current_simulated_time": "19:15",
+    "waitlist": [
+      {
+        "name": "Veblen",
+        "party_size": 2
+      },
+      {
+        "name": "Smith",
+        "party_size": 2
+      },
+      {
+        "name": "Garcia",
+        "party_size": 2
+      }
+    ],
+    "restaurant_status": "open"
+  }
+}

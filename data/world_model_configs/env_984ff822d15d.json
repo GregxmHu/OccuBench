@@ -1,0 +1,204 @@
+{
+  "environment_name": "env_984ff822d15d",
+  "world_model_system_prompt": "### 1. Role and Objective\n**Role**: Language World Model (LWM)\n**Core Objective**: You are the simulation engine for a Restaurant Table Reservation Optimization environment. Based on the current internal state $s_t$ and the action $a_t$ executed by the Agent, you must simulate the evolution of the restaurant's occupancy, update internal records, and predict the observation $o_{{t+1}}$ received by the Agent. \n**Emphasis**: You do not perform real-world bookings or communications. You are a closed-loop simulator responsible for internal state consistency and generating realistic environment responses.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nYou must maintain the continuity of the restaurant environment. Every action processed affects the internal state (e.g., booking a table changes its availability for a specific time slot). All subsequent observations must reflect the cumulative history of these changes to ensure logical consistency.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the restaurant system by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. You must parse this JSON to determine the intended state transition. \nFormat Example:\n```json\n{{\n \"name\": \"action_name\",\n \"arguments\": {{\n    \"param1\": \"value1\"\n  }}\n}}\n```\nYou must validate that the action exists and that the provided arguments align with the logic of a restaurant (e.g., party size cannot be negative, time must be within business hours).\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\n- **Invalid Actions**: If an action is not defined in the action set, return `{{\"error\": \"Action [name] not found\"}}`.\n- **Logic Violations**: If an Agent tries to book a table that is already occupied or requests a table larger than available capacity, return a structured error (e.g., `{{\"status\": \"failed\", \"reason\": \"table_already_reserved\"}}`).\n- **Parameter Issues**: For missing or malformed arguments, return `{{\"error\": \"Invalid parameters for action [name]\"}}`.\n- **No Fabrication**: Do not invent new tables or customer data not present in the state evolution.\n\n##### Output Assembly\nFor every action function call, you must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition. \n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state $s_t$, the updated state, or any hidden variables like the full list of all table IDs unless specifically requested by an action like `get_all_tables`. The Agent must only see the specific Observation (return values) defined in the action. Do not output the state update process text.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to JSON output for observations.\n- **Factuality**: Simulations must be based on the provided state and action logic.\n- **Consistency**: If a table is reserved at 19:00, it cannot be reserved by another agent at 19:00 unless the first reservation is cancelled.\n- **Realism**: Simulate realistic restaurant dynamics, such as turn-over times and capacity constraints.\n- **Encapsulation**: Strictly hide the internal state structure and the \"backend\" database from the Agent's output. Only expose the specific observation.\n{{initial_state}}: {{\n  \"tables\": [\n    {{\n      \"table_id\": 1,\n      \"capacity\": 2,\n      \"location\": \"main_hall\"\n    }},\n    {{\n      \"table_id\": 2,\n      \"capacity\": 2,\n      \"location\": \"main_hall\"\n    }},\n    {{\n      \"table_id\": 3,\n      \"capacity\": 2,\n      \"location\": \"main_hall\"\n    }},\n    {{\n      \"table_id\": 4,\n      \"capacity\": 2,\n      \"location\": \"main_hall\"\n    }},\n    {{\n      \"table_id\": 5,\n      \"capacity\": 4,\n      \"location\": \"main_hall\"\n    }},\n    {{\n      \"table_id\": 6,\n      \"capacity\": 4,\n      \"location\": \"main_hall\"\n    }},\n    {{\n      \"table_id\": 7,\n      \"capacity\": 4,\n      \"location\": \"main_hall\"\n    }},\n    {{\n      \"table_id\": 8,\n      \"capacity\": 4,\n      \"location\": \"main_hall\"\n    }},\n    {{\n      \"table_id\": 9,\n      \"capacity\": 6,\n      \"location\": \"main_hall\"\n    }},\n    {{\n      \"table_id\": 10,\n      \"capacity\": 20,\n      \"location\": \"private_dining_room\"\n    }}\n  ],\n  \"active_reservations\": [\n    {{\n      \"table_id\": 10,\n      \"customer_name\": \"Goldman Anniversary Party\",\n      \"start_time\": \"2025-05-24T18:00:00\",\n      \"duration\": \"3 hours\"\n    }}\n  ],\n  \"business_hours\": {{\n    \"open\": \"17:00\",\n    \"close\": \"23:00\"\n  }},\n  \"current_system_time\": \"2025-05-20T10:00:00\",\n  \"waiting_list\": []\n}}\n{{state_descriptions}}: {{\n  \"tables\": \"A list of all tables in the restaurant and their fixed properties.\",\n  \"active_reservations\": \"A list of current confirmed bookings containing table_id, customer_name, start_time, and duration.\",\n  \"business_hours\": \"The opening and closing times of the restaurant.\",\n  \"current_system_time\": \"The current simulated time used to validate booking requests.\",\n  \"waiting_list\": \"Customers waiting for a table if the restaurant is at full capacity.\"\n}}\n{action_set_definitions}: {\n  \"get_restaurant_metadata\": {\n    \"description\": \"Retrieves general restaurant operating parameters, including business hours, Large Party Threshold (LPT) policies, and SOPs for semi-private events.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"business_hours\": {\n        \"open\": \"17:00\",\n        \"close\": \"23:00\"\n      },\n      \"lpt_threshold\": 12,\n      \"semi_private_sop\": \"Events displacing >2 tables require specific MDR configuration.\"\n    }\n  },\n  \"get_table_inventory\": {\n    \"description\": \"Returns a comprehensive list of all tables in the restaurant, their room assignment (e.g., MDR, PDR), and their maximum guest capacity.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"tables\": [\n        {\n          \"table_id\": \"T_MDR_01\",\n          \"room\": \"Main Dining Room\",\n          \"capacity\": 6\n        },\n        {\n          \"table_id\": \"T_PDR_01\",\n          \"room\": \"Private Dining Room\",\n          \"capacity\": 20\n        }\n      ]\n    }\n  },\n  \"get_reservations_by_date\": {\n    \"description\": \"Retrieves all bookings (Inquiries, Confirmed, Definite) for a specific date to check for conflicts and retrieve reservation IDs.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"date\": {\n          \"type\": \"string\",\n          \"description\": \"The date in YYYY-MM-DD format.\"\n        }\n      },\n      \"required\": [\n        \"date\"\n      ]\n    },\n    \"example_output\": {\n      \"reservations\": [\n        {\n          \"reservation_id\": \"RES_5542\",\n          \"customer_name\": \"Nebula Systems\",\n          \"status\": \"Inquiry\",\n          \"guests\": 16,\n          \"start_time\": null\n        }\n      ]\n    }\n  },\n  \"update_reservation_record\": {\n    \"description\": \"Updates a reservation's status, assigned tables, seating time, and contract/dietary details in the system.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"reservation_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier of the reservation.\"\n        },\n        \"status\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"Inquiry\",\n            \"Confirmed\",\n            \"Definite\",\n            \"Cancelled\"\n          ],\n          \"description\": \"The new status of the reservation.\"\n        },\n        \"table_ids\": {\n          \"type\": \"array\",\n          \"items\": {\n            \"type\": \"string\"\n          },\n          \"description\": \"List of table IDs assigned to this booking.\"\n        },\n        \"start_time\": {\n          \"type\": \"string\",\n          \"description\": \"The seating time (HH:MM).\"\n        },\n        \"menu_tier\": {\n          \"type\": \"string\",\n          \"description\": \"The selected menu tier (e.g., Tier 2 Prix Fixe).\"\n        },\n        \"fb_minimum\": {\n          \"type\": \"number\",\n          \"description\": \"The agreed Food & Beverage minimum amount.\"\n        },\n        \"dietary_notes\": {\n          \"type\": \"string\",\n          \"description\": \"Documentation of allergies and dietary requirements.\"\n        }\n      },\n      \"required\": [\n        \"reservation_id\",\n        \"status\",\n        \"table_ids\",\n        \"start_time\"\n      ]\n    },\n    \"example_output\": {\n      \"success\": true,\n      \"message\": \"Reservation RES_5542 updated to Definite.\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_restaurant_metadata",
+      "description": "Retrieves general restaurant operating parameters, including business hours, Large Party Threshold (LPT) policies, and SOPs for semi-private events.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "business_hours": {
+          "open": "17:00",
+          "close": "23:00"
+        },
+        "lpt_threshold": 12,
+        "semi_private_sop": "Events displacing >2 tables require specific MDR configuration."
+      }
+    },
+    {
+      "name": "get_table_inventory",
+      "description": "Returns a comprehensive list of all tables in the restaurant, their room assignment (e.g., MDR, PDR), and their maximum guest capacity.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "tables": [
+          {
+            "table_id": "T_MDR_01",
+            "room": "Main Dining Room",
+            "capacity": 6
+          },
+          {
+            "table_id": "T_PDR_01",
+            "room": "Private Dining Room",
+            "capacity": 20
+          }
+        ]
+      }
+    },
+    {
+      "name": "get_reservations_by_date",
+      "description": "Retrieves all bookings (Inquiries, Confirmed, Definite) for a specific date to check for conflicts and retrieve reservation IDs.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string",
+            "description": "The date in YYYY-MM-DD format."
+          }
+        },
+        "required": [
+          "date"
+        ]
+      },
+      "example_output": {
+        "reservations": [
+          {
+            "reservation_id": "RES_5542",
+            "customer_name": "Nebula Systems",
+            "status": "Inquiry",
+            "guests": 16,
+            "start_time": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "update_reservation_record",
+      "description": "Updates a reservation's status, assigned tables, seating time, and contract/dietary details in the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "reservation_id": {
+            "type": "string",
+            "description": "The unique identifier of the reservation."
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "Inquiry",
+              "Confirmed",
+              "Definite",
+              "Cancelled"
+            ],
+            "description": "The new status of the reservation."
+          },
+          "table_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "List of table IDs assigned to this booking."
+          },
+          "start_time": {
+            "type": "string",
+            "description": "The seating time (HH:MM)."
+          },
+          "menu_tier": {
+            "type": "string",
+            "description": "The selected menu tier (e.g., Tier 2 Prix Fixe)."
+          },
+          "fb_minimum": {
+            "type": "number",
+            "description": "The agreed Food & Beverage minimum amount."
+          },
+          "dietary_notes": {
+            "type": "string",
+            "description": "Documentation of allergies and dietary requirements."
+          }
+        },
+        "required": [
+          "reservation_id",
+          "status",
+          "table_ids",
+          "start_time"
+        ]
+      },
+      "example_output": {
+        "success": true,
+        "message": "Reservation RES_5542 updated to Definite."
+      }
+    }
+  ],
+  "state_description": {
+    "tables": "A list of all tables in the restaurant and their fixed properties.",
+    "active_reservations": "A list of current confirmed bookings containing table_id, customer_name, start_time, and duration.",
+    "business_hours": "The opening and closing times of the restaurant.",
+    "current_system_time": "The current simulated time used to validate booking requests.",
+    "waiting_list": "Customers waiting for a table if the restaurant is at full capacity."
+  },
+  "task_initial_state": {
+    "tables": [
+      {
+        "table_id": 1,
+        "capacity": 2,
+        "location": "main_hall"
+      },
+      {
+        "table_id": 2,
+        "capacity": 2,
+        "location": "main_hall"
+      },
+      {
+        "table_id": 3,
+        "capacity": 2,
+        "location": "main_hall"
+      },
+      {
+        "table_id": 4,
+        "capacity": 2,
+        "location": "main_hall"
+      },
+      {
+        "table_id": 5,
+        "capacity": 4,
+        "location": "main_hall"
+      },
+      {
+        "table_id": 6,
+        "capacity": 4,
+        "location": "main_hall"
+      },
+      {
+        "table_id": 7,
+        "capacity": 4,
+        "location": "main_hall"
+      },
+      {
+        "table_id": 8,
+        "capacity": 4,
+        "location": "main_hall"
+      },
+      {
+        "table_id": 9,
+        "capacity": 6,
+        "location": "main_hall"
+      },
+      {
+        "table_id": 10,
+        "capacity": 20,
+        "location": "private_dining_room"
+      }
+    ],
+    "active_reservations": [
+      {
+        "table_id": 10,
+        "customer_name": "Goldman Anniversary Party",
+        "start_time": "2025-05-24T18:00:00",
+        "duration": "3 hours"
+      }
+    ],
+    "business_hours": {
+      "open": "17:00",
+      "close": "23:00"
+    },
+    "current_system_time": "2025-05-20T10:00:00",
+    "waiting_list": []
+  }
+}

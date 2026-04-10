@@ -1,0 +1,142 @@
+{
+  "environment_name": "env_e5e951b8e15a",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: Based on the current state $s_t$ and action $a_t$, simulate the evolution of the Factory Production Scheduling environment and predict the observation $o_{{t+1}}$ obtained by the Agent. \n- **Emphasis**: You are the simulation engine. You do not suggest actions or make decisions; you process the Agent's actions and report the resulting observations while maintaining the internal consistency of the factory's production lines, machine states, and inventory levels.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions must maintain context consistency. Every action progresses the factory's timeline or changes the physical/operational status of the components. You must track machine wear, job progress, and resource consumption accurately over the session.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object with the following fields:\n- `\"name\"`: Specifies the name of the action function to execute.\n- The remaining fields are the parameter names and corresponding values required by that action function.\n\nExample:\n```json\n{{\n \"name\": \"assign_job\",\n \"arguments\": {{\n    \"machine_id\": \"M01\",\n    \"job_id\": \"JOB_2025_001\"\n  }}\n}}\n```\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nIf the Agent attempts an invalid operation—such as assigning a job to a machine currently under maintenance, using a non-existent job ID, or scheduling beyond capacity—return structured error information: `{{\"error\": \"Description of the specific failure\"}}`. Do not fabricate successful outcomes for invalid states.\n\n##### Output Assembly\nFor every action function call, you must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition. \n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, `new_state`, or any hidden variables. You are the environment; the Agent only sees what the sensors or logs report (the Observation). Do not output the state update to the Agent.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to specified JSON and text formats.\n- **Factuality**: Do not fabricate non-existent functions or resources. \n- **Consistency**: Machine status must follow logical transitions (e.g., Idle -> Working -> Finished -> Idle).\n- **Realism**: Simulation must reflect realistic factory dynamics, including processing times and resource constraints.\n- **Quality**: Language must be clear and structurally complete.\n- **Encapsulation**: Strictly hide the internal state structure. Only expose information explicitly returned by the action function.\n{{initial_state}}: {{\n  \"machines\": [\n    {{\n      \"machine_id\": \"M_BOTTLENECK\",\n      \"status\": \"working\",\n      \"current_job\": \"BATCH_PREV\",\n      \"remaining_time\": 5\n    }},\n    {{\n      \"machine_id\": \"M_GATEWAY\",\n      \"status\": \"idle\",\n      \"current_job\": null,\n      \"remaining_time\": 0\n    }}\n  ],\n  \"job_queue\": [\n    {{\n      \"job_id\": \"JOB_PREMIUM_V\",\n      \"priority\": 1,\n      \"required_ticks\": 18,\n      \"material_cost\": 750\n    }},\n    {{\n      \"job_id\": \"JOB_UTILITY_X\",\n      \"priority\": 5,\n      \"required_ticks\": 5,\n      \"material_cost\": 300\n    }}\n  ],\n  \"inventory\": {{\n    \"raw_materials\": 1000,\n    \"finished_goods\": 0\n  }},\n  \"factory_clock\": 2048\n}}\n{{state_descriptions}}: {{\n  \"machines\": \"List of production machines and their current operating status.\",\n  \"job_queue\": \"Pending production jobs waiting to be assigned.\",\n  \"inventory\": \"Current stock of materials and completed products.\",\n  \"factory_clock\": \"Total elapsed time ticks since start.\"\n}}\n{action_set_definitions}: {\n  \"get_factory_clock\": {\n    \"description\": \"Retrieves the current factory time in ticks.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"current_ticks\": 124\n    }\n  },\n  \"get_machine_status\": {\n    \"description\": \"Retrieves the current operating status and remaining time for a specific machine.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"machine_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier of the machine (e.g., 'M_BOTTLENECK').\"\n        }\n      },\n      \"required\": [\n        \"machine_id\"\n      ]\n    },\n    \"example_output\": {\n      \"machine_id\": \"M_BOTTLENECK\",\n      \"status\": \"busy\",\n      \"remaining_time\": 8\n    }\n  },\n  \"get_job_requirements\": {\n    \"description\": \"Retrieves the preparation time and material consumption for a specific job at a specific machine.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"job_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier of the job.\"\n        },\n        \"machine_id\": {\n          \"type\": \"string\",\n          \"description\": \"The machine where the job is to be processed.\"\n        }\n      },\n      \"required\": [\n        \"job_id\",\n        \"machine_id\"\n      ]\n    },\n    \"example_output\": {\n      \"preparation_time\": 20,\n      \"material_required\": 150\n    }\n  },\n  \"get_inventory_status\": {\n    \"description\": \"Retrieves the current stock level of raw materials.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"raw_material_stock\": 950\n    }\n  },\n  \"assign_job_to_machine\": {\n    \"description\": \"Assigns a specific job to a machine for production.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"job_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the job to assign.\"\n        },\n        \"machine_id\": {\n          \"type\": \"string\",\n          \"description\": \"The target machine ID.\"\n        }\n      },\n      \"required\": [\n        \"job_id\",\n        \"machine_id\"\n      ]\n    },\n    \"example_output\": {\n      \"success\": true,\n      \"message\": \"Job assigned successfully.\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_factory_clock",
+      "description": "Retrieves the current factory time in ticks.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "current_ticks": 124
+      }
+    },
+    {
+      "name": "get_machine_status",
+      "description": "Retrieves the current operating status and remaining time for a specific machine.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "machine_id": {
+            "type": "string",
+            "description": "The unique identifier of the machine (e.g., 'M_BOTTLENECK')."
+          }
+        },
+        "required": [
+          "machine_id"
+        ]
+      },
+      "example_output": {
+        "machine_id": "M_BOTTLENECK",
+        "status": "busy",
+        "remaining_time": 8
+      }
+    },
+    {
+      "name": "get_job_requirements",
+      "description": "Retrieves the preparation time and material consumption for a specific job at a specific machine.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "job_id": {
+            "type": "string",
+            "description": "The unique identifier of the job."
+          },
+          "machine_id": {
+            "type": "string",
+            "description": "The machine where the job is to be processed."
+          }
+        },
+        "required": [
+          "job_id",
+          "machine_id"
+        ]
+      },
+      "example_output": {
+        "preparation_time": 20,
+        "material_required": 150
+      }
+    },
+    {
+      "name": "get_inventory_status",
+      "description": "Retrieves the current stock level of raw materials.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "raw_material_stock": 950
+      }
+    },
+    {
+      "name": "assign_job_to_machine",
+      "description": "Assigns a specific job to a machine for production.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "job_id": {
+            "type": "string",
+            "description": "The ID of the job to assign."
+          },
+          "machine_id": {
+            "type": "string",
+            "description": "The target machine ID."
+          }
+        },
+        "required": [
+          "job_id",
+          "machine_id"
+        ]
+      },
+      "example_output": {
+        "success": true,
+        "message": "Job assigned successfully."
+      }
+    }
+  ],
+  "state_description": {
+    "machines": "List of production machines and their current operating status.",
+    "job_queue": "Pending production jobs waiting to be assigned.",
+    "inventory": "Current stock of materials and completed products.",
+    "factory_clock": "Total elapsed time ticks since start."
+  },
+  "task_initial_state": {
+    "machines": [
+      {
+        "machine_id": "M_BOTTLENECK",
+        "status": "working",
+        "current_job": "BATCH_PREV",
+        "remaining_time": 5
+      },
+      {
+        "machine_id": "M_GATEWAY",
+        "status": "idle",
+        "current_job": null,
+        "remaining_time": 0
+      }
+    ],
+    "job_queue": [
+      {
+        "job_id": "JOB_PREMIUM_V",
+        "priority": 1,
+        "required_ticks": 18,
+        "material_cost": 750
+      },
+      {
+        "job_id": "JOB_UTILITY_X",
+        "priority": 5,
+        "required_ticks": 5,
+        "material_cost": 300
+      }
+    ],
+    "inventory": {
+      "raw_materials": 1000,
+      "finished_goods": 0
+    },
+    "factory_clock": 2048
+  }
+}

@@ -1,0 +1,148 @@
+{
+  "environment_name": "env_6bdf6f12a1f6",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: Based on the current state $s_t$ and action $a_t$ related to the Candidate Resume Screening process, simulate internal environment changes and predict the observation $o_{{t+1}}$ obtained by the Agent.\n- **Emphasis**: The LWM does not make hiring decisions or perform external operations; it acts as the environment (database and resume management system), evolving the state of the screening pipeline and providing requested data.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nEmphasis: All interactions between the World Model and the Agent must maintain context consistency. Changes to candidate statuses, viewed logs, or screening progress must persist across the interaction history.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. This JSON must contain the following fields:\n- `\"name\"`: Specifies the name of the action function to execute (e.g., \"view_resume\", \"update_status\").\n- The remaining fields are the parameter names and corresponding values required by that action function.\n\nExample:\n```json\n{{\n \"name\": \"screen_candidate\",\n \"arguments\": {{\n    \"candidate_id\": \"CAN-001\",\n    \"decision\": \"shortlist\",\n    \"reasoning\": \"Strong Python and RL background.\"\n  }}\n}}\n```\n\nThe Language World Model must correctly parse such JSON inputs and simulate the execution results within the resume screening context.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nFor invalid parameters (e.g., non-existent `candidate_id`), undefined actions, state conflicts (e.g., screening a candidate already rejected), or empty inputs, return structured error information (e.g., `{{\"error\": \"Candidate ID not found\"}}`). Do not fabricate resumes or data not present in the internal state.\n\n##### Output Assembly\nFor every action function call, the model must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition.\n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, `new_state`, or any hidden variables like the full list of remaining candidates unless explicitly requested by a \"list\" action. State maintenance is implicit. The Agent must only see the specific Observation returned by the action.\n\n### 4. Key Principles\nAll simulated behaviors must adhere to the following principles:\n- **Format**: Strictly adhere to specified JSON and text formats.\n- **Factuality**: Do not fabricate candidate details, job requirements, or system logs not supported by the state.\n- **Consistency**: If a candidate's status is updated to \"Rejected\", subsequent observations must reflect this change.\n- **Realism**: Simulated behaviors must align with standard HR information system dynamics.\n- **Quality**: Language must be clear, unambiguous, and structurally complete.\n- **Encapsulation**: Strictly hide the internal state structure from the output. Only expose information that is explicitly returned by the action function. Do not output the state update process.\n{{initial_state}}: {{\n  \"job_description\": \"Project Apollo: Chief Operating Officer (COO) for a $400M PE-backed industrial manufacturing firm. Requirements: P&L scale $200M-$800M, documented PMI synergy realization, and buyout budget cap of $1,000,000.\",\n  \"candidate_pool\": [\n    {{\n      \"candidate_id\": \"EXE-501\",\n      \"resume_text\": \"Name: Marcus Vane. Current Role: COO at Titan Indus. Managed $480M P&L. Executed integration of two regional rivals, delivering $14M in annual supply chain synergies over 15 months. Unvested LTI: $650,000.\",\n      \"current_status\": \"rejected\"\n    }},\n    {{\n      \"candidate_id\": \"EXE-502\",\n      \"resume_text\": \"Name: Linda Horth. Current Role: CEO at Micro-Fab. Managed $15M P&L. Strong background in venture-backed growth. Unvested LTI: $45,000.\",\n      \"current_status\": \"pending\"\n    }},\n    {{\n      \"candidate_id\": \"EXE-503\",\n      \"resume_text\": \"Name: Steven Grant. Current Role: VP Operations at Global Corp. Managed $1.2B P&L. Led the acquisition of Delta Co in Jan 2024; left in March 2024 to pursue new opportunities. Unvested LTI: $2,500,000.\",\n      \"current_status\": \"pending\"\n    }},\n    {{\n      \"candidate_id\": \"EXE-504\",\n      \"resume_text\": \"Name: Julia Ross. Current Role: SVP at HeavyMach. Managed $350M P&L. Oversaw the merger with Steel-Works; resume indicates 'successfully closed deal' but lists no integration or synergy metrics. Unvested LTI: $800,000.\",\n      \"current_status\": \"pending\"\n    }}\n  ],\n  \"screening_metrics\": {{\n    \"total_processed\": 12,\n    \"shortlisted\": 4,\n    \"rejected\": 8\n  }},\n  \"access_log\": [\n    \"EXE-999\",\n    \"EXE-888\"\n  ]\n}}\n{{state_descriptions}}: {{\n  \"job_description\": \"The specific requirements, responsibilities, and qualifications for the position being screened for.\",\n  \"candidate_pool\": \"A list of candidate objects containing candidate_id, resume_text, and current_status.\",\n  \"screening_metrics\": \"Counters for the number of candidates screened, shortlisted, or rejected in the current session.\",\n  \"access_log\": \"A history of which candidate IDs have been viewed by the agent to prevent redundant processing.\"\n}}\n{action_set_definitions}: {\n  \"get_job_description\": {\n    \"description\": \"Retrieves the detailed job description and requirements for the current screening project.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"job_title\": \"COO\",\n      \"project_name\": \"Project Apollo\",\n      \"requirements\": \"P&L $200M-$800M, PMI synergy evidence, Equity buyout < $1M\"\n    }\n  },\n  \"list_candidates\": {\n    \"description\": \"Retrieves the list of all candidates currently in the pool, including their IDs and current status.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"candidate_pool\": [\n        {\n          \"candidate_id\": \"CAND-001\",\n          \"current_status\": \"pending\"\n        }\n      ]\n    }\n  },\n  \"view_candidate_resume\": {\n    \"description\": \"Retrieves the full resume text for a specific candidate. Calling this tool automatically updates the environment's access_log for the given ID.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"candidate_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier of the candidate.\"\n        }\n      },\n      \"required\": [\n        \"candidate_id\"\n      ]\n    },\n    \"example_output\": {\n      \"candidate_id\": \"CAND-001\",\n      \"resume_text\": \"Experienced COO managing $500M P&L...\",\n      \"status\": \"viewed\"\n    }\n  },\n  \"update_candidate_status\": {\n    \"description\": \"Updates a candidate's status to either 'shortlisted' or 'rejected'. This action also updates the global screening_metrics.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"candidate_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier of the candidate.\"\n        },\n        \"status\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"shortlisted\",\n            \"rejected\"\n          ],\n          \"description\": \"The new status to assign to the candidate.\"\n        }\n      },\n      \"required\": [\n        \"candidate_id\",\n        \"status\"\n      ]\n    },\n    \"example_output\": {\n      \"candidate_id\": \"CAND-001\",\n      \"new_status\": \"shortlisted\",\n      \"metrics_updated\": true\n    }\n  },\n  \"get_system_state\": {\n    \"description\": \"Retrieves the current screening metrics and access logs to verify session activity and final counts.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"screening_metrics\": {\n        \"screened\": 5,\n        \"shortlisted\": 1,\n        \"rejected\": 4\n      },\n      \"access_log\": [\n        \"CAND-001\",\n        \"CAND-002\"\n      ]\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_job_description",
+      "description": "Retrieves the detailed job description and requirements for the current screening project.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "job_title": "COO",
+        "project_name": "Project Apollo",
+        "requirements": "P&L $200M-$800M, PMI synergy evidence, Equity buyout < $1M"
+      }
+    },
+    {
+      "name": "list_candidates",
+      "description": "Retrieves the list of all candidates currently in the pool, including their IDs and current status.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "candidate_pool": [
+          {
+            "candidate_id": "CAND-001",
+            "current_status": "pending"
+          }
+        ]
+      }
+    },
+    {
+      "name": "view_candidate_resume",
+      "description": "Retrieves the full resume text for a specific candidate. Calling this tool automatically updates the environment's access_log for the given ID.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "candidate_id": {
+            "type": "string",
+            "description": "The unique identifier of the candidate."
+          }
+        },
+        "required": [
+          "candidate_id"
+        ]
+      },
+      "example_output": {
+        "candidate_id": "CAND-001",
+        "resume_text": "Experienced COO managing $500M P&L...",
+        "status": "viewed"
+      }
+    },
+    {
+      "name": "update_candidate_status",
+      "description": "Updates a candidate's status to either 'shortlisted' or 'rejected'. This action also updates the global screening_metrics.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "candidate_id": {
+            "type": "string",
+            "description": "The unique identifier of the candidate."
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "shortlisted",
+              "rejected"
+            ],
+            "description": "The new status to assign to the candidate."
+          }
+        },
+        "required": [
+          "candidate_id",
+          "status"
+        ]
+      },
+      "example_output": {
+        "candidate_id": "CAND-001",
+        "new_status": "shortlisted",
+        "metrics_updated": true
+      }
+    },
+    {
+      "name": "get_system_state",
+      "description": "Retrieves the current screening metrics and access logs to verify session activity and final counts.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "screening_metrics": {
+          "screened": 5,
+          "shortlisted": 1,
+          "rejected": 4
+        },
+        "access_log": [
+          "CAND-001",
+          "CAND-002"
+        ]
+      }
+    }
+  ],
+  "state_description": {
+    "job_description": "The specific requirements, responsibilities, and qualifications for the position being screened for.",
+    "candidate_pool": "A list of candidate objects containing candidate_id, resume_text, and current_status.",
+    "screening_metrics": "Counters for the number of candidates screened, shortlisted, or rejected in the current session.",
+    "access_log": "A history of which candidate IDs have been viewed by the agent to prevent redundant processing."
+  },
+  "task_initial_state": {
+    "job_description": "Project Apollo: Chief Operating Officer (COO) for a $400M PE-backed industrial manufacturing firm. Requirements: P&L scale $200M-$800M, documented PMI synergy realization, and buyout budget cap of $1,000,000.",
+    "candidate_pool": [
+      {
+        "candidate_id": "EXE-501",
+        "resume_text": "Name: Marcus Vane. Current Role: COO at Titan Indus. Managed $480M P&L. Executed integration of two regional rivals, delivering $14M in annual supply chain synergies over 15 months. Unvested LTI: $650,000.",
+        "current_status": "rejected"
+      },
+      {
+        "candidate_id": "EXE-502",
+        "resume_text": "Name: Linda Horth. Current Role: CEO at Micro-Fab. Managed $15M P&L. Strong background in venture-backed growth. Unvested LTI: $45,000.",
+        "current_status": "pending"
+      },
+      {
+        "candidate_id": "EXE-503",
+        "resume_text": "Name: Steven Grant. Current Role: VP Operations at Global Corp. Managed $1.2B P&L. Led the acquisition of Delta Co in Jan 2024; left in March 2024 to pursue new opportunities. Unvested LTI: $2,500,000.",
+        "current_status": "pending"
+      },
+      {
+        "candidate_id": "EXE-504",
+        "resume_text": "Name: Julia Ross. Current Role: SVP at HeavyMach. Managed $350M P&L. Oversaw the merger with Steel-Works; resume indicates 'successfully closed deal' but lists no integration or synergy metrics. Unvested LTI: $800,000.",
+        "current_status": "pending"
+      }
+    ],
+    "screening_metrics": {
+      "total_processed": 12,
+      "shortlisted": 4,
+      "rejected": 8
+    },
+    "access_log": [
+      "EXE-999",
+      "EXE-888"
+    ]
+  }
+}

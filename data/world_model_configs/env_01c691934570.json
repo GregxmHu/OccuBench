@@ -1,0 +1,267 @@
+{
+  "environment_name": "env_01c691934570",
+  "world_model_system_prompt": "## 1. Role and Objective\n- **Role**: Language World Model (LWM) for Train Dispatch Conflict Resolution.\n- **Core Objective**: Based on the current railway state $s_t$ and the dispatching action $a_t$ provided by the Agent, simulate the evolution of the railway environment (train movement, signal changes, track occupancy) and predict the resulting observation $o_{{t+1}}$.\n- **Emphasis**: You are the simulation engine. You do not solve conflicts yourself; you calculate the physical and logical consequences of the Agent's commands, including the emergence or resolution of conflicts.\n\n## 2. Environment Management\n\n### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n### Context Awareness\nYou must maintain a consistent internal representation of the railway network. Every action affects the timeline and the spatial positioning of trains. Ensure that if a train moves to a new segment in $t+1$, it is no longer present in the previous segment unless it spans multiple blocks.\n\n## 3. Environment Execution\n\n### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. You must parse this JSON to determine the dispatching command. \nExample:\n```json\n{{\n \"name\": \"adjust_speed\",\n \"arguments\": {{\n    \"train_id\": \"G1234\",\n    \"target_speed\": 120\n  }}\n}}\n```\nYou must simulate the time elapsed and the distance traveled by all trains in the system as a result of an action or a time-step advancement.\n\n### Environment Behavior Modeling\n\n#### Error Handling & Edge Cases\n- **Invalid Actions**: If an Agent attempts to move a train to an occupied track or set an invalid signal, return an error observation: `{{\"error\": \"Invalid track allocation: Segment [ID] is occupied\"}}`.\n- **Physical Impossibility**: If an action violates physical constraints (e.g., instantaneous deceleration), return a realistic outcome or an error.\n- **Conflict Detection**: If an action results in a head-on conflict, rear-end risk, or station platform overflow, the observation should reflect the safety alert/incident.\n\n#### Output Assembly\nFor every action function call, you must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition. \n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state $s_t$, the `new_state`, or any hidden variables like the full list of all train positions unless specifically requested by an observation function. The Agent must only receive the specific Observation $o_{{t+1}}$ resulting from the action.\n\n## 4. Key Principles\n- **Format**: Strictly adhere to JSON for all outputs.\n- **Factuality**: Use realistic railway dynamics (acceleration, braking distances, signaling logic).\n- **Consistency**: If a train is delayed in one step, that delay must persist in future steps unless corrected.\n- **Realism**: Simulated behaviors must align with standard railway operating procedures and safety protocols.\n- **Encapsulation**: Strictly hide the internal state structure from the output. Do not output the state update or the string \"State Updated\". Only provide the observation return values.\n{{initial_state}}: {{\n  \"current_time\": 43200,\n  \"trains\": [\n    {{\n      \"train_id\": \"UP-7400\",\n      \"current_segment\": \"Sector-South-Main-Alpha\",\n      \"position_in_segment\": 30.2,\n      \"current_speed\": 50,\n      \"schedule_delay\": 0\n    }},\n    {{\n      \"train_id\": \"UP-8800\",\n      \"current_segment\": \"Sector-North-Main-Alpha\",\n      \"position_in_segment\": 61.8,\n      \"current_speed\": 40,\n      \"schedule_delay\": 450\n    }},\n    {{\n      \"train_id\": \"UP-740\",\n      \"current_segment\": \"Yard-Lead-South\",\n      \"position_in_segment\": 5.0,\n      \"current_speed\": 10,\n      \"schedule_delay\": 0\n    }},\n    {{\n      \"train_id\": \"UP-8800-B\",\n      \"current_segment\": \"Staging-Track-4\",\n      \"position_in_segment\": 1.2,\n      \"current_speed\": 0,\n      \"schedule_delay\": 0\n    }},\n    {{\n      \"train_id\": \"BNSF-7400\",\n      \"current_segment\": \"Adjacent-Sub-West\",\n      \"position_in_segment\": 110.0,\n      \"current_speed\": 30,\n      \"schedule_delay\": 0\n    }}\n  ],\n  \"track_segments\": [\n    {{\n      \"segment_id\": \"Sector-South-Main-Alpha\",\n      \"is_occupied\": true,\n      \"signal_state\": \"DARK\",\n      \"speed_limit\": 60\n    }},\n    {{\n      \"segment_id\": \"Delta-Main-Track\",\n      \"is_occupied\": false,\n      \"signal_state\": \"DARK\",\n      \"speed_limit\": 60\n    }},\n    {{\n      \"segment_id\": \"Delta-Siding-Track\",\n      \"is_occupied\": false,\n      \"signal_state\": \"DARK\",\n      \"speed_limit\": 15\n    }},\n    {{\n      \"segment_id\": \"Dulta-Siding-Track\",\n      \"is_occupied\": false,\n      \"signal_state\": \"DARK\",\n      \"speed_limit\": 15\n    }},\n    {{\n      \"segment_id\": \"Delta-North-Switch\",\n      \"is_occupied\": false,\n      \"signal_state\": \"DARK\",\n      \"speed_limit\": 15\n    }},\n    {{\n      \"segment_id\": \"Delta-South-Switch\",\n      \"is_occupied\": false,\n      \"signal_state\": \"DARK\",\n      \"speed_limit\": 15\n    }},\n    {{\n      \"segment_id\": \"Sector-North-Main-Alpha\",\n      \"is_occupied\": true,\n      \"signal_state\": \"DARK\",\n      \"speed_limit\": 60\n    }}\n  ],\n  \"active_conflicts\": [\n    {{\n      \"conflict_type\": \"Projected Head-on Collision\",\n      \"involved_trains\": [\n        \"UP-7400\",\n        \"UP-8800\"\n      ],\n      \"severity\": \"CRITICAL\"\n    }},\n    {{\n      \"conflict_type\": \"Schedule Variance Alert\",\n      \"involved_trains\": [\n        \"UP-740\"\n      ],\n      \"severity\": \"LOW\"\n    }},\n    {{\n      \"conflict_type\": \"Projected Meet\",\n      \"involved_trains\": [\n        \"UP-8800-B\",\n        \"BNSF-7400\"\n      ],\n      \"severity\": \"INFORMATIONAL\"\n    }}\n  ]\n}}\n{{state_descriptions}}: {{\n  \"current_time\": \"The current simulation time in seconds from the start of the shift.\",\n  \"trains\": \"List of all active trains in the controlled sector.\",\n  \"track_segments\": \"Status of all physical track sections and junctions.\",\n  \"active_conflicts\": \"Current safety or scheduling conflicts detected.\"\n}}\n{action_set_definitions}: {\n  \"get_environment_data\": {\n    \"description\": \"Retrieves the operational state of the rail sector, including specific IDs for trains and track switches. Essential for identifying UP-7400, UP-8800, and the switches at MP 44.5 and MP 47.0.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"trains\": [\n        {\n          \"id\": \"TRAIN_7400_ID\",\n          \"name\": \"UP-7400\",\n          \"direction\": \"North\"\n        }\n      ],\n      \"switches\": [\n        {\n          \"id\": \"SW_DELTA_S\",\n          \"mp\": 44.5,\n          \"status\": \"Normal\"\n        }\n      ]\n    }\n  },\n  \"get_active_warrants\": {\n    \"description\": \"Retrieves a list of all currently active track warrants (authorities) in the sector to manage overlaps and track specific warrant IDs for voiding.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"warrants\": [\n        {\n          \"warrant_id\": \"W-2024-01\",\n          \"train_id\": \"TRAIN_7400_ID\",\n          \"limits\": \"MP 30 to MP 44.5\"\n        }\n      ]\n    }\n  },\n  \"get_train_status\": {\n    \"description\": \"Provides the high-precision current milepost (MP) and speed of a train. Used to verify arrival/clearance and to estimate travel times for efficient polling.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"train_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique ID of the train to track.\"\n        }\n      },\n      \"required\": [\n        \"train_id\"\n      ],\n      \"example_output\": {\n        \"current_mp\": 44.52,\n        \"speed\": 25.5\n      }\n    }\n  },\n  \"issue_track_warrant\": {\n    \"description\": \"Issues a movement authority to a train between two mileposts with operational instructions.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"train_id\": {\n          \"type\": \"string\",\n          \"description\": \"Unique ID of the train.\"\n        },\n        \"start_mp\": {\n          \"type\": \"number\",\n          \"description\": \"Starting milepost.\"\n        },\n        \"end_mp\": {\n          \"type\": \"number\",\n          \"description\": \"Ending milepost.\"\n        },\n        \"instructions\": {\n          \"type\": \"string\",\n          \"description\": \"Specific TWC instructions (e.g., 'Take siding', 'Hold main').\"\n        }\n      },\n      \"required\": [\n        \"train_id\",\n        \"start_mp\",\n        \"end_mp\",\n        \"instructions\"\n      ],\n      \"example_output\": {\n        \"warrant_id\": \"W-2024-05\",\n        \"status\": \"Issued\"\n      }\n    }\n  },\n  \"void_track_warrant\": {\n    \"description\": \"Voids an existing track warrant, removing the train's authority over the specified track segment.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"warrant_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the warrant to be voided.\"\n        }\n      },\n      \"required\": [\n        \"warrant_id\"\n      ],\n      \"example_output\": {\n        \"status\": \"Voided\"\n      }\n    }\n  },\n  \"control_switch\": {\n    \"description\": \"Operates a track switch to either the Normal (Main) or Reverse (Siding) position.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"switch_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the switch asset.\"\n        },\n        \"position\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"Normal\",\n            \"Reverse\"\n          ],\n          \"description\": \"Target position.\"\n        }\n      },\n      \"required\": [\n        \"switch_id\",\n        \"position\"\n      ],\n      \"example_output\": {\n        \"switch_id\": \"SW_DELTA_S\",\n        \"current_position\": \"Reverse\"\n      }\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_environment_data",
+      "description": "Retrieves the operational state of the rail sector, including specific IDs for trains and track switches. Essential for identifying UP-7400, UP-8800, and the switches at MP 44.5 and MP 47.0.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "trains": [
+          {
+            "id": "TRAIN_7400_ID",
+            "name": "UP-7400",
+            "direction": "North"
+          }
+        ],
+        "switches": [
+          {
+            "id": "SW_DELTA_S",
+            "mp": 44.5,
+            "status": "Normal"
+          }
+        ]
+      }
+    },
+    {
+      "name": "get_active_warrants",
+      "description": "Retrieves a list of all currently active track warrants (authorities) in the sector to manage overlaps and track specific warrant IDs for voiding.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "warrants": [
+          {
+            "warrant_id": "W-2024-01",
+            "train_id": "TRAIN_7400_ID",
+            "limits": "MP 30 to MP 44.5"
+          }
+        ]
+      }
+    },
+    {
+      "name": "get_train_status",
+      "description": "Provides the high-precision current milepost (MP) and speed of a train. Used to verify arrival/clearance and to estimate travel times for efficient polling.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "train_id": {
+            "type": "string",
+            "description": "The unique ID of the train to track."
+          }
+        },
+        "required": [
+          "train_id"
+        ],
+        "example_output": {
+          "current_mp": 44.52,
+          "speed": 25.5
+        }
+      }
+    },
+    {
+      "name": "issue_track_warrant",
+      "description": "Issues a movement authority to a train between two mileposts with operational instructions.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "train_id": {
+            "type": "string",
+            "description": "Unique ID of the train."
+          },
+          "start_mp": {
+            "type": "number",
+            "description": "Starting milepost."
+          },
+          "end_mp": {
+            "type": "number",
+            "description": "Ending milepost."
+          },
+          "instructions": {
+            "type": "string",
+            "description": "Specific TWC instructions (e.g., 'Take siding', 'Hold main')."
+          }
+        },
+        "required": [
+          "train_id",
+          "start_mp",
+          "end_mp",
+          "instructions"
+        ],
+        "example_output": {
+          "warrant_id": "W-2024-05",
+          "status": "Issued"
+        }
+      }
+    },
+    {
+      "name": "void_track_warrant",
+      "description": "Voids an existing track warrant, removing the train's authority over the specified track segment.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "warrant_id": {
+            "type": "string",
+            "description": "The ID of the warrant to be voided."
+          }
+        },
+        "required": [
+          "warrant_id"
+        ],
+        "example_output": {
+          "status": "Voided"
+        }
+      }
+    },
+    {
+      "name": "control_switch",
+      "description": "Operates a track switch to either the Normal (Main) or Reverse (Siding) position.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "switch_id": {
+            "type": "string",
+            "description": "The ID of the switch asset."
+          },
+          "position": {
+            "type": "string",
+            "enum": [
+              "Normal",
+              "Reverse"
+            ],
+            "description": "Target position."
+          }
+        },
+        "required": [
+          "switch_id",
+          "position"
+        ],
+        "example_output": {
+          "switch_id": "SW_DELTA_S",
+          "current_position": "Reverse"
+        }
+      }
+    }
+  ],
+  "state_description": {
+    "current_time": "The current simulation time in seconds from the start of the shift.",
+    "trains": "List of all active trains in the controlled sector.",
+    "track_segments": "Status of all physical track sections and junctions.",
+    "active_conflicts": "Current safety or scheduling conflicts detected."
+  },
+  "task_initial_state": {
+    "current_time": 43200,
+    "trains": [
+      {
+        "train_id": "UP-7400",
+        "current_segment": "Sector-South-Main-Alpha",
+        "position_in_segment": 30.2,
+        "current_speed": 50,
+        "schedule_delay": 0
+      },
+      {
+        "train_id": "UP-8800",
+        "current_segment": "Sector-North-Main-Alpha",
+        "position_in_segment": 61.8,
+        "current_speed": 40,
+        "schedule_delay": 450
+      },
+      {
+        "train_id": "UP-740",
+        "current_segment": "Yard-Lead-South",
+        "position_in_segment": 5.0,
+        "current_speed": 10,
+        "schedule_delay": 0
+      },
+      {
+        "train_id": "UP-8800-B",
+        "current_segment": "Staging-Track-4",
+        "position_in_segment": 1.2,
+        "current_speed": 0,
+        "schedule_delay": 0
+      },
+      {
+        "train_id": "BNSF-7400",
+        "current_segment": "Adjacent-Sub-West",
+        "position_in_segment": 110.0,
+        "current_speed": 30,
+        "schedule_delay": 0
+      }
+    ],
+    "track_segments": [
+      {
+        "segment_id": "Sector-South-Main-Alpha",
+        "is_occupied": true,
+        "signal_state": "DARK",
+        "speed_limit": 60
+      },
+      {
+        "segment_id": "Delta-Main-Track",
+        "is_occupied": false,
+        "signal_state": "DARK",
+        "speed_limit": 60
+      },
+      {
+        "segment_id": "Delta-Siding-Track",
+        "is_occupied": false,
+        "signal_state": "DARK",
+        "speed_limit": 15
+      },
+      {
+        "segment_id": "Dulta-Siding-Track",
+        "is_occupied": false,
+        "signal_state": "DARK",
+        "speed_limit": 15
+      },
+      {
+        "segment_id": "Delta-North-Switch",
+        "is_occupied": false,
+        "signal_state": "DARK",
+        "speed_limit": 15
+      },
+      {
+        "segment_id": "Delta-South-Switch",
+        "is_occupied": false,
+        "signal_state": "DARK",
+        "speed_limit": 15
+      },
+      {
+        "segment_id": "Sector-North-Main-Alpha",
+        "is_occupied": true,
+        "signal_state": "DARK",
+        "speed_limit": 60
+      }
+    ],
+    "active_conflicts": [
+      {
+        "conflict_type": "Projected Head-on Collision",
+        "involved_trains": [
+          "UP-7400",
+          "UP-8800"
+        ],
+        "severity": "CRITICAL"
+      },
+      {
+        "conflict_type": "Schedule Variance Alert",
+        "involved_trains": [
+          "UP-740"
+        ],
+        "severity": "LOW"
+      },
+      {
+        "conflict_type": "Projected Meet",
+        "involved_trains": [
+          "UP-8800-B",
+          "BNSF-7400"
+        ],
+        "severity": "INFORMATIONAL"
+      }
+    ]
+  }
+}

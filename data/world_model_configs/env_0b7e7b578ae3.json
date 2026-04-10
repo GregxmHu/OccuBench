@@ -1,0 +1,267 @@
+{
+  "environment_name": "env_0b7e7b578ae3",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: Act as a high-fidelity simulation of a manufacturing environment specifically for **Quality Defect Root Cause Analysis (RCA)**. Based on the current internal state $s_t$ and the investigative action $a_t$ taken by the Agent, you must simulate the logical evolution of the manufacturing environment and predict the resulting observation $o_{{t+1}}$.\n- **Emphasis**: You are not a troubleshooting assistant; you are the environment itself. You do not perform operations in the real world. You manage the internal consistency of machine logs, sensor data, material history, and production parameters, providing realistic feedback to the Agent's queries and inspections.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation tracking the status of the production line, historical logs, and hidden root causes. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions between the World Model and the Agent must maintain rigorous context consistency. If an action changes a machine's status or a material batch is flagged, that change must persist and influence all subsequent observations until another action or time-based transition alters it again.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the manufacturing environment by calling diagnostic or operational action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. You must parse this JSON to determine which part of the environment state to access or modify. The JSON will contain:\n- `\"name\"`: The name of the action (e.g., `query_sensor_data`, `inspect_part`, `check_maintenance_record`).\n- Parameters required by that function.\n\nExample Input:\n```json\n{{\n \"name\": \"query_sensor_data\",\n \"arguments\": {{\n    \"machine_id\": \"Casting-Unit-04\",\n    \"timestamp_range\": [\"2024-05-01T10:00:00\", \"2024-05-01T12:00:00\"]\n  }}\n}}\n```\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\n- If the Agent attempts to query a non-existent machine ID, returns invalid parameters (e.g., out-of-range timestamps), or calls an undefined action, return a structured error: `{{\"error\": \"Reason for failure\"}}`.\n- Do not fabricate data that does not logically stem from the current state. If a log is missing in the state, the observation should reflect that the log is unavailable.\n\n##### Output Assembly\nFor every action call, you must return a structured JSON object containing **ONLY** the return fields declared in that action's definition. \n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, `new_state`, or hidden variables like the \"hidden_root_cause\" field. You are a black box to the Agent; the Agent only sees the specific `observation` (e.g., the sensor readings or the inspection report).\n\n### 4. Key Principles\n- **Format**: Strictly adhere to JSON for both input parsing and output generation.\n- **Factuality**: Data provided (sensor values, timestamps, batch numbers) must be precise and consistent with the simulated manufacturing scenario.\n- **Consistency**: If a defect is caused by a temperature spike in the internal state, the `query_sensor_data` action must reflect that spike.\n- **Realism**: Simulate realistic industrial noise, sensor tolerances, and professional log formats.\n- **Quality**: Ensure all simulated responses are clear and structurally complete.\n- **Encapsulation**: Strictly hide the internal state structure from the output. Only expose information explicitly returned by the action function. Do not output state updates.\n{{initial_state}}: {{\n  \"production_line_status\": \"Normal\",\n  \"active_defects\": [\n    {{\n      \"defect_id\": \"FLW-SCAN-202\",\n      \"component\": \"Port-side Wing Flap Spar\",\n      \"station_reference\": \"Station 550\",\n      \"reported_coordinates\": {{\n        \"x\": 142.5,\n        \"y\": 88.0\n      }},\n      \"preliminary_obs\": \"Subsurface attenuation noted in automated sweep.\"\n    }}\n  ],\n  \"machine_states\": {{\n    \"PAUT-Manual-Rig\": {{\n      \"status\": \"Ready\",\n      \"current_coordinate_system\": \"L-CRS-2024 (Local)\",\n      \"last_calibration\": \"2024-05-10\"\n    }},\n    \"ATL-Robot-01\": {{\n      \"status\": \"Operational\",\n      \"encoder_status\": \"Bypassed\",\n      \"mode\": \"High-Speed Layup\"\n    }}\n  }},\n  \"material_traceability\": {{\n    \"Batch_ID\": \"TF-990-X\",\n    \"Material\": \"Carbon-Epoxy Prepreg (Oversize Width)\",\n    \"Ply_Thickness\": \"0.19mm\",\n    \"Total_Plies\": \"48\"\n  }},\n  \"maintenance_logs\": [\n    {{\n      \"timestamp\": \"2024-05-11T03:15:00Z\",\n      \"machine_id\": \"ATL-Robot-01\",\n      \"event\": \"Emergency Stop - Collision Avoidance\",\n      \"action\": \"Manual override of X-axis home position to clear path; production resumed without full homing sequence to meet Takt time.\"\n    }},\n    {{\n      \"timestamp\": \"2024-05-11T05:00:00Z\",\n      \"machine_id\": \"ATL-Robot-01\",\n      \"event\": \"Layup Completion\",\n      \"notes\": \"Defect FLW-SCAN-202 likely occurred during this shift.\"\n    }}\n  ],\n  \"hidden_root_cause\": \"The 'Manual override' in the maintenance log created a +12.5mm offset in the X-axis coordinate system. The defect is physically located at X:155.0, not X:142.5. If the agent inspects the reported X:142.5 without correcting the encoder offset, they will find 'No Defect' (Clear Laminate). The actual cause is a 'Teflon Backing Strip' inadvertently trapped at Ply 12 during the disrupted shift.\"\n}}\n{{state_descriptions}}: {{\n  \"production_line_status\": \"The current operational mode of the line (e.g., 'Normal', 'Degraded', 'Emergency_Stop').\",\n  \"active_defects\": \"A list of currently detected quality issues requiring RCA.\",\n  \"machine_states\": \"Internal telemetry and status for each machine in the process (e.g., temperature, pressure).\",\n  \"material_traceability\": \"Metadata regarding the current batch of raw materials (Batch ID, Supplier, Quality Certificates).\",\n  \"maintenance_logs\": \"Historical record of repairs and calibrations performed on the equipment.\",\n  \"hidden_root_cause\": \"The ground-truth cause of the defect, used internally to determine action results but never revealed to the Agent.\"\n}}\n{action_set_definitions}: {\n  \"get_initial_defect_metadata\": {\n    \"description\": \"Retrieves the initial registered coordinates, machine_id, and reported morphology for a specific defect ID.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"defect_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the defect (e.g., 'FLW-SCAN-202').\"\n        }\n      },\n      \"required\": [\n        \"defect_id\"\n      ]\n    },\n    \"example_output\": {\n      \"initial_x\": 550.02,\n      \"initial_y\": 12.45,\n      \"reported_morphology\": \"Foreign Object Debris (FOD)\",\n      \"associated_machine_id\": \"STN-550-ROBOT-A\"\n    }\n  },\n  \"validate_spatial_mapping\": {\n    \"description\": \"Checks synchronization status and retrieves the precise drift offset for the specified equipment and defect.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"defect_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the defect.\"\n        },\n        \"machine_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the equipment to verify.\"\n        }\n      },\n      \"required\": [\n        \"defect_id\",\n        \"machine_id\"\n      ]\n    },\n    \"example_output\": {\n      \"sync_verified\": true,\n      \"drift_offset_x\": 0.005,\n      \"drift_offset_y\": -0.002\n    }\n  },\n  \"calculate_offset_coordinates\": {\n    \"description\": \"Applies a drift offset to base coordinates to determine exact corrected spatial mapping.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"base_x\": {\n          \"type\": \"number\"\n        },\n        \"base_y\": {\n          \"type\": \"number\"\n        },\n        \"offset_x\": {\n          \"type\": \"number\"\n        },\n        \"offset_y\": {\n          \"type\": \"number\"\n        }\n      },\n      \"required\": [\n        \"base_x\",\n        \"base_y\",\n        \"offset_x\",\n        \"offset_y\"\n      ]\n    },\n    \"example_output\": {\n      \"corrected_x\": 550.025,\n      \"corrected_y\": 12.448\n    }\n  },\n  \"get_telemetry_at_coordinates\": {\n    \"description\": \"Performs a high-resolution diagnostic scan at specific X,Y coordinates to retrieve depth and morphological details.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"machine_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the diagnostic equipment.\"\n        },\n        \"x\": {\n          \"type\": \"number\"\n        },\n        \"y\": {\n          \"type\": \"number\"\n        },\n        \"resolution\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"Standard\",\n            \"High\",\n            \"Ultra\"\n          ]\n        }\n      },\n      \"required\": [\n        \"machine_id\",\n        \"x\",\n        \"y\",\n        \"resolution\"\n      ]\n    },\n    \"example_output\": {\n      \"depth_mm\": 2.45,\n      \"morphology_detail\": \"Embedded particulate\",\n      \"signal_integrity\": 0.99\n    }\n  },\n  \"get_material_traceability_data\": {\n    \"description\": \"Retrieves material batch records, production events, and chemical analysis (e.g., contaminants) for the defect location.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"defect_id\": {\n          \"type\": \"string\"\n        }\n      },\n      \"required\": [\n        \"defect_id\"\n      ]\n    },\n    \"example_output\": {\n      \"batch_id\": \"BAT-9902\",\n      \"contaminants_found\": [\n        \"Teflon\",\n        \"Alumina\"\n      ],\n      \"production_event_id\": \"PROD-EV-772\"\n    }\n  },\n  \"query_maintenance_history\": {\n    \"description\": \"Retrieves the calibration status and repair history for a machine.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"machine_id\": {\n          \"type\": \"string\"\n        }\n      },\n      \"required\": [\n        \"machine_id\"\n      ]\n    },\n    \"example_output\": {\n      \"calibration_status\": \"Out_of_Sync\",\n      \"last_service_date\": \"2023-08-01\"\n    }\n  },\n  \"fetch_safety_protocol_margins\": {\n    \"description\": \"Retrieves safety margin thresholds for the specified protocol.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"protocol_id\": {\n          \"type\": \"string\"\n        }\n      },\n      \"required\": [\n        \"protocol_id\"\n      ]\n    },\n    \"example_output\": {\n      \"max_allowable_depth\": 1.5,\n      \"required_action\": \"Rework\"\n    }\n  },\n  \"submit_final_disposition\": {\n    \"description\": \"Submits the final root cause and maintenance decision.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"defect_id\": {\n          \"type\": \"string\"\n        },\n        \"root_cause\": {\n          \"type\": \"string\"\n        },\n        \"maintenance_disposition\": {\n          \"type\": \"string\"\n        },\n        \"evidence_log\": {\n          \"type\": \"string\"\n        }\n      },\n      \"required\": [\n        \"defect_id\",\n        \"root_cause\",\n        \"maintenance_disposition\",\n        \"evidence_log\"\n      ]\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_initial_defect_metadata",
+      "description": "Retrieves the initial registered coordinates, machine_id, and reported morphology for a specific defect ID.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "defect_id": {
+            "type": "string",
+            "description": "The unique identifier for the defect (e.g., 'FLW-SCAN-202')."
+          }
+        },
+        "required": [
+          "defect_id"
+        ]
+      },
+      "example_output": {
+        "initial_x": 550.02,
+        "initial_y": 12.45,
+        "reported_morphology": "Foreign Object Debris (FOD)",
+        "associated_machine_id": "STN-550-ROBOT-A"
+      }
+    },
+    {
+      "name": "validate_spatial_mapping",
+      "description": "Checks synchronization status and retrieves the precise drift offset for the specified equipment and defect.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "defect_id": {
+            "type": "string",
+            "description": "The unique identifier for the defect."
+          },
+          "machine_id": {
+            "type": "string",
+            "description": "The ID of the equipment to verify."
+          }
+        },
+        "required": [
+          "defect_id",
+          "machine_id"
+        ]
+      },
+      "example_output": {
+        "sync_verified": true,
+        "drift_offset_x": 0.005,
+        "drift_offset_y": -0.002
+      }
+    },
+    {
+      "name": "calculate_offset_coordinates",
+      "description": "Applies a drift offset to base coordinates to determine exact corrected spatial mapping.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "base_x": {
+            "type": "number"
+          },
+          "base_y": {
+            "type": "number"
+          },
+          "offset_x": {
+            "type": "number"
+          },
+          "offset_y": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "base_x",
+          "base_y",
+          "offset_x",
+          "offset_y"
+        ]
+      },
+      "example_output": {
+        "corrected_x": 550.025,
+        "corrected_y": 12.448
+      }
+    },
+    {
+      "name": "get_telemetry_at_coordinates",
+      "description": "Performs a high-resolution diagnostic scan at specific X,Y coordinates to retrieve depth and morphological details.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "machine_id": {
+            "type": "string",
+            "description": "The ID of the diagnostic equipment."
+          },
+          "x": {
+            "type": "number"
+          },
+          "y": {
+            "type": "number"
+          },
+          "resolution": {
+            "type": "string",
+            "enum": [
+              "Standard",
+              "High",
+              "Ultra"
+            ]
+          }
+        },
+        "required": [
+          "machine_id",
+          "x",
+          "y",
+          "resolution"
+        ]
+      },
+      "example_output": {
+        "depth_mm": 2.45,
+        "morphology_detail": "Embedded particulate",
+        "signal_integrity": 0.99
+      }
+    },
+    {
+      "name": "get_material_traceability_data",
+      "description": "Retrieves material batch records, production events, and chemical analysis (e.g., contaminants) for the defect location.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "defect_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "defect_id"
+        ]
+      },
+      "example_output": {
+        "batch_id": "BAT-9902",
+        "contaminants_found": [
+          "Teflon",
+          "Alumina"
+        ],
+        "production_event_id": "PROD-EV-772"
+      }
+    },
+    {
+      "name": "query_maintenance_history",
+      "description": "Retrieves the calibration status and repair history for a machine.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "machine_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "machine_id"
+        ]
+      },
+      "example_output": {
+        "calibration_status": "Out_of_Sync",
+        "last_service_date": "2023-08-01"
+      }
+    },
+    {
+      "name": "fetch_safety_protocol_margins",
+      "description": "Retrieves safety margin thresholds for the specified protocol.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "protocol_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "protocol_id"
+        ]
+      },
+      "example_output": {
+        "max_allowable_depth": 1.5,
+        "required_action": "Rework"
+      }
+    },
+    {
+      "name": "submit_final_disposition",
+      "description": "Submits the final root cause and maintenance decision.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "defect_id": {
+            "type": "string"
+          },
+          "root_cause": {
+            "type": "string"
+          },
+          "maintenance_disposition": {
+            "type": "string"
+          },
+          "evidence_log": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "defect_id",
+          "root_cause",
+          "maintenance_disposition",
+          "evidence_log"
+        ]
+      }
+    }
+  ],
+  "state_description": {
+    "production_line_status": "The current operational mode of the line (e.g., 'Normal', 'Degraded', 'Emergency_Stop').",
+    "active_defects": "A list of currently detected quality issues requiring RCA.",
+    "machine_states": "Internal telemetry and status for each machine in the process (e.g., temperature, pressure).",
+    "material_traceability": "Metadata regarding the current batch of raw materials (Batch ID, Supplier, Quality Certificates).",
+    "maintenance_logs": "Historical record of repairs and calibrations performed on the equipment.",
+    "hidden_root_cause": "The ground-truth cause of the defect, used internally to determine action results but never revealed to the Agent."
+  },
+  "task_initial_state": {
+    "production_line_status": "Normal",
+    "active_defects": [
+      {
+        "defect_id": "FLW-SCAN-202",
+        "component": "Port-side Wing Flap Spar",
+        "station_reference": "Station 550",
+        "reported_coordinates": {
+          "x": 142.5,
+          "y": 88.0
+        },
+        "preliminary_obs": "Subsurface attenuation noted in automated sweep."
+      }
+    ],
+    "machine_states": {
+      "PAUT-Manual-Rig": {
+        "status": "Ready",
+        "current_coordinate_system": "L-CRS-2024 (Local)",
+        "last_calibration": "2024-05-10"
+      },
+      "ATL-Robot-01": {
+        "status": "Operational",
+        "encoder_status": "Bypassed",
+        "mode": "High-Speed Layup"
+      }
+    },
+    "material_traceability": {
+      "Batch_ID": "TF-990-X",
+      "Material": "Carbon-Epoxy Prepreg (Oversize Width)",
+      "Ply_Thickness": "0.19mm",
+      "Total_Plies": "48"
+    },
+    "maintenance_logs": [
+      {
+        "timestamp": "2024-05-11T03:15:00Z",
+        "machine_id": "ATL-Robot-01",
+        "event": "Emergency Stop - Collision Avoidance",
+        "action": "Manual override of X-axis home position to clear path; production resumed without full homing sequence to meet Takt time."
+      },
+      {
+        "timestamp": "2024-05-11T05:00:00Z",
+        "machine_id": "ATL-Robot-01",
+        "event": "Layup Completion",
+        "notes": "Defect FLW-SCAN-202 likely occurred during this shift."
+      }
+    ],
+    "hidden_root_cause": "The 'Manual override' in the maintenance log created a +12.5mm offset in the X-axis coordinate system. The defect is physically located at X:155.0, not X:142.5. If the agent inspects the reported X:142.5 without correcting the encoder offset, they will find 'No Defect' (Clear Laminate). The actual cause is a 'Teflon Backing Strip' inadvertently trapped at Ply 12 during the disrupted shift."
+  }
+}

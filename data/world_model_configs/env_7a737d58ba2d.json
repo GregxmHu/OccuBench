@@ -1,0 +1,176 @@
+{
+  "environment_name": "env_7a737d58ba2d",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM) for Anti-Money Laundering (AML) Alert Review.\n- **Core Objective**: Based on the current investigation state $s_t$ and the analyst's action $a_t$, simulate the evolution of the AML case and predict the observation $o_{{t+1}}$ (e.g., transaction data, KYC details, or system confirmations) obtained by the Agent.\n- **Emphasis**: The LWM does not perform actual financial database queries or file SAR reports. It simulates the internal logic, data retrieval responses, and state transitions of an AML investigation environment.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation tracking the investigation's progress. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nEmphasis: All interactions between the World Model and the Agent must maintain context consistency. The model must track which documents have been reviewed, which transaction patterns have been flagged, and the current status of the alert to ensure the simulation remains logical over time.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. This JSON must contain the following fields:\n- `\"name\"`: Specifies the name of the action function to execute (e.g., \"fetch_transactions\", \"verify_identity\").\n- The remaining fields are the parameter names and corresponding values required by that action function.\n\nExample:\n```json\n{{\n \"name\": \"query_sanctions_list\",\n \"arguments\": {{\n    \"entity_name\": \"John Doe\",\n    \"jurisdiction\": \"Global\"\n  }}\n}}\n```\n\nThe Language World Model must correctly parse such JSON inputs, update the internal investigation state, and generate the resulting observation.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nFor invalid parameters (e.g., non-existent account IDs), undefined actions, state conflicts (e.g., trying to close an alert already closed), or empty inputs, return structured error information (e.g., `{{\"error\": \"Transaction history unavailable for the specified date range\"}}`), and do not fabricate states or fictitious responses outside the environment's logic.\n\n##### Output Assembly\nFor every action function call, the model must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition.\n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, `new_state`, or any hidden variables like `internal_risk_score`. The state maintenance is implicit in the interaction history. The Agent must only see the specific return values (the Observation) defined in the action function.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to specified JSON and text formats.\n- **Factuality**: Do not fabricate non-existent banking functions, alert statuses, or customer data not implied by the state.\n- **Consistency**: The investigation narrative must be self-consistent (e.g., if a customer is flagged as high-risk in one step, subsequent observations should reflect that context).\n- **Realism**: Simulated behaviors must align with standard AML/KYC procedures and banking dynamics.\n- **Quality**: Language must be professional, clear, and structurally complete.\n- **Encapsulation**: Strictly hide the internal state structure from the output. Only expose information that is explicitly returned by the action function as an observation.\n{{initial_state}}: {{\n  \"alert_id\": \"AML-2025-X82\",\n  \"case_status\": \"New\",\n  \"risk_level\": \"Medium\",\n  \"investigation_steps_completed\": [],\n  \"flagged_transactions\": [\n    \"TXN-2025-001-DEP\",\n    \"TXN-2025-002-DEP\",\n    \"TXN-2025-003-DEP\",\n    \"TXN-2025-004-DEP\",\n    \"TXN-2025-005-WIR\"\n  ],\n  \"customer_profile_snapshot\": {{\n    \"entity_name\": \"Riverside Janitorial Services\",\n    \"entity_type\": \"LLC\",\n    \"onboarding_date\": \"2024-03-15\",\n    \"naics_code\": \"561720\",\n    \"expected_monthly_cash_volume\": 2500.0,\n    \"primary_business_address\": \"123 Local Way, Springfield, IL\",\n    \"authorized_signers\": [\n      \"Marcus Thorne\"\n    ]\n  }}\n}}\n{{state_descriptions}}: {{\n  \"alert_id\": \"Unique identifier for the AML alert case.\",\n  \"case_status\": \"The current stage of the investigation (e.g., 'New', 'In_Progress', 'Pending_Approval', 'Closed').\",\n  \"risk_level\": \"The preliminary risk category assigned by the automated system.\",\n  \"investigation_steps_completed\": \"A list of actions or checks already performed in this session.\",\n  \"flagged_transactions\": \"Identifiers for transactions that triggered the alert.\",\n  \"customer_profile_snapshot\": \"Cached basic information about the subject of the alert.\"\n}}\n{action_set_definitions}: {\n  \"get_alert_details\": {\n    \"description\": \"Retrieves the core information of an AML alert, including the subject name, flagged transaction IDs, and current workflow status.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"alert_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the AML alert (e.g., 'AML-2025-X82').\"\n        }\n      },\n      \"required\": [\n        \"alert_id\"\n      ]\n    },\n    \"example_output\": {\n      \"alert_id\": \"AML-2025-X82\",\n      \"subject_name\": \"Riverside Janitorial Services\",\n      \"flagged_transaction_ids\": [\n        \"TXN_001\",\n        \"TXN_002\"\n      ],\n      \"current_status\": \"New\"\n    }\n  },\n  \"get_customer_kyc_record\": {\n    \"description\": \"Retrieves the Know Your Customer (KYC) profile for a given entity, including Ultimate Beneficial Owner (UBO) details and the stated business nature/expected activity.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"entity_name\": {\n          \"type\": \"string\",\n          \"description\": \"The name of the customer entity to query.\"\n        }\n      },\n      \"required\": [\n        \"entity_name\"\n      ]\n    },\n    \"example_output\": {\n      \"ubo_details\": \"Jane Smith (60%), Mark Clean (40%)\",\n      \"business_profile\": \"Commercial cleaning services; expected monthly cash volume $5,000-$8,000 via local branches.\",\n      \"risk_rating\": \"Medium\"\n    }\n  },\n  \"get_transaction_data\": {\n    \"description\": \"Fetches detailed data for a list of transaction IDs, including amounts, dates, transaction types, and locations.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"transaction_ids\": {\n          \"type\": \"array\",\n          \"items\": {\n            \"type\": \"string\"\n          },\n          \"description\": \"The list of transaction IDs to investigate.\"\n        }\n      },\n      \"required\": [\n        \"transaction_ids\"\n      ]\n    },\n    \"example_output\": {\n      \"transactions\": [\n        {\n          \"id\": \"TXN_001\",\n          \"amount\": 2900,\n          \"type\": \"Cash Deposit\",\n          \"date\": \"2025-02-10\",\n          \"location\": \"Downtown Branch\"\n        }\n      ]\n    }\n  },\n  \"update_case_narrative\": {\n    \"description\": \"Saves the investigative narrative and specific SAR metadata (amount and typology) into the alert system record.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"alert_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the AML alert.\"\n        },\n        \"narrative_text\": {\n          \"type\": \"string\",\n          \"description\": \"The full SAR narrative following FinCEN 5 Ws standards, including UBO details and the 'Why' statement.\"\n        },\n        \"total_sar_amount\": {\n          \"type\": \"number\",\n          \"description\": \"The calculated total suspicious amount.\"\n        },\n        \"suspicious_typology\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"Structuring\",\n            \"Funnel Account\"\n          ],\n          \"description\": \"The identified suspicious activity pattern.\"\n        }\n      },\n      \"required\": [\n        \"alert_id\",\n        \"narrative_text\",\n        \"total_sar_amount\",\n        \"suspicious_typology\"\n      ]\n    },\n    \"example_output\": {\n      \"update_status\": \"Success\"\n    }\n  },\n  \"transition_workflow_status\": {\n    \"description\": \"Moves the alert to a new stage in the investigation lifecycle.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"alert_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the AML alert.\"\n        },\n        \"new_status\": {\n          \"type\": \"string\",\n          \"description\": \"The target status (e.g., 'Pending_Approval').\"\n        }\n      },\n      \"required\": [\n        \"alert_id\",\n        \"new_status\"\n      ]\n    },\n    \"example_output\": {\n      \"current_status\": \"Pending_Approval\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_alert_details",
+      "description": "Retrieves the core information of an AML alert, including the subject name, flagged transaction IDs, and current workflow status.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "alert_id": {
+            "type": "string",
+            "description": "The unique identifier for the AML alert (e.g., 'AML-2025-X82')."
+          }
+        },
+        "required": [
+          "alert_id"
+        ]
+      },
+      "example_output": {
+        "alert_id": "AML-2025-X82",
+        "subject_name": "Riverside Janitorial Services",
+        "flagged_transaction_ids": [
+          "TXN_001",
+          "TXN_002"
+        ],
+        "current_status": "New"
+      }
+    },
+    {
+      "name": "get_customer_kyc_record",
+      "description": "Retrieves the Know Your Customer (KYC) profile for a given entity, including Ultimate Beneficial Owner (UBO) details and the stated business nature/expected activity.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "entity_name": {
+            "type": "string",
+            "description": "The name of the customer entity to query."
+          }
+        },
+        "required": [
+          "entity_name"
+        ]
+      },
+      "example_output": {
+        "ubo_details": "Jane Smith (60%), Mark Clean (40%)",
+        "business_profile": "Commercial cleaning services; expected monthly cash volume $5,000-$8,000 via local branches.",
+        "risk_rating": "Medium"
+      }
+    },
+    {
+      "name": "get_transaction_data",
+      "description": "Fetches detailed data for a list of transaction IDs, including amounts, dates, transaction types, and locations.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "transaction_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "The list of transaction IDs to investigate."
+          }
+        },
+        "required": [
+          "transaction_ids"
+        ]
+      },
+      "example_output": {
+        "transactions": [
+          {
+            "id": "TXN_001",
+            "amount": 2900,
+            "type": "Cash Deposit",
+            "date": "2025-02-10",
+            "location": "Downtown Branch"
+          }
+        ]
+      }
+    },
+    {
+      "name": "update_case_narrative",
+      "description": "Saves the investigative narrative and specific SAR metadata (amount and typology) into the alert system record.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "alert_id": {
+            "type": "string",
+            "description": "The unique identifier for the AML alert."
+          },
+          "narrative_text": {
+            "type": "string",
+            "description": "The full SAR narrative following FinCEN 5 Ws standards, including UBO details and the 'Why' statement."
+          },
+          "total_sar_amount": {
+            "type": "number",
+            "description": "The calculated total suspicious amount."
+          },
+          "suspicious_typology": {
+            "type": "string",
+            "enum": [
+              "Structuring",
+              "Funnel Account"
+            ],
+            "description": "The identified suspicious activity pattern."
+          }
+        },
+        "required": [
+          "alert_id",
+          "narrative_text",
+          "total_sar_amount",
+          "suspicious_typology"
+        ]
+      },
+      "example_output": {
+        "update_status": "Success"
+      }
+    },
+    {
+      "name": "transition_workflow_status",
+      "description": "Moves the alert to a new stage in the investigation lifecycle.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "alert_id": {
+            "type": "string",
+            "description": "The unique identifier for the AML alert."
+          },
+          "new_status": {
+            "type": "string",
+            "description": "The target status (e.g., 'Pending_Approval')."
+          }
+        },
+        "required": [
+          "alert_id",
+          "new_status"
+        ]
+      },
+      "example_output": {
+        "current_status": "Pending_Approval"
+      }
+    }
+  ],
+  "state_description": {
+    "alert_id": "Unique identifier for the AML alert case.",
+    "case_status": "The current stage of the investigation (e.g., 'New', 'In_Progress', 'Pending_Approval', 'Closed').",
+    "risk_level": "The preliminary risk category assigned by the automated system.",
+    "investigation_steps_completed": "A list of actions or checks already performed in this session.",
+    "flagged_transactions": "Identifiers for transactions that triggered the alert.",
+    "customer_profile_snapshot": "Cached basic information about the subject of the alert."
+  },
+  "task_initial_state": {
+    "alert_id": "AML-2025-X82",
+    "case_status": "New",
+    "risk_level": "Medium",
+    "investigation_steps_completed": [],
+    "flagged_transactions": [
+      "TXN-2025-001-DEP",
+      "TXN-2025-002-DEP",
+      "TXN-2025-003-DEP",
+      "TXN-2025-004-DEP",
+      "TXN-2025-005-WIR"
+    ],
+    "customer_profile_snapshot": {
+      "entity_name": "Riverside Janitorial Services",
+      "entity_type": "LLC",
+      "onboarding_date": "2024-03-15",
+      "naics_code": "561720",
+      "expected_monthly_cash_volume": 2500.0,
+      "primary_business_address": "123 Local Way, Springfield, IL",
+      "authorized_signers": [
+        "Marcus Thorne"
+      ]
+    }
+  }
+}

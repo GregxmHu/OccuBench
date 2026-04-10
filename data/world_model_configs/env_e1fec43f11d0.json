@@ -1,0 +1,158 @@
+{
+  "environment_name": "env_e1fec43f11d0",
+  "world_model_system_prompt": "## 1. Role and Objective\n\n- **Role**: Language World Model (LWM)\n- **Core Objective**: Based on the current internal state $s_t$ of the NDA contract review environment and the action $a_t$ executed by the Agent, simulate the evolution of the contract review process and predict the observation $o_{{t+1}}$ obtained by the Agent.\n- **Emphasis**: You are a simulation of the environment. You do not provide legal advice or act as the Agent; you simulate the internal state transitions (e.g., updating the risk log, tracking clause modifications) and generate the resulting observations for the Agent.\n\n## 2. Environment Management\n\n### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\n\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n### Context Awareness\nAll interactions between the World Model and the Agent must maintain context consistency. Changes made to the contract text, flags raised on clauses, or updates to the legal metadata must persist across turns to ensure a self-consistent review history.\n\n## 3. Environment Execution\n\n### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. This JSON must contain the following fields:\n- `\"name\"`: Specifies the name of the action function to execute (e.g., \"examine_clause\", \"flag_risk\", \"suggest_redline\").\n- Additional fields for the parameters required by that specific action.\n\nExample:\n```json\n{{\n \"name\": \"examine_clause\",\n \"arguments\": {{\n    \"clause_id\": \"section_3_confidentiality\",\n    \"depth\": \"detailed\"\n  }}\n}}\n```\n\nYou must correctly parse these JSON inputs and simulate the resulting state transition and observation.\n\n### Environment Behavior Modeling\n\n#### Error Handling & Edge Cases\nIf the Agent attempts to access a non-existent clause ID, provides invalid parameters, or executes an undefined action, return structured error information (e.g., `{{\"error\": \"Clause ID 'section_99' not found\"}}`). Do not fabricate states or fictitious contract contents.\n\n#### Output Assembly\nFor every action function call, the model must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition.\n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state $s_t$, updated state, or hidden tracking variables. Only expose the specific information returned by the action function (the Observation). The state maintenance is handled internally by you.\n\n## 4. Key Principles\n\n- **Format**: Strictly adhere to specified JSON and text formats.\n- **Factuality**: Do not fabricate contract clauses, legal entities, or review statuses not present in the internal state.\n- **Consistency**: The legal logic must remain self-consistent (e.g., if a clause is deleted in state $t$, it cannot be examined in state $t+1$).\n- **Realism**: Simulated behaviors must align with professional legal contract review dynamics (e.g., redlining a clause updates that specific section of the document).\n- **Quality**: Observations must be professional, clear, and structurally complete.\n- **Encapsulation**: Strictly hide the internal state structure from the output. Only expose information that is explicitly returned by the action function.\n{{initial_state}}: {{\n  \"contract_body\": \"PROJECT HELIOS MULTI-PARTY MESH NDA. \\n1. TOPOLOGY: This is a Mesh (Multiparty) Agreement. All signatories maintain direct privity. \\n2. CHANGE OF CONTROL (CoC): In the event a Party is acquired by a 'Restricted Competitor', that Party's access to Tier 1 technical data is immediately revoked, and they must be flagged for ejection. 'Volt-Max' is hereby defined as a Restricted Competitor. \\n3. JOINDER MECHANICS: New participants enter the Mesh via a Joinder Agreement. Eligibility requires unanimous Steering Committee approval. \\n4. STEERING COMMITTEE: Currently comprised of AutoCorp and ChemCo. \\n[NOTICE ATTACHED]: Lithium-X has officially completed its merger into Volt-Max as of yesterday. \\n[MEMO]: Steering Committee has issued a unanimous 'YES' vote for the entry of EcoPower.\",\n  \"risk_register\": [],\n  \"checklist_status\": {{\n    \"Steering_Committee_Approval_EcoPower\": \"Confirmed\",\n    \"Joinder_Execution_EcoPower\": \"Pending\",\n    \"CoC_Compliance_Audit_Lithium_X\": \"Not_Started\",\n    \"Termination_Notice_Issued\": \"False\"\n  }},\n  \"review_metadata\": {{\n    \"disclosing_party\": \"Project Helios Consortium\",\n    \"receiving_party\": \"EcoPower (Applicant)\",\n    \"jurisdiction\": \"Delaware\"\n  }},\n  \"current_phase\": \"compliance_check\"\n}}\n{{state_descriptions}}: {{\n  \"contract_body\": \"The full raw text of the Non-Disclosure Agreement currently under review.\",\n  \"risk_register\": \"A list of identified legal risks, each containing a clause reference, risk level, and description of the issue.\",\n  \"checklist_status\": \"A mapping of standard NDA requirements (e.g., 'Mutual Obligations', 'Term Limit', 'Exclusions') to their fulfillment status (checked/unchecked).\",\n  \"review_metadata\": \"Information about the legal context, including the Disclosing Party, Receiving Party, Governing Law, and Effective Date.\",\n  \"current_phase\": \"The current focus of the review process (e.g., 'initial_ingestion', 'compliance_check', 'risk_mitigation').\"\n}}\n{action_set_definitions}: {\n  \"get_environment_component\": {\n    \"description\": \"Retrieves a specific component of the environment state to allow the Agent to observe the current environment values.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"component_name\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"contract_body\",\n            \"risk_register\",\n            \"checklist_status\",\n            \"review_metadata\",\n            \"current_phase\"\n          ],\n          \"description\": \"The specific state field to retrieve.\"\n        }\n      },\n      \"required\": [\n        \"component_name\"\n      ]\n    },\n    \"example_output\": {\n      \"content\": \"raw_text_or_object_data\"\n    }\n  },\n  \"search_contract_clauses\": {\n    \"description\": \"Searches the contract body for specific terminology, clauses, or sections.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"query\": {\n          \"type\": \"string\",\n          \"description\": \"The keyword or provision title to search for (e.g., 'Mesh Topology').\"\n        }\n      },\n      \"required\": [\n        \"query\"\n      ]\n    },\n    \"example_output\": {\n      \"matches\": [\n        {\n          \"clause_text\": \"Clause 4.1: Change of Control...\",\n          \"section_id\": \"4.1\"\n        }\n      ]\n    }\n  },\n  \"update_risk_register\": {\n    \"description\": \"Adds a legal hazard or breach status to the risk register.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"clause_reference\": {\n          \"type\": \"string\",\n          \"description\": \"The specific clause identifier or section affected.\"\n        },\n        \"risk_level\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"Low\",\n            \"Medium\",\n            \"High\",\n            \"Critical\"\n          ],\n          \"description\": \"The severity of the risk.\"\n        },\n        \"description\": {\n          \"type\": \"string\",\n          \"description\": \"A detailed explanation of why the party is in breach or the nature of the legal hazard.\"\n        }\n      },\n      \"required\": [\n        \"clause_reference\",\n        \"risk_level\",\n        \"description\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"entry_added\",\n      \"entry_id\": 101\n    }\n  },\n  \"update_checklist\": {\n    \"description\": \"Updates the fulfillment status of specific requirements in the checklist.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"requirement_name\": {\n          \"type\": \"string\",\n          \"description\": \"The name of the requirement to update (e.g., 'EcoPower Joinder').\"\n        },\n        \"is_fulfilled\": {\n          \"type\": \"boolean\",\n          \"description\": \"The new status of the requirement.\"\n        }\n      },\n      \"required\": [\n        \"requirement_name\",\n        \"is_fulfilled\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"updated\"\n    }\n  },\n  \"transition_phase\": {\n    \"description\": \"Moves the environment state to a new operational phase.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"new_phase\": {\n          \"type\": \"string\",\n          \"description\": \"The name of the target phase (e.g., 'risk_mitigation').\"\n        }\n      },\n      \"required\": [\n        \"new_phase\"\n      ]\n    },\n    \"example_output\": {\n      \"current_phase\": \"risk_mitigation\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_environment_component",
+      "description": "Retrieves a specific component of the environment state to allow the Agent to observe the current environment values.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "component_name": {
+            "type": "string",
+            "enum": [
+              "contract_body",
+              "risk_register",
+              "checklist_status",
+              "review_metadata",
+              "current_phase"
+            ],
+            "description": "The specific state field to retrieve."
+          }
+        },
+        "required": [
+          "component_name"
+        ]
+      },
+      "example_output": {
+        "content": "raw_text_or_object_data"
+      }
+    },
+    {
+      "name": "search_contract_clauses",
+      "description": "Searches the contract body for specific terminology, clauses, or sections.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "description": "The keyword or provision title to search for (e.g., 'Mesh Topology')."
+          }
+        },
+        "required": [
+          "query"
+        ]
+      },
+      "example_output": {
+        "matches": [
+          {
+            "clause_text": "Clause 4.1: Change of Control...",
+            "section_id": "4.1"
+          }
+        ]
+      }
+    },
+    {
+      "name": "update_risk_register",
+      "description": "Adds a legal hazard or breach status to the risk register.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "clause_reference": {
+            "type": "string",
+            "description": "The specific clause identifier or section affected."
+          },
+          "risk_level": {
+            "type": "string",
+            "enum": [
+              "Low",
+              "Medium",
+              "High",
+              "Critical"
+            ],
+            "description": "The severity of the risk."
+          },
+          "description": {
+            "type": "string",
+            "description": "A detailed explanation of why the party is in breach or the nature of the legal hazard."
+          }
+        },
+        "required": [
+          "clause_reference",
+          "risk_level",
+          "description"
+        ]
+      },
+      "example_output": {
+        "status": "entry_added",
+        "entry_id": 101
+      }
+    },
+    {
+      "name": "update_checklist",
+      "description": "Updates the fulfillment status of specific requirements in the checklist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "requirement_name": {
+            "type": "string",
+            "description": "The name of the requirement to update (e.g., 'EcoPower Joinder')."
+          },
+          "is_fulfilled": {
+            "type": "boolean",
+            "description": "The new status of the requirement."
+          }
+        },
+        "required": [
+          "requirement_name",
+          "is_fulfilled"
+        ]
+      },
+      "example_output": {
+        "status": "updated"
+      }
+    },
+    {
+      "name": "transition_phase",
+      "description": "Moves the environment state to a new operational phase.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "new_phase": {
+            "type": "string",
+            "description": "The name of the target phase (e.g., 'risk_mitigation')."
+          }
+        },
+        "required": [
+          "new_phase"
+        ]
+      },
+      "example_output": {
+        "current_phase": "risk_mitigation"
+      }
+    }
+  ],
+  "state_description": {
+    "contract_body": "The full raw text of the Non-Disclosure Agreement currently under review.",
+    "risk_register": "A list of identified legal risks, each containing a clause reference, risk level, and description of the issue.",
+    "checklist_status": "A mapping of standard NDA requirements (e.g., 'Mutual Obligations', 'Term Limit', 'Exclusions') to their fulfillment status (checked/unchecked).",
+    "review_metadata": "Information about the legal context, including the Disclosing Party, Receiving Party, Governing Law, and Effective Date.",
+    "current_phase": "The current focus of the review process (e.g., 'initial_ingestion', 'compliance_check', 'risk_mitigation')."
+  },
+  "task_initial_state": {
+    "contract_body": "PROJECT HELIOS MULTI-PARTY MESH NDA. \n1. TOPOLOGY: This is a Mesh (Multiparty) Agreement. All signatories maintain direct privity. \n2. CHANGE OF CONTROL (CoC): In the event a Party is acquired by a 'Restricted Competitor', that Party's access to Tier 1 technical data is immediately revoked, and they must be flagged for ejection. 'Volt-Max' is hereby defined as a Restricted Competitor. \n3. JOINDER MECHANICS: New participants enter the Mesh via a Joinder Agreement. Eligibility requires unanimous Steering Committee approval. \n4. STEERING COMMITTEE: Currently comprised of AutoCorp and ChemCo. \n[NOTICE ATTACHED]: Lithium-X has officially completed its merger into Volt-Max as of yesterday. \n[MEMO]: Steering Committee has issued a unanimous 'YES' vote for the entry of EcoPower.",
+    "risk_register": [],
+    "checklist_status": {
+      "Steering_Committee_Approval_EcoPower": "Confirmed",
+      "Joinder_Execution_EcoPower": "Pending",
+      "CoC_Compliance_Audit_Lithium_X": "Not_Started",
+      "Termination_Notice_Issued": "False"
+    },
+    "review_metadata": {
+      "disclosing_party": "Project Helios Consortium",
+      "receiving_party": "EcoPower (Applicant)",
+      "jurisdiction": "Delaware"
+    },
+    "current_phase": "compliance_check"
+  }
+}

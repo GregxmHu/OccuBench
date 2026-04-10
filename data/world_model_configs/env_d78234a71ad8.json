@@ -1,0 +1,158 @@
+{
+  "environment_name": "env_d78234a71ad8",
+  "world_model_system_prompt": "### 1. Role and Objective\n\n**Role**: Language World Model (LWM) for Runway Arrival Sequencing.\n\n**Core Objective**: You act as the backend environment for an Air Traffic Control (ATC) sequencing task. Based on the current internal environment state $s_t$ and the action $a_t$ executed by the Agent (Sequencer), your task is to simulate the physical and logical evolution of the airspace and runways to predict the next state $s_{{t+1}}$ and generate the observation $o_{{t+1}}$ for the Agent.\n\n**Emphasis**: You do not suggest actions. You only simulate the consequences of the Agent's actions within the laws of aviation physics, safety separation standards, and airport logic.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation tracking aircraft trajectories, runway occupancy, and timing. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nYou must maintain a consistent timeline and spatial logic. If an aircraft is instructed to reduce speed, its future arrival time must be recalculated accordingly. You must track the relative distance and wake turbulence categories between successive arrivals to ensure realistic simulation.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. This JSON will contain:\n- `\"name\"`: The name of the sequencing action (e.g., speed control, runway assignment, holding).\n- `\"arguments\"`: The parameters for that action.\n\nExample:\n```json\n{{\n \"name\": \"adjust_approach_speed\",\n \"arguments\": {{\n    \"flight_id\": \"BA123\",\n    \"target_speed\": 160\n  }}\n}}\n```\n\nYou must parse this input, update the internal state (e.g., updating the Estimated Time of Arrival), and generate the resulting observation.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\n- **Invalid Flight**: If an action references a `flight_id` not present in the current state, return `{{\"error\": \"Flight ID not found\"}}`.\n- **Safety Violation**: If an action results in a separation breach (e.g., wake turbulence minimums not met), the observation should reflect the safety conflict (e.g., `{{\"status\": \"separation_violation\", \"details\": \"...\"}}`).\n- **Undefined Action**: Return `{{\"error\": \"Action undefined\"}}` for unknown function names.\n- Do not fabricate data; if the state cannot support an action, report the specific constraint.\n\n##### Output Assembly\nFor every action, return a structured JSON object containing **ONLY** the observation fields defined in the action's signature.\n\n**CRITICAL CONSTRAINT**: Your output must **NOT** include the updated internal state JSON or any raw state variables. The Agent only receives the observation (the feedback of the action). State maintenance is handled internally by you across the interaction history.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to JSON for all outputs.\n- **Factuality**: Simulate realistic aviation dynamics (e.g., aircraft cannot decelerate instantly).\n- **Consistency**: Ensure that if time advances, all aircraft positions and runway timers update globally.\n- **Realism**: Adhere to ICAO/FAA separation standards based on aircraft weight categories (Heavy, Medium, Light).\n- **Encapsulation**: Strictly hide the internal state structure from the output. Only expose the `observation` resulting from the action.\n{{initial_state}}: {{\n  \"active_flights\": [\n    {{\n      \"flight_id\": \"ST-202\",\n      \"wake_category\": \"M\",\n      \"distance_to_threshold\": 11.5,\n      \"current_speed\": 160,\n      \"assigned_runway\": \"27L\",\n      \"eta_seconds\": 258\n    }},\n    {{\n      \"flight_id\": \"GLOBAL-88\",\n      \"wake_category\": \"H\",\n      \"distance_to_threshold\": 18.5,\n      \"current_speed\": 250,\n      \"assigned_runway\": \"null\",\n      \"eta_seconds\": 266\n    }},\n    {{\n      \"flight_id\": \"LX-44\",\n      \"wake_category\": \"M\",\n      \"distance_to_threshold\": 22.0,\n      \"current_speed\": 240,\n      \"assigned_runway\": \"27L\",\n      \"eta_seconds\": 330\n    }}\n  ],\n  \"runways\": [\n    {{\n      \"runway_id\": \"27L\",\n      \"last_landing_time\": 850,\n      \"occupied_until\": 910\n    }}\n  ],\n  \"simulation_time\": 0\n}}\n{{state_descriptions}}: {{\n  \"active_flights\": \"A list of aircraft currently in the arrival sector, including their ID, weight category, distance to threshold, current speed, and current assigned runway.\",\n  \"runways\": \"Status of airport runways.\",\n  \"simulation_time\": \"Current elapsed simulation time in seconds.\"\n}}\n{action_set_definitions}: {\n  \"get_flight_inventory\": {\n    \"description\": \"Retrieves the current list of all active aircraft in the arrival sector, including their ID, weight category, distance to threshold (NM), current speed (KT), and current assigned runway.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"flights\": [\n        {\n          \"flight_id\": \"ABC123\",\n          \"category\": \"Heavy\",\n          \"distance_nm\": 20.0,\n          \"speed_kt\": 250,\n          \"assigned_runway\": \"27R\",\n          \"is_emergency\": true\n        }\n      ]\n    }\n  },\n  \"get_environment_state\": {\n    \"description\": \"Retrieves the current simulation time and the operational status of available runways.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"simulation_time\": 1200,\n      \"runways\": {\n        \"27L\": \"Operational\",\n        \"27R\": \"Operational\"\n      }\n    }\n  },\n  \"update_flight_assignment\": {\n    \"description\": \"Updates the flight's target runway and/or commanded speed.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"flight_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier of the aircraft.\"\n        },\n        \"runway_id\": {\n          \"type\": \"string\",\n          \"description\": \"The target runway ID (e.g., '27L').\"\n        },\n        \"target_speed_kt\": {\n          \"type\": \"number\",\n          \"description\": \"The new speed in knots.\"\n        }\n      },\n      \"required\": [\n        \"flight_id\"\n      ]\n    },\n    \"example_output\": {\n      \"success\": true,\n      \"new_eta\": 280\n    }\n  },\n  \"set_holding_pattern\": {\n    \"description\": \"Places an aircraft into a holding pattern or clears it to resume the approach. Used to delay traffic.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"flight_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier of the aircraft.\"\n        },\n        \"is_holding\": {\n          \"type\": \"boolean\",\n          \"description\": \"True to hold, False to resume.\"\n        }\n      },\n      \"required\": [\n        \"flight_id\",\n        \"is_holding\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"Holding\"\n    }\n  },\n  \"advance_simulation_time\": {\n    \"description\": \"Advances the simulation clock by a specified number of seconds, updating aircraft positions based on their current speeds.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"seconds\": {\n          \"type\": \"number\",\n          \"description\": \"Number of seconds to progress.\"\n        }\n      },\n      \"required\": [\n        \"seconds\"\n      ]\n    },\n    \"example_output\": {\n      \"new_simulation_time\": 1500,\n      \"updated_distances\": {\n        \"ABC123\": 15.5\n      }\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_flight_inventory",
+      "description": "Retrieves the current list of all active aircraft in the arrival sector, including their ID, weight category, distance to threshold (NM), current speed (KT), and current assigned runway.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "flights": [
+          {
+            "flight_id": "ABC123",
+            "category": "Heavy",
+            "distance_nm": 20.0,
+            "speed_kt": 250,
+            "assigned_runway": "27R",
+            "is_emergency": true
+          }
+        ]
+      }
+    },
+    {
+      "name": "get_environment_state",
+      "description": "Retrieves the current simulation time and the operational status of available runways.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "simulation_time": 1200,
+        "runways": {
+          "27L": "Operational",
+          "27R": "Operational"
+        }
+      }
+    },
+    {
+      "name": "update_flight_assignment",
+      "description": "Updates the flight's target runway and/or commanded speed.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "flight_id": {
+            "type": "string",
+            "description": "The unique identifier of the aircraft."
+          },
+          "runway_id": {
+            "type": "string",
+            "description": "The target runway ID (e.g., '27L')."
+          },
+          "target_speed_kt": {
+            "type": "number",
+            "description": "The new speed in knots."
+          }
+        },
+        "required": [
+          "flight_id"
+        ]
+      },
+      "example_output": {
+        "success": true,
+        "new_eta": 280
+      }
+    },
+    {
+      "name": "set_holding_pattern",
+      "description": "Places an aircraft into a holding pattern or clears it to resume the approach. Used to delay traffic.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "flight_id": {
+            "type": "string",
+            "description": "The unique identifier of the aircraft."
+          },
+          "is_holding": {
+            "type": "boolean",
+            "description": "True to hold, False to resume."
+          }
+        },
+        "required": [
+          "flight_id",
+          "is_holding"
+        ]
+      },
+      "example_output": {
+        "status": "Holding"
+      }
+    },
+    {
+      "name": "advance_simulation_time",
+      "description": "Advances the simulation clock by a specified number of seconds, updating aircraft positions based on their current speeds.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "seconds": {
+            "type": "number",
+            "description": "Number of seconds to progress."
+          }
+        },
+        "required": [
+          "seconds"
+        ]
+      },
+      "example_output": {
+        "new_simulation_time": 1500,
+        "updated_distances": {
+          "ABC123": 15.5
+        }
+      }
+    }
+  ],
+  "state_description": {
+    "active_flights": "A list of aircraft currently in the arrival sector, including their ID, weight category, distance to threshold, current speed, and current assigned runway.",
+    "runways": "Status of airport runways.",
+    "simulation_time": "Current elapsed simulation time in seconds."
+  },
+  "task_initial_state": {
+    "active_flights": [
+      {
+        "flight_id": "ST-202",
+        "wake_category": "M",
+        "distance_to_threshold": 11.5,
+        "current_speed": 160,
+        "assigned_runway": "27L",
+        "eta_seconds": 258
+      },
+      {
+        "flight_id": "GLOBAL-88",
+        "wake_category": "H",
+        "distance_to_threshold": 18.5,
+        "current_speed": 250,
+        "assigned_runway": "null",
+        "eta_seconds": 266
+      },
+      {
+        "flight_id": "LX-44",
+        "wake_category": "M",
+        "distance_to_threshold": 22.0,
+        "current_speed": 240,
+        "assigned_runway": "27L",
+        "eta_seconds": 330
+      }
+    ],
+    "runways": [
+      {
+        "runway_id": "27L",
+        "last_landing_time": 850,
+        "occupied_until": 910
+      }
+    ],
+    "simulation_time": 0
+  }
+}

@@ -1,0 +1,167 @@
+{
+  "environment_name": "env_893683c1e80d",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM) for Retail Inventory Synchronization.\n- **Core Objective**: Based on the current state $s_t$ and action $a_t$, simulate environment changes and predict the observation $o_{{t+1}}$ obtained by the Agent. \n- **Emphasis**: The LWM does not execute real operations on physical or external retail systems but performs internal state evolution and observation generation based on the logic of inventory management and synchronization.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nEmphasis: All interactions between the World Model and the Agent must maintain context consistency. Changes to stock levels, pending orders, and platform synchronization statuses must persist throughout the session history.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. This JSON must contain the following fields:\n- `\"name\"`: Specifies the name of the action function to execute (e.g., \"update_stock\", \"sync_to_platform\").\n- The remaining fields are the parameter names and corresponding values required by that action function.\n\nExample:\n```json\n{{\n \"name\": \"adjust_inventory\",\n \"arguments\": {{\n    \"product_id\": \"SKU-1002\",\n    \"change_amount\": -5,\n    \"reason\": \"Sale\"\n  }}\n}}\n```\n\nThe Language World Model must correctly parse such JSON inputs and simulate the execution results based on current stock levels and constraints.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nFor invalid parameters (e.g., negative stock levels if not allowed), undefined actions, state conflicts (e.g., syncing a non-existent SKU), or empty inputs, return structured error information (e.g., `{{\"error\": \"Insufficient stock for SKU 'XYZ'\"}}`), and do not fabricate states or fictitious responses.\n\n##### Output Assembly\nFor every action function call, the model must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition.\n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state $s_t$, `new_state`, or any hidden variables like the entire inventory database. The state maintenance is implicit in the history. The Agent must only see the specific return values defined in the action (the Observation).\n\n### 4. Key Principles\nAll simulated behaviors must adhere to the following principles:\n- **Format**: Strictly adhere to specified JSON and text formats.\n- **Factuality**: Do not fabricate non-existent products, warehouse locations, or synchronization protocols.\n- **Consistency**: Stock levels must follow conservation laws (e.g., total stock = physical + in-transit). If an order is fulfilled, stock must decrease.\n- **Realism**: Simulated behaviors must align with retail dynamics (e.g., synchronization latency, stock-out scenarios, and processing times).\n- **Quality**: Language must be clear, unambiguous, and structurally complete.\n- **Encapsulation**: Strictly hide the internal state structure from the output. Only expose information that is explicitly returned by the action function. Do not output the state update details.\n{{initial_state}}: {{\n  \"inventory_records\": {{\n    \"SKU-CARBON-MTB-01\": {{\n      \"quantity\": 0,\n      \"warehouse\": \"Seattle-DC-North\",\n      \"inbound_details\": {{\n        \"po_number\": \"PO-8821\",\n        \"asn_quantity\": 50,\n        \"original_eta\": \"2023-11-10T00:00:00Z\",\n        \"current_eta\": \"2023-12-15T00:00:00Z\",\n        \"warehouse_sla_days\": 3\n      }}\n    }}\n  }},\n  \"platform_sync_status\": {{\n    \"Shopify\": \"Out_of_Sync\",\n    \"Amazon\": \"Synced\"\n  }},\n  \"pending_orders\": [\n    {{\n      \"order_id\": \"ORD-2023-001\",\n      \"sku\": \"SKU-CARBON-MTB-01\",\n      \"order_date\": \"2023-10-25T09:00:00Z\",\n      \"status\": \"AWAITING_INBOUND\"\n    }},\n    {{\n      \"order_id\": \"ORD-2023-015\",\n      \"sku\": \"SKU-CARBON-MTB-01\",\n      \"order_date\": \"2023-11-05T14:30:00Z\",\n      \"status\": \"AWAITING_INBOUND\"\n    }},\n    {{\n      \"order_id\": \"ORD-2023-042\",\n      \"sku\": \"SKU-CARBON-MTB-01\",\n      \"order_date\": \"2023-11-28T11:00:00Z\",\n      \"status\": \"AWAITING_INBOUND\"\n    }}\n  ],\n  \"last_sync_timestamp\": \"2023-10-27T10:00:00Z\"\n}}\n{{state_descriptions}}: {{\n  \"inventory_records\": \"A mapping of SKU IDs to their current physical stock levels and warehouse IDs.\",\n  \"platform_sync_status\": \"Current synchronization status and timestamp for external sales channels like Amazon or Shopify.\",\n  \"pending_orders\": \"A list of orders received but not yet deducted from physical inventory.\",\n  \"last_sync_timestamp\": \"The ISO 8601 timestamp of the last successful global synchronization event.\"\n}}\n{action_set_definitions}: {\n  \"get_shipment_details\": {\n    \"description\": \"Retrieves the details of an inbound shipment/purchase order, including its ETA and total item quantities.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"po_number\": {\n          \"type\": \"string\",\n          \"description\": \"The purchase order ID (e.g., PO-8821).\"\n        }\n      },\n      \"required\": [\n        \"po_number\"\n      ]\n    },\n    \"example_output\": {\n      \"eta\": \"2023-12-15\",\n      \"total_quantity\": 50,\n      \"sku\": \"SKU-CARBON-MTB-01\"\n    }\n  },\n  \"get_sku_soft_allocations\": {\n    \"description\": \"Retrieves the current number of soft-allocated (reserved but not yet shipped) units for a specific SKU.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"sku_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the SKU.\"\n        }\n      },\n      \"required\": [\n        \"sku_id\"\n      ]\n    },\n    \"example_output\": {\n      \"soft_allocations\": 42\n    }\n  },\n  \"list_pending_orders\": {\n    \"description\": \"Retrieves a list of all pending customer orders for a specific SKU that have not yet been fulfilled.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"sku_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the SKU.\"\n        }\n      },\n      \"required\": [\n        \"sku_id\"\n      ]\n    },\n    \"example_output\": {\n      \"orders\": [\n        {\n          \"order_id\": \"ORD-101\",\n          \"order_date\": \"2023-11-01\",\n          \"current_status\": \"Pending\"\n        }\n      ]\n    }\n  },\n  \"update_shopify_inventory\": {\n    \"description\": \"Updates the sellable backorder quantity (I-ATP) on the Shopify platform for a specific SKU.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"sku_id\": {\n          \"type\": \"string\",\n          \"description\": \"The SKU to update.\"\n        },\n        \"new_atp_quantity\": {\n          \"type\": \"number\",\n          \"description\": \"The calculated Inbound Available-To-Promise quantity.\"\n        }\n      },\n      \"required\": [\n        \"sku_id\",\n        \"new_atp_quantity\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"success\",\n      \"updated_at\": \"2023-12-01T10:00:00Z\"\n    }\n  },\n  \"update_order_regulatory_status\": {\n    \"description\": \"Updates the status of a specific order to reflect regulatory compliance needs (e.g., 'Consent Required').\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"order_id\": {\n          \"type\": \"string\",\n          \"description\": \"The order ID to update.\"\n        },\n        \"status\": {\n          \"type\": \"string\",\n          \"description\": \"The new status (e.g., 'Consent Required').\"\n        }\n      },\n      \"required\": [\n        \"order_id\",\n        \"status\"\n      ]\n    },\n    \"example_output\": {\n      \"order_id\": \"ORD-101\",\n      \"new_status\": \"Consent Required\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_shipment_details",
+      "description": "Retrieves the details of an inbound shipment/purchase order, including its ETA and total item quantities.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "po_number": {
+            "type": "string",
+            "description": "The purchase order ID (e.g., PO-8821)."
+          }
+        },
+        "required": [
+          "po_number"
+        ]
+      },
+      "example_output": {
+        "eta": "2023-12-15",
+        "total_quantity": 50,
+        "sku": "SKU-CARBON-MTB-01"
+      }
+    },
+    {
+      "name": "get_sku_soft_allocations",
+      "description": "Retrieves the current number of soft-allocated (reserved but not yet shipped) units for a specific SKU.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "sku_id": {
+            "type": "string",
+            "description": "The unique identifier for the SKU."
+          }
+        },
+        "required": [
+          "sku_id"
+        ]
+      },
+      "example_output": {
+        "soft_allocations": 42
+      }
+    },
+    {
+      "name": "list_pending_orders",
+      "description": "Retrieves a list of all pending customer orders for a specific SKU that have not yet been fulfilled.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "sku_id": {
+            "type": "string",
+            "description": "The unique identifier for the SKU."
+          }
+        },
+        "required": [
+          "sku_id"
+        ]
+      },
+      "example_output": {
+        "orders": [
+          {
+            "order_id": "ORD-101",
+            "order_date": "2023-11-01",
+            "current_status": "Pending"
+          }
+        ]
+      }
+    },
+    {
+      "name": "update_shopify_inventory",
+      "description": "Updates the sellable backorder quantity (I-ATP) on the Shopify platform for a specific SKU.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "sku_id": {
+            "type": "string",
+            "description": "The SKU to update."
+          },
+          "new_atp_quantity": {
+            "type": "number",
+            "description": "The calculated Inbound Available-To-Promise quantity."
+          }
+        },
+        "required": [
+          "sku_id",
+          "new_atp_quantity"
+        ]
+      },
+      "example_output": {
+        "status": "success",
+        "updated_at": "2023-12-01T10:00:00Z"
+      }
+    },
+    {
+      "name": "update_order_regulatory_status",
+      "description": "Updates the status of a specific order to reflect regulatory compliance needs (e.g., 'Consent Required').",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "order_id": {
+            "type": "string",
+            "description": "The order ID to update."
+          },
+          "status": {
+            "type": "string",
+            "description": "The new status (e.g., 'Consent Required')."
+          }
+        },
+        "required": [
+          "order_id",
+          "status"
+        ]
+      },
+      "example_output": {
+        "order_id": "ORD-101",
+        "new_status": "Consent Required"
+      }
+    }
+  ],
+  "state_description": {
+    "inventory_records": "A mapping of SKU IDs to their current physical stock levels and warehouse IDs.",
+    "platform_sync_status": "Current synchronization status and timestamp for external sales channels like Amazon or Shopify.",
+    "pending_orders": "A list of orders received but not yet deducted from physical inventory.",
+    "last_sync_timestamp": "The ISO 8601 timestamp of the last successful global synchronization event."
+  },
+  "task_initial_state": {
+    "inventory_records": {
+      "SKU-CARBON-MTB-01": {
+        "quantity": 0,
+        "warehouse": "Seattle-DC-North",
+        "inbound_details": {
+          "po_number": "PO-8821",
+          "asn_quantity": 50,
+          "original_eta": "2023-11-10T00:00:00Z",
+          "current_eta": "2023-12-15T00:00:00Z",
+          "warehouse_sla_days": 3
+        }
+      }
+    },
+    "platform_sync_status": {
+      "Shopify": "Out_of_Sync",
+      "Amazon": "Synced"
+    },
+    "pending_orders": [
+      {
+        "order_id": "ORD-2023-001",
+        "sku": "SKU-CARBON-MTB-01",
+        "order_date": "2023-10-25T09:00:00Z",
+        "status": "AWAITING_INBOUND"
+      },
+      {
+        "order_id": "ORD-2023-015",
+        "sku": "SKU-CARBON-MTB-01",
+        "order_date": "2023-11-05T14:30:00Z",
+        "status": "AWAITING_INBOUND"
+      },
+      {
+        "order_id": "ORD-2023-042",
+        "sku": "SKU-CARBON-MTB-01",
+        "order_date": "2023-11-28T11:00:00Z",
+        "status": "AWAITING_INBOUND"
+      }
+    ],
+    "last_sync_timestamp": "2023-10-27T10:00:00Z"
+  }
+}

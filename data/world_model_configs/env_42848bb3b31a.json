@@ -1,0 +1,177 @@
+{
+  "environment_name": "env_42848bb3b31a",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: Based on the current state $s_t$ and action $a_t$, simulate the environment changes for the Multi-Device Scene Configuration and predict the observation $o_{{t+1}}$ obtained by the Agent.\n- **Emphasis**: The LWM does not execute real physical operations on hardware. It performs internal state evolution within the smart home/facility simulation and generates the resulting observation for the Agent.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions between the World Model and the Agent must maintain strict context consistency. The evolution of device statuses (e.g., brightness levels, temperature values, power states) must be tracked across the history of the session. If an action changes a device property, that change must persist until another action modifies it.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object containing:\n- `\"name\"`: The name of the action function (e.g., \"set_device_state\", \"query_sensor\").\n- The remaining fields are the parameter names and values defined in the action set.\n\nExample:\n```json\n{{\n \"name\": \"adjust_thermostat\",\n \"arguments\": {{\n    \"device_id\": \"living_room_ac\",\n    \"target_temperature\": 22\n  }}\n}}\n```\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\n- If an action refers to a `device_id` that does not exist in the current state, return: `{{\"error\": \"Device not found\", \"device_id\": \"...\"}}`.\n- If parameters are out of range (e.g., brightness > 100), return an error describing the valid range.\n- For undefined actions or malformed JSON, return structured error information.\n- **Do not fabricate devices or success responses if the state logic does not support them.**\n\n##### Output Assembly\nFor every action function call, the model must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition.\n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, the updated `new_state`, or any hidden variables used for simulation. The Agent must only receive the specific return values (the Observation) such as confirmation of change or current sensor readings. State maintenance is handled internally by the LWM.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to JSON for all observations.\n- **Factuality**: Do not simulate effects that contradict the device capabilities or the current state.\n- **Consistency**: If a \"Scene\" is activated, multiple device states should update internally in a manner consistent with that scene's logic.\n- **Realism**: Account for physical constraints (e.g., a device must be powered 'ON' before its 'brightness' can be adjusted).\n- **Quality**: Responses must be structurally complete and unambiguous.\n- **Encapsulation**: Strictly hide the internal state structure from the output. Only expose information explicitly returned by the action function.\n{{initial_state}}: {{\n  \"devices\": {{\n    \"central_registry_hub\": {{\n      \"active_priority_zone\": \"Cluster_Gamma_9\",\n      \"registry_version\": \"2.1.0\"\n    }},\n    \"light_gamma_9_pri\": {{\n      \"power\": \"OFF\",\n      \"brightness\": 0,\n      \"color_temp\": 4000\n    }},\n    \"light_gamma_9_sec\": {{\n      \"power\": \"ON\",\n      \"brightness\": 20,\n      \"color_temp\": 4000\n    }},\n    \"light_alpha_9_pri\": {{\n      \"power\": \"ON\",\n      \"brightness\": 50,\n      \"color_temp\": 3000\n    }},\n    \"light_beta_9_pri\": {{\n      \"power\": \"ON\",\n      \"brightness\": 50,\n      \"color_temp\": 3000\n    }},\n    \"mask_gamma_9_unit\": {{\n      \"power\": \"OFF\",\n      \"mode\": \"standby\"\n    }},\n    \"mask_alpha_9_unit\": {{\n      \"power\": \"ON\",\n      \"mode\": \"brown_noise\"\n    }},\n    \"mask_beta_9_unit\": {{\n      \"power\": \"ON\",\n      \"mode\": \"pink_noise\"\n    }}\n  }},\n  \"active_scene\": \"Maintenance_Mode\",\n  \"environment_metrics\": {{\n    \"ambient_temp\": 21.5,\n    \"illuminance\": 120,\n    \"occupancy_confidence\": 0.95\n  }}\n}}\n{{state_descriptions}}: {{\n  \"devices\": \"A map of device IDs to their current attribute values.\",\n  \"active_scene\": \"The name of the currently active configuration preset or 'none'.\",\n  \"environment_metrics\": \"Passive environment data like ambient temperature or light levels.\"\n}}\n{action_set_definitions}: {\n  \"query_registry\": {\n    \"description\": \"Retrieves data from a central hub or registry. Used to find current operational priorities or assignments.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"registry_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the registry (e.g., 'central_registry_hub').\"\n        },\n        \"key\": {\n          \"type\": \"string\",\n          \"description\": \"The specific field or key to look up (e.g., 'priority_area').\"\n        }\n      },\n      \"required\": [\n        \"registry_id\",\n        \"key\"\n      ]\n    },\n    \"example_output\": {\n      \"value\": \"Sector_7G\"\n    }\n  },\n  \"lookup_area_hardware\": {\n    \"description\": \"Returns the specific device IDs associated with a given area name, identifying primary hardware like luminaires or acoustic units.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"area_id\": {\n          \"type\": \"string\",\n          \"description\": \"The name of the priority area discovered from the registry.\"\n        }\n      },\n      \"required\": [\n        \"area_id\"\n      ]\n    },\n    \"example_output\": {\n      \"primary_luminaire\": \"LUM-001\",\n      \"acoustic_unit\": \"ACU-99\",\n      \"other_devices\": [\n        \"TEMP-1\"\n      ]\n    }\n  },\n  \"list_cluster_members\": {\n    \"description\": \"Identifies all hardware IDs belonging to a specific cluster or logical group (e.g., Alpha, Beta).\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"cluster_id\": {\n          \"type\": \"string\",\n          \"description\": \"The name of the cluster to scan.\"\n        }\n      },\n      \"required\": [\n        \"cluster_id\"\n      ]\n    },\n    \"example_output\": {\n      \"device_ids\": [\n        \"DEV-101\",\n        \"DEV-102\",\n        \"DEV-103\"\n      ]\n    }\n  },\n  \"update_device_state\": {\n    \"description\": \"Updates the internal attributes of a specific device. Used for setting brightness, operation modes, or power status.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"device_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the target device.\"\n        },\n        \"attribute\": {\n          \"type\": \"string\",\n          \"description\": \"The attribute to modify (e.g., 'brightness', 'mode', 'power').\"\n        },\n        \"value\": {\n          \"type\": \"string\",\n          \"description\": \"The new value for the attribute.\"\n        }\n      },\n      \"required\": [\n        \"device_id\",\n        \"attribute\",\n        \"value\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"success\",\n      \"current_state\": \"85%\"\n    }\n  },\n  \"set_active_scene\": {\n    \"description\": \"Finalizes the transition to a named scene configuration across the environment.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"scene_name\": {\n          \"type\": \"string\",\n          \"description\": \"The name of the scene to activate.\"\n        }\n      },\n      \"required\": [\n        \"scene_name\"\n      ]\n    },\n    \"example_output\": {\n      \"active_scene\": \"Deep_Work\",\n      \"timestamp\": \"2023-10-27T10:00:00Z\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "query_registry",
+      "description": "Retrieves data from a central hub or registry. Used to find current operational priorities or assignments.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "registry_id": {
+            "type": "string",
+            "description": "The unique identifier for the registry (e.g., 'central_registry_hub')."
+          },
+          "key": {
+            "type": "string",
+            "description": "The specific field or key to look up (e.g., 'priority_area')."
+          }
+        },
+        "required": [
+          "registry_id",
+          "key"
+        ]
+      },
+      "example_output": {
+        "value": "Sector_7G"
+      }
+    },
+    {
+      "name": "lookup_area_hardware",
+      "description": "Returns the specific device IDs associated with a given area name, identifying primary hardware like luminaires or acoustic units.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "area_id": {
+            "type": "string",
+            "description": "The name of the priority area discovered from the registry."
+          }
+        },
+        "required": [
+          "area_id"
+        ]
+      },
+      "example_output": {
+        "primary_luminaire": "LUM-001",
+        "acoustic_unit": "ACU-99",
+        "other_devices": [
+          "TEMP-1"
+        ]
+      }
+    },
+    {
+      "name": "list_cluster_members",
+      "description": "Identifies all hardware IDs belonging to a specific cluster or logical group (e.g., Alpha, Beta).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "cluster_id": {
+            "type": "string",
+            "description": "The name of the cluster to scan."
+          }
+        },
+        "required": [
+          "cluster_id"
+        ]
+      },
+      "example_output": {
+        "device_ids": [
+          "DEV-101",
+          "DEV-102",
+          "DEV-103"
+        ]
+      }
+    },
+    {
+      "name": "update_device_state",
+      "description": "Updates the internal attributes of a specific device. Used for setting brightness, operation modes, or power status.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "device_id": {
+            "type": "string",
+            "description": "The ID of the target device."
+          },
+          "attribute": {
+            "type": "string",
+            "description": "The attribute to modify (e.g., 'brightness', 'mode', 'power')."
+          },
+          "value": {
+            "type": "string",
+            "description": "The new value for the attribute."
+          }
+        },
+        "required": [
+          "device_id",
+          "attribute",
+          "value"
+        ]
+      },
+      "example_output": {
+        "status": "success",
+        "current_state": "85%"
+      }
+    },
+    {
+      "name": "set_active_scene",
+      "description": "Finalizes the transition to a named scene configuration across the environment.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "scene_name": {
+            "type": "string",
+            "description": "The name of the scene to activate."
+          }
+        },
+        "required": [
+          "scene_name"
+        ]
+      },
+      "example_output": {
+        "active_scene": "Deep_Work",
+        "timestamp": "2023-10-27T10:00:00Z"
+      }
+    }
+  ],
+  "state_description": {
+    "devices": "A map of device IDs to their current attribute values.",
+    "active_scene": "The name of the currently active configuration preset or 'none'.",
+    "environment_metrics": "Passive environment data like ambient temperature or light levels."
+  },
+  "task_initial_state": {
+    "devices": {
+      "central_registry_hub": {
+        "active_priority_zone": "Cluster_Gamma_9",
+        "registry_version": "2.1.0"
+      },
+      "light_gamma_9_pri": {
+        "power": "OFF",
+        "brightness": 0,
+        "color_temp": 4000
+      },
+      "light_gamma_9_sec": {
+        "power": "ON",
+        "brightness": 20,
+        "color_temp": 4000
+      },
+      "light_alpha_9_pri": {
+        "power": "ON",
+        "brightness": 50,
+        "color_temp": 3000
+      },
+      "light_beta_9_pri": {
+        "power": "ON",
+        "brightness": 50,
+        "color_temp": 3000
+      },
+      "mask_gamma_9_unit": {
+        "power": "OFF",
+        "mode": "standby"
+      },
+      "mask_alpha_9_unit": {
+        "power": "ON",
+        "mode": "brown_noise"
+      },
+      "mask_beta_9_unit": {
+        "power": "ON",
+        "mode": "pink_noise"
+      }
+    },
+    "active_scene": "Maintenance_Mode",
+    "environment_metrics": {
+      "ambient_temp": 21.5,
+      "illuminance": 120,
+      "occupancy_confidence": 0.95
+    }
+  }
+}

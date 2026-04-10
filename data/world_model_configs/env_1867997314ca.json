@@ -1,0 +1,225 @@
+{
+  "environment_name": "env_1867997314ca",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM) for Clinical Trial Eligibility Matching.\n- **Core Objective**: Based on the current internal state $s_t$ and the action $a_t$ performed by the Agent, simulate the environment's internal evolution and predict the resulting observation $o_{{t+1}}$ obtained by the Agent.\n- **Emphasis**: You are a simulator of a clinical database and matching engine. You do not execute real-world medical actions; you simulate state transitions (e.g., loading patient data, filtering trial registries) and generate observations (e.g., trial criteria, matching results).\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions between the World Model and the Agent must maintain rigorous context consistency. If a patient record is loaded in state $s_t$, it remains available in $s_{{t+1}}$ until an action explicitly changes the context or clears the buffer.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. This JSON must contain the following fields:\n- `\"name\"`: Specifies the name of the action function to execute.\n- Parameters: The specific arguments required by that action function.\n\nThe Language World Model must correctly parse these inputs to determine how the clinical environment state evolves.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nIf the Agent attempts to access a non-existent patient ID, query a trial without proper authorization, provides invalid medical codes (ICD-10/RxNorm), or calls undefined functions, return a structured error response: `{{\"error\": \"Description of clinical/system error\"}}`. Do not fabricate medical data or outcomes.\n\n##### Output Assembly\nFor every action function call, the model must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition.\n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the internal state `$s_t$`, the updated `new_state`, or hidden variables like the full patient database. Only the specific `observation` (the return values) must be visible to the Agent.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to JSON for both state management and observation output.\n- **Factuality**: Simulations must be grounded in clinical logic. If an inclusion criterion (e.g., HbA1c > 7.0) is not met by the current patient state, the observation must reflect a mismatch.\n- **Consistency**: The patient's medical history must remain consistent throughout the session. Trials cannot change their criteria mid-interaction.\n- **Realism**: Simulate realistic delays or data availability constraints common in clinical informatics (e.g., missing lab values if not previously loaded).\n- **Quality**: Use precise medical terminology and clear structural formatting.\n- **Encapsulation**: Strictly hide the internal state structure. The Agent only sees the `observation` resulting from its `action`.\n{{initial_state}}: {{\n  \"current_patient_context\": {{}},\n  \"loaded_trials_registry\": [\n    {{\n      \"trial_id\": \"NCT0551234\",\n      \"title\": \"Adaptive Immunotherapy Trial for Advanced NSCLC\",\n      \"inclusion_criteria\": [\n        \"Documented Stage IV Non-Small Cell Lung Cancer (NSCLC)\",\n        \"Prior treatment with Pembrolizumab (RxNorm: 1547504) within 180 days of screening\",\n        \"AST <= 2.5x Upper Limit of Normal (ULN) based on facility reference standards\"\n      ],\n      \"exclusion_criteria\": [\n        \"Active autoimmune disease (SNOMED: 85828009 and descendants)\"\n      ],\n      \"status\": \"OPEN\"\n    }}\n  ],\n  \"matching_log\": [\n    {{\n      \"timestamp\": \"2023-11-15T08:30:00Z\",\n      \"alert_type\": \"Facility-Specific Screening Alert\",\n      \"patient_id\": \"P-4492\",\n      \"facility_id\": \"FAC-NORTH-77\",\n      \"message\": \"Potential candidate P-4492 identified at Northside Specialty Center; requires manual verification of site-specific lab thresholds and staging.\"\n    }}\n  ],\n  \"system_status\": \"IDLE\"\n}}\n{{state_descriptions}}: {{\n  \"current_patient_context\": \"Contains the demographic and clinical data of the patient currently under evaluation.\",\n  \"loaded_trials_registry\": \"A list of clinical trials currently loaded into the active memory for matching.\",\n  \"matching_log\": \"A history of specific criteria checks (Inclusion/Exclusion) performed during the current session.\",\n  \"system_status\": \"The current operational mode of the environment (e.g., 'IDLE', 'PATIENT_LOADED', 'MATCHING_IN_PROGRESS').\"\n}}\n{action_set_definitions}: {\n  \"fetch_latest_screening_alert\": {\n    \"description\": \"Retrieves the most recent facility-specific screening alert for a trial protocol to identify the target patient and the environment timestamp.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"trial_id\": {\n          \"type\": \"string\",\n          \"description\": \"The trial identifier (e.g., 'NCT0551234').\"\n        }\n      },\n      \"required\": [\n        \"trial_id\"\n      ]\n    },\n    \"example_output\": {\n      \"alert_id\": \"AL-445\",\n      \"patient_id\": \"PAT-902\",\n      \"alert_timestamp\": \"2024-05-20T14:00:00Z\",\n      \"facility_id\": \"SITE_ALPHA\"\n    }\n  },\n  \"get_trial_protocol_criteria\": {\n    \"description\": \"Retrieves the full set of inclusion and exclusion criteria for a trial, including lab threshold logic, medication window requirements, and clinical condition SNOMED codes.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"trial_id\": {\n          \"type\": \"string\"\n        }\n      },\n      \"required\": [\n        \"trial_id\"\n      ]\n    },\n    \"example_output\": {\n      \"lab_thresholds\": {\n        \"AST\": \"ULN * 3.0\"\n      },\n      \"required_medications\": {\n        \"Pembrolizumab\": {\n          \"max_days_prior\": 180\n        }\n      },\n      \"exclusion_criteria\": {\n        \"snomed_codes\": [\n          \"85828009\"\n        ]\n      },\n      \"required_staging\": [\n        \"Stage III\",\n        \"Stage IV\"\n      ]\n    }\n  },\n  \"get_patient_clinical_history\": {\n    \"description\": \"Retrieves diagnostic records, clinical staging, and SNOMED-coded conditions for a specific patient.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"patient_id\": {\n          \"type\": \"string\"\n        }\n      },\n      \"required\": [\n        \"patient_id\"\n      ]\n    },\n    \"example_output\": {\n      \"clinical_staging\": \"Stage IV\",\n      \"conditions\": [\n        {\n          \"snomed_code\": \"85828009\",\n          \"diagnosis\": \"Autoimmune disease\"\n        }\n      ]\n    }\n  },\n  \"get_patient_medication_history\": {\n    \"description\": \"Retrieves a history of medications administered to a patient with associated administration dates.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"patient_id\": {\n          \"type\": \"string\"\n        }\n      },\n      \"required\": [\n        \"patient_id\"\n      ]\n    },\n    \"example_output\": {\n      \"medications\": [\n        {\n          \"name\": \"Pembrolizumab\",\n          \"administration_date\": \"2024-02-10\"\n        }\n      ]\n    }\n  },\n  \"get_patient_lab_results\": {\n    \"description\": \"Retrieves laboratory assay results for a specific patient and identifies the facility that processed the lab.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"patient_id\": {\n          \"type\": \"string\"\n        },\n        \"assay_type\": {\n          \"type\": \"string\",\n          \"description\": \"The name of the lab test, e.g., 'AST'.\"\n        }\n      },\n      \"required\": [\n        \"patient_id\",\n        \"assay_type\"\n      ]\n    },\n    \"example_output\": {\n      \"value\": 125.0,\n      \"processing_facility_id\": \"LAB_FACILITY_B\",\n      \"units\": \"U/L\"\n    }\n  },\n  \"get_site_lab_reference_standard\": {\n    \"description\": \"Retrieves site-specific laboratory reference standards (Upper Limit of Normal) for a specific facility and assay.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"facility_id\": {\n          \"type\": \"string\"\n        },\n        \"assay_type\": {\n          \"type\": \"string\"\n        }\n      },\n      \"required\": [\n        \"facility_id\",\n        \"assay_type\"\n      ]\n    },\n    \"example_output\": {\n      \"uln\": 40.0,\n      \"unit\": \"U/L\"\n    }\n  },\n  \"submit_eligibility_status\": {\n    \"description\": \"Finalizes the evaluation by submitting the eligibility status and rationale for the patient matching process.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"patient_id\": {\n          \"type\": \"string\"\n        },\n        \"trial_id\": {\n          \"type\": \"string\"\n        },\n        \"status\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"ELIGIBLE\",\n            \"INELIGIBLE\"\n          ]\n        },\n        \"rationale\": {\n          \"type\": \"string\"\n        }\n      },\n      \"required\": [\n        \"patient_id\",\n        \"trial_id\",\n        \"status\",\n        \"rationale\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"Submitted\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "fetch_latest_screening_alert",
+      "description": "Retrieves the most recent facility-specific screening alert for a trial protocol to identify the target patient and the environment timestamp.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "trial_id": {
+            "type": "string",
+            "description": "The trial identifier (e.g., 'NCT0551234')."
+          }
+        },
+        "required": [
+          "trial_id"
+        ]
+      },
+      "example_output": {
+        "alert_id": "AL-445",
+        "patient_id": "PAT-902",
+        "alert_timestamp": "2024-05-20T14:00:00Z",
+        "facility_id": "SITE_ALPHA"
+      }
+    },
+    {
+      "name": "get_trial_protocol_criteria",
+      "description": "Retrieves the full set of inclusion and exclusion criteria for a trial, including lab threshold logic, medication window requirements, and clinical condition SNOMED codes.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "trial_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "trial_id"
+        ]
+      },
+      "example_output": {
+        "lab_thresholds": {
+          "AST": "ULN * 3.0"
+        },
+        "required_medications": {
+          "Pembrolizumab": {
+            "max_days_prior": 180
+          }
+        },
+        "exclusion_criteria": {
+          "snomed_codes": [
+            "85828009"
+          ]
+        },
+        "required_staging": [
+          "Stage III",
+          "Stage IV"
+        ]
+      }
+    },
+    {
+      "name": "get_patient_clinical_history",
+      "description": "Retrieves diagnostic records, clinical staging, and SNOMED-coded conditions for a specific patient.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "patient_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "patient_id"
+        ]
+      },
+      "example_output": {
+        "clinical_staging": "Stage IV",
+        "conditions": [
+          {
+            "snomed_code": "85828009",
+            "diagnosis": "Autoimmune disease"
+          }
+        ]
+      }
+    },
+    {
+      "name": "get_patient_medication_history",
+      "description": "Retrieves a history of medications administered to a patient with associated administration dates.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "patient_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "patient_id"
+        ]
+      },
+      "example_output": {
+        "medications": [
+          {
+            "name": "Pembrolizumab",
+            "administration_date": "2024-02-10"
+          }
+        ]
+      }
+    },
+    {
+      "name": "get_patient_lab_results",
+      "description": "Retrieves laboratory assay results for a specific patient and identifies the facility that processed the lab.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "patient_id": {
+            "type": "string"
+          },
+          "assay_type": {
+            "type": "string",
+            "description": "The name of the lab test, e.g., 'AST'."
+          }
+        },
+        "required": [
+          "patient_id",
+          "assay_type"
+        ]
+      },
+      "example_output": {
+        "value": 125.0,
+        "processing_facility_id": "LAB_FACILITY_B",
+        "units": "U/L"
+      }
+    },
+    {
+      "name": "get_site_lab_reference_standard",
+      "description": "Retrieves site-specific laboratory reference standards (Upper Limit of Normal) for a specific facility and assay.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "facility_id": {
+            "type": "string"
+          },
+          "assay_type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "facility_id",
+          "assay_type"
+        ]
+      },
+      "example_output": {
+        "uln": 40.0,
+        "unit": "U/L"
+      }
+    },
+    {
+      "name": "submit_eligibility_status",
+      "description": "Finalizes the evaluation by submitting the eligibility status and rationale for the patient matching process.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "patient_id": {
+            "type": "string"
+          },
+          "trial_id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ELIGIBLE",
+              "INELIGIBLE"
+            ]
+          },
+          "rationale": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "patient_id",
+          "trial_id",
+          "status",
+          "rationale"
+        ]
+      },
+      "example_output": {
+        "status": "Submitted"
+      }
+    }
+  ],
+  "state_description": {
+    "current_patient_context": "Contains the demographic and clinical data of the patient currently under evaluation.",
+    "loaded_trials_registry": "A list of clinical trials currently loaded into the active memory for matching.",
+    "matching_log": "A history of specific criteria checks (Inclusion/Exclusion) performed during the current session.",
+    "system_status": "The current operational mode of the environment (e.g., 'IDLE', 'PATIENT_LOADED', 'MATCHING_IN_PROGRESS')."
+  },
+  "task_initial_state": {
+    "current_patient_context": {},
+    "loaded_trials_registry": [
+      {
+        "trial_id": "NCT0551234",
+        "title": "Adaptive Immunotherapy Trial for Advanced NSCLC",
+        "inclusion_criteria": [
+          "Documented Stage IV Non-Small Cell Lung Cancer (NSCLC)",
+          "Prior treatment with Pembrolizumab (RxNorm: 1547504) within 180 days of screening",
+          "AST <= 2.5x Upper Limit of Normal (ULN) based on facility reference standards"
+        ],
+        "exclusion_criteria": [
+          "Active autoimmune disease (SNOMED: 85828009 and descendants)"
+        ],
+        "status": "OPEN"
+      }
+    ],
+    "matching_log": [
+      {
+        "timestamp": "2023-11-15T08:30:00Z",
+        "alert_type": "Facility-Specific Screening Alert",
+        "patient_id": "P-4492",
+        "facility_id": "FAC-NORTH-77",
+        "message": "Potential candidate P-4492 identified at Northside Specialty Center; requires manual verification of site-specific lab thresholds and staging."
+      }
+    ],
+    "system_status": "IDLE"
+  }
+}

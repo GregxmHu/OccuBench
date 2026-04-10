@@ -1,0 +1,208 @@
+{
+  "environment_name": "env_6954a2198879",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM) for Regulatory Filing Submission.\n- **Core Objective**: Based on the current internal state $s_t$ and the action $a_t$ performed by the Agent, simulate the internal evolution of the regulatory environment and predict the observation $o_{{t+1}}$ received by the Agent.\n- **Emphasis**: You are a simulator. You do not execute real-world legal filings or interact with real government servers. You maintain internal consistency of the filing lifecycle (drafting, validation, signing, submission) and generate realistic observations (API responses, success/error messages).\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions must maintain absolute context consistency. If a document is uploaded in step $t$, it must remain in the state for step $t+1$. Deadlines, validation flags, and submission statuses must evolve logically according to the rules of a regulatory filing system.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. This JSON must contain the following fields:\n- `\"name\"`: The name of the action function (e.g., `upload_document`, `validate_filing`, `submit_to_regulator`).\n- Additional fields: The parameters required by the function.\n\nExample:\n```json\n{{\n \"name\": \"upload_document\",\n \"arguments\": {{\n    \"filing_id\": \"RF-9921\",\n    \"document_type\": \"FinancialStatement\",\n    \"file_hash\": \"a1b2c3d4\"\n  }}\n}}\n```\nYou must parse this input, update the internal environment state, and generate the corresponding observation.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\n- If an action refers to a non-existent `filing_id`, return an error.\n- If a submission is attempted without required documents or signatures, return a validation error.\n- If an action is attempted after a deadline has passed (based on the internal system clock), return a \"Late Submission\" error.\n- For any invalid input, return a JSON object like `{{\"error\": \"Description of the issue\"}}` and do not update the state in a way that creates inconsistencies.\n\n##### Output Assembly\nFor every action call, return a structured JSON object containing **ONLY** the return fields declared in that action function's definition (the Observation).\n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the internal state `$s_t$`, the updated state, or any hidden variables. State maintenance is handled internally by you. The Agent must only see the specific return values (Observations) defined in the action set.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to JSON for both parsing and output.\n- **Factuality**: Do not invent filing types, error codes, or regulatory responses not implied by the action set or state logic.\n- **Consistency**: If a filing is marked \"SUBMITTED\", subsequent attempts to modify it should fail unless \"RETRACT\" actions are defined.\n- **Realism**: Simulate realistic delays or multi-step validation processes if the state logic dictates.\n- **Quality**: Ensure error messages are clear and help the agent understand why a transition failed (e.g., \"Missing required Annex A\").\n- **Encapsulation**: Never reveal the raw state JSON in your response to the Agent.\n{{initial_state}}: {{\n  \"filings\": {{\n    \"CAT-REJ-X99\": {{\n      \"status\": \"REJECTED\",\n      \"trade_date\": \"2024-05-20\",\n      \"value_usd\": 15000000,\n      \"algorithm\": \"NEURAL-HFT-09\",\n      \"counterparty\": \"ShadowX\",\n      \"routed_order_id\": \"OX-7721-B\",\n      \"errors\": [\n        \"Code 3003: Unlinked Route\",\n        \"Code 1005: Missing FDID\"\n      ],\n      \"audit_flag\": \"HIGH_VALUE_LOCK\"\n    }},\n    \"INTERNAL-SOP-SECURE\": {{\n      \"status\": \"REFERENCE\",\n      \"title\": \"Protocol for High-Value Regulatory Repairs\",\n      \"content\": \"Modifications to filings exceeding $10,000,000 are restricted. To enable modification rights for these records, the agent must perform the 'request_permission_elevation' action using the current daily vault code: 'SECURE-GATE-2024-05-22'.\",\n      \"metadata\": {{\n        \"mapping\": \"NEURAL-HFT-09 -> FDID: QT-99-BETA\",\n        \"prefix\": \"ShadowX requires 'SX-REP-' prefix for all 2024-05-20 trades.\"\n      }}\n    }}\n  }},\n  \"system_clock\": \"2024-05-22T09:15:00Z\",\n  \"authentication\": {{\n    \"is_authenticated\": true,\n    \"permissions\": [\n      \"READ_FILINGS\",\n      \"VALIDATE\"\n    ]\n  }},\n  \"validation_rules\": [\n    \"documents_present\",\n    \"signed\",\n    \"before_deadline\",\n    \"valid_fdid_format\",\n    \"compliance_token_active\"\n  ]\n}}\n{{state_descriptions}}: {{\n  \"filings\": \"A map of filing IDs to their current metadata and status.\",\n  \"system_clock\": \"The current simulation time in ISO 8601 format to track deadlines.\",\n  \"authentication\": \"Details regarding the current agent's session and permissions.\",\n  \"validation_rules\": \"A list of requirements that must be met for a successful submission.\"\n}}\n{action_set_definitions}: {\n  \"get_system_time\": {\n    \"description\": \"Retrieves the current simulation time to track regulatory deadlines.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"current_time\": \"2024-05-22T14:30:00Z\"\n    }\n  },\n  \"get_filing_details\": {\n    \"description\": \"Retrieves the metadata, current status, and specific error logs for a given filing ID.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"filing_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the regulatory filing (e.g., 'CAT-REJ-X99').\"\n        }\n      },\n      \"required\": [\n        \"filing_id\"\n      ]\n    },\n    \"example_output\": {\n      \"filing_id\": \"CAT-REJ-X99\",\n      \"status\": \"REJECTED\",\n      \"counterparty\": \"ShadowX\",\n      \"errors\": [\n        \"Missing FDID\",\n        \"Incorrect order prefix\"\n      ],\n      \"current_data\": {\n        \"order_prefix\": \"PRE-001\",\n        \"fdid\": null\n      }\n    }\n  },\n  \"search_operational_docs\": {\n    \"description\": \"Searches internal documentation for security protocols, validation rules, and data formatting standards.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"query\": {\n          \"type\": \"string\",\n          \"description\": \"Keywords to search for (e.g., 'high-value transaction protocol', 'order prefix format').\"\n        }\n      },\n      \"required\": [\n        \"query\"\n      ]\n    },\n    \"example_output\": {\n      \"results\": [\n        {\n          \"topic\": \"High-Value Protocols\",\n          \"content\": \"Requires execution of 'request_security_token' before submission.\"\n        }\n      ]\n    }\n  },\n  \"lookup_entity_fdid\": {\n    \"description\": \"Retrieves the Firm Designated ID (FDID) for a specific counterparty.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"entity_name\": {\n          \"type\": \"string\",\n          \"description\": \"The name of the counterparty (e.g., 'ShadowX').\"\n        }\n      },\n      \"required\": [\n        \"entity_name\"\n      ]\n    },\n    \"example_output\": {\n      \"fdid\": \"FDID-88219-X\"\n    }\n  },\n  \"request_security_token\": {\n    \"description\": \"Elevates session permissions to handle high-value transactions by providing required credentials or context.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"purpose\": {\n          \"type\": \"string\",\n          \"description\": \"Reason for elevation (e.g., 'remediate_high_value_filing').\"\n        }\n      },\n      \"required\": [\n        \"purpose\"\n      ]\n    },\n    \"example_output\": {\n      \"auth_token\": \"SEC-TOKEN-XYZ-123\",\n      \"expiry\": \"2024-05-23T00:00:00Z\"\n    }\n  },\n  \"patch_filing_data\": {\n    \"description\": \"Updates specific fields in a filing record to correct errors.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"filing_id\": {\n          \"type\": \"string\",\n          \"description\": \"The filing ID to update.\"\n        },\n        \"updates\": {\n          \"type\": \"object\",\n          \"description\": \"Key-value pairs of fields to update (e.g., {'fdid': 'val', 'order_prefix': 'val'}).\"\n        }\n      },\n      \"required\": [\n        \"filing_id\",\n        \"updates\"\n      ]\n    },\n    \"example_output\": {\n      \"success\": true,\n      \"new_state\": \"DRAFT_REMEDIATED\"\n    }\n  },\n  \"submit_remediated_filing\": {\n    \"description\": \"Finalizes and submits a corrected filing to the regulator.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"filing_id\": {\n          \"type\": \"string\",\n          \"description\": \"The filing ID to submit.\"\n        },\n        \"auth_token\": {\n          \"type\": \"string\",\n          \"description\": \"The security token obtained for high-value transactions.\"\n        }\n      },\n      \"required\": [\n        \"filing_id\",\n        \"auth_token\"\n      ]\n    },\n    \"example_output\": {\n      \"submission_id\": \"SUB-9988-ABC\",\n      \"status\": \"SUBMITTED\",\n      \"timestamp\": \"2024-05-22T15:00:00Z\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_system_time",
+      "description": "Retrieves the current simulation time to track regulatory deadlines.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "current_time": "2024-05-22T14:30:00Z"
+      }
+    },
+    {
+      "name": "get_filing_details",
+      "description": "Retrieves the metadata, current status, and specific error logs for a given filing ID.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "filing_id": {
+            "type": "string",
+            "description": "The unique identifier for the regulatory filing (e.g., 'CAT-REJ-X99')."
+          }
+        },
+        "required": [
+          "filing_id"
+        ]
+      },
+      "example_output": {
+        "filing_id": "CAT-REJ-X99",
+        "status": "REJECTED",
+        "counterparty": "ShadowX",
+        "errors": [
+          "Missing FDID",
+          "Incorrect order prefix"
+        ],
+        "current_data": {
+          "order_prefix": "PRE-001",
+          "fdid": null
+        }
+      }
+    },
+    {
+      "name": "search_operational_docs",
+      "description": "Searches internal documentation for security protocols, validation rules, and data formatting standards.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "description": "Keywords to search for (e.g., 'high-value transaction protocol', 'order prefix format')."
+          }
+        },
+        "required": [
+          "query"
+        ]
+      },
+      "example_output": {
+        "results": [
+          {
+            "topic": "High-Value Protocols",
+            "content": "Requires execution of 'request_security_token' before submission."
+          }
+        ]
+      }
+    },
+    {
+      "name": "lookup_entity_fdid",
+      "description": "Retrieves the Firm Designated ID (FDID) for a specific counterparty.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "entity_name": {
+            "type": "string",
+            "description": "The name of the counterparty (e.g., 'ShadowX')."
+          }
+        },
+        "required": [
+          "entity_name"
+        ]
+      },
+      "example_output": {
+        "fdid": "FDID-88219-X"
+      }
+    },
+    {
+      "name": "request_security_token",
+      "description": "Elevates session permissions to handle high-value transactions by providing required credentials or context.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "purpose": {
+            "type": "string",
+            "description": "Reason for elevation (e.g., 'remediate_high_value_filing')."
+          }
+        },
+        "required": [
+          "purpose"
+        ]
+      },
+      "example_output": {
+        "auth_token": "SEC-TOKEN-XYZ-123",
+        "expiry": "2024-05-23T00:00:00Z"
+      }
+    },
+    {
+      "name": "patch_filing_data",
+      "description": "Updates specific fields in a filing record to correct errors.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "filing_id": {
+            "type": "string",
+            "description": "The filing ID to update."
+          },
+          "updates": {
+            "type": "object",
+            "description": "Key-value pairs of fields to update (e.g., {'fdid': 'val', 'order_prefix': 'val'})."
+          }
+        },
+        "required": [
+          "filing_id",
+          "updates"
+        ]
+      },
+      "example_output": {
+        "success": true,
+        "new_state": "DRAFT_REMEDIATED"
+      }
+    },
+    {
+      "name": "submit_remediated_filing",
+      "description": "Finalizes and submits a corrected filing to the regulator.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "filing_id": {
+            "type": "string",
+            "description": "The filing ID to submit."
+          },
+          "auth_token": {
+            "type": "string",
+            "description": "The security token obtained for high-value transactions."
+          }
+        },
+        "required": [
+          "filing_id",
+          "auth_token"
+        ]
+      },
+      "example_output": {
+        "submission_id": "SUB-9988-ABC",
+        "status": "SUBMITTED",
+        "timestamp": "2024-05-22T15:00:00Z"
+      }
+    }
+  ],
+  "state_description": {
+    "filings": "A map of filing IDs to their current metadata and status.",
+    "system_clock": "The current simulation time in ISO 8601 format to track deadlines.",
+    "authentication": "Details regarding the current agent's session and permissions.",
+    "validation_rules": "A list of requirements that must be met for a successful submission."
+  },
+  "task_initial_state": {
+    "filings": {
+      "CAT-REJ-X99": {
+        "status": "REJECTED",
+        "trade_date": "2024-05-20",
+        "value_usd": 15000000,
+        "algorithm": "NEURAL-HFT-09",
+        "counterparty": "ShadowX",
+        "routed_order_id": "OX-7721-B",
+        "errors": [
+          "Code 3003: Unlinked Route",
+          "Code 1005: Missing FDID"
+        ],
+        "audit_flag": "HIGH_VALUE_LOCK"
+      },
+      "INTERNAL-SOP-SECURE": {
+        "status": "REFERENCE",
+        "title": "Protocol for High-Value Regulatory Repairs",
+        "content": "Modifications to filings exceeding $10,000,000 are restricted. To enable modification rights for these records, the agent must perform the 'request_permission_elevation' action using the current daily vault code: 'SECURE-GATE-2024-05-22'.",
+        "metadata": {
+          "mapping": "NEURAL-HFT-09 -> FDID: QT-99-BETA",
+          "prefix": "ShadowX requires 'SX-REP-' prefix for all 2024-05-20 trades."
+        }
+      }
+    },
+    "system_clock": "2024-05-22T09:15:00Z",
+    "authentication": {
+      "is_authenticated": true,
+      "permissions": [
+        "READ_FILINGS",
+        "VALIDATE"
+      ]
+    },
+    "validation_rules": [
+      "documents_present",
+      "signed",
+      "before_deadline",
+      "valid_fdid_format",
+      "compliance_token_active"
+    ]
+  }
+}

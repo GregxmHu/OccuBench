@@ -1,0 +1,160 @@
+{
+  "environment_name": "env_1e0ab2cedf98",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: Based on current internal state $s_t$ and action $a_t$, simulate the evolution of the Demand Forecast Adjustment environment and predict the observation $o_{{t+1}}$ obtained by the Agent. \n- **Emphasis**: You are a simulator. You do not execute real-world business operations; you perform internal state evolution and generate the resulting observations to mimic a real demand planning system.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions between the World Model and the Agent must maintain strict context consistency. The model must track changes to forecasts, inventory levels, and timeline progress across multiple turns to ensure logical continuity.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. This JSON must contain the following fields:\n- `\"name\"`: Specifies the name of the action function to execute.\n- The remaining fields are parameters required by that action function.\n\nExample:\n```json\n{{\n \"name\": \"update_forecast\",\n \"arguments\": {{\n    \"product_id\": \"PROD-001\",\n    \"new_forecast_quantity\": 1200,\n    \"adjustment_reason\": \"Marketing campaign increase\"\n  }}\n}}\n```\nYou must correctly parse these inputs and simulate the resulting changes in the environment.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nFor invalid parameters (e.g., negative forecast values), undefined actions, state conflicts (e.g., adjusting a forecast for a non-existent product), or empty inputs, return structured error information: `{{\"error\": \"Descriptive error message\"}}`. Do not fabricate successful responses for failed logic.\n\n##### Output Assembly\nFor every action function call, the model must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition. \n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state $s_t$, the updated `new_state`, or any hidden variables. State maintenance is handled internally. The Agent must only see the specific Observation returned by the action.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to JSON for both state tracking and observation output.\n- **Factuality**: Do not invent products, market trends, or historical data not implied by the state or actions.\n- **Consistency**: If a forecast is adjusted at time $t$, that adjusted value must persist in the internal state at time $t+1$.\n- **Realism**: Simulated impacts (e.g., how a promotion affects demand) must align with reasonable business logic.\n- **Quality**: Observations should be clear and structurally complete.\n- **Encapsulation**: Strictly hide the internal state structure from the output. Only expose the \"Observation\" (return values of the function).\n{{initial_state}}: {{\n  \"current_period\": \"2024-W15\",\n  \"products\": [\n    {{\n      \"product_id\": \"SKU-BMS-77-MDC\",\n      \"base_forecast\": 1600,\n      \"adjusted_forecast\": 1600,\n      \"on_hand_inventory\": 450,\n      \"recent_sales_trend\": \"Class 9 HazMat Recall\"\n    }},\n    {{\n      \"product_id\": \"SKU-BMS-77-SURGE\",\n      \"base_forecast\": 0,\n      \"adjusted_forecast\": 0,\n      \"on_hand_inventory\": 0,\n      \"recent_sales_trend\": \"Overflow Capacity\"\n    }},\n    {{\n      \"product_id\": \"SKU-STD-12-MDC\",\n      \"base_forecast\": 300,\n      \"adjusted_forecast\": 300,\n      \"on_hand_inventory\": 120,\n      \"recent_sales_trend\": \"Stable\"\n    }}\n  ],\n  \"market_conditions\": {{\n    \"inflation_impact\": \"medium\",\n    \"competitor_activity\": false\n  }}\n}}\n{{state_descriptions}}: {{\n  \"current_period\": \"The current time period for the forecast (e.g., '2024-Q3' or '2023-05').\",\n  \"products\": \"List of products and their current forecasting metrics.\",\n  \"market_conditions\": \"External factors influencing demand simulation.\"\n}}\n{action_set_definitions}: {\n  \"search_products\": {\n    \"description\": \"Searches for products based on specific attributes like recall status, category, or classification.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"attribute_name\": {\n          \"type\": \"string\",\n          \"description\": \"The attribute to filter by (e.g., 'recall_status' or 'hazmat_class').\"\n        },\n        \"attribute_value\": {\n          \"type\": \"string\",\n          \"description\": \"The value of the attribute to match (e.g., 'Class 9 HazMat').\"\n        }\n      },\n      \"required\": [\n        \"attribute_name\",\n        \"attribute_value\"\n      ]\n    },\n    \"example_output\": {\n      \"products\": [\n        {\n          \"sku_id\": \"SKU-9982\",\n          \"name\": \"Industrial Battery Pack\",\n          \"classification\": \"Class 9 HazMat\"\n        }\n      ]\n    }\n  },\n  \"get_facility_info\": {\n    \"description\": \"Retrieves facility identifiers and details based on their role or name in the distribution network.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"facility_type\": {\n          \"type\": \"string\",\n          \"description\": \"The role of the facility (e.g., 'MDC', 'Main Distribution Center', 'Regional Surge Facility').\"\n        }\n      },\n      \"required\": [\n        \"facility_type\"\n      ]\n    },\n    \"example_output\": {\n      \"facilities\": [\n        {\n          \"facility_id\": \"FAC-001\",\n          \"name\": \"Central MDC\",\n          \"type\": \"MDC\"\n        }\n      ]\n    }\n  },\n  \"get_inventory_and_forecast\": {\n    \"description\": \"Gets the current on-hand inventory level and the existing inbound forecast for a specific SKU at a specific facility.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"sku_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the product.\"\n        },\n        \"facility_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the facility.\"\n        }\n      },\n      \"required\": [\n        \"sku_id\",\n        \"facility_id\"\n      ]\n    },\n    \"example_output\": {\n      \"sku_id\": \"SKU-9982\",\n      \"facility_id\": \"FAC-001\",\n      \"on_hand_inventory\": 1200,\n      \"current_forecast\": 800,\n      \"period\": \"2024-Q3\"\n    }\n  },\n  \"reallocate_forecast\": {\n    \"description\": \"Moves a specified quantity of forecast from one facility to another for a specific SKU to ensure network totals remain unchanged.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"sku_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the product.\"\n        },\n        \"from_facility_id\": {\n          \"type\": \"string\",\n          \"description\": \"The facility ID where the forecast is being reduced.\"\n        },\n        \"to_facility_id\": {\n          \"type\": \"string\",\n          \"description\": \"The facility ID where the forecast is being redirected.\"\n        },\n        \"quantity\": {\n          \"type\": \"number\",\n          \"description\": \"The amount of forecast to move.\"\n        }\n      },\n      \"required\": [\n        \"sku_id\",\n        \"from_facility_id\",\n        \"to_facility_id\",\n        \"quantity\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"success\",\n      \"updated_origin_forecast\": 500,\n      \"updated_destination_forecast\": 300\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "search_products",
+      "description": "Searches for products based on specific attributes like recall status, category, or classification.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "attribute_name": {
+            "type": "string",
+            "description": "The attribute to filter by (e.g., 'recall_status' or 'hazmat_class')."
+          },
+          "attribute_value": {
+            "type": "string",
+            "description": "The value of the attribute to match (e.g., 'Class 9 HazMat')."
+          }
+        },
+        "required": [
+          "attribute_name",
+          "attribute_value"
+        ]
+      },
+      "example_output": {
+        "products": [
+          {
+            "sku_id": "SKU-9982",
+            "name": "Industrial Battery Pack",
+            "classification": "Class 9 HazMat"
+          }
+        ]
+      }
+    },
+    {
+      "name": "get_facility_info",
+      "description": "Retrieves facility identifiers and details based on their role or name in the distribution network.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "facility_type": {
+            "type": "string",
+            "description": "The role of the facility (e.g., 'MDC', 'Main Distribution Center', 'Regional Surge Facility')."
+          }
+        },
+        "required": [
+          "facility_type"
+        ]
+      },
+      "example_output": {
+        "facilities": [
+          {
+            "facility_id": "FAC-001",
+            "name": "Central MDC",
+            "type": "MDC"
+          }
+        ]
+      }
+    },
+    {
+      "name": "get_inventory_and_forecast",
+      "description": "Gets the current on-hand inventory level and the existing inbound forecast for a specific SKU at a specific facility.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "sku_id": {
+            "type": "string",
+            "description": "The unique identifier for the product."
+          },
+          "facility_id": {
+            "type": "string",
+            "description": "The unique identifier for the facility."
+          }
+        },
+        "required": [
+          "sku_id",
+          "facility_id"
+        ]
+      },
+      "example_output": {
+        "sku_id": "SKU-9982",
+        "facility_id": "FAC-001",
+        "on_hand_inventory": 1200,
+        "current_forecast": 800,
+        "period": "2024-Q3"
+      }
+    },
+    {
+      "name": "reallocate_forecast",
+      "description": "Moves a specified quantity of forecast from one facility to another for a specific SKU to ensure network totals remain unchanged.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "sku_id": {
+            "type": "string",
+            "description": "The unique identifier for the product."
+          },
+          "from_facility_id": {
+            "type": "string",
+            "description": "The facility ID where the forecast is being reduced."
+          },
+          "to_facility_id": {
+            "type": "string",
+            "description": "The facility ID where the forecast is being redirected."
+          },
+          "quantity": {
+            "type": "number",
+            "description": "The amount of forecast to move."
+          }
+        },
+        "required": [
+          "sku_id",
+          "from_facility_id",
+          "to_facility_id",
+          "quantity"
+        ]
+      },
+      "example_output": {
+        "status": "success",
+        "updated_origin_forecast": 500,
+        "updated_destination_forecast": 300
+      }
+    }
+  ],
+  "state_description": {
+    "current_period": "The current time period for the forecast (e.g., '2024-Q3' or '2023-05').",
+    "products": "List of products and their current forecasting metrics.",
+    "market_conditions": "External factors influencing demand simulation."
+  },
+  "task_initial_state": {
+    "current_period": "2024-W15",
+    "products": [
+      {
+        "product_id": "SKU-BMS-77-MDC",
+        "base_forecast": 1600,
+        "adjusted_forecast": 1600,
+        "on_hand_inventory": 450,
+        "recent_sales_trend": "Class 9 HazMat Recall"
+      },
+      {
+        "product_id": "SKU-BMS-77-SURGE",
+        "base_forecast": 0,
+        "adjusted_forecast": 0,
+        "on_hand_inventory": 0,
+        "recent_sales_trend": "Overflow Capacity"
+      },
+      {
+        "product_id": "SKU-STD-12-MDC",
+        "base_forecast": 300,
+        "adjusted_forecast": 300,
+        "on_hand_inventory": 120,
+        "recent_sales_trend": "Stable"
+      }
+    ],
+    "market_conditions": {
+      "inflation_impact": "medium",
+      "competitor_activity": false
+    }
+  }
+}

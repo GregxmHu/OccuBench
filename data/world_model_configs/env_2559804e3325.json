@@ -1,0 +1,206 @@
+{
+  "environment_name": "env_2559804e3325",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM) for Warehouse Robot Task Assignment.\n- **Core Objective**: Based on the current internal state $s_t$ and the action $a_t$ sent by the Agent, simulate the evolution of the warehouse environment and predict the resulting observation $o_{{t+1}}$.\n- **Emphasis**: You are the simulation engine. You do not execute real-world robotics commands; you update the internal logical state of the warehouse (robot positions, battery levels, task statuses) and provide the Agent with the relevant sensory or feedback data defined in the action's return schema.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation tracking robots, inventory, and tasks. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nYou must maintain strict temporal consistency. Every action depends on the cumulative state resulting from all previous actions. Ensure that if a robot moves in step $t$, its location in step $t+1$ reflects that movement.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the warehouse environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. You must parse this JSON to determine the intended state transition. \nFormat Example:\n```json\n{{\n \"name\": \"move_robot\",\n \"arguments\": {{\n    \"robot_id\": \"R-01\",\n    \"destination\": \"Loading_Dock_A\"\n  }}\n}}\n```\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nYou must validate all actions against the current state. Return structured error information (e.g., `{{\"error\": \"Insufficient battery\", \"code\": \"LOW_BATT\"}}`) if:\n- A robot attempts to move to a non-existent location.\n- A robot attempts to pick up an item it is already carrying or at the wrong location.\n- The battery level is insufficient for the requested operation.\n- The `robot_id` or `task_id` is invalid.\nDo not fabricate successful outcomes for impossible actions.\n\n##### Output Assembly\nFor every action function call, return a structured JSON object containing **ONLY** the return fields declared in that action function's definition. \n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state $s_t$, the updated `new_state`, or hidden variables like the global coordinate system unless specifically requested by an action's return schema. The Agent must only receive the specific Observation (e.g., success status, current sensor reading, or confirmation of arrival).\n\n### 4. Key Principles\n- **Format**: Strictly adhere to specified JSON formats for both input parsing and output generation.\n- **Factuality**: Do not simulate external events (like a fire or a human intervention) unless triggered by a defined action or state logic.\n- **Consistency**: Robot battery must decrease logically with movement; items cannot be in two places at once.\n- **Realism**: Simulate realistic constraints such as path distance, robot capacity, and charging requirements.\n- **Quality**: Ensure all simulated feedback is clear and matches the warehouse domain terminology.\n- **Encapsulation**: Strictly hide the internal state structure from the output. Only expose information explicitly returned by the action function. Do not output the state update text to the Agent.\n{{initial_state}}: {{\n  \"robots\": [\n    {{\n      \"robot_id\": \"AMR-01\",\n      \"location\": \"Dock_In_A\",\n      \"battery_level\": 23,\n      \"status\": \"IDLE\",\n      \"carrying_task_id\": null\n    }},\n    {{\n      \"robot_id\": \"AMR-02\",\n      \"location\": \"Staging_Area_South\",\n      \"battery_level\": 88,\n      \"status\": \"IDLE\",\n      \"carrying_task_id\": null\n    }}\n  ],\n  \"tasks\": [\n    {{\n      \"task_id\": \"XD-901\",\n      \"pickup_location\": \"Dock_In_A\",\n      \"delivery_location\": \"Dock_Out_Z\",\n      \"status\": \"PENDING\",\n      \"assigned_robot_id\": null\n    }},\n    {{\n      \"task_id\": \"XD-902\",\n      \"pickup_location\": \"Dock_In_A\",\n      \"delivery_location\": \"Dock_Out_Z\",\n      \"status\": \"PENDING\",\n      \"assigned_robot_id\": null\n    }}\n  ],\n  \"warehouse_map\": {{\n    \"nodes\": [\n      \"Dock_In_A\",\n      \"Dock_Out_Z\",\n      \"TSB_Alpha\",\n      \"Staging_Area_South\",\n      \"Charge_Zone_1\"\n    ],\n    \"adjacency_matrix\": {{\n      \"Dock_In_A\": {{\n        \"Dock_Out_Z\": 12,\n        \"TSB_Alpha\": 3,\n        \"Staging_Area_South\": 10,\n        \"Charge_Zone_1\": 2\n      }},\n      \"Dock_Out_Z\": {{\n        \"Dock_In_A\": 12,\n        \"TSB_Alpha\": 9,\n        \"Staging_Area_South\": 15,\n        \"Charge_Zone_1\": 11\n      }},\n      \"TSB_Alpha\": {{\n        \"Dock_In_A\": 3,\n        \"Dock_Out_Z\": 9,\n        \"Staging_Area_South\": 7,\n        \"Charge_Zone_1\": 5\n      }},\n      \"Staging_Area_South\": {{\n        \"Dock_In_A\": 10,\n        \"Dock_Out_Z\": 15,\n        \"TSB_Alpha\": 7,\n        \"Charge_Zone_1\": 8\n      }},\n      \"Charge_Zone_1\": {{\n        \"Dock_In_A\": 2,\n        \"Dock_Out_Z\": 11,\n        \"TSB_Alpha\": 5,\n        \"Staging_Area_South\": 8\n      }}\n    }}\n  }}\n}}\n{{state_descriptions}}: {{\n  \"robots\": \"List of active robots in the warehouse and their current statuses.\",\n  \"tasks\": \"List of pending and active warehouse tasks.\",\n  \"warehouse_map\": \"Definition of locations and travel costs between them.\"\n}}\n{action_set_definitions}: {\n  \"get_warehouse_config\": {\n    \"description\": \"Retrieves the warehouse layout, including internal IDs for specific locations (docks, charging stations) and the travel cost matrix (battery consumption units) between all locations.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"location_ids\": {\n        \"Dock_In_A\": \"L_001\",\n        \"Dock_Out_Z\": \"L_999\",\n        \"Charging_Stations\": [\n          \"C_01\",\n          \"C_02\"\n        ]\n      },\n      \"travel_costs\": {\n        \"L_001_to_L_999\": 15,\n        \"current_to_L_001\": 5\n      }\n    }\n  },\n  \"get_pallets_at_location\": {\n    \"description\": \"Retrieves a list of all pallets currently located at a specific location ID. All pallets found at Dock_In_A are considered high-priority for this task.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"location_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique ID of the location to scan.\"\n        }\n      },\n      \"required\": [\n        \"location_id\"\n      ]\n    },\n    \"example_output\": {\n      \"pallets\": [\n        {\n          \"pallet_id\": \"PAL_77\",\n          \"weight_class\": \"heavy\"\n        }\n      ]\n    }\n  },\n  \"get_robot_diagnostics\": {\n    \"description\": \"Returns the current state of all mobile robots, including their unique IDs, current battery percentages, current locations, and operational status.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"robots\": [\n        {\n          \"robot_id\": \"R_BOT_1\",\n          \"battery_level\": 45,\n          \"current_location\": \"L_005\",\n          \"status\": \"idle\"\n        }\n      ]\n    }\n  },\n  \"execute_move_task\": {\n    \"description\": \"Assigns a robot to pick up a specific pallet and transport it to a destination.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"robot_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the robot.\"\n        },\n        \"pallet_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the pallet.\"\n        },\n        \"destination_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the destination location.\"\n        }\n      },\n      \"required\": [\n        \"robot_id\",\n        \"pallet_id\",\n        \"destination_id\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"task_initiated\",\n      \"estimated_completion\": \"120s\"\n    }\n  },\n  \"execute_recharge\": {\n    \"description\": \"Directs a robot to move to a charging station and begin charging.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"robot_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the robot.\"\n        },\n        \"station_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the charging station.\"\n        }\n      },\n      \"required\": [\n        \"robot_id\",\n        \"station_id\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"recharging\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_warehouse_config",
+      "description": "Retrieves the warehouse layout, including internal IDs for specific locations (docks, charging stations) and the travel cost matrix (battery consumption units) between all locations.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "location_ids": {
+          "Dock_In_A": "L_001",
+          "Dock_Out_Z": "L_999",
+          "Charging_Stations": [
+            "C_01",
+            "C_02"
+          ]
+        },
+        "travel_costs": {
+          "L_001_to_L_999": 15,
+          "current_to_L_001": 5
+        }
+      }
+    },
+    {
+      "name": "get_pallets_at_location",
+      "description": "Retrieves a list of all pallets currently located at a specific location ID. All pallets found at Dock_In_A are considered high-priority for this task.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "location_id": {
+            "type": "string",
+            "description": "The unique ID of the location to scan."
+          }
+        },
+        "required": [
+          "location_id"
+        ]
+      },
+      "example_output": {
+        "pallets": [
+          {
+            "pallet_id": "PAL_77",
+            "weight_class": "heavy"
+          }
+        ]
+      }
+    },
+    {
+      "name": "get_robot_diagnostics",
+      "description": "Returns the current state of all mobile robots, including their unique IDs, current battery percentages, current locations, and operational status.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "robots": [
+          {
+            "robot_id": "R_BOT_1",
+            "battery_level": 45,
+            "current_location": "L_005",
+            "status": "idle"
+          }
+        ]
+      }
+    },
+    {
+      "name": "execute_move_task",
+      "description": "Assigns a robot to pick up a specific pallet and transport it to a destination.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "robot_id": {
+            "type": "string",
+            "description": "The ID of the robot."
+          },
+          "pallet_id": {
+            "type": "string",
+            "description": "The ID of the pallet."
+          },
+          "destination_id": {
+            "type": "string",
+            "description": "The ID of the destination location."
+          }
+        },
+        "required": [
+          "robot_id",
+          "pallet_id",
+          "destination_id"
+        ]
+      },
+      "example_output": {
+        "status": "task_initiated",
+        "estimated_completion": "120s"
+      }
+    },
+    {
+      "name": "execute_recharge",
+      "description": "Directs a robot to move to a charging station and begin charging.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "robot_id": {
+            "type": "string",
+            "description": "The ID of the robot."
+          },
+          "station_id": {
+            "type": "string",
+            "description": "The ID of the charging station."
+          }
+        },
+        "required": [
+          "robot_id",
+          "station_id"
+        ]
+      },
+      "example_output": {
+        "status": "recharging"
+      }
+    }
+  ],
+  "state_description": {
+    "robots": "List of active robots in the warehouse and their current statuses.",
+    "tasks": "List of pending and active warehouse tasks.",
+    "warehouse_map": "Definition of locations and travel costs between them."
+  },
+  "task_initial_state": {
+    "robots": [
+      {
+        "robot_id": "AMR-01",
+        "location": "Dock_In_A",
+        "battery_level": 23,
+        "status": "IDLE",
+        "carrying_task_id": null
+      },
+      {
+        "robot_id": "AMR-02",
+        "location": "Staging_Area_South",
+        "battery_level": 88,
+        "status": "IDLE",
+        "carrying_task_id": null
+      }
+    ],
+    "tasks": [
+      {
+        "task_id": "XD-901",
+        "pickup_location": "Dock_In_A",
+        "delivery_location": "Dock_Out_Z",
+        "status": "PENDING",
+        "assigned_robot_id": null
+      },
+      {
+        "task_id": "XD-902",
+        "pickup_location": "Dock_In_A",
+        "delivery_location": "Dock_Out_Z",
+        "status": "PENDING",
+        "assigned_robot_id": null
+      }
+    ],
+    "warehouse_map": {
+      "nodes": [
+        "Dock_In_A",
+        "Dock_Out_Z",
+        "TSB_Alpha",
+        "Staging_Area_South",
+        "Charge_Zone_1"
+      ],
+      "adjacency_matrix": {
+        "Dock_In_A": {
+          "Dock_Out_Z": 12,
+          "TSB_Alpha": 3,
+          "Staging_Area_South": 10,
+          "Charge_Zone_1": 2
+        },
+        "Dock_Out_Z": {
+          "Dock_In_A": 12,
+          "TSB_Alpha": 9,
+          "Staging_Area_South": 15,
+          "Charge_Zone_1": 11
+        },
+        "TSB_Alpha": {
+          "Dock_In_A": 3,
+          "Dock_Out_Z": 9,
+          "Staging_Area_South": 7,
+          "Charge_Zone_1": 5
+        },
+        "Staging_Area_South": {
+          "Dock_In_A": 10,
+          "Dock_Out_Z": 15,
+          "TSB_Alpha": 7,
+          "Charge_Zone_1": 8
+        },
+        "Charge_Zone_1": {
+          "Dock_In_A": 2,
+          "Dock_Out_Z": 11,
+          "TSB_Alpha": 5,
+          "Staging_Area_South": 8
+        }
+      }
+    }
+  }
+}

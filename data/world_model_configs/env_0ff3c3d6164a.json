@@ -1,0 +1,114 @@
+{
+  "environment_name": "env_0ff3c3d6164a",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: Based on the current reactor state $s_t$ and the safety control action $a_t$, simulate the physical and operational evolution of the nuclear reactor environment and predict the resulting observation $o_{{t+1}}$ obtained by the monitoring Agent.\n- **Emphasis**: The LWM does not control the reactor; it acts as a high-fidelity simulator that performs internal state updates and generates realistic sensor readings or system responses based on nuclear plant dynamics.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation tracking the physical parameters and safety systems of the reactor. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions between the World Model and the Agent must maintain rigorous context consistency. Changes to temperature, pressure, or radiation levels must follow temporal continuity and the laws of thermodynamics/nuclear physics relative to previous states and actions.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the reactor environment by calling safety and operational functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` returned for each action must be a JSON object containing sensor data or status confirmations.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. This JSON must contain the following fields:\n- `\"name\"`: Specifies the name of the action function (e.g., adjusting control rods, toggling pumps).\n- The remaining fields are the specific parameters required by that action.\n\nExample input:\n```json\n{{\n \"name\": \"adjust_control_rods\",\n \"arguments\": {{\n    \"insertion_depth_percentage\": 85.0\n  }}\n}}\n```\nThe Language World Model must parse this input, calculate the resulting change in reactor reactivity, thermal output, and pressure, and provide the observation.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nIf the Agent attempts to execute an undefined action, provides parameters outside safety limits (e.g., negative pressure), or submits malformed JSON, return structured error information: `{{\"error\": \"Description of the specific violation or failure\"}}`. Do not fabricate successful responses for invalid operations.\n\n##### Output Assembly\nFor every action function call, the model must return a structured JSON object containing **ONLY** the return fields declared in the action function's definition.\n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t` or the `new_state`. The state update is handled internally by your memory. The Agent must only receive the specific observation data defined in the action.\n\n### 4. Key Principles\n- **Format**: Output must be strictly valid JSON.\n- **Factuality**: Do not simulate non-existent safety systems or impossible physical states.\n- **Consistency**: Ensure that if power increases, temperature and pressure follow realistic curves unless cooling systems compensate.\n- **Realism**: Simulated behaviors must align with reactor safety protocols and thermodynamic principles.\n- **Quality**: Provide clear, unambiguous sensor readings.\n- **Encapsulation**: Strictly hide the internal state structure. Do not reveal the underlying state variables unless they are part of the action's defined observation.\n{{initial_state}}: {{\n  \"thermal_power_mw\": 160.0,\n  \"core_temperature_celsius\": 322.0,\n  \"coolant_pressure_bar\": 142.0,\n  \"control_rod_insertion_ratio\": 100.0,\n  \"coolant_flow_rate_m3_s\": 0.0,\n  \"containment_radiation_level\": 0.05,\n  \"emergency_scram_status\": true\n}}\n{{state_descriptions}}: {{\n  \"thermal_power_mw\": \"Current thermal power output of the reactor core in Megawatts.\",\n  \"core_temperature_celsius\": \"Average temperature of the reactor core coolant.\",\n  \"coolant_pressure_bar\": \"Pressure within the primary cooling loop.\",\n  \"control_rod_insertion_ratio\": \"The percentage of control rod insertion (0.0 = fully withdrawn, 100.0 = fully inserted).\",\n  \"coolant_flow_rate_m3_s\": \"Flow rate of the primary coolant pumps.\",\n  \"containment_radiation_level\": \"Radiation level inside the containment building in mSv/h.\",\n  \"emergency_scram_status\": \"Indicates if the Emergency Shutdown (SCRAM) has been triggered.\"\n}}\n{action_set_definitions}: {\n  \"get_reactor_telemetry\": {\n    \"description\": \"Retrieves the current real-time telemetry from the reactor core and primary coolant system sensors.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"thermal_power_mw\": 15.5,\n      \"core_temperature_celsius\": 310.2,\n      \"coolant_pressure_bar\": 155.0,\n      \"coolant_flow_rate_m3_s\": 0.02,\n      \"emergency_scram_status\": true\n    }\n  },\n  \"analyze_flow_integrity\": {\n    \"description\": \"Performs a diagnostic check to determine if low flow readings are caused by instrument signal drop-out at low velocities or physical blockages like non-condensable gas accumulation.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"status\": \"gas_blockage\",\n      \"confidence\": 0.95,\n      \"details\": \"High delta-T across steam generators suggests physical flow restriction.\"\n    }\n  },\n  \"vent_non_condensable_gas\": {\n    \"description\": \"Activates the RCS vent valves to release accumulated non-condensable gases from the reactor vessel head or steam generator U-tubes.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"vent_duration_seconds\": {\n          \"type\": \"integer\",\n          \"description\": \"Duration to keep vent valves open.\"\n        }\n      },\n      \"required\": [\n        \"vent_duration_seconds\"\n      ]\n    },\n    \"example_output\": {\n      \"venting_complete\": true,\n      \"gas_volume_released_m3\": 0.45\n    }\n  },\n  \"adjust_pdhr_alignment\": {\n    \"description\": \"Adjusts the valve positions for the Passive Decay Heat Removal (PDHR) system to optimize the heat sink path.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"opening_ratio\": {\n          \"type\": \"number\",\n          \"description\": \"The target opening ratio for the PDHR valves (0.0 to 1.0).\"\n        }\n      },\n      \"required\": [\n        \"opening_ratio\"\n      ]\n    },\n    \"example_output\": {\n      \"actual_opening_ratio\": 1.0,\n      \"status\": \"aligned\"\n    }\n  },\n  \"stabilize_rcs_pressure\": {\n    \"description\": \"Commands the pressurizer heaters or spray systems to reach and maintain a specific target pressure in the Reactor Coolant System (RCS).\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"target_pressure_bar\": {\n          \"type\": \"number\",\n          \"description\": \"The desired pressure level in Bar.\"\n        }\n      },\n      \"required\": [\n        \"target_pressure_bar\"\n      ]\n    },\n    \"example_output\": {\n      \"current_pressure_bar\": 155.1,\n      \"stability_status\": \"stable\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_reactor_telemetry",
+      "description": "Retrieves the current real-time telemetry from the reactor core and primary coolant system sensors.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "thermal_power_mw": 15.5,
+        "core_temperature_celsius": 310.2,
+        "coolant_pressure_bar": 155.0,
+        "coolant_flow_rate_m3_s": 0.02,
+        "emergency_scram_status": true
+      }
+    },
+    {
+      "name": "analyze_flow_integrity",
+      "description": "Performs a diagnostic check to determine if low flow readings are caused by instrument signal drop-out at low velocities or physical blockages like non-condensable gas accumulation.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "status": "gas_blockage",
+        "confidence": 0.95,
+        "details": "High delta-T across steam generators suggests physical flow restriction."
+      }
+    },
+    {
+      "name": "vent_non_condensable_gas",
+      "description": "Activates the RCS vent valves to release accumulated non-condensable gases from the reactor vessel head or steam generator U-tubes.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "vent_duration_seconds": {
+            "type": "integer",
+            "description": "Duration to keep vent valves open."
+          }
+        },
+        "required": [
+          "vent_duration_seconds"
+        ]
+      },
+      "example_output": {
+        "venting_complete": true,
+        "gas_volume_released_m3": 0.45
+      }
+    },
+    {
+      "name": "adjust_pdhr_alignment",
+      "description": "Adjusts the valve positions for the Passive Decay Heat Removal (PDHR) system to optimize the heat sink path.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "opening_ratio": {
+            "type": "number",
+            "description": "The target opening ratio for the PDHR valves (0.0 to 1.0)."
+          }
+        },
+        "required": [
+          "opening_ratio"
+        ]
+      },
+      "example_output": {
+        "actual_opening_ratio": 1.0,
+        "status": "aligned"
+      }
+    },
+    {
+      "name": "stabilize_rcs_pressure",
+      "description": "Commands the pressurizer heaters or spray systems to reach and maintain a specific target pressure in the Reactor Coolant System (RCS).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "target_pressure_bar": {
+            "type": "number",
+            "description": "The desired pressure level in Bar."
+          }
+        },
+        "required": [
+          "target_pressure_bar"
+        ]
+      },
+      "example_output": {
+        "current_pressure_bar": 155.1,
+        "stability_status": "stable"
+      }
+    }
+  ],
+  "state_description": {
+    "thermal_power_mw": "Current thermal power output of the reactor core in Megawatts.",
+    "core_temperature_celsius": "Average temperature of the reactor core coolant.",
+    "coolant_pressure_bar": "Pressure within the primary cooling loop.",
+    "control_rod_insertion_ratio": "The percentage of control rod insertion (0.0 = fully withdrawn, 100.0 = fully inserted).",
+    "coolant_flow_rate_m3_s": "Flow rate of the primary coolant pumps.",
+    "containment_radiation_level": "Radiation level inside the containment building in mSv/h.",
+    "emergency_scram_status": "Indicates if the Emergency Shutdown (SCRAM) has been triggered."
+  },
+  "task_initial_state": {
+    "thermal_power_mw": 160.0,
+    "core_temperature_celsius": 322.0,
+    "coolant_pressure_bar": 142.0,
+    "control_rod_insertion_ratio": 100.0,
+    "coolant_flow_rate_m3_s": 0.0,
+    "containment_radiation_level": 0.05,
+    "emergency_scram_status": true
+  }
+}

@@ -1,0 +1,298 @@
+{
+  "environment_name": "env_f66839e4c79a",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: You act as the simulation engine for an Aircraft Component Inspection environment. Based on the current internal state $s_t$ and the action $a_t$ performed by the Agent, you must simulate the environmental evolution, update the internal state, and predict the resulting observation $o_{{t+1}}$.\n- **Emphasis**: You are not the Agent performing the inspection. You are the environment itself. Your responsibility is internal state evolution and the generation of realistic observations. Do not perform external tool calls; simulate them internally.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{initial_state_schema}}\n```\n\n#### Context Awareness\nYou must maintain perfect continuity. Every interaction must build upon the results of the previous actions. The status of aircraft components, the location of the inspector, and the contents of the inspection report must remain consistent throughout the session unless explicitly changed by an action.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be returned as a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object containing:\n- `\"name\"`: The name of the action function.\n- `\"arguments\"`: A dictionary of parameters for that action.\n\nYou must parse this JSON, simulate the logic of the aircraft inspection (e.g., checking a component health, moving between the cockpit and the landing gear, or applying a repair), and determine the outcome.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\n- If an Agent attempts to inspect a component not in the current zone, return an error: `{{\"error\": \"Component not accessible from current location\"}}`.\n- If an action is called with missing or invalid parameters, return: `{{\"error\": \"Invalid arguments for action [name]\"}}`.\n- Do not fabricate data; if an action cannot be completed within the logic of the simulation, report the failure clearly in the observation.\n\n##### Output Assembly\nFor every action function call, you must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition. \n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, the updated `new_state`, or any metadata about your internal variables. The Agent must only receive the specific `observation` (the return values defined in the action). State maintenance is your internal responsibility and must remain hidden from the Agent.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to JSON for both input parsing and output generation.\n- **Factuality**: Simulate aircraft physics and mechanical logic realistically. If a component is marked as 'damaged', an inspection should reveal that damage.\n- **Consistency**: If a component is repaired, subsequent inspections must reflect the 'repaired' or 'nominal' status.\n- **Realism**: Actions like 'detailed_scan' should take into account the component's accessibility and typical failure modes (e.g., micro-cracks in turbine blades).\n- **Quality**: Ensure descriptions within observations are technical, clear, and professional.\n- **Encapsulation**: Never reveal the JSON of the internal state to the Agent. Only provide the defined observation fields.\n{{initial_state}}: {{\n  \"aircraft_metadata\": {{\n    \"tail_number\": \"N767W\",\n    \"records_vault\": [\n      {{\n        \"record_id\": \"LOG-2023-PREV\",\n        \"status\": \"archived\",\n        \"total_cycles_in_service\": 48500,\n        \"notes\": \"Last heavy maintenance check.\"\n      }},\n      {{\n        \"record_id\": \"LOG-2024-CURR\",\n        \"status\": \"active\",\n        \"total_cycles_in_service\": 63200,\n        \"notes\": \"Induction for current C-Check.\"\n      }}\n    ],\n    \"regulatory_thresholds\": {{\n      \"isp_threshold\": 50000,\n      \"smp_threshold\": 65000,\n      \"lov_limit\": 75000,\n      \"critical_crack_length_ac\": 0.18\n    }}\n  }},\n  \"inspector_location\": \"Hangar Floor\",\n  \"components_registry\": {{\n    \"S-10_LapSplice_BS360_540\": {{\n      \"status\": \"nominal\",\n      \"health_score\": 0.98,\n      \"internal_data\": {{\n        \"fastener_count\": 80,\n        \"findings\": \"no defects detected\"\n      }}\n    }},\n    \"S-11_LapSplice_BS360_540\": {{\n      \"status\": \"inspection_required\",\n      \"health_score\": 0.72,\n      \"internal_data\": {{\n        \"fastener_22\": {{\n          \"crack_length\": 0.045,\n          \"position\": \"3_o_clock\"\n        }},\n        \"fastener_23\": {{\n          \"crack_length\": 0.035,\n          \"position\": \"3_o_clock\"\n        }},\n        \"fastener_21\": {{\n          \"crack_length\": 0.0,\n          \"position\": \"nominal\"\n        }}\n      }}\n    }},\n    \"S-11_LapSplice_BS550_700\": {{\n      \"status\": \"nominal\",\n      \"health_score\": 0.95,\n      \"internal_data\": {{\n        \"fastener_count\": 40,\n        \"findings\": \"no defects detected\"\n      }}\n    }},\n    \"S-12_LapSplice_BS360_540\": {{\n      \"status\": \"corroded\",\n      \"health_score\": 0.65,\n      \"internal_data\": {{\n        \"findings\": \"surface corrosion identified, no fatigue indications\"\n      }}\n    }}\n  }},\n  \"tools_in_hand\": [\n    {{\n      \"name\": \"HFEC_Sliding_Probe_V1\",\n      \"calibration_status\": \"certified\"\n    }},\n    {{\n      \"name\": \"LFEC_Subsurface_Probe\",\n      \"calibration_status\": \"certified\"\n    }},\n    {{\n      \"name\": \"Calibration_Block_Standard_050\",\n      \"notches\": [\n        0.05\n      ]\n    }}\n  ],\n  \"inspection_log\": [\n    {{\n      \"timestamp\": \"07:00\",\n      \"entry\": \"Morning briefing completed.\"\n    }},\n    {{\n      \"timestamp\": \"07:15\",\n      \"entry\": \"Cabin seat track lubrication (Item 12-4) signed off.\"\n    }},\n    {{\n      \"timestamp\": \"07:30\",\n      \"entry\": \"Lavatory smoke detector functional test completed.\"\n    }}\n  ],\n  \"environment_conditions\": {{\n    \"lighting\": \"standard\",\n    \"temperature\": \"22C\"\n  }}\n}}\n{{state_descriptions}}: {{\n  \"aircraft_metadata\": \"General information about the aircraft being inspected (e.g., model, tail number).\",\n  \"inspector_location\": \"The current physical location of the agent (e.g., 'Left Wing', 'Cockpit', 'Hangar Floor').\",\n  \"components_registry\": \"A detailed map of aircraft components, their health status (0.0 to 1.0), visibility, and specific defects.\",\n  \"tools_in_hand\": \"List of tools currently equipped by the inspector (e.g., 'Flashlight', 'Ultrasonic Tester').\",\n  \"inspection_log\": \"A chronological record of findings and actions taken during the session.\",\n  \"environment_conditions\": \"External factors like lighting levels or ambient temperature that might affect inspection quality.\"\n}}\n{action_set_definitions}: {\n  \"get_maintenance_history\": {\n    \"description\": \"Retrieves the historical service records and maintenance metadata for a specific aircraft to resolve conflicting entries and determine inspection thresholds.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"tail_number\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier of the aircraft (e.g., 'N767W').\"\n        }\n      },\n      \"required\": [\n        \"tail_number\"\n      ]\n    },\n    \"example_output\": {\n      \"records\": [\n        {\n          \"record_id\": \"REC-001\",\n          \"threshold\": \"12000 cycles\",\n          \"status\": \"Conflicting\"\n        }\n      ],\n      \"resolved_threshold\": \"10000 cycles\"\n    }\n  },\n  \"query_components_registry\": {\n    \"description\": \"Searches the structural registry to identify the precise component ID and zone based on section and station coordinates.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"section\": {\n          \"type\": \"string\",\n          \"description\": \"Aircraft section (e.g., 'Section 43').\"\n        },\n        \"body_stations\": {\n          \"type\": \"string\",\n          \"description\": \"Range of body stations (e.g., '360-540').\"\n        },\n        \"component_description\": {\n          \"type\": \"string\",\n          \"description\": \"The name or type of the component (e.g., 'Stringer 11 Lap Splice').\"\n        }\n      },\n      \"required\": [\n        \"section\",\n        \"body_stations\",\n        \"component_description\"\n      ]\n    },\n    \"example_output\": {\n      \"component_id\": \"COMP-S11-43\",\n      \"zone_id\": \"ZONE-432-A\",\n      \"current_health\": 0.85\n    }\n  },\n  \"get_inspector_status\": {\n    \"description\": \"Queries the current state of the agent, including physical location and equipped tools.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {}\n    },\n    \"example_output\": {\n      \"location\": \"Hangar Floor\",\n      \"tools_in_hand\": [\n        \"Flashlight\"\n      ]\n    }\n  },\n  \"move_to_location\": {\n    \"description\": \"Changes the physical location of the agent within the aircraft environment.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"target_location\": {\n          \"type\": \"string\",\n          \"description\": \"The name of the location to move to.\"\n        }\n      },\n      \"required\": [\n        \"target_location\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"success\",\n      \"current_location\": \"Section 43 Exterior\"\n    }\n  },\n  \"equip_tool\": {\n    \"description\": \"Acquires a specific tool from the hangar inventory or storage.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"tool_name\": {\n          \"type\": \"string\",\n          \"description\": \"The name of the tool to equip (e.g., 'Ultrasonic Tester').\"\n        }\n      },\n      \"required\": [\n        \"tool_name\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"equipped\",\n      \"tools_in_hand\": [\n        \"Flashlight\",\n        \"Ultrasonic Tester\"\n      ]\n    }\n  },\n  \"perform_ndt_test\": {\n    \"description\": \"Executes a non-destructive test on a specific component to detect internal cracks or structural failure.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"component_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the component to test.\"\n        },\n        \"tool_id\": {\n          \"type\": \"string\",\n          \"description\": \"The tool to use for the test.\"\n        }\n      },\n      \"required\": [\n        \"component_id\",\n        \"tool_id\"\n      ]\n    },\n    \"example_output\": {\n      \"structural_integrity\": 0.72,\n      \"findings\": \"Subsurface fatigue cracking detected at station 420.\",\n      \"recommended_code\": \"B2\"\n    }\n  },\n  \"submit_final_log\": {\n    \"description\": \"Submits the final airworthiness determination, condition code, and regulatory requirements to the aircraft's maintenance log.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"component_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the inspected component.\"\n        },\n        \"condition_code\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"A\",\n            \"B1\",\n            \"B2\",\n            \"C\"\n          ],\n          \"description\": \"The structural condition code.\"\n        },\n        \"regulatory_action\": {\n          \"type\": \"string\",\n          \"description\": \"The required action before Return to Service.\"\n        },\n        \"resolved_threshold\": {\n          \"type\": \"string\",\n          \"description\": \"The finalized inspection threshold used.\"\n        }\n      },\n      \"required\": [\n        \"component_id\",\n        \"condition_code\",\n        \"regulatory_action\",\n        \"resolved_threshold\"\n      ]\n    },\n    \"example_output\": {\n      \"log_entry_id\": \"LOG-99821\",\n      \"status\": \"Submitted\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_maintenance_history",
+      "description": "Retrieves the historical service records and maintenance metadata for a specific aircraft to resolve conflicting entries and determine inspection thresholds.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "tail_number": {
+            "type": "string",
+            "description": "The unique identifier of the aircraft (e.g., 'N767W')."
+          }
+        },
+        "required": [
+          "tail_number"
+        ]
+      },
+      "example_output": {
+        "records": [
+          {
+            "record_id": "REC-001",
+            "threshold": "12000 cycles",
+            "status": "Conflicting"
+          }
+        ],
+        "resolved_threshold": "10000 cycles"
+      }
+    },
+    {
+      "name": "query_components_registry",
+      "description": "Searches the structural registry to identify the precise component ID and zone based on section and station coordinates.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "section": {
+            "type": "string",
+            "description": "Aircraft section (e.g., 'Section 43')."
+          },
+          "body_stations": {
+            "type": "string",
+            "description": "Range of body stations (e.g., '360-540')."
+          },
+          "component_description": {
+            "type": "string",
+            "description": "The name or type of the component (e.g., 'Stringer 11 Lap Splice')."
+          }
+        },
+        "required": [
+          "section",
+          "body_stations",
+          "component_description"
+        ]
+      },
+      "example_output": {
+        "component_id": "COMP-S11-43",
+        "zone_id": "ZONE-432-A",
+        "current_health": 0.85
+      }
+    },
+    {
+      "name": "get_inspector_status",
+      "description": "Queries the current state of the agent, including physical location and equipped tools.",
+      "parameters": {
+        "type": "object",
+        "properties": {}
+      },
+      "example_output": {
+        "location": "Hangar Floor",
+        "tools_in_hand": [
+          "Flashlight"
+        ]
+      }
+    },
+    {
+      "name": "move_to_location",
+      "description": "Changes the physical location of the agent within the aircraft environment.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "target_location": {
+            "type": "string",
+            "description": "The name of the location to move to."
+          }
+        },
+        "required": [
+          "target_location"
+        ]
+      },
+      "example_output": {
+        "status": "success",
+        "current_location": "Section 43 Exterior"
+      }
+    },
+    {
+      "name": "equip_tool",
+      "description": "Acquires a specific tool from the hangar inventory or storage.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "tool_name": {
+            "type": "string",
+            "description": "The name of the tool to equip (e.g., 'Ultrasonic Tester')."
+          }
+        },
+        "required": [
+          "tool_name"
+        ]
+      },
+      "example_output": {
+        "status": "equipped",
+        "tools_in_hand": [
+          "Flashlight",
+          "Ultrasonic Tester"
+        ]
+      }
+    },
+    {
+      "name": "perform_ndt_test",
+      "description": "Executes a non-destructive test on a specific component to detect internal cracks or structural failure.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "component_id": {
+            "type": "string",
+            "description": "The ID of the component to test."
+          },
+          "tool_id": {
+            "type": "string",
+            "description": "The tool to use for the test."
+          }
+        },
+        "required": [
+          "component_id",
+          "tool_id"
+        ]
+      },
+      "example_output": {
+        "structural_integrity": 0.72,
+        "findings": "Subsurface fatigue cracking detected at station 420.",
+        "recommended_code": "B2"
+      }
+    },
+    {
+      "name": "submit_final_log",
+      "description": "Submits the final airworthiness determination, condition code, and regulatory requirements to the aircraft's maintenance log.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "component_id": {
+            "type": "string",
+            "description": "The ID of the inspected component."
+          },
+          "condition_code": {
+            "type": "string",
+            "enum": [
+              "A",
+              "B1",
+              "B2",
+              "C"
+            ],
+            "description": "The structural condition code."
+          },
+          "regulatory_action": {
+            "type": "string",
+            "description": "The required action before Return to Service."
+          },
+          "resolved_threshold": {
+            "type": "string",
+            "description": "The finalized inspection threshold used."
+          }
+        },
+        "required": [
+          "component_id",
+          "condition_code",
+          "regulatory_action",
+          "resolved_threshold"
+        ]
+      },
+      "example_output": {
+        "log_entry_id": "LOG-99821",
+        "status": "Submitted"
+      }
+    }
+  ],
+  "state_description": {
+    "aircraft_metadata": "General information about the aircraft being inspected (e.g., model, tail number).",
+    "inspector_location": "The current physical location of the agent (e.g., 'Left Wing', 'Cockpit', 'Hangar Floor').",
+    "components_registry": "A detailed map of aircraft components, their health status (0.0 to 1.0), visibility, and specific defects.",
+    "tools_in_hand": "List of tools currently equipped by the inspector (e.g., 'Flashlight', 'Ultrasonic Tester').",
+    "inspection_log": "A chronological record of findings and actions taken during the session.",
+    "environment_conditions": "External factors like lighting levels or ambient temperature that might affect inspection quality."
+  },
+  "task_initial_state": {
+    "aircraft_metadata": {
+      "tail_number": "N767W",
+      "records_vault": [
+        {
+          "record_id": "LOG-2023-PREV",
+          "status": "archived",
+          "total_cycles_in_service": 48500,
+          "notes": "Last heavy maintenance check."
+        },
+        {
+          "record_id": "LOG-2024-CURR",
+          "status": "active",
+          "total_cycles_in_service": 63200,
+          "notes": "Induction for current C-Check."
+        }
+      ],
+      "regulatory_thresholds": {
+        "isp_threshold": 50000,
+        "smp_threshold": 65000,
+        "lov_limit": 75000,
+        "critical_crack_length_ac": 0.18
+      }
+    },
+    "inspector_location": "Hangar Floor",
+    "components_registry": {
+      "S-10_LapSplice_BS360_540": {
+        "status": "nominal",
+        "health_score": 0.98,
+        "internal_data": {
+          "fastener_count": 80,
+          "findings": "no defects detected"
+        }
+      },
+      "S-11_LapSplice_BS360_540": {
+        "status": "inspection_required",
+        "health_score": 0.72,
+        "internal_data": {
+          "fastener_22": {
+            "crack_length": 0.045,
+            "position": "3_o_clock"
+          },
+          "fastener_23": {
+            "crack_length": 0.035,
+            "position": "3_o_clock"
+          },
+          "fastener_21": {
+            "crack_length": 0.0,
+            "position": "nominal"
+          }
+        }
+      },
+      "S-11_LapSplice_BS550_700": {
+        "status": "nominal",
+        "health_score": 0.95,
+        "internal_data": {
+          "fastener_count": 40,
+          "findings": "no defects detected"
+        }
+      },
+      "S-12_LapSplice_BS360_540": {
+        "status": "corroded",
+        "health_score": 0.65,
+        "internal_data": {
+          "findings": "surface corrosion identified, no fatigue indications"
+        }
+      }
+    },
+    "tools_in_hand": [
+      {
+        "name": "HFEC_Sliding_Probe_V1",
+        "calibration_status": "certified"
+      },
+      {
+        "name": "LFEC_Subsurface_Probe",
+        "calibration_status": "certified"
+      },
+      {
+        "name": "Calibration_Block_Standard_050",
+        "notches": [
+          0.05
+        ]
+      }
+    ],
+    "inspection_log": [
+      {
+        "timestamp": "07:00",
+        "entry": "Morning briefing completed."
+      },
+      {
+        "timestamp": "07:15",
+        "entry": "Cabin seat track lubrication (Item 12-4) signed off."
+      },
+      {
+        "timestamp": "07:30",
+        "entry": "Lavatory smoke detector functional test completed."
+      }
+    ],
+    "environment_conditions": {
+      "lighting": "standard",
+      "temperature": "22C"
+    }
+  }
+}

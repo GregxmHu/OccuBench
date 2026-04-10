@@ -1,0 +1,199 @@
+{
+  "environment_name": "env_81d5501c174f",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: Act as the authoritative simulation environment for the 'Ballot Counting Discrepancy Resolution' task. Based on the current internal state $s_t$ and the Agent's action $a_t$, you must simulate the internal evolution of the ballot counting environment and predict the observation $o_{{t+1}}$ obtained by the Agent.\n- **Emphasis**: You are a simulator. You do not provide advice or execute real-world legal actions. Your role is to maintain the integrity of the election data state and generate realistic responses based on simulated precinct logs, ballot records, and audit trails.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nYou must maintain a continuous and self-consistent simulation. Every action taken by the Agent (such as a recount or a ledger audit) must update the internal state, and subsequent observations must reflect those changes (e.g., if a discrepancy is marked as 'resolved', it should no longer appear as 'pending' in future observations).\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. You must parse the following fields:\n- `\"name\"`: The name of the action function to execute.\n- Parameters: Specific arguments required by the function.\n\nExample Input:\n```json\n{{\n \"name\": \"inspect_ballot_batch\",\n \"arguments\": {{\n    \"precinct_id\": \"PRECINCT_001\",\n    \"batch_number\": 5\n  }}\n}}\n```\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\n- If an Agent targets a non-existent precinct ID: Return `{{\"error\": \"Precinct ID not found\"}}`.\n- If an Agent attempts to resolve a discrepancy that hasn't been identified: Return `{{\"error\": \"Target discrepancy ID does not exist\"}}`.\n- For empty inputs or invalid JSON: Return `{{\"error\": \"Invalid request format\"}}`.\n- Do not fabricate data outside the scope of the internal state.\n\n##### Output Assembly\nFor every action function call, you must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition. \n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, `new_state`, or any hidden variables like the full audit log unless specifically requested by an action. State maintenance is handled internally by you. Only expose the specific Observation.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to JSON for all observations.\n- **Factuality**: Use the provided state as the ground truth for ballot numbers and discrepancies.\n- **Consistency**: If a recount results in a change, that change must persist in the simulated environment.\n- **Realism**: Simulate realistic administrative hurdles (e.g., time-stamps, signature verification failures) where appropriate within the logic of the action definitions.\n- **Quality**: Ensure all simulated logs or messages are professional and clear.\n- **Encapsulation**: Never reveal the raw state structure `{{initial_state}}` in the output; only provide the observation relevant to the action.\n{{initial_state}}: {{\n  \"precinct_records\": {{\n    \"P_05\": {{\n      \"machine_count\": 42,\n      \"physical_ledger_count\": 45,\n      \"status\": \"discrepancy_detected\"\n    }}\n  }},\n  \"identified_discrepancies\": [\n    {{\n      \"discrepancy_id\": \"DISC-P05-88B\",\n      \"precinct_id\": \"P_05\",\n      \"type\": \"Tabulation_Mismatch\",\n      \"details\": \"Batch #88-B contains 45 physical write-in entries, but the scanner only recorded 42 marks. Manual adjudication against District 9 Certified Write-In Candidates (CWIC) filings is required.\"\n    }}\n  ],\n  \"audit_trail\": [\n    {{\n      \"timestamp\": \"2023-11-08T09:00:00Z\",\n      \"action\": \"Initial_Scan\",\n      \"user\": \"System\",\n      \"notes\": \"Tabulation complete for P_05. Write-in mismatch detected in Batch #88-B.\"\n    }}\n  ],\n  \"verification_status\": \"In Progress\",\n  \"total_confirmed_votes\": 1450\n}}\n{{state_descriptions}}: {{\n  \"precinct_records\": \"A mapping of precinct IDs to their respective ballot counts, including physical count and machine-reported count.\",\n  \"identified_discrepancies\": \"A list of specific errors or mismatches discovered during the audit process.\",\n  \"audit_trail\": \"A log of all actions taken within the environment to resolve issues.\",\n  \"verification_status\": \"The overall status of the resolution process (e.g., 'In Progress', 'Certified', 'Pending Audit').\",\n  \"total_confirmed_votes\": \"The current tally of votes that have passed all discrepancy checks.\"\n}}\n{action_set_definitions}: {\n  \"get_precinct_summary\": {\n    \"description\": \"Retrieves the current records, total confirmed votes, and verification status for a specific precinct.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"precinct_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the precinct (e.g., 'P_05').\"\n        }\n      },\n      \"required\": [\n        \"precinct_id\"\n      ]\n    },\n    \"example_output\": {\n      \"precinct_id\": \"P_05\",\n      \"machine_count\": 1200,\n      \"physical_count\": 1245,\n      \"verification_status\": \"Pending Audit\",\n      \"total_confirmed_votes\": 1200\n    }\n  },\n  \"get_discrepancy_details\": {\n    \"description\": \"Retrieves details about identified discrepancies for a specific batch, including the nature of the mismatch.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"batch_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the batch to investigate (e.g., '88-B').\"\n        }\n      },\n      \"required\": [\n        \"batch_id\"\n      ]\n    },\n    \"example_output\": {\n      \"batch_id\": \"88-B\",\n      \"issue\": \"Write-in mismatch\",\n      \"delta\": 45,\n      \"status\": \"Unresolved\"\n    }\n  },\n  \"get_authorized_roster\": {\n    \"description\": \"Fetches the list of authorized individuals for a specific district to validate write-in votes.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"district_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the district (e.g., 'District 9').\"\n        }\n      },\n      \"required\": [\n        \"district_id\"\n      ]\n    },\n    \"example_output\": {\n      \"authorized_names\": [\n        \"Jane Doe\",\n        \"John Smith\"\n      ],\n      \"district\": \"District 9\"\n    }\n  },\n  \"get_batch_vote_data\": {\n    \"description\": \"Retrieves the raw text or data for the physical votes within a specific batch.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"batch_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the batch.\"\n        }\n      },\n      \"required\": [\n        \"batch_id\"\n      ]\n    },\n    \"example_output\": {\n      \"votes\": [\n        {\n          \"id\": 1,\n          \"raw_text\": \"J. Doe\"\n        },\n        {\n          \"id\": 2,\n          \"raw_text\": \"Mickey Mouse\"\n        }\n      ]\n    }\n  },\n  \"submit_normalization\": {\n    \"description\": \"Submits the normalized vote mapping for a batch. Maps raw write-in entries to authorized individuals or the 'Scatter' category based on SOP ADJ-04.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"batch_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the batch being resolved.\"\n        },\n        \"mappings\": {\n          \"type\": \"array\",\n          \"items\": {\n            \"type\": \"object\",\n            \"properties\": {\n              \"vote_id\": {\n                \"type\": \"integer\"\n              },\n              \"normalized_name\": {\n                \"type\": \"string\",\n                \"description\": \"The authorized name or 'Scatter'.\"\n              }\n            }\n          }\n        }\n      },\n      \"required\": [\n        \"batch_id\",\n        \"mappings\"\n      ]\n    },\n    \"example_output\": {\n      \"success\": true,\n      \"reconciled_count\": 45,\n      \"audit_id\": \"LOG-992\"\n    }\n  },\n  \"finalize_precinct_certification\": {\n    \"description\": \"Updates the precinct status to 'Certified' and updates total confirmed votes once all deltas are eliminated.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"precinct_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the precinct.\"\n        },\n        \"reconciliation_confirmed\": {\n          \"type\": \"boolean\",\n          \"description\": \"Must be true to proceed with certification.\"\n        }\n      },\n      \"required\": [\n        \"precinct_id\",\n        \"reconciliation_confirmed\"\n      ]\n    },\n    \"example_output\": {\n      \"precinct_id\": \"P_05\",\n      \"new_status\": \"Certified\",\n      \"final_vote_count\": 1245\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_precinct_summary",
+      "description": "Retrieves the current records, total confirmed votes, and verification status for a specific precinct.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "precinct_id": {
+            "type": "string",
+            "description": "The ID of the precinct (e.g., 'P_05')."
+          }
+        },
+        "required": [
+          "precinct_id"
+        ]
+      },
+      "example_output": {
+        "precinct_id": "P_05",
+        "machine_count": 1200,
+        "physical_count": 1245,
+        "verification_status": "Pending Audit",
+        "total_confirmed_votes": 1200
+      }
+    },
+    {
+      "name": "get_discrepancy_details",
+      "description": "Retrieves details about identified discrepancies for a specific batch, including the nature of the mismatch.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "batch_id": {
+            "type": "string",
+            "description": "The ID of the batch to investigate (e.g., '88-B')."
+          }
+        },
+        "required": [
+          "batch_id"
+        ]
+      },
+      "example_output": {
+        "batch_id": "88-B",
+        "issue": "Write-in mismatch",
+        "delta": 45,
+        "status": "Unresolved"
+      }
+    },
+    {
+      "name": "get_authorized_roster",
+      "description": "Fetches the list of authorized individuals for a specific district to validate write-in votes.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "district_id": {
+            "type": "string",
+            "description": "The ID of the district (e.g., 'District 9')."
+          }
+        },
+        "required": [
+          "district_id"
+        ]
+      },
+      "example_output": {
+        "authorized_names": [
+          "Jane Doe",
+          "John Smith"
+        ],
+        "district": "District 9"
+      }
+    },
+    {
+      "name": "get_batch_vote_data",
+      "description": "Retrieves the raw text or data for the physical votes within a specific batch.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "batch_id": {
+            "type": "string",
+            "description": "The ID of the batch."
+          }
+        },
+        "required": [
+          "batch_id"
+        ]
+      },
+      "example_output": {
+        "votes": [
+          {
+            "id": 1,
+            "raw_text": "J. Doe"
+          },
+          {
+            "id": 2,
+            "raw_text": "Mickey Mouse"
+          }
+        ]
+      }
+    },
+    {
+      "name": "submit_normalization",
+      "description": "Submits the normalized vote mapping for a batch. Maps raw write-in entries to authorized individuals or the 'Scatter' category based on SOP ADJ-04.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "batch_id": {
+            "type": "string",
+            "description": "The ID of the batch being resolved."
+          },
+          "mappings": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "vote_id": {
+                  "type": "integer"
+                },
+                "normalized_name": {
+                  "type": "string",
+                  "description": "The authorized name or 'Scatter'."
+                }
+              }
+            }
+          }
+        },
+        "required": [
+          "batch_id",
+          "mappings"
+        ]
+      },
+      "example_output": {
+        "success": true,
+        "reconciled_count": 45,
+        "audit_id": "LOG-992"
+      }
+    },
+    {
+      "name": "finalize_precinct_certification",
+      "description": "Updates the precinct status to 'Certified' and updates total confirmed votes once all deltas are eliminated.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "precinct_id": {
+            "type": "string",
+            "description": "The ID of the precinct."
+          },
+          "reconciliation_confirmed": {
+            "type": "boolean",
+            "description": "Must be true to proceed with certification."
+          }
+        },
+        "required": [
+          "precinct_id",
+          "reconciliation_confirmed"
+        ]
+      },
+      "example_output": {
+        "precinct_id": "P_05",
+        "new_status": "Certified",
+        "final_vote_count": 1245
+      }
+    }
+  ],
+  "state_description": {
+    "precinct_records": "A mapping of precinct IDs to their respective ballot counts, including physical count and machine-reported count.",
+    "identified_discrepancies": "A list of specific errors or mismatches discovered during the audit process.",
+    "audit_trail": "A log of all actions taken within the environment to resolve issues.",
+    "verification_status": "The overall status of the resolution process (e.g., 'In Progress', 'Certified', 'Pending Audit').",
+    "total_confirmed_votes": "The current tally of votes that have passed all discrepancy checks."
+  },
+  "task_initial_state": {
+    "precinct_records": {
+      "P_05": {
+        "machine_count": 42,
+        "physical_ledger_count": 45,
+        "status": "discrepancy_detected"
+      }
+    },
+    "identified_discrepancies": [
+      {
+        "discrepancy_id": "DISC-P05-88B",
+        "precinct_id": "P_05",
+        "type": "Tabulation_Mismatch",
+        "details": "Batch #88-B contains 45 physical write-in entries, but the scanner only recorded 42 marks. Manual adjudication against District 9 Certified Write-In Candidates (CWIC) filings is required."
+      }
+    ],
+    "audit_trail": [
+      {
+        "timestamp": "2023-11-08T09:00:00Z",
+        "action": "Initial_Scan",
+        "user": "System",
+        "notes": "Tabulation complete for P_05. Write-in mismatch detected in Batch #88-B."
+      }
+    ],
+    "verification_status": "In Progress",
+    "total_confirmed_votes": 1450
+  }
+}

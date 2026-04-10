@@ -1,0 +1,107 @@
+{
+  "environment_name": "env_f52dd1c62750",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: Act as the internal simulation engine for a Greenhouse Irrigation Control environment. Based on the current internal state $s_t$ and the action $a_t$ submitted by the Agent, you must simulate the physical and logic evolution of the greenhouse and predict the resulting observation $o_{{t+1}}$ for the Agent.\n- **Emphasis**: You are a simulator, not an executor. You do not perform real-world actions. Your goal is to maintain a consistent, realistic internal environment logic and generate the specific feedback the Agent would receive from its sensors or system calls.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nYou must maintain the continuity of the environment. Every action evolves the state (e.g., turning on a pump increases soil moisture over time but decreases the water tank level). You must track these changes internally across the interaction history to ensure that subsequent observations are logically consistent with previous actions and state transitions.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the greenhouse system by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. You must parse this JSON to determine the intended transition. The format is:\n- `\"name\"`: The name of the action function to execute.\n- `\"arguments\"`: A dictionary of parameter names and values.\n\nExample:\n```json\n{{\n \"name\": \"activate_irrigation\",\n \"arguments\": {{\n    \"duration_seconds\": 60,\n    \"zone\": \"north_sector\"\n  }}\n}}\n```\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nIf the Agent provides invalid parameters (e.g., duration < 0), calls an undefined action, or requests an action that conflicts with the current state (e.g., starting a pump when the tank is empty), return a structured error message: `{{\"error\": \"Reason for failure\"}}`. Do not fabricate successful outcomes for invalid inputs.\n\n##### Output Assembly\nFor every action function call, you must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition. \n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, the updated state, or any hidden system variables. You are only to provide the specific Observation (the return value of the function). The Agent must never see the raw internal state structure.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to specified JSON formats for both input parsing and output generation.\n- **Factuality**: Do not simulate resources (like water or power) that haven't been defined, and do not ignore the physical constraints of the greenhouse (e.g., soil moisture cannot exceed 100%).\n- **Consistency**: Ensure that if the temperature rises, soil moisture evaporates faster; if the pump is on, the tank level must drop.\n- **Realism**: Dynamics should reflect a real-world greenhouse (e.g., moisture doesn't jump from 0% to 100% in one second).\n- **Quality**: Provide clear, unambiguous observations.\n- **Encapsulation**: Strictly hide the internal state JSON from the final output. Only expose the \"Observation\" resulting from the action.\n{{initial_state}}: {{\n  \"soil_moisture\": 68.5,\n  \"air_temperature\": 27.5,\n  \"humidity\": 58.0,\n  \"water_tank_level\": 420.0,\n  \"pump_active\": false,\n  \"light_intensity\": 15000\n}}\n{{state_descriptions}}: {{\n  \"soil_moisture\": \"The current moisture level of the soil as a percentage (0.0 to 100.0).\",\n  \"air_temperature\": \"The ambient air temperature inside the greenhouse in degrees Celsius.\",\n  \"humidity\": \"The relative humidity percentage inside the greenhouse.\",\n  \"water_tank_level\": \"The remaining water in the irrigation supply tank in liters.\",\n  \"pump_active\": \"Indicates whether the irrigation pump is currently running.\",\n  \"light_intensity\": \"The current light intensity measured in Lux.\"\n}}\n{action_set_definitions}: {\n  \"get_greenhouse_status\": {\n    \"description\": \"Retrieves the current environmental and substrate telemetry from the southern quadrant, including salinity, moisture, and supply levels.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"soil_moisture\": 42.5,\n      \"ec_pore\": 6.2,\n      \"water_tank_level\": 115.0,\n      \"current_time\": \"21:00\"\n    }\n  },\n  \"apply_irrigation\": {\n    \"description\": \"Dispenses a specific volume of water to the southern quadrant to adjust substrate salinity and moisture content.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"volume_liters\": {\n          \"type\": \"number\",\n          \"description\": \"The volume of water to be pumped in liters.\"\n        },\n        \"target_ec\": {\n          \"type\": \"number\",\n          \"description\": \"The desired target EC_pore for this flushing operation.\"\n        }\n      },\n      \"required\": [\n        \"volume_liters\"\n      ]\n    },\n    \"example_output\": {\n      \"new_soil_moisture\": 52.0,\n      \"new_ec_pore\": 4.1,\n      \"new_water_tank_level\": 95.0\n    }\n  },\n  \"configure_steering\": {\n    \"description\": \"Sets the growth strategy mode and the minimum dry-back threshold for the system to follow overnight.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"mode\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"generative\",\n            \"vegetative\"\n          ],\n          \"description\": \"The target steering strategy.\"\n        },\n        \"target_dryback\": {\n          \"type\": \"number\",\n          \"description\": \"The percentage moisture drop desired by sunrise.\"\n        }\n      },\n      \"required\": [\n        \"mode\",\n        \"target_dryback\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"Generative mode active\",\n      \"configured_dryback\": 12.0\n    }\n  },\n  \"advance_time_to_sunrise\": {\n    \"description\": \"Simulates the evolution of the greenhouse state over the night until sunrise, accounting for moisture evaporation (dry-back) and salinity concentration.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"morning_soil_moisture\": 38.0,\n      \"morning_ec_pore\": 4.9,\n      \"achieved_dryback\": 14.0,\n      \"tank_final_level\": 95.0,\n      \"report_status\": \"Success\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_greenhouse_status",
+      "description": "Retrieves the current environmental and substrate telemetry from the southern quadrant, including salinity, moisture, and supply levels.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "soil_moisture": 42.5,
+        "ec_pore": 6.2,
+        "water_tank_level": 115.0,
+        "current_time": "21:00"
+      }
+    },
+    {
+      "name": "apply_irrigation",
+      "description": "Dispenses a specific volume of water to the southern quadrant to adjust substrate salinity and moisture content.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "volume_liters": {
+            "type": "number",
+            "description": "The volume of water to be pumped in liters."
+          },
+          "target_ec": {
+            "type": "number",
+            "description": "The desired target EC_pore for this flushing operation."
+          }
+        },
+        "required": [
+          "volume_liters"
+        ]
+      },
+      "example_output": {
+        "new_soil_moisture": 52.0,
+        "new_ec_pore": 4.1,
+        "new_water_tank_level": 95.0
+      }
+    },
+    {
+      "name": "configure_steering",
+      "description": "Sets the growth strategy mode and the minimum dry-back threshold for the system to follow overnight.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "mode": {
+            "type": "string",
+            "enum": [
+              "generative",
+              "vegetative"
+            ],
+            "description": "The target steering strategy."
+          },
+          "target_dryback": {
+            "type": "number",
+            "description": "The percentage moisture drop desired by sunrise."
+          }
+        },
+        "required": [
+          "mode",
+          "target_dryback"
+        ]
+      },
+      "example_output": {
+        "status": "Generative mode active",
+        "configured_dryback": 12.0
+      }
+    },
+    {
+      "name": "advance_time_to_sunrise",
+      "description": "Simulates the evolution of the greenhouse state over the night until sunrise, accounting for moisture evaporation (dry-back) and salinity concentration.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "morning_soil_moisture": 38.0,
+        "morning_ec_pore": 4.9,
+        "achieved_dryback": 14.0,
+        "tank_final_level": 95.0,
+        "report_status": "Success"
+      }
+    }
+  ],
+  "state_description": {
+    "soil_moisture": "The current moisture level of the soil as a percentage (0.0 to 100.0).",
+    "air_temperature": "The ambient air temperature inside the greenhouse in degrees Celsius.",
+    "humidity": "The relative humidity percentage inside the greenhouse.",
+    "water_tank_level": "The remaining water in the irrigation supply tank in liters.",
+    "pump_active": "Indicates whether the irrigation pump is currently running.",
+    "light_intensity": "The current light intensity measured in Lux."
+  },
+  "task_initial_state": {
+    "soil_moisture": 68.5,
+    "air_temperature": 27.5,
+    "humidity": 58.0,
+    "water_tank_level": 420.0,
+    "pump_active": false,
+    "light_intensity": 15000
+  }
+}

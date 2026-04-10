@@ -1,0 +1,240 @@
+{
+  "environment_name": "env_2feb839599a6",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM) for SQL Query Optimization.\n- **Core Objective**: Based on the current internal state $s_t$ (representing the current query, schema, and statistics) and the action $a_t$ (transformation or optimization command), simulate the evolution of the database environment and predict the observation $o_{{t+1}}$ obtained by the Agent.\n- **Emphasis**: You act as a simulated database optimizer and execution engine. You do not execute real SQL on a physical database; instead, you simulate the internal state evolution and generate realistic observations (like query plans and cost estimates).\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nYou must maintain strict context consistency throughout the session. Every optimization action taken by the Agent must build upon the resulting state of the previous action. Ensure that transformations to the SQL query or changes to the index structure persist in your internal tracking.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent submits action requests via structured JSON objects. Each request contains:\n- `\"name\"`: The name of the optimization or inspection action.\n- `\"arguments\"`: Parameters required for the action.\n\nYou must parse these inputs and simulate the logical results within the context of SQL optimization rules (e.g., predicate pushdown, join reordering, index selection).\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\n- If an action refers to non-existent tables or columns, return an error: `{{\"error\": \"Column 'x' not found in table 'y'\"}}`.\n- If an optimization rule is inapplicable to the current query structure, return an informative error: `{{\"error\": \"Cannot apply JoinReorder: Query contains no joins\"}}`.\n- Do not fabricate data or successful responses for invalid inputs.\n\n##### Output Assembly\nFor every action function call, you must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition.\n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, the `new_state`, or any hidden tracking variables. Your internal state maintenance must remain implicit. The Agent must only receive the specific Observation (e.g., the new Execution Plan or the updated Cost) defined in the action's return signature.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to the specified JSON structure for all outputs.\n- **Factuality**: Adhere to standard SQL syntax and relational algebra principles.\n- **Consistency**: Ensure that if an index is added in step $t$, it is available for the cost optimizer in step $t+1$.\n- **Realism**: Cost estimates and query plan changes should logically reflect the actions taken (e.g., adding a relevant index should generally reduce the cost of a filtered scan).\n- **Quality**: Provide clear, unambiguous structural feedback.\n- **Encapsulation**: Never expose the internal state schema in your response. Only expose what is explicitly returned by the action function.\n{{initial_state}}: {{\n  \"current_query\": \"SELECT * FROM merchants WHERE status = 'active' LIMIT 10\",\n  \"database_schema\": {{\n    \"txn_archive_2022\": {{\n      \"columns\": [\n        \"id\",\n        \"amount\",\n        \"ts\",\n        \"m_id\"\n      ],\n      \"indexes\": [\n        \"txn_archive_2022.id\"\n      ]\n    }},\n    \"txn_staging_test\": {{\n      \"columns\": [\n        \"id\",\n        \"amount\",\n        \"created_at\",\n        \"merchant_id\"\n      ],\n      \"indexes\": [\n        \"txn_staging_test.id\"\n      ]\n    }},\n    \"txn_live_v4\": {{\n      \"columns\": [\n        \"id\",\n        \"amount\",\n        \"created_at\",\n        \"merchant_id\",\n        \"currency_code\"\n      ],\n      \"indexes\": [\n        \"txn_live_v4.id\",\n        \"txn_live_v4.merchant_id\"\n      ]\n    }},\n    \"merchants\": {{\n      \"columns\": [\n        \"id\",\n        \"name\",\n        \"status\",\n        \"region\"\n      ],\n      \"indexes\": [\n        \"merchants.id\"\n      ]\n    }}\n  }},\n  \"execution_plan\": \"Limit  (cost=0.00..0.35 rows=10 width=1542)\",\n  \"estimated_cost\": 0.35,\n  \"statistics\": {{\n    \"performance_audit_log\": [\n      {{\n        \"label\": \"Consolidated Global Revenue\",\n        \"query\": \"SELECT merchant_id, SUM(amount) FROM txn_live_v4 GROUP BY merchant_id\",\n        \"last_execution_cost\": 145000.0,\n        \"status\": \"CRITICAL_LATENCY\"\n      }},\n      {{\n        \"label\": \"Legacy Revenue Audit\",\n        \"query\": \"SELECT m_id, SUM(amount) FROM txn_archive_2022 GROUP BY m_id\",\n        \"last_execution_cost\": 52000.0,\n        \"status\": \"COMPLETED\"\n      }},\n      {{\n        \"label\": \"Dev Dashboard\",\n        \"query\": \"SELECT merchant_id, SUM(amount) FROM txn_staging_test GROUP BY merchant_id\",\n        \"last_execution_cost\": 120.0,\n        \"status\": \"COMPLETED\"\n      }}\n    ],\n    \"table_cardinality\": {{\n      \"txn_live_v4\": 2500000000,\n      \"txn_archive_2022\": 450000000,\n      \"txn_staging_test\": 15000\n    }},\n    \"business_slas\": {{\n      \"global_reporting\": {{\n        \"staleness_tolerance_sec\": 3600,\n        \"concurrency_requirement\": \"High\"\n      }}\n    }}\n  }}\n}}\n{{state_descriptions}}: {{\n  \"current_query\": \"The current SQL string undergoing optimization.\",\n  \"database_schema\": \"Information about tables, columns, types, and existing indexes.\",\n  \"execution_plan\": \"The current simulated physical execution plan (e.g., Sequential Scan, Index Scan).\",\n  \"estimated_cost\": \"The numerical cost value assigned by the simulated optimizer.\",\n  \"statistics\": \"Metadata such as table cardinality and column selectivity.\"\n}}\n{action_set_definitions}: {\n  \"query_performance_logs\": {\n    \"description\": \"Searches system logs and database statistics for slow queries associated with a specific keyword or dashboard name.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"dashboard_name\": {\n          \"type\": \"string\",\n          \"description\": \"The name of the dashboard to search for in logs.\"\n        }\n      },\n      \"required\": [\n        \"dashboard_name\"\n      ]\n    },\n    \"example_output\": {\n      \"slow_query\": \"SELECT product_id, SUM(amount) FROM sales_records WHERE region = 'GLOBAL' GROUP BY 1;\",\n      \"table_name\": \"sales_records\",\n      \"current_latency_ms\": 5500\n    }\n  },\n  \"get_schema_details\": {\n    \"description\": \"Retrieves the schema, column definitions, and existing indexes for a specific table.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"table_name\": {\n          \"type\": \"string\",\n          \"description\": \"The name of the table to inspect.\"\n        }\n      },\n      \"required\": [\n        \"table_name\"\n      ]\n    },\n    \"example_output\": {\n      \"columns\": [\n        \"id\",\n        \"amount\",\n        \"region\",\n        \"timestamp\"\n      ],\n      \"indexes\": [\n        \"pk_sales_id\"\n      ]\n    }\n  },\n  \"explain_query_plan\": {\n    \"description\": \"Executes an EXPLAIN ANALYZE (simulated) to provide the estimated execution cost and the physical plan steps.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"sql_query\": {\n          \"type\": \"string\",\n          \"description\": \"The SQL query to analyze.\"\n        }\n      },\n      \"required\": [\n        \"sql_query\"\n      ]\n    },\n    \"example_output\": {\n      \"estimated_cost\": 1250.45,\n      \"plan_nodes\": [\n        \"Sequential Scan on sales_records\"\n      ],\n      \"suggested_optimizations\": [\n        \"index on region\"\n      ]\n    }\n  },\n  \"create_index\": {\n    \"description\": \"Creates a B-Tree index on specified columns to optimize data retrieval.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"index_name\": {\n          \"type\": \"string\",\n          \"description\": \"A unique name for the new index.\"\n        },\n        \"table_or_view_name\": {\n          \"type\": \"string\",\n          \"description\": \"The table or materialized view to create the index on.\"\n        },\n        \"columns\": {\n          \"type\": \"array\",\n          \"items\": {\n            \"type\": \"string\"\n          },\n          \"description\": \"List of columns to include in the index.\"\n        }\n      },\n      \"required\": [\n        \"index_name\",\n        \"table_or_view_name\",\n        \"columns\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"success\",\n      \"index_created\": \"idx_sales_region\"\n    }\n  },\n  \"setup_materialized_view\": {\n    \"description\": \"Creates a materialized view to store pre-aggregated data. Supports staleness config and concurrent background refreshes.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"view_name\": {\n          \"type\": \"string\",\n          \"description\": \"The name of the materialized view.\"\n        },\n        \"source_query\": {\n          \"type\": \"string\",\n          \"description\": \"The original slow query used to populate the view.\"\n        },\n        \"staleness_limit_seconds\": {\n          \"type\": \"integer\",\n          \"description\": \"Maximum allowed data staleness (e.g., 3600).\"\n        },\n        \"enable_concurrent_refresh\": {\n          \"type\": \"boolean\",\n          \"description\": \"Set to true to use non-blocking refresh (requires a unique index on the view).\"\n        }\n      },\n      \"required\": [\n        \"view_name\",\n        \"source_query\",\n        \"staleness_limit_seconds\",\n        \"enable_concurrent_refresh\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"success\",\n      \"view_name\": \"mv_global_revenue\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "query_performance_logs",
+      "description": "Searches system logs and database statistics for slow queries associated with a specific keyword or dashboard name.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "dashboard_name": {
+            "type": "string",
+            "description": "The name of the dashboard to search for in logs."
+          }
+        },
+        "required": [
+          "dashboard_name"
+        ]
+      },
+      "example_output": {
+        "slow_query": "SELECT product_id, SUM(amount) FROM sales_records WHERE region = 'GLOBAL' GROUP BY 1;",
+        "table_name": "sales_records",
+        "current_latency_ms": 5500
+      }
+    },
+    {
+      "name": "get_schema_details",
+      "description": "Retrieves the schema, column definitions, and existing indexes for a specific table.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "table_name": {
+            "type": "string",
+            "description": "The name of the table to inspect."
+          }
+        },
+        "required": [
+          "table_name"
+        ]
+      },
+      "example_output": {
+        "columns": [
+          "id",
+          "amount",
+          "region",
+          "timestamp"
+        ],
+        "indexes": [
+          "pk_sales_id"
+        ]
+      }
+    },
+    {
+      "name": "explain_query_plan",
+      "description": "Executes an EXPLAIN ANALYZE (simulated) to provide the estimated execution cost and the physical plan steps.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "sql_query": {
+            "type": "string",
+            "description": "The SQL query to analyze."
+          }
+        },
+        "required": [
+          "sql_query"
+        ]
+      },
+      "example_output": {
+        "estimated_cost": 1250.45,
+        "plan_nodes": [
+          "Sequential Scan on sales_records"
+        ],
+        "suggested_optimizations": [
+          "index on region"
+        ]
+      }
+    },
+    {
+      "name": "create_index",
+      "description": "Creates a B-Tree index on specified columns to optimize data retrieval.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "index_name": {
+            "type": "string",
+            "description": "A unique name for the new index."
+          },
+          "table_or_view_name": {
+            "type": "string",
+            "description": "The table or materialized view to create the index on."
+          },
+          "columns": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "List of columns to include in the index."
+          }
+        },
+        "required": [
+          "index_name",
+          "table_or_view_name",
+          "columns"
+        ]
+      },
+      "example_output": {
+        "status": "success",
+        "index_created": "idx_sales_region"
+      }
+    },
+    {
+      "name": "setup_materialized_view",
+      "description": "Creates a materialized view to store pre-aggregated data. Supports staleness config and concurrent background refreshes.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "view_name": {
+            "type": "string",
+            "description": "The name of the materialized view."
+          },
+          "source_query": {
+            "type": "string",
+            "description": "The original slow query used to populate the view."
+          },
+          "staleness_limit_seconds": {
+            "type": "integer",
+            "description": "Maximum allowed data staleness (e.g., 3600)."
+          },
+          "enable_concurrent_refresh": {
+            "type": "boolean",
+            "description": "Set to true to use non-blocking refresh (requires a unique index on the view)."
+          }
+        },
+        "required": [
+          "view_name",
+          "source_query",
+          "staleness_limit_seconds",
+          "enable_concurrent_refresh"
+        ]
+      },
+      "example_output": {
+        "status": "success",
+        "view_name": "mv_global_revenue"
+      }
+    }
+  ],
+  "state_description": {
+    "current_query": "The current SQL string undergoing optimization.",
+    "database_schema": "Information about tables, columns, types, and existing indexes.",
+    "execution_plan": "The current simulated physical execution plan (e.g., Sequential Scan, Index Scan).",
+    "estimated_cost": "The numerical cost value assigned by the simulated optimizer.",
+    "statistics": "Metadata such as table cardinality and column selectivity."
+  },
+  "task_initial_state": {
+    "current_query": "SELECT * FROM merchants WHERE status = 'active' LIMIT 10",
+    "database_schema": {
+      "txn_archive_2022": {
+        "columns": [
+          "id",
+          "amount",
+          "ts",
+          "m_id"
+        ],
+        "indexes": [
+          "txn_archive_2022.id"
+        ]
+      },
+      "txn_staging_test": {
+        "columns": [
+          "id",
+          "amount",
+          "created_at",
+          "merchant_id"
+        ],
+        "indexes": [
+          "txn_staging_test.id"
+        ]
+      },
+      "txn_live_v4": {
+        "columns": [
+          "id",
+          "amount",
+          "created_at",
+          "merchant_id",
+          "currency_code"
+        ],
+        "indexes": [
+          "txn_live_v4.id",
+          "txn_live_v4.merchant_id"
+        ]
+      },
+      "merchants": {
+        "columns": [
+          "id",
+          "name",
+          "status",
+          "region"
+        ],
+        "indexes": [
+          "merchants.id"
+        ]
+      }
+    },
+    "execution_plan": "Limit  (cost=0.00..0.35 rows=10 width=1542)",
+    "estimated_cost": 0.35,
+    "statistics": {
+      "performance_audit_log": [
+        {
+          "label": "Consolidated Global Revenue",
+          "query": "SELECT merchant_id, SUM(amount) FROM txn_live_v4 GROUP BY merchant_id",
+          "last_execution_cost": 145000.0,
+          "status": "CRITICAL_LATENCY"
+        },
+        {
+          "label": "Legacy Revenue Audit",
+          "query": "SELECT m_id, SUM(amount) FROM txn_archive_2022 GROUP BY m_id",
+          "last_execution_cost": 52000.0,
+          "status": "COMPLETED"
+        },
+        {
+          "label": "Dev Dashboard",
+          "query": "SELECT merchant_id, SUM(amount) FROM txn_staging_test GROUP BY merchant_id",
+          "last_execution_cost": 120.0,
+          "status": "COMPLETED"
+        }
+      ],
+      "table_cardinality": {
+        "txn_live_v4": 2500000000,
+        "txn_archive_2022": 450000000,
+        "txn_staging_test": 15000
+      },
+      "business_slas": {
+        "global_reporting": {
+          "staleness_tolerance_sec": 3600,
+          "concurrency_requirement": "High"
+        }
+      }
+    }
+  }
+}

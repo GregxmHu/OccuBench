@@ -1,0 +1,193 @@
+{
+  "environment_name": "env_c094626a71a9",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: Act as the environment for an Expense Report Auditing task. Based on the current state $s_t$ and the auditor (Agent) action $a_t$, you simulate the internal state transition of the expense report and predict the observation $o_{{t+1}}$ returned to the Agent.\n- **Emphasis**: You do not perform real-world financial transactions or email notifications. Your role is limited to simulating state evolution (e.g., changing report status from 'Pending' to 'Approved') and generating the resulting data observations.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions between the World Model and the Agent must maintain context consistency. Changes made to the expense report (such as flagging a specific line item or updating the audit log) must persist across subsequent turns until the session concludes.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. This JSON must contain:\n- `\"name\"`: Specifies the name of the action function to execute.\n- The remaining fields are parameters required by that action.\n\nExample:\n```json\n{{\n \"name\": \"flag_line_item\",\n \"arguments\": {{\n    \"item_id\": \"LI-001\",\n    \"reason\": \"Missing receipt\"\n  }}\n}}\n```\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nIf the Agent attempts to approve a report that has already been rejected, provides a non-existent `item_id`, or calls an undefined action, return structured error information: `{{\"error\": \"Reason for failure\"}}`. Do not fabricate successful states for invalid inputs.\n\n##### Output Assembly\nFor every action function call, the model must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition. \n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, `new_state`, or hidden variables. The state maintenance is managed by the LWM internally. The Agent must only see the specific return values (the Observation) defined in the action.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to specified JSON and text formats.\n- **Factuality**: Do not simulate external data (like banking records) not governed by the provided state.\n- **Consistency**: If a line item is marked as 'Fraudulent', subsequent 'get_report_summary' actions must reflect that status.\n- **Realism**: State transitions must follow auditing logic (e.g., a report cannot be 'Pending' and 'Approved' simultaneously).\n- **Quality**: Observations should be professional and clear, resembling a real enterprise auditing software interface.\n- **Encapsulation**: Strictly hide the internal state structure from the output. Only expose information that is explicitly returned by the action function.\n{{initial_state}}: {{\n  \"report_id\": \"EXP-2024-V2\",\n  \"status\": \"Pending\",\n  \"submitter\": \"Marcus Thorne\",\n  \"total_amount\": 2050.0,\n  \"line_items\": [\n    {{\n      \"id\": \"LI-55\",\n      \"amount\": 1800.0,\n      \"category\": \"Travel\",\n      \"description\": \"International Flight to Project Site - Business Class\",\n      \"audit_flag\": \"None\"\n    }},\n    {{\n      \"id\": \"LI-56\",\n      \"amount\": 250.0,\n      \"category\": \"Meals\",\n      \"description\": \"Project Kickoff Dinner - Includes $90.00 alcohol selection\",\n      \"audit_flag\": \"None\"\n    }}\n  ],\n  \"audit_logs\": [\n    {{\n      \"timestamp\": \"2024-01-10T08:00:00Z\",\n      \"action\": \"Report Created\",\n      \"user\": \"M. Thorne\"\n    }},\n    {{\n      \"timestamp\": \"2024-01-10T08:05:00Z\",\n      \"action\": \"Project Association\",\n      \"user\": \"System\",\n      \"comment\": \"Linked to Project Code PRJ-ZEPHYR-001\"\n    }}\n  ],\n  \"policy_violations\": []\n}}\n{{state_descriptions}}: {{\n  \"report_id\": \"Unique identifier for the expense report\",\n  \"status\": \"Current status of the report (e.g., Pending, Under Review, Approved, Rejected)\",\n  \"submitter\": \"The name or ID of the employee who submitted the report\",\n  \"total_amount\": \"The total sum of all line items in the report\",\n  \"line_items\": \"List of individual expenses within the report, including fields like id, amount, category, and audit_flag\",\n  \"audit_logs\": \"A chronological record of actions taken on this report during the audit process\",\n  \"policy_violations\": \"List of automatically detected policy issues (e.g., 'Over limit', 'Duplicate receipt')\"\n}}\n{action_set_definitions}: {\n  \"fetch_report_details\": {\n    \"description\": \"Retrieves the full state of a specific expense report, including submitter ID, project ID, current status, and line items.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"report_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the expense report (e.g., 'EXP-2024-V2').\"\n        }\n      },\n      \"required\": [\n        \"report_id\"\n      ]\n    },\n    \"example_output\": {\n      \"report_id\": \"EXP-2024-V2\",\n      \"submitter_id\": \"EMP-992\",\n      \"project_id\": \"PROJ-ABC\",\n      \"line_items\": [\n        {\n          \"id\": \"LI-001\",\n          \"amount\": 150.0,\n          \"category\": \"Travel\",\n          \"is_billable\": true\n        }\n      ]\n    }\n  },\n  \"fetch_project_sow_terms\": {\n    \"description\": \"Retrieves the governing SOW terms for a project, including allowable expense categories and the remaining Not-to-Exceed (NTE) balance.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"project_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the project.\"\n        }\n      },\n      \"required\": [\n        \"project_id\"\n      ]\n    },\n    \"example_output\": {\n      \"nte_balance\": 5000.0,\n      \"allowable_categories\": [\n        \"Travel\",\n        \"Meals\",\n        \"Software\"\n      ],\n      \"currency\": \"USD\"\n    }\n  },\n  \"fetch_employee_metadata\": {\n    \"description\": \"Retrieves administrative data for an employee, specifically their department's variance account for non-compliant cost re-routing.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"employee_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the employee.\"\n        }\n      },\n      \"required\": [\n        \"employee_id\"\n      ]\n    },\n    \"example_output\": {\n      \"department_id\": \"DEPT-FIN\",\n      \"variance_account_id\": \"VAR-ACC-FIN-01\"\n    }\n  },\n  \"reallocate_line_item\": {\n    \"description\": \"Updates a specific line item's billing status and routes the cost to a specific account (e.g., a variance account).\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"report_id\": {\n          \"type\": \"string\",\n          \"description\": \"The report ID containing the line item.\"\n        },\n        \"item_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the specific line item to adjust.\"\n        },\n        \"is_billable\": {\n          \"type\": \"boolean\",\n          \"description\": \"Whether the item is billable to the project project.\"\n        },\n        \"destination_account_id\": {\n          \"type\": \"string\",\n          \"description\": \"The account ID where the cost should be routed (e.g., the variance account).\"\n        }\n      },\n      \"required\": [\n        \"report_id\",\n        \"item_id\",\n        \"is_billable\",\n        \"destination_account_id\"\n      ]\n    },\n    \"example_output\": {\n      \"success\": true,\n      \"updated_item\": \"LI-001\"\n    }\n  },\n  \"submit_final_audit\": {\n    \"description\": \"Finalizes the audit process and transitions the report status.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"report_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the report to finalize.\"\n        },\n        \"status\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"Approved\",\n            \"Rejected\"\n          ],\n          \"description\": \"The final status to set for the report.\"\n        },\n        \"audit_note\": {\n          \"type\": \"string\",\n          \"description\": \"A summary of the adjustments made.\"\n        }\n      },\n      \"required\": [\n        \"report_id\",\n        \"status\"\n      ]\n    },\n    \"example_output\": {\n      \"report_id\": \"EXP-2024-V2\",\n      \"final_status\": \"Approved\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "fetch_report_details",
+      "description": "Retrieves the full state of a specific expense report, including submitter ID, project ID, current status, and line items.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "report_id": {
+            "type": "string",
+            "description": "The unique identifier for the expense report (e.g., 'EXP-2024-V2')."
+          }
+        },
+        "required": [
+          "report_id"
+        ]
+      },
+      "example_output": {
+        "report_id": "EXP-2024-V2",
+        "submitter_id": "EMP-992",
+        "project_id": "PROJ-ABC",
+        "line_items": [
+          {
+            "id": "LI-001",
+            "amount": 150.0,
+            "category": "Travel",
+            "is_billable": true
+          }
+        ]
+      }
+    },
+    {
+      "name": "fetch_project_sow_terms",
+      "description": "Retrieves the governing SOW terms for a project, including allowable expense categories and the remaining Not-to-Exceed (NTE) balance.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "project_id": {
+            "type": "string",
+            "description": "The unique identifier for the project."
+          }
+        },
+        "required": [
+          "project_id"
+        ]
+      },
+      "example_output": {
+        "nte_balance": 5000.0,
+        "allowable_categories": [
+          "Travel",
+          "Meals",
+          "Software"
+        ],
+        "currency": "USD"
+      }
+    },
+    {
+      "name": "fetch_employee_metadata",
+      "description": "Retrieves administrative data for an employee, specifically their department's variance account for non-compliant cost re-routing.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "employee_id": {
+            "type": "string",
+            "description": "The unique identifier for the employee."
+          }
+        },
+        "required": [
+          "employee_id"
+        ]
+      },
+      "example_output": {
+        "department_id": "DEPT-FIN",
+        "variance_account_id": "VAR-ACC-FIN-01"
+      }
+    },
+    {
+      "name": "reallocate_line_item",
+      "description": "Updates a specific line item's billing status and routes the cost to a specific account (e.g., a variance account).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "report_id": {
+            "type": "string",
+            "description": "The report ID containing the line item."
+          },
+          "item_id": {
+            "type": "string",
+            "description": "The ID of the specific line item to adjust."
+          },
+          "is_billable": {
+            "type": "boolean",
+            "description": "Whether the item is billable to the project project."
+          },
+          "destination_account_id": {
+            "type": "string",
+            "description": "The account ID where the cost should be routed (e.g., the variance account)."
+          }
+        },
+        "required": [
+          "report_id",
+          "item_id",
+          "is_billable",
+          "destination_account_id"
+        ]
+      },
+      "example_output": {
+        "success": true,
+        "updated_item": "LI-001"
+      }
+    },
+    {
+      "name": "submit_final_audit",
+      "description": "Finalizes the audit process and transitions the report status.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "report_id": {
+            "type": "string",
+            "description": "The ID of the report to finalize."
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "Approved",
+              "Rejected"
+            ],
+            "description": "The final status to set for the report."
+          },
+          "audit_note": {
+            "type": "string",
+            "description": "A summary of the adjustments made."
+          }
+        },
+        "required": [
+          "report_id",
+          "status"
+        ]
+      },
+      "example_output": {
+        "report_id": "EXP-2024-V2",
+        "final_status": "Approved"
+      }
+    }
+  ],
+  "state_description": {
+    "report_id": "Unique identifier for the expense report",
+    "status": "Current status of the report (e.g., Pending, Under Review, Approved, Rejected)",
+    "submitter": "The name or ID of the employee who submitted the report",
+    "total_amount": "The total sum of all line items in the report",
+    "line_items": "List of individual expenses within the report, including fields like id, amount, category, and audit_flag",
+    "audit_logs": "A chronological record of actions taken on this report during the audit process",
+    "policy_violations": "List of automatically detected policy issues (e.g., 'Over limit', 'Duplicate receipt')"
+  },
+  "task_initial_state": {
+    "report_id": "EXP-2024-V2",
+    "status": "Pending",
+    "submitter": "Marcus Thorne",
+    "total_amount": 2050.0,
+    "line_items": [
+      {
+        "id": "LI-55",
+        "amount": 1800.0,
+        "category": "Travel",
+        "description": "International Flight to Project Site - Business Class",
+        "audit_flag": "None"
+      },
+      {
+        "id": "LI-56",
+        "amount": 250.0,
+        "category": "Meals",
+        "description": "Project Kickoff Dinner - Includes $90.00 alcohol selection",
+        "audit_flag": "None"
+      }
+    ],
+    "audit_logs": [
+      {
+        "timestamp": "2024-01-10T08:00:00Z",
+        "action": "Report Created",
+        "user": "M. Thorne"
+      },
+      {
+        "timestamp": "2024-01-10T08:05:00Z",
+        "action": "Project Association",
+        "user": "System",
+        "comment": "Linked to Project Code PRJ-ZEPHYR-001"
+      }
+    ],
+    "policy_violations": []
+  }
+}

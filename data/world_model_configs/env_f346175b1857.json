@@ -1,0 +1,180 @@
+{
+  "environment_name": "env_f346175b1857",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: You are a simulation engine for a 'Quality Defect Root Cause Analysis' environment. Based on the current internal environment state $s_t$ and the action $a_t$ executed by the Agent, your task is to simulate the internal evolution of the manufacturing environment and predict the observation $o_{{t+1}}$ that the Agent would receive. \n- **Emphasis**: You do not perform real-world diagnosis or repairs. You provide the responses an industrial system (sensors, databases, machine interfaces) would provide. Your internal state ensures that if a defect exists in a specific component, all related sensor data and logs remain consistent with that reality throughout the session.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions must maintain absolute context consistency. If an action changes the environment (e.g., restarting a machine), the LWM must track this change internally so that subsequent observations reflect the new state (e.g., sensor values returning to normal or showing a ramp-up phase).\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object containing:\n- `\"name\"`: The name of the action function.\n- `\"arguments\"`: The parameter names and values.\n\nYou must parse these inputs and calculate the resulting observation based on the internal state and the logic of the manufacturing environment.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\n- If an Agent attempts to query a machine ID that does not exist: return `{{\"error\": \"Machine ID [ID] not found\"}}`.\n- If an action requires a machine to be 'ON' but it is currently 'OFF': return `{{\"error\": \"Operation failed: Machine is powered down\"}}`.\n- For invalid parameters or undefined actions, return structured error information and do not fabricate fictitious successful responses.\n\n##### Output Assembly\nFor every action function call, you must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition.\n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state $s_t$, the `new_state`, or any hidden root-cause variables. You act as the interface (the screen or the sensor probe). Only expose information that the specific action is designed to retrieve. Do not output text summaries of state updates unless they are part of the specific action's defined return value.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to specified JSON formats.\n- **Factuality**: Do not fabricate non-existent sensors or log entries not supported by the internal state logic.\n- **Consistency**: If the 'root_cause' is a 'clogged nozzle', all pressure sensors and flow rate observations must logically align with a clog.\n- **Realism**: Simulate industrial dynamics; for example, sensor data may include minor stochastic noise if appropriate for the scenario, but must stay within the bounds of the defined state.\n- **Encapsulation**: Strictly hide the internal state structure. The Agent must 'discover' the state through observations.\n{{initial_state}}: {{\n  \"production_line_metadata\": {{\n    \"line_id\": \"CAST-FORGE-SEC-B\",\n    \"operation_mode\": \"Halted\",\n    \"forensic_protocols\": \"Destructive sectioning authorized for specimens > 15cm using Bypass Code: ISO-SECTION-99.\"\n  }},\n  \"machine_states\": [\n    {{\n      \"machine_id\": \"PA-99\",\n      \"status\": \"Fractured (Dimensions: 25cm x 18cm x 10cm)\",\n      \"temperature_c\": 21.0,\n      \"pressure_psi\": 0,\n      \"vibration_level\": 0\n    }}\n  ],\n  \"maintenance_records\": [\n    {{\n      \"timestamp\": \"2024-12-05T10:30:00Z\",\n      \"machine_id\": \"PA-99\",\n      \"action_taken\": \"Post-failure recovery from wet outdoor storage area; surface indicates heavy corrosion and reddish-brown scaling.\"\n    }}\n  ],\n  \"hidden_ground_truth\": {{\n    \"faulty_component_id\": \"PA-99\",\n    \"defect_type\": \"High-Cycle Fatigue initiated by Sulfide Stringers\",\n    \"symptom_logic\": \"The part exceeds the SEM chamber capacity (15cm), requiring the agent to use the ISO-SECTION-99 code to perform a cut. The surface is rusted, necessitating a citric acid wash; using acetone will fail to reveal features. Macroscopic inspection reveals 'Beach marks', which dictates a branch toward fatigue analysis. The agent must therefore provide the ASTM E45 Inclusion Rating (Severity 2.5, Type A) rather than a grain size measurement. Providing a grain size result or failing to clean the rust properly will result in an incorrect or impossible diagnosis.\"\n  }}\n}}\n{{state_descriptions}}: {{\n  \"production_line_metadata\": \"General info about the production line being inspected.\",\n  \"machine_states\": \"List of machines in the line and their current physical status.\",\n  \"maintenance_records\": \"History of past interventions for machines.\",\n  \"hidden_ground_truth\": \"The actual root cause unknown to the agent, used by the LWM to ensure consistency.\"\n}}\n{action_set_definitions}: {\n  \"get_component_status\": {\n    \"description\": \"Retrieves the physical details, dimensions, and observed surface conditions of a specific component from the environment.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"component_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier of the part (e.g., 'PA-99').\"\n        }\n      },\n      \"required\": [\n        \"component_id\"\n      ]\n    },\n    \"example_output\": {\n      \"dimensions\": {\n        \"length\": \"number\",\n        \"width\": \"number\"\n      },\n      \"surface_contaminants\": [\n        \"oil\",\n        \"rust\",\n        \"scale\"\n      ],\n      \"macroscopic_features\": [\n        \"beach_marks\",\n        \"cleavage_steps\"\n      ],\n      \"location\": \"str\"\n    }\n  },\n  \"query_environment_records\": {\n    \"description\": \"Retrieves background data including production line metadata and maintenance history.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"record_type\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"production_line_metadata\",\n            \"maintenance_records\",\n            \"machine_states\"\n          ],\n          \"description\": \"The category of information to retrieve.\"\n        }\n      },\n      \"required\": [\n        \"record_type\"\n      ]\n    },\n    \"example_output\": {\n      \"data\": \"string or list\"\n    }\n  },\n  \"prepare_metallurgical_sample\": {\n    \"description\": \"Executes cleaning and preparation procedures on a specimen. Must be chosen based on observed contaminants.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"component_id\": {\n          \"type\": \"string\"\n        },\n        \"cleaning_method\": {\n          \"type\": \"string\",\n          \"description\": \"Selected method (e.g., 'ultrasonic_degreasing', 'inhibited_acid_pickling') based on observed contaminants.\"\n        },\n        \"sectioning_plan\": {\n          \"type\": \"string\",\n          \"description\": \"How the part will be cut based on dimensions and fracture origin.\"\n        }\n      },\n      \"required\": [\n        \"component_id\",\n        \"cleaning_method\",\n        \"sectioning_plan\"\n      ]\n    },\n    \"example_output\": {\n      \"sample_id\": \"PA-99-S1\",\n      \"preparation_status\": \"ready\"\n    }\n  },\n  \"diagnose_failure_mechanism\": {\n    \"description\": \"Analyzes the prepared sample using microscopic techniques to identify the failure mechanism.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"sample_id\": {\n          \"type\": \"string\"\n        },\n        \"analysis_type\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"SEM_Fractography\",\n            \"Optical_Metallography\"\n          ]\n        }\n      },\n      \"required\": [\n        \"sample_id\",\n        \"analysis_type\"\n      ]\n    },\n    \"example_output\": {\n      \"primary_mechanism\": \"Fatigue / Brittle Fracture / Ductile Dimple\",\n      \"origin_point\": \"surface / sub-surface\"\n    }\n  },\n  \"measure_astm_metric\": {\n    \"description\": \"Performs quantitative ASTM measurements on the prepared metallurgical sample.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"sample_id\": {\n          \"type\": \"string\"\n        },\n        \"metric_type\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"Grain Size\",\n            \"Inclusion Severity\"\n          ]\n        }\n      },\n      \"required\": [\n        \"sample_id\",\n        \"metric_type\"\n      ]\n    },\n    \"example_output\": {\n      \"astm_standard\": \"E112 / E45\",\n      \"value\": \"number\",\n      \"rating\": \"string\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_component_status",
+      "description": "Retrieves the physical details, dimensions, and observed surface conditions of a specific component from the environment.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "component_id": {
+            "type": "string",
+            "description": "The unique identifier of the part (e.g., 'PA-99')."
+          }
+        },
+        "required": [
+          "component_id"
+        ]
+      },
+      "example_output": {
+        "dimensions": {
+          "length": "number",
+          "width": "number"
+        },
+        "surface_contaminants": [
+          "oil",
+          "rust",
+          "scale"
+        ],
+        "macroscopic_features": [
+          "beach_marks",
+          "cleavage_steps"
+        ],
+        "location": "str"
+      }
+    },
+    {
+      "name": "query_environment_records",
+      "description": "Retrieves background data including production line metadata and maintenance history.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "record_type": {
+            "type": "string",
+            "enum": [
+              "production_line_metadata",
+              "maintenance_records",
+              "machine_states"
+            ],
+            "description": "The category of information to retrieve."
+          }
+        },
+        "required": [
+          "record_type"
+        ]
+      },
+      "example_output": {
+        "data": "string or list"
+      }
+    },
+    {
+      "name": "prepare_metallurgical_sample",
+      "description": "Executes cleaning and preparation procedures on a specimen. Must be chosen based on observed contaminants.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "component_id": {
+            "type": "string"
+          },
+          "cleaning_method": {
+            "type": "string",
+            "description": "Selected method (e.g., 'ultrasonic_degreasing', 'inhibited_acid_pickling') based on observed contaminants."
+          },
+          "sectioning_plan": {
+            "type": "string",
+            "description": "How the part will be cut based on dimensions and fracture origin."
+          }
+        },
+        "required": [
+          "component_id",
+          "cleaning_method",
+          "sectioning_plan"
+        ]
+      },
+      "example_output": {
+        "sample_id": "PA-99-S1",
+        "preparation_status": "ready"
+      }
+    },
+    {
+      "name": "diagnose_failure_mechanism",
+      "description": "Analyzes the prepared sample using microscopic techniques to identify the failure mechanism.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "sample_id": {
+            "type": "string"
+          },
+          "analysis_type": {
+            "type": "string",
+            "enum": [
+              "SEM_Fractography",
+              "Optical_Metallography"
+            ]
+          }
+        },
+        "required": [
+          "sample_id",
+          "analysis_type"
+        ]
+      },
+      "example_output": {
+        "primary_mechanism": "Fatigue / Brittle Fracture / Ductile Dimple",
+        "origin_point": "surface / sub-surface"
+      }
+    },
+    {
+      "name": "measure_astm_metric",
+      "description": "Performs quantitative ASTM measurements on the prepared metallurgical sample.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "sample_id": {
+            "type": "string"
+          },
+          "metric_type": {
+            "type": "string",
+            "enum": [
+              "Grain Size",
+              "Inclusion Severity"
+            ]
+          }
+        },
+        "required": [
+          "sample_id",
+          "metric_type"
+        ]
+      },
+      "example_output": {
+        "astm_standard": "E112 / E45",
+        "value": "number",
+        "rating": "string"
+      }
+    }
+  ],
+  "state_description": {
+    "production_line_metadata": "General info about the production line being inspected.",
+    "machine_states": "List of machines in the line and their current physical status.",
+    "maintenance_records": "History of past interventions for machines.",
+    "hidden_ground_truth": "The actual root cause unknown to the agent, used by the LWM to ensure consistency."
+  },
+  "task_initial_state": {
+    "production_line_metadata": {
+      "line_id": "CAST-FORGE-SEC-B",
+      "operation_mode": "Halted",
+      "forensic_protocols": "Destructive sectioning authorized for specimens > 15cm using Bypass Code: ISO-SECTION-99."
+    },
+    "machine_states": [
+      {
+        "machine_id": "PA-99",
+        "status": "Fractured (Dimensions: 25cm x 18cm x 10cm)",
+        "temperature_c": 21.0,
+        "pressure_psi": 0,
+        "vibration_level": 0
+      }
+    ],
+    "maintenance_records": [
+      {
+        "timestamp": "2024-12-05T10:30:00Z",
+        "machine_id": "PA-99",
+        "action_taken": "Post-failure recovery from wet outdoor storage area; surface indicates heavy corrosion and reddish-brown scaling."
+      }
+    ],
+    "hidden_ground_truth": {
+      "faulty_component_id": "PA-99",
+      "defect_type": "High-Cycle Fatigue initiated by Sulfide Stringers",
+      "symptom_logic": "The part exceeds the SEM chamber capacity (15cm), requiring the agent to use the ISO-SECTION-99 code to perform a cut. The surface is rusted, necessitating a citric acid wash; using acetone will fail to reveal features. Macroscopic inspection reveals 'Beach marks', which dictates a branch toward fatigue analysis. The agent must therefore provide the ASTM E45 Inclusion Rating (Severity 2.5, Type A) rather than a grain size measurement. Providing a grain size result or failing to clean the rust properly will result in an incorrect or impossible diagnosis."
+    }
+  }
+}

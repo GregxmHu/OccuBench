@@ -1,0 +1,136 @@
+{
+  "environment_name": "env_cdaa333e3fcc",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: Based on the current traffic state $s_t$ and the signal control action $a_t$ provided by the Agent, simulate the evolution of the urban traffic environment. You are responsible for predicting the resulting environment changes and generating the specific observation $o_{{t+1}}$ that an automated traffic controller would receive from sensors (e.g., induction loops, cameras).\n- **Emphasis**: You do not control the signals; you simulate the physical reality of traffic flow, vehicle arrivals, and queue dynamics. You must perform internal state evolution and provide only the observation defined by the action's return schema.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation tracking intersection dynamics and vehicle distributions. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions between the World Model and the Agent must maintain temporal and physical consistency. Traffic flow is continuous; vehicles not cleared in the previous time step must persist in the queues for the next step, and new arrivals must be calculated based on the intersection's flow parameters.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the traffic environment by calling signal control functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. This JSON contains the following fields:\n- `\"name\"`: The name of the traffic control action (e.g., \"switch_phase\", \"set_timer\").\n- The remaining fields are the specific parameters (e.g., `intersection_id`, `phase_id`).\n\nExample:\n```json\n{{\n \"name\": \"set_signal_phase\",\n \"arguments\": {{\n    \"intersection_id\": \"INT_01\",\n    \"phase_id\": 2,\n    \"duration\": 30\n  }}\n}}\n```\n\nYou must parse these inputs and simulate the resulting traffic flow (e.g., reducing queue length in green directions, increasing it in red directions).\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nIf the Agent attempts to set an invalid phase, targets a non-existent intersection, or provides logically impossible durations (e.g., negative time), return structured error information: `{{\"error\": \"Reason for failure\"}}`. Do not simulate a successful state transition for invalid inputs.\n\n##### Output Assembly\nFor every action call, you must return a structured JSON object containing **ONLY** the return fields (Observations) declared in that action function's definition. \n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, the updated `new_state`, or hidden variables like internal vehicle IDs or global arrival counters. You are an interface to sensors; the Agent must only see the data explicitly returned by the action function (the Observation).\n\n### 4. Key Principles\n- **Format**: Strictly adhere to JSON for all outputs.\n- **Factuality**: Use realistic traffic flow calculations (e.g., saturated flow rates, yellow light clearance intervals).\n- **Consistency**: If a lane has 20 vehicles and the signal is Red, the next observation must show at least 20 vehicles (plus new arrivals).\n- **Realism**: Simulate stochastic elements if implied (e.g., varying arrival rates) within reasonable bounds for urban mobility.\n- **Quality**: Ensure the simulation logic reflects the complexity of multi-lane intersections.\n- **Encapsulation**: Strictly hide the internal state structure. Do not output the state update process, only the final observation.\n{{initial_state}}: {{\n  \"intersections\": [\n    {{\n      \"id\": \"INT_HUB_07\",\n      \"current_phase_index\": 0,\n      \"lane_queues\": {{\n        \"northbound\": 25,\n        \"southbound\": 65,\n        \"eastbound\": 10,\n        \"westbound\": 10\n      }},\n      \"arrival_rates\": {{\n        \"northbound\": 5.0,\n        \"southbound\": 18.0,\n        \"eastbound\": 4.0,\n        \"westbound\": 4.0\n      }},\n      \"elapsed_phase_time\": 180\n    }}\n  ],\n  \"simulation_time\": 3600\n}}\n{{state_descriptions}}: {{\n  \"intersections\": \"A list of intersections managed by the model.\",\n  \"simulation_time\": \"Total simulation seconds elapsed.\"\n}}\n{action_set_definitions}: {\n  \"get_intersection_metrics\": {\n    \"description\": \"Retrieves the current traffic state for a specific intersection, including queue lengths for all approaches and the current signal status.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"intersection_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier of the intersection (e.g., 'INT_HUB_07').\"\n        }\n      },\n      \"required\": [\n        \"intersection_id\"\n      ]\n    },\n    \"example_output\": {\n      \"queues\": {\n        \"northbound\": 15,\n        \"southbound\": 65,\n        \"eastbound\": 10,\n        \"westbound\": 10\n      },\n      \"active_phase\": \"PHASE_02\",\n      \"elapsed_seconds_in_phase\": 5.0\n    }\n  },\n  \"get_system_infrastructure\": {\n    \"description\": \"Queries the Roadside Unit (RSU) for static configuration data, including mapping directions to phase IDs, safety timing limits, and system health status.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"intersection_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier of the intersection.\"\n        }\n      },\n      \"required\": [\n        \"intersection_id\"\n      ]\n    },\n    \"example_output\": {\n      \"phase_mapping\": {\n        \"southbound_straight\": \"PHASE_02\",\n        \"northbound_straight\": \"PHASE_01\"\n      },\n      \"timing_constraints\": {\n        \"max_green\": 120,\n        \"min_green\": 10\n      },\n      \"status\": \"HEALTHY\"\n    }\n  },\n  \"set_phase_parameters\": {\n    \"description\": \"Sets the green light duration for a specific signal phase to control traffic flow.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"intersection_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier of the intersection.\"\n        },\n        \"phase_id\": {\n          \"type\": \"string\",\n          \"description\": \"The specific phase ID to be updated.\"\n        },\n        \"green_duration\": {\n          \"type\": \"number\",\n          \"description\": \"The duration of the green light in seconds.\"\n        }\n      },\n      \"required\": [\n        \"intersection_id\",\n        \"phase_id\",\n        \"green_duration\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"SUCCESS\",\n      \"updated_phase\": \"PHASE_02\",\n      \"duration\": 120\n    }\n  },\n  \"advance_world_model\": {\n    \"description\": \"Advances the internal environment simulation by a specific time increment to process traffic movement and signal changes.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"seconds\": {\n          \"type\": \"number\",\n          \"description\": \"The number of seconds to simulate (e.g., 120).\"\n        }\n      },\n      \"required\": [\n        \"seconds\"\n      ]\n    },\n    \"example_output\": {\n      \"new_simulation_time\": 600,\n      \"delta_processed\": 120\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_intersection_metrics",
+      "description": "Retrieves the current traffic state for a specific intersection, including queue lengths for all approaches and the current signal status.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "intersection_id": {
+            "type": "string",
+            "description": "The unique identifier of the intersection (e.g., 'INT_HUB_07')."
+          }
+        },
+        "required": [
+          "intersection_id"
+        ]
+      },
+      "example_output": {
+        "queues": {
+          "northbound": 15,
+          "southbound": 65,
+          "eastbound": 10,
+          "westbound": 10
+        },
+        "active_phase": "PHASE_02",
+        "elapsed_seconds_in_phase": 5.0
+      }
+    },
+    {
+      "name": "get_system_infrastructure",
+      "description": "Queries the Roadside Unit (RSU) for static configuration data, including mapping directions to phase IDs, safety timing limits, and system health status.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "intersection_id": {
+            "type": "string",
+            "description": "The unique identifier of the intersection."
+          }
+        },
+        "required": [
+          "intersection_id"
+        ]
+      },
+      "example_output": {
+        "phase_mapping": {
+          "southbound_straight": "PHASE_02",
+          "northbound_straight": "PHASE_01"
+        },
+        "timing_constraints": {
+          "max_green": 120,
+          "min_green": 10
+        },
+        "status": "HEALTHY"
+      }
+    },
+    {
+      "name": "set_phase_parameters",
+      "description": "Sets the green light duration for a specific signal phase to control traffic flow.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "intersection_id": {
+            "type": "string",
+            "description": "The unique identifier of the intersection."
+          },
+          "phase_id": {
+            "type": "string",
+            "description": "The specific phase ID to be updated."
+          },
+          "green_duration": {
+            "type": "number",
+            "description": "The duration of the green light in seconds."
+          }
+        },
+        "required": [
+          "intersection_id",
+          "phase_id",
+          "green_duration"
+        ]
+      },
+      "example_output": {
+        "status": "SUCCESS",
+        "updated_phase": "PHASE_02",
+        "duration": 120
+      }
+    },
+    {
+      "name": "advance_world_model",
+      "description": "Advances the internal environment simulation by a specific time increment to process traffic movement and signal changes.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "seconds": {
+            "type": "number",
+            "description": "The number of seconds to simulate (e.g., 120)."
+          }
+        },
+        "required": [
+          "seconds"
+        ]
+      },
+      "example_output": {
+        "new_simulation_time": 600,
+        "delta_processed": 120
+      }
+    }
+  ],
+  "state_description": {
+    "intersections": "A list of intersections managed by the model.",
+    "simulation_time": "Total simulation seconds elapsed."
+  },
+  "task_initial_state": {
+    "intersections": [
+      {
+        "id": "INT_HUB_07",
+        "current_phase_index": 0,
+        "lane_queues": {
+          "northbound": 25,
+          "southbound": 65,
+          "eastbound": 10,
+          "westbound": 10
+        },
+        "arrival_rates": {
+          "northbound": 5.0,
+          "southbound": 18.0,
+          "eastbound": 4.0,
+          "westbound": 4.0
+        },
+        "elapsed_phase_time": 180
+      }
+    ],
+    "simulation_time": 3600
+  }
+}

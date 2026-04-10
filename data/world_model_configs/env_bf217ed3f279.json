@@ -1,0 +1,116 @@
+{
+  "environment_name": "env_bf217ed3f279",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM) for Hotel Room Revenue Management.\n- **Core Objective**: Based on the current state $s_t$ (inventory, date, market conditions) and action $a_t$ (pricing changes, distribution adjustments), simulate the internal evolution of the hotel's booking status and predict the observation $o_{{t+1}}$ (bookings received, revenue report) obtained by the Agent.\n- **Emphasis**: The LWM does not manage a real hotel. It performs internal state evolution to simulate market demand and guest behavior, generating realistic observations based on economic principles of supply and demand.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions between the World Model and the Agent must maintain strict temporal and logical consistency. If prices are raised, the simulation must reflect the potential decrease in demand relative to the market factor unless seasonality offsets it. The state persists and evolves across multiple turns.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. Example:\n```json\n{{\n \"name\": \"set_room_price\",\n \"arguments\": {{\n    \"room_type\": \"deluxe\",\n    \"new_price\": 250.0\n  }}\n}}\n```\nThe Language World Model must parse this input, update the internal state (e.g., updating the pricing table), and calculate the resulting environmental changes (e.g., simulating a day's worth of bookings).\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\n- If an action refers to a non-existent `room_type`, return: `{{\"error\": \"Invalid room type specified\"}}`.\n- If a price is set to a negative value or exceeds a logical ceiling, return a structured error.\n- For undefined actions or malformed JSON, return: `{{\"error\": \"Action execution failed: [reason]\"}}`.\n- Do not fabricate data or exit the simulation role.\n\n##### Output Assembly\nFor every action function call, the model must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition.\n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, `new_state`, or hidden variables like `market_demand_factor`. The Agent must only see the specific return values (Observations) such as `daily_revenue`, `new_bookings`, or `occupancy_rate` as defined in the action's output schema.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to JSON for both parsing inputs and generating outputs.\n- **Factuality**: Simulated booking behaviors must reflect realistic market dynamics (e.g., higher prices generally lead to lower occupancy unless demand is inelastic).\n- **Consistency**: The `total_revenue` must be the sum of previous revenue plus new revenue; room inventory cannot exceed the physical capacity defined in the state.\n- **Realism**: Simulate stochastic elements (randomness in guest arrivals) to ensure the environment is not purely deterministic but remains grounded in the provided state.\n- **Encapsulation**: Strictly hide the internal state structure from the output. Do not output the state update textually; only output the observation.\n{{initial_state}}: {{\n  \"current_date\": \"2024-06-15\",\n  \"inventory_status\": {{\n    \"standard\": 60,\n    \"deluxe\": 25,\n    \"suite\": 12\n  }},\n  \"current_pricing\": {{\n    \"standard\": 285.0,\n    \"deluxe\": 15.0,\n    \"suite\": 10.0\n  }},\n  \"cumulative_revenue\": 18000.0,\n  \"market_demand_factor\": 1.8,\n  \"competitor_avg_price\": 240.0\n}}\n{{state_descriptions}}: {{\n  \"current_date\": \"The current date in the simulation (YYYY-MM-DD format).\",\n  \"inventory_status\": \"Mapping of room categories to the number of available rooms remaining for the current period.\",\n  \"current_pricing\": \"The current active price for each room category.\",\n  \"cumulative_revenue\": \"The total revenue earned since the start of the simulation.\",\n  \"market_demand_factor\": \"A hidden multiplier (0.0 to 2.0) representing seasonal demand (e.g., 1.5 during holidays).\",\n  \"competitor_avg_price\": \"The average price of similar rooms in the nearby market area.\"\n}}\n{action_set_definitions}: {\n  \"get_market_status\": {\n    \"description\": \"Retrieves the current market context including date, accumulated revenue, current demand multiplier, and competitor pricing levels.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"current_date\": \"2024-05-01\",\n      \"cumulative_revenue\": 15000.0,\n      \"market_demand_factor\": 1.2,\n      \"competitor_avg_price\": 240.0\n    }\n  },\n  \"get_inventory_snapshot\": {\n    \"description\": \"Retrieves the current number of available rooms and current active price for every room category in the hotel.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"inventory\": [\n        {\n          \"category_id\": \"standard_king\",\n          \"available_rooms\": 20,\n          \"current_price\": 250.0\n        },\n        {\n          \"category_id\": \"suite_premium\",\n          \"available_rooms\": 8,\n          \"current_price\": 450.0\n        }\n      ]\n    }\n  },\n  \"adjust_room_pricing\": {\n    \"description\": \"Updates the pricing for specific room categories to manage demand and revenue yield.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"adjustments\": {\n          \"type\": \"array\",\n          \"items\": {\n            \"type\": \"object\",\n            \"properties\": {\n              \"category_id\": {\n                \"type\": \"string\"\n              },\n              \"new_price\": {\n                \"type\": \"number\"\n              }\n            },\n            \"required\": [\n              \"category_id\",\n              \"new_price\"\n            ]\n          }\n        }\n      },\n      \"required\": [\n        \"adjustments\"\n      ]\n    },\n    \"example_output\": {\n      \"success\": true,\n      \"message\": \"Prices updated successfully.\"\n    }\n  },\n  \"advance_simulation\": {\n    \"description\": \"Advances the environment to the next time period (e.g., 24 hours). This processes bookings based on current prices and updates the inventory and revenue state.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"daily_revenue\": 3200.0,\n      \"total_revenue\": 18200.0,\n      \"next_date\": \"2024-05-02\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_market_status",
+      "description": "Retrieves the current market context including date, accumulated revenue, current demand multiplier, and competitor pricing levels.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "current_date": "2024-05-01",
+        "cumulative_revenue": 15000.0,
+        "market_demand_factor": 1.2,
+        "competitor_avg_price": 240.0
+      }
+    },
+    {
+      "name": "get_inventory_snapshot",
+      "description": "Retrieves the current number of available rooms and current active price for every room category in the hotel.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "inventory": [
+          {
+            "category_id": "standard_king",
+            "available_rooms": 20,
+            "current_price": 250.0
+          },
+          {
+            "category_id": "suite_premium",
+            "available_rooms": 8,
+            "current_price": 450.0
+          }
+        ]
+      }
+    },
+    {
+      "name": "adjust_room_pricing",
+      "description": "Updates the pricing for specific room categories to manage demand and revenue yield.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "adjustments": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "category_id": {
+                  "type": "string"
+                },
+                "new_price": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "category_id",
+                "new_price"
+              ]
+            }
+          }
+        },
+        "required": [
+          "adjustments"
+        ]
+      },
+      "example_output": {
+        "success": true,
+        "message": "Prices updated successfully."
+      }
+    },
+    {
+      "name": "advance_simulation",
+      "description": "Advances the environment to the next time period (e.g., 24 hours). This processes bookings based on current prices and updates the inventory and revenue state.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "daily_revenue": 3200.0,
+        "total_revenue": 18200.0,
+        "next_date": "2024-05-02"
+      }
+    }
+  ],
+  "state_description": {
+    "current_date": "The current date in the simulation (YYYY-MM-DD format).",
+    "inventory_status": "Mapping of room categories to the number of available rooms remaining for the current period.",
+    "current_pricing": "The current active price for each room category.",
+    "cumulative_revenue": "The total revenue earned since the start of the simulation.",
+    "market_demand_factor": "A hidden multiplier (0.0 to 2.0) representing seasonal demand (e.g., 1.5 during holidays).",
+    "competitor_avg_price": "The average price of similar rooms in the nearby market area."
+  },
+  "task_initial_state": {
+    "current_date": "2024-06-15",
+    "inventory_status": {
+      "standard": 60,
+      "deluxe": 25,
+      "suite": 12
+    },
+    "current_pricing": {
+      "standard": 285.0,
+      "deluxe": 15.0,
+      "suite": 10.0
+    },
+    "cumulative_revenue": 18000.0,
+    "market_demand_factor": 1.8,
+    "competitor_avg_price": 240.0
+  }
+}

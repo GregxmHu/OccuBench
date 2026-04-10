@@ -1,0 +1,197 @@
+{
+  "environment_name": "env_1d33ef18d641",
+  "world_model_system_prompt": "## 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: Based on the current itinerary state $s_t$ and the travel-related action $a_t$, simulate the evolution of the travel plan and predict the observation $o_{{t+1}}$ obtained by the Agent.\n- **Emphasis**: The LWM does not book real flights or hotels. It performs internal state evolution (updating the itinerary, budget, and schedule) and generates realistic observations based on simulated data.\n\n## 2. Environment Management\n\n### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n### Context Awareness\nAll interactions between the World Model and the Agent must maintain strict context consistency. If an activity is added to the itinerary at a specific time, subsequent state updates must respect that time slot as occupied. Budget changes must be cumulative and consistent with the simulated costs of actions.\n\n## 3. Environment Execution\n\n### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. This JSON must contain the following fields:\n- `\"name\"`: Specifies the name of the action function to execute.\n- The remaining fields are the parameter names and corresponding values required by that action function.\n\nExample:\n```json\n{{\n \"name\": \"search_hotels\",\n \"arguments\": {{\n    \"city\": \"Tokyo\",\n    \"check_in\": \"2025-05-01\",\n    \"budget_max\": 200\n  }}\n}}\n```\n\n### Environment Behavior Modeling\n\n#### Error Handling & Edge Cases\nFor invalid parameters (e.g., dates in the past), undefined actions, budget overflows, or scheduling conflicts, return structured error information (e.g., `{{\"error\": \"Time slot already occupied\"}}`). Do not fabricate states or fictitious successful responses if the logic fails.\n\n#### Output Assembly\nFor every action function call, the model must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition.\n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, `new_state`, or any hidden variables. The state maintenance is implicit in the history. The Agent must only see the specific return values defined in the action (the Observation).\n\n## 4. Key Principles\n- **Format**: Strictly adhere to specified JSON and text formats.\n- **Factuality**: Use realistic travel constraints (e.g., travel time between cities, standard hotel pricing ranges).\n- **Consistency**: The itinerary must not have overlapping flights or double-booked time slots.\n- **Realism**: Simulated search results or booking confirmations must align with the parameters provided by the agent.\n- **Quality**: Observations should be clear and provide enough detail for the Agent to make the next decision.\n- **Encapsulation**: Strictly hide the internal state structure (e.g., the full JSON itinerary list) from the output. Only expose information returned by the specific action call.\n{{initial_state}}: {{\n  \"destination\": \"Not specified\",\n  \"travel_dates\": {{\n    \"start\": \"2025-11-05\",\n    \"end\": \"2025-11-15\"\n  }},\n  \"total_budget\": 500,\n  \"spent_amount\": 0,\n  \"itinerary_items\": [],\n  \"current_geo_location\": \"Athens\"\n}}\n{{state_descriptions}}: {{\n  \"destination\": \"The primary city or country for the travel plan.\",\n  \"travel_dates\": \"The start and end dates of the trip.\",\n  \"total_budget\": \"Total maximum budget allocated for the trip.\",\n  \"spent_amount\": \"Total amount spent/committed in the simulation so far.\",\n  \"itinerary_items\": \"List of booked or planned activities, flights, and accommodations.\",\n  \"current_geo_location\": \"The traveler's current location within the simulation logic.\"\n}}\n{action_set_definitions}: {\n  \"get_environment_state\": {\n    \"description\": \"Retrieves the current state of the travel environment, including budget, current location, and existing itinerary.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {}\n    },\n    \"example_output\": {\n      \"destination\": \"null\",\n      \"travel_dates\": \"2023-10-01 to 2023-10-10\",\n      \"total_budget\": 500,\n      \"spent_amount\": 0,\n      \"itinerary_items\": [],\n      \"current_geo_location\": \"Athens\"\n    }\n  },\n  \"search_regional_hubs\": {\n    \"description\": \"Identifies cities within a specific geographic region (e.g., 'Balkans') that act as transit hubs.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"region\": {\n          \"type\": \"string\",\n          \"description\": \"The name of the region to search (e.g., 'Balkans', 'Baltics').\"\n        }\n      },\n      \"required\": [\n        \"region\"\n      ]\n    },\n    \"example_output\": {\n      \"hubs\": [\n        \"Sofia\",\n        \"Belgrade\",\n        \"Bucharest\"\n      ]\n    }\n  },\n  \"search_overland_routes\": {\n    \"description\": \"Searches for overland transport (bus/train) between two cities with specific constraints.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"origin\": {\n          \"type\": \"string\"\n        },\n        \"destination\": {\n          \"type\": \"string\"\n        },\n        \"min_duration_hours\": {\n          \"type\": \"number\"\n        },\n        \"is_sleeper\": {\n          \"type\": \"boolean\"\n        }\n      },\n      \"required\": [\n        \"origin\",\n        \"destination\"\n      ]\n    },\n    \"example_output\": {\n      \"routes\": [\n        {\n          \"route_id\": \"BUS-123\",\n          \"price\": 85,\n          \"duration_hours\": 12,\n          \"arrival_terminal\": \"Riga Central Bus Station\",\n          \"departure_time\": \"20:00\",\n          \"arrival_time\": \"08:00\"\n        }\n      ]\n    }\n  },\n  \"search_accommodation\": {\n    \"description\": \"Finds accommodation in a city within a specific radius of a terminal.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"city\": {\n          \"type\": \"string\"\n        },\n        \"max_distance_km\": {\n          \"type\": \"number\"\n        },\n        \"reference_terminal\": {\n          \"type\": \"string\"\n        },\n        \"max_price\": {\n          \"type\": \"number\"\n        }\n      },\n      \"required\": [\n        \"city\",\n        \"max_distance_km\",\n        \"reference_terminal\"\n      ]\n    },\n    \"example_output\": {\n      \"options\": [\n        {\n          \"hostel_name\": \"Central Backpackers\",\n          \"price_per_night\": 25,\n          \"distance_km\": 0.5\n        }\n      ]\n    }\n  },\n  \"add_to_itinerary\": {\n    \"description\": \"Commits a transport or accommodation booking to the itinerary and deducts cost from budget.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"item_type\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"transport\",\n            \"accommodation\",\n            \"rest_day\"\n          ]\n        },\n        \"description\": {\n          \"type\": \"string\"\n        },\n        \"cost\": {\n          \"type\": \"number\"\n        },\n        \"location\": {\n          \"type\": \"string\"\n        }\n      },\n      \"required\": [\n        \"item_type\",\n        \"description\",\n        \"cost\"\n      ]\n    },\n    \"example_output\": {\n      \"success\": true,\n      \"remaining_budget\": 390\n    }\n  },\n  \"verify_geographic_progression\": {\n    \"description\": \"Checks if a sequence of cities follows a strict South-to-North progression without backtracking.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"cities\": {\n          \"type\": \"array\",\n          \"items\": {\n            \"type\": \"string\"\n          }\n        }\n      },\n      \"required\": [\n        \"cities\"\n      ]\n    },\n    \"example_output\": {\n      \"is_valid\": true,\n      \"latitudes\": [\n        37.9,\n        42.6,\n        56.9\n      ]\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_environment_state",
+      "description": "Retrieves the current state of the travel environment, including budget, current location, and existing itinerary.",
+      "parameters": {
+        "type": "object",
+        "properties": {}
+      },
+      "example_output": {
+        "destination": "null",
+        "travel_dates": "2023-10-01 to 2023-10-10",
+        "total_budget": 500,
+        "spent_amount": 0,
+        "itinerary_items": [],
+        "current_geo_location": "Athens"
+      }
+    },
+    {
+      "name": "search_regional_hubs",
+      "description": "Identifies cities within a specific geographic region (e.g., 'Balkans') that act as transit hubs.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "region": {
+            "type": "string",
+            "description": "The name of the region to search (e.g., 'Balkans', 'Baltics')."
+          }
+        },
+        "required": [
+          "region"
+        ]
+      },
+      "example_output": {
+        "hubs": [
+          "Sofia",
+          "Belgrade",
+          "Bucharest"
+        ]
+      }
+    },
+    {
+      "name": "search_overland_routes",
+      "description": "Searches for overland transport (bus/train) between two cities with specific constraints.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "origin": {
+            "type": "string"
+          },
+          "destination": {
+            "type": "string"
+          },
+          "min_duration_hours": {
+            "type": "number"
+          },
+          "is_sleeper": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "origin",
+          "destination"
+        ]
+      },
+      "example_output": {
+        "routes": [
+          {
+            "route_id": "BUS-123",
+            "price": 85,
+            "duration_hours": 12,
+            "arrival_terminal": "Riga Central Bus Station",
+            "departure_time": "20:00",
+            "arrival_time": "08:00"
+          }
+        ]
+      }
+    },
+    {
+      "name": "search_accommodation",
+      "description": "Finds accommodation in a city within a specific radius of a terminal.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "city": {
+            "type": "string"
+          },
+          "max_distance_km": {
+            "type": "number"
+          },
+          "reference_terminal": {
+            "type": "string"
+          },
+          "max_price": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "city",
+          "max_distance_km",
+          "reference_terminal"
+        ]
+      },
+      "example_output": {
+        "options": [
+          {
+            "hostel_name": "Central Backpackers",
+            "price_per_night": 25,
+            "distance_km": 0.5
+          }
+        ]
+      }
+    },
+    {
+      "name": "add_to_itinerary",
+      "description": "Commits a transport or accommodation booking to the itinerary and deducts cost from budget.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "item_type": {
+            "type": "string",
+            "enum": [
+              "transport",
+              "accommodation",
+              "rest_day"
+            ]
+          },
+          "description": {
+            "type": "string"
+          },
+          "cost": {
+            "type": "number"
+          },
+          "location": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "item_type",
+          "description",
+          "cost"
+        ]
+      },
+      "example_output": {
+        "success": true,
+        "remaining_budget": 390
+      }
+    },
+    {
+      "name": "verify_geographic_progression",
+      "description": "Checks if a sequence of cities follows a strict South-to-North progression without backtracking.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "cities": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "cities"
+        ]
+      },
+      "example_output": {
+        "is_valid": true,
+        "latitudes": [
+          37.9,
+          42.6,
+          56.9
+        ]
+      }
+    }
+  ],
+  "state_description": {
+    "destination": "The primary city or country for the travel plan.",
+    "travel_dates": "The start and end dates of the trip.",
+    "total_budget": "Total maximum budget allocated for the trip.",
+    "spent_amount": "Total amount spent/committed in the simulation so far.",
+    "itinerary_items": "List of booked or planned activities, flights, and accommodations.",
+    "current_geo_location": "The traveler's current location within the simulation logic."
+  },
+  "task_initial_state": {
+    "destination": "Not specified",
+    "travel_dates": {
+      "start": "2025-11-05",
+      "end": "2025-11-15"
+    },
+    "total_budget": 500,
+    "spent_amount": 0,
+    "itinerary_items": [],
+    "current_geo_location": "Athens"
+  }
+}

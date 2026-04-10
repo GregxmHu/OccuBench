@@ -1,0 +1,135 @@
+{
+  "environment_name": "env_f220d450f511",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM) for Satellite Orbit Correction Planning.\n- **Core Objective**: Based on the current internal state $s_t$ and the corrective action $a_t$ submitted by the Agent, simulate the orbital dynamics and hardware responses to predict the next observation $o_{{t+1}}$ and update the environment state internally.\n- **Emphasis**: You are a simulator of space environment physics and satellite systems. You do not execute real-world maneuvers; you calculate the expected outcome of maneuvers and provide telemetry observations.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions must maintain rigorous context consistency. Orbital drift, fuel consumption, and battery depletion must be tracked across the timeline. The physical laws governing the satellite's position and velocity must be applied consistently to ensure the trajectory simulation remains self-consistent.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object containing:\n- `\"name\"`: The name of the action (e.g., `fire_thruster`, `adjust_solar_panels`, `get_telemetry`).\n- `\"arguments\"`: A dictionary of parameters required for that function.\n\nExample:\n```json\n{{\n \"name\": \"fire_thruster\",\n \"arguments\": {{\n    \"direction\": \"prograde\",\n    \"duration_seconds\": 15.5\n  }}\n}}\n```\nYou must parse this JSON, simulate the propellant mass flow and the resulting Delta-V, update the internal orbital parameters, and generate the corresponding observation.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\n- **Invalid Parameters**: If an action specifies a duration or thrust level outside of hardware limits, return an error: `{{\"error\": \"Thrust duration exceeds safety limits\"}}`.\n- **Resource Exhaustion**: If fuel is insufficient for a requested burn, simulate a partial burn or return `{{\"error\": \"Insufficient propellant\"}}`.\n- **Undefined Actions**: For any action name not in the definition, return `{{\"error\": \"Command not recognized by satellite bus\"}}`.\n- **State Conflicts**: Do not allow maneuvers if the satellite status is 'safe_mode' unless a recovery action is taken first.\n\n##### Output Assembly\nFor every action function call, return a structured JSON object containing **ONLY** the return fields declared in that action's definition. \n\n**CRITICAL CONSTRAINT**: You must **NOT** output the updated internal state `$s_{{t+1}}$` or the full state JSON in your response. Only the specific observation (telemetry/result) defined in the action function is visible to the Agent. State maintenance is performed internally by you.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to JSON for all observations and error messages.\n- **Factuality**: Use orbital mechanics logic (e.g., firing prograde increases altitude). Do not fabricate telemetry that contradicts physical laws.\n- **Consistency**: Ensure fuel mass decreases exactly by the amount consumed in the simulation.\n- **Realism**: Simulate realistic constraints like communication latency, power constraints during eclipse, and thruster cooling periods.\n- **Quality**: Provide precise numerical outputs (e.g., altitudes in km, fuel in kg) to at least three decimal places where applicable.\n- **Encapsulation**: Hide the internal state structure. The Agent must rely on telemetry actions to \"sense\" the environment.\n{{initial_state}}: {{\n  \"altitude_km\": 550.0,\n  \"velocity_kms\": 7.58,\n  \"inclination_deg\": 53.0,\n  \"fuel_kg\": 45.25,\n  \"battery_level_pct\": 86.5,\n  \"status\": \"nominal\",\n  \"epoch_timestamp\": \"2025-06-15T10:00:00Z\"\n}}\n{{state_descriptions}}: {{\n  \"altitude_km\": \"Current orbital altitude above mean sea level in kilometers.\",\n  \"velocity_kms\": \"Current orbital velocity in kilometers per second.\",\n  \"inclination_deg\": \"Orbital inclination relative to the equatorial plane in degrees.\",\n  \"fuel_kg\": \"Remaining hydrazine propellant in kilograms.\",\n  \"battery_level_pct\": \"Current battery charge level as a percentage (0-100).\",\n  \"status\": \"Current operational mode of the satellite (e.g., nominal, safe_mode, maneuvering).\",\n  \"epoch_timestamp\": \"The simulation time in ISO 8601 format.\"\n}}\n{action_set_definitions}: {\n  \"get_satellite_telemetry\": {\n    \"description\": \"Retrieves the current state of SV-42, including altitude, Argument of Latitude (AoL), fuel mass, battery level, and operational status.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"altitude_km\": 550.0,\n      \"aol_deg\": 120.0,\n      \"fuel_kg\": 45.2,\n      \"battery_pct\": 88.5,\n      \"status\": \"nominal\"\n    }\n  },\n  \"compute_orbital_maneuver_physics\": {\n    \"description\": \"Calculates the physical parameters required for a transition between two altitudes, including the required delta-v, duration of the burn, the mean motion (orbital angular velocity), and the phasing drift rate.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"current_altitude_km\": {\n          \"type\": \"number\",\n          \"description\": \"The starting altitude.\"\n        },\n        \"target_altitude_km\": {\n          \"type\": \"number\",\n          \"description\": \"The destination altitude.\"\n        }\n      },\n      \"required\": [\n        \"current_altitude_km\",\n        \"target_altitude_km\"\n      ]\n    },\n    \"example_output\": {\n      \"delta_v_kms\": 0.0028,\n      \"burn_duration_seconds\": 25.0,\n      \"mean_motion_deg_per_sec\": 0.063,\n      \"phasing_drift_rate_deg_per_sec\": 0.0005\n    }\n  },\n  \"perform_propulsion_burn\": {\n    \"description\": \"Executes a thruster burn to change the satellite's velocity. This action is prohibited if the battery level is below 85%.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"delta_v_kms\": {\n          \"type\": \"number\",\n          \"description\": \"Change in velocity (positive for prograde, negative for retrograde).\"\n        },\n        \"burn_type\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"prograde\",\n            \"retrograde\"\n          ]\n        }\n      },\n      \"required\": [\n        \"delta_v_kms\",\n        \"burn_type\"\n      ]\n    },\n    \"example_output\": {\n      \"final_altitude_km\": 555.0,\n      \"remaining_fuel_kg\": 44.8,\n      \"execution_status\": \"success\"\n    }\n  },\n  \"orbit_coast_and_recharge\": {\n    \"description\": \"Simulates time passing as the satellite coasts in its current orbit, allowing for passive AoL drift and battery recharging via solar panels.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"duration_seconds\": {\n          \"type\": \"number\",\n          \"description\": \"The duration to coast.\"\n        }\n      },\n      \"required\": [\n        \"duration_seconds\"\n      ]\n    },\n    \"example_output\": {\n      \"new_aol_deg\": 119.5,\n      \"new_battery_pct\": 91.0\n    }\n  },\n  \"set_satellite_mode\": {\n    \"description\": \"Updates the satellite's operational status mode.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"mode\": {\n          \"type\": \"string\",\n          \"description\": \"The target status (e.g., 'nominal').\"\n        }\n      },\n      \"required\": [\n        \"mode\"\n      ]\n    },\n    \"example_output\": {\n      \"current_status\": \"nominal\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_satellite_telemetry",
+      "description": "Retrieves the current state of SV-42, including altitude, Argument of Latitude (AoL), fuel mass, battery level, and operational status.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "altitude_km": 550.0,
+        "aol_deg": 120.0,
+        "fuel_kg": 45.2,
+        "battery_pct": 88.5,
+        "status": "nominal"
+      }
+    },
+    {
+      "name": "compute_orbital_maneuver_physics",
+      "description": "Calculates the physical parameters required for a transition between two altitudes, including the required delta-v, duration of the burn, the mean motion (orbital angular velocity), and the phasing drift rate.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "current_altitude_km": {
+            "type": "number",
+            "description": "The starting altitude."
+          },
+          "target_altitude_km": {
+            "type": "number",
+            "description": "The destination altitude."
+          }
+        },
+        "required": [
+          "current_altitude_km",
+          "target_altitude_km"
+        ]
+      },
+      "example_output": {
+        "delta_v_kms": 0.0028,
+        "burn_duration_seconds": 25.0,
+        "mean_motion_deg_per_sec": 0.063,
+        "phasing_drift_rate_deg_per_sec": 0.0005
+      }
+    },
+    {
+      "name": "perform_propulsion_burn",
+      "description": "Executes a thruster burn to change the satellite's velocity. This action is prohibited if the battery level is below 85%.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "delta_v_kms": {
+            "type": "number",
+            "description": "Change in velocity (positive for prograde, negative for retrograde)."
+          },
+          "burn_type": {
+            "type": "string",
+            "enum": [
+              "prograde",
+              "retrograde"
+            ]
+          }
+        },
+        "required": [
+          "delta_v_kms",
+          "burn_type"
+        ]
+      },
+      "example_output": {
+        "final_altitude_km": 555.0,
+        "remaining_fuel_kg": 44.8,
+        "execution_status": "success"
+      }
+    },
+    {
+      "name": "orbit_coast_and_recharge",
+      "description": "Simulates time passing as the satellite coasts in its current orbit, allowing for passive AoL drift and battery recharging via solar panels.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "duration_seconds": {
+            "type": "number",
+            "description": "The duration to coast."
+          }
+        },
+        "required": [
+          "duration_seconds"
+        ]
+      },
+      "example_output": {
+        "new_aol_deg": 119.5,
+        "new_battery_pct": 91.0
+      }
+    },
+    {
+      "name": "set_satellite_mode",
+      "description": "Updates the satellite's operational status mode.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "mode": {
+            "type": "string",
+            "description": "The target status (e.g., 'nominal')."
+          }
+        },
+        "required": [
+          "mode"
+        ]
+      },
+      "example_output": {
+        "current_status": "nominal"
+      }
+    }
+  ],
+  "state_description": {
+    "altitude_km": "Current orbital altitude above mean sea level in kilometers.",
+    "velocity_kms": "Current orbital velocity in kilometers per second.",
+    "inclination_deg": "Orbital inclination relative to the equatorial plane in degrees.",
+    "fuel_kg": "Remaining hydrazine propellant in kilograms.",
+    "battery_level_pct": "Current battery charge level as a percentage (0-100).",
+    "status": "Current operational mode of the satellite (e.g., nominal, safe_mode, maneuvering).",
+    "epoch_timestamp": "The simulation time in ISO 8601 format."
+  },
+  "task_initial_state": {
+    "altitude_km": 550.0,
+    "velocity_kms": 7.58,
+    "inclination_deg": 53.0,
+    "fuel_kg": 45.25,
+    "battery_level_pct": 86.5,
+    "status": "nominal",
+    "epoch_timestamp": "2025-06-15T10:00:00Z"
+  }
+}

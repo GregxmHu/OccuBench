@@ -1,0 +1,66 @@
+{
+  "environment_name": "env_7b98f01670cb",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: Based on the current energy grid state $s_t$ and the dispatch action $a_t$ taken by the Agent, simulate the evolution of the renewable energy environment and predict the resulting observation $o_{{t+1}}$ (e.g., actual power balance, costs, or system alerts).\n- **Emphasis**: The LWM does not control the grid. It performs internal state evolution (updating battery levels, time, and demand/weather fluctuations) and generates observations for the Agent. All internal logic must maintain physical consistency (e.g., energy conservation).\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nEmphasis: All interactions between the World Model and the Agent must maintain context consistency. The LWM must track the progression of time, cumulative costs, and the physical constraints of the energy storage and generation assets across consecutive turns.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. This JSON must contain the following fields:\n- `\"name\"`: Specifies the name of the dispatch or control action to execute.\n- The remaining fields are the parameter names (e.g., `amount_mw`) and corresponding values.\n\nExample:\n```json\n{{\n \"name\": \"dispatch_storage\",\n \"arguments\": {{\n    \"power_mw\": -15.5,\n    \"duration_hrs\": 1\n  }}\n}}\n```\n\nThe Language World Model must correctly parse such JSON inputs and simulate the execution results.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nFor invalid parameters (e.g., discharging more energy than available in storage), undefined actions, state conflicts, or empty inputs, return structured error information (e.g., `{{\"error\": \"Infeasible dispatch: storage empty\"}}`), and do not fabricate states or fictitious responses.\n\n##### Output Assembly\nFor every action function call, the model must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition. \n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, `new_state`, or any hidden variables (like the specific internal battery_soc or future weather seeds). The Agent must only see the specific return values (Observations) defined in the action, such as `net_load`, `curtailment_event`, or `total_cost`.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to specified JSON and text formats.\n- **Factuality**: Do not fabricate non-existent functions or energy metrics.\n- **Consistency**: State evolution (e.g., time increments, battery degradation) must be self-consistent.\n- **Realism**: Simulated behaviors must align with power system dynamics (e.g., supply must meet demand; renewable output is intermittent).\n- **Quality**: Language must be clear and structurally complete.\n- **Encapsulation**: Strictly hide the internal state structure from the output. Only expose information that is explicitly returned by the action function.\n{{initial_state}}: {{\n  \"current_step\": 0,\n  \"battery_soc_mwh\": 40.0,\n  \"grid_demand_mw\": 115.5,\n  \"renewable_forecast_mw\": 285.0,\n  \"marginal_price_usd\": -45.0,\n  \"cumulative_operating_cost\": 0.0\n}}\n{{state_descriptions}}: {{\n  \"current_step\": \"The current time step in the simulation (e.g., hour of the day).\",\n  \"battery_soc_mwh\": \"Current State of Charge of the energy storage system in Megawatt-hours.\",\n  \"grid_demand_mw\": \"The current electrical load demand from the grid in Megawatts.\",\n  \"renewable_forecast_mw\": \"Forecasted combined solar and wind generation for the current step.\",\n  \"marginal_price_usd\": \"The current market price of electricity per MWh.\",\n  \"cumulative_operating_cost\": \"The total cost incurred since the start of the simulation.\"\n}}\n{action_set_definitions}: {\n  \"get_environment_state\": {\n    \"description\": \"Retrieves the current telemetry and market data from the wind farm and energy storage system.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"current_step\": 1,\n      \"battery_soc_mwh\": 45.5,\n      \"grid_demand_mw\": 120.0,\n      \"renewable_forecast_mw\": 85.0,\n      \"marginal_price_usd\": -45.0,\n      \"cumulative_operating_cost\": -500.0\n    }\n  },\n  \"execute_dispatch_step\": {\n    \"description\": \"Executes a power dispatch command for the current time step and advances the simulation by one step.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"curtailment_mw\": {\n          \"type\": \"number\",\n          \"description\": \"The amount of renewable generation to curtail (not send to the grid or battery) in Megawatts.\"\n        },\n        \"battery_charge_mw\": {\n          \"type\": \"number\",\n          \"description\": \"The power rate for the battery. Positive values indicate charging (drawing from grid/wind), negative values indicate discharging (injecting into grid).\"\n        }\n      },\n      \"required\": [\n        \"curtailment_mw\",\n        \"battery_charge_mw\"\n      ]\n    },\n    \"example_output\": {\n      \"new_step\": 2,\n      \"new_battery_soc_mwh\": 65.5,\n      \"new_cumulative_cost\": -1850.0,\n      \"marginal_price_usd\": -45.0\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_environment_state",
+      "description": "Retrieves the current telemetry and market data from the wind farm and energy storage system.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "current_step": 1,
+        "battery_soc_mwh": 45.5,
+        "grid_demand_mw": 120.0,
+        "renewable_forecast_mw": 85.0,
+        "marginal_price_usd": -45.0,
+        "cumulative_operating_cost": -500.0
+      }
+    },
+    {
+      "name": "execute_dispatch_step",
+      "description": "Executes a power dispatch command for the current time step and advances the simulation by one step.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "curtailment_mw": {
+            "type": "number",
+            "description": "The amount of renewable generation to curtail (not send to the grid or battery) in Megawatts."
+          },
+          "battery_charge_mw": {
+            "type": "number",
+            "description": "The power rate for the battery. Positive values indicate charging (drawing from grid/wind), negative values indicate discharging (injecting into grid)."
+          }
+        },
+        "required": [
+          "curtailment_mw",
+          "battery_charge_mw"
+        ]
+      },
+      "example_output": {
+        "new_step": 2,
+        "new_battery_soc_mwh": 65.5,
+        "new_cumulative_cost": -1850.0,
+        "marginal_price_usd": -45.0
+      }
+    }
+  ],
+  "state_description": {
+    "current_step": "The current time step in the simulation (e.g., hour of the day).",
+    "battery_soc_mwh": "Current State of Charge of the energy storage system in Megawatt-hours.",
+    "grid_demand_mw": "The current electrical load demand from the grid in Megawatts.",
+    "renewable_forecast_mw": "Forecasted combined solar and wind generation for the current step.",
+    "marginal_price_usd": "The current market price of electricity per MWh.",
+    "cumulative_operating_cost": "The total cost incurred since the start of the simulation."
+  },
+  "task_initial_state": {
+    "current_step": 0,
+    "battery_soc_mwh": 40.0,
+    "grid_demand_mw": 115.5,
+    "renewable_forecast_mw": 285.0,
+    "marginal_price_usd": -45.0,
+    "cumulative_operating_cost": 0.0
+  }
+}

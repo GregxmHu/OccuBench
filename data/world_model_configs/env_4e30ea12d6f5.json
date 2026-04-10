@@ -1,0 +1,278 @@
+{
+  "environment_name": "env_4e30ea12d6f5",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM) for GDPR Data Deletion Request Processing.\n- **Core Objective**: Based on the current state $s_t$ and the action $a_t$ taken by the Agent (Data Privacy Officer/Automated System), simulate the internal evolution of the user database and compliance logs, and predict the observation $o_{{t+1}}$ resulting from the operation. \n- **Emphasis**: The LWM acts as the backend data infrastructure. It does not perform real-world data erasure but simulates the state transitions, validation logic, and legal compliance feedback loop internally.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions between the World Model and the Agent must maintain strict context consistency. If a user's data is marked as 'deleted' in the internal state in step $t$, it must remain inaccessible or non-existent in all subsequent observations from step $t+1$ onwards.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. This JSON must contain the following fields:\n- `\"name\"`: Specifies the name of the action function to execute (e.g., `verify_identity`, `query_user_data`, `execute_deletion`).\n- The remaining fields are the parameter names and corresponding values required by that action function.\n\nExample input:\n```json\n{{\n \"name\": \"verify_identity\",\n \"arguments\": {{\n    \"user_id\": \"USR-123\",\n    \"token\": \"ABC-987\"\n  }}\n}}\n```\n\nThe Language World Model must correctly parse such JSON inputs and simulate the execution results based on the internal state.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\n- **User Not Found**: Return `{{\"error\": \"User ID not found in database\"}}`.\n- **Verification Failures**: If identity is not verified, actions requiring authorization must return `{{\"error\": \"Unauthorized: Identity verification required\"}}`.\n- **Invalid State Transitions**: If a deletion is requested for a user whose status is already 'deleted', return `{{\"error\": \"Invalid Action: Data already erased\"}}`.\n- **Format Errors**: For invalid parameters, return structured error information and do not fabricate data.\n\n##### Output Assembly\nFor every action function call, the model must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition (the Observation).\n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, `new_state`, or any hidden variables like the full list of users or internal audit pointers. The state maintenance is implicit in the history. The Agent must only see the specific return values (Observations) defined in the action.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to specified JSON formats for all outputs.\n- **Factuality**: Do not fabricate users, records, or system logs not supported by the current state logic.\n- **Consistency**: Ensure that if a 'forget me' request is processed, subsequent 'query' actions for that user consistently return a 'not found' error.\n- **Realism**: Simulated behaviors must align with GDPR compliance logic (e.g., verifying identity before showing PII, logging all deletion events).\n- **Quality**: Observations must be clear, unambiguous, and structurally complete.\n- **Encapsulation**: Strictly hide the internal state structure from the output. Only expose information that is explicitly returned by the action function. Do not output the state update details.\n{{initial_state}}: {{\n  \"user_database\": [\n    {{\n      \"user_id\": \"USR-9921\",\n      \"name\": \"Elena Vance\",\n      \"email\": \"e.vance@example.com\",\n      \"verification_status\": \"unverified\",\n      \"digital_records\": [\n        {{\n          \"record_id\": \"DIG-551\",\n          \"type\": \"Profile Metadata\",\n          \"status\": \"active\"\n        }}\n      ],\n      \"physical_inventory\": [\n        {{\n          \"box_id\": \"BOX-A100\",\n          \"description\": \"Mortgage Application 2010\",\n          \"retention_status\": \"expired\",\n          \"is_commingled\": false,\n          \"legal_hold\": false\n        }},\n        {{\n          \"box_id\": \"BOX-B200\",\n          \"description\": \"Credit Card Disputes 2023\",\n          \"retention_status\": \"active\",\n          \"is_commingled\": false,\n          \"legal_hold\": true\n        }},\n        {{\n          \"box_id\": \"BOX-C300\",\n          \"description\": \"Branch Correspondence 2019\",\n          \"retention_status\": \"active\",\n          \"is_commingled\": true,\n          \"legal_hold\": false\n        }}\n      ]\n    }}\n  ],\n  \"pending_requests\": [\n    {{\n      \"request_id\": \"DSR-772\",\n      \"user_id\": \"USR-9921\",\n      \"type\": \"Erasure\",\n      \"submission_date\": \"2024-05-10T08:30:00Z\",\n      \"status\": \"received\",\n      \"verification_token\": \"VANCE-SECURE-99\"\n    }}\n  ],\n  \"compliance_logs\": [],\n  \"system_clock\": \"2024-05-10T09:00:00Z\"\n}}\n{{state_descriptions}}: {{\n  \"user_database\": \"A list of active user records containing PII, unique IDs, and verification statuses.\",\n  \"pending_requests\": \"A queue of active GDPR deletion requests and their current processing stage (verified, processing, completed).\",\n  \"compliance_logs\": \"Internal immutable ledger recording timestamps and outcomes of every data access or deletion action for auditing.\",\n  \"system_clock\": \"The current simulation timestamp used to calculate legal deadlines (e.g., 30-day deletion window).\"\n}}\n{action_set_definitions}: {\n  \"get_user_verification_status\": {\n    \"description\": \"Checks the identity verification status of a specific user to ensure compliance before accessing PII.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"user_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier of the user (e.g., USR-9921).\"\n        }\n      },\n      \"required\": [\n        \"user_id\"\n      ]\n    },\n    \"example_output\": {\n      \"user_id\": \"USR-9921\",\n      \"is_verified\": true,\n      \"verification_method\": \"ID_UPLOAD\",\n      \"timestamp\": \"2023-10-27T10:00:00Z\"\n    }\n  },\n  \"get_pending_request_details\": {\n    \"description\": \"Retrieves the specific request ID and current stage for a user's GDPR deletion request.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"user_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier of the user.\"\n        }\n      },\n      \"required\": [\n        \"user_id\"\n      ]\n    },\n    \"example_output\": {\n      \"request_id\": \"REQ-44212\",\n      \"request_type\": \"Erasure\",\n      \"current_stage\": \"verified\",\n      \"submission_date\": \"2023-10-20\"\n    }\n  },\n  \"check_legal_holds\": {\n    \"description\": \"Checks if any records associated with a user are subject to a legal hold which prevents deletion.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"user_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier of the user.\"\n        }\n      },\n      \"required\": [\n        \"user_id\"\n      ]\n    },\n    \"example_output\": {\n      \"has_active_holds\": false,\n      \"held_record_ids\": []\n    }\n  },\n  \"get_data_inventory\": {\n    \"description\": \"Retrieves a comprehensive list of all digital and physical record categories and specific record IDs associated with a user.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"user_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier of the user.\"\n        }\n      },\n      \"required\": [\n        \"user_id\"\n      ]\n    },\n    \"example_output\": {\n      \"digital_records\": [\n        {\n          \"record_id\": \"DB-1\",\n          \"category\": \"Transaction History\"\n        }\n      ],\n      \"physical_records\": [\n        {\n          \"unit_id\": \"ARCHIVE-A5\",\n          \"category\": \"Paper Contracts\"\n        }\n      ]\n    }\n  },\n  \"delete_digital_record\": {\n    \"description\": \"Deletes a specific digital record from the database. Should not be used for records under legal hold.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"record_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the digital record to delete.\"\n        },\n        \"user_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier of the user for auditing.\"\n        }\n      },\n      \"required\": [\n        \"record_id\",\n        \"user_id\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"deleted\",\n      \"record_id\": \"DB-1\"\n    }\n  },\n  \"trigger_physical_manual_purge\": {\n    \"description\": \"Initiates a manual retrieval and purging process for a physical storage unit to remove specific user data without bulk destruction.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"unit_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the physical storage unit/container.\"\n        },\n        \"user_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier of the user whose data must be purged.\"\n        }\n      },\n      \"required\": [\n        \"unit_id\",\n        \"user_id\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"purge_initiated\",\n      \"ticket_id\": \"TKT-998\"\n    }\n  },\n  \"log_compliance_action\": {\n    \"description\": \"Adds a mandatory entry to the compliance logs regarding a specific data action.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"user_id\": {\n          \"type\": \"string\",\n          \"description\": \"User ID associated with the action.\"\n        },\n        \"action_type\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"DIGITAL_DELETION\",\n            \"PHYSICAL_PURGE\",\n            \"LEGAL_HOLD_PRESERVATION\"\n          ],\n          \"description\": \"Type of compliance action performed.\"\n        },\n        \"record_category\": {\n          \"type\": \"string\",\n          \"description\": \"The category of records (e.g., 'Transaction History', 'Contracts').\"\n        },\n        \"status\": {\n          \"type\": \"string\",\n          \"description\": \"The definitive outcome (e.g., 'Success', 'Skipped-Legal-Hold').\"\n        }\n      },\n      \"required\": [\n        \"user_id\",\n        \"action_type\",\n        \"record_category\",\n        \"status\"\n      ]\n    },\n    \"example_output\": {\n      \"log_id\": \"LOG-12345\",\n      \"timestamp\": \"2023-10-27T10:05:00Z\"\n    }\n  },\n  \"update_request_status\": {\n    \"description\": \"Updates the final status of the GDPR deletion request in the pending queue.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"request_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique ID of the deletion request.\"\n        },\n        \"status\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"completed\",\n            \"failed\",\n            \"partially_completed\"\n          ],\n          \"description\": \"The final status of the request.\"\n        }\n      },\n      \"required\": [\n        \"request_id\",\n        \"status\"\n      ]\n    },\n    \"example_output\": {\n      \"request_id\": \"REQ-44212\",\n      \"updated_status\": \"completed\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_user_verification_status",
+      "description": "Checks the identity verification status of a specific user to ensure compliance before accessing PII.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string",
+            "description": "The unique identifier of the user (e.g., USR-9921)."
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      },
+      "example_output": {
+        "user_id": "USR-9921",
+        "is_verified": true,
+        "verification_method": "ID_UPLOAD",
+        "timestamp": "2023-10-27T10:00:00Z"
+      }
+    },
+    {
+      "name": "get_pending_request_details",
+      "description": "Retrieves the specific request ID and current stage for a user's GDPR deletion request.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string",
+            "description": "The unique identifier of the user."
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      },
+      "example_output": {
+        "request_id": "REQ-44212",
+        "request_type": "Erasure",
+        "current_stage": "verified",
+        "submission_date": "2023-10-20"
+      }
+    },
+    {
+      "name": "check_legal_holds",
+      "description": "Checks if any records associated with a user are subject to a legal hold which prevents deletion.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string",
+            "description": "The unique identifier of the user."
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      },
+      "example_output": {
+        "has_active_holds": false,
+        "held_record_ids": []
+      }
+    },
+    {
+      "name": "get_data_inventory",
+      "description": "Retrieves a comprehensive list of all digital and physical record categories and specific record IDs associated with a user.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string",
+            "description": "The unique identifier of the user."
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      },
+      "example_output": {
+        "digital_records": [
+          {
+            "record_id": "DB-1",
+            "category": "Transaction History"
+          }
+        ],
+        "physical_records": [
+          {
+            "unit_id": "ARCHIVE-A5",
+            "category": "Paper Contracts"
+          }
+        ]
+      }
+    },
+    {
+      "name": "delete_digital_record",
+      "description": "Deletes a specific digital record from the database. Should not be used for records under legal hold.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "record_id": {
+            "type": "string",
+            "description": "The ID of the digital record to delete."
+          },
+          "user_id": {
+            "type": "string",
+            "description": "The unique identifier of the user for auditing."
+          }
+        },
+        "required": [
+          "record_id",
+          "user_id"
+        ]
+      },
+      "example_output": {
+        "status": "deleted",
+        "record_id": "DB-1"
+      }
+    },
+    {
+      "name": "trigger_physical_manual_purge",
+      "description": "Initiates a manual retrieval and purging process for a physical storage unit to remove specific user data without bulk destruction.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "unit_id": {
+            "type": "string",
+            "description": "The ID of the physical storage unit/container."
+          },
+          "user_id": {
+            "type": "string",
+            "description": "The unique identifier of the user whose data must be purged."
+          }
+        },
+        "required": [
+          "unit_id",
+          "user_id"
+        ]
+      },
+      "example_output": {
+        "status": "purge_initiated",
+        "ticket_id": "TKT-998"
+      }
+    },
+    {
+      "name": "log_compliance_action",
+      "description": "Adds a mandatory entry to the compliance logs regarding a specific data action.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string",
+            "description": "User ID associated with the action."
+          },
+          "action_type": {
+            "type": "string",
+            "enum": [
+              "DIGITAL_DELETION",
+              "PHYSICAL_PURGE",
+              "LEGAL_HOLD_PRESERVATION"
+            ],
+            "description": "Type of compliance action performed."
+          },
+          "record_category": {
+            "type": "string",
+            "description": "The category of records (e.g., 'Transaction History', 'Contracts')."
+          },
+          "status": {
+            "type": "string",
+            "description": "The definitive outcome (e.g., 'Success', 'Skipped-Legal-Hold')."
+          }
+        },
+        "required": [
+          "user_id",
+          "action_type",
+          "record_category",
+          "status"
+        ]
+      },
+      "example_output": {
+        "log_id": "LOG-12345",
+        "timestamp": "2023-10-27T10:05:00Z"
+      }
+    },
+    {
+      "name": "update_request_status",
+      "description": "Updates the final status of the GDPR deletion request in the pending queue.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "request_id": {
+            "type": "string",
+            "description": "The unique ID of the deletion request."
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "completed",
+              "failed",
+              "partially_completed"
+            ],
+            "description": "The final status of the request."
+          }
+        },
+        "required": [
+          "request_id",
+          "status"
+        ]
+      },
+      "example_output": {
+        "request_id": "REQ-44212",
+        "updated_status": "completed"
+      }
+    }
+  ],
+  "state_description": {
+    "user_database": "A list of active user records containing PII, unique IDs, and verification statuses.",
+    "pending_requests": "A queue of active GDPR deletion requests and their current processing stage (verified, processing, completed).",
+    "compliance_logs": "Internal immutable ledger recording timestamps and outcomes of every data access or deletion action for auditing.",
+    "system_clock": "The current simulation timestamp used to calculate legal deadlines (e.g., 30-day deletion window)."
+  },
+  "task_initial_state": {
+    "user_database": [
+      {
+        "user_id": "USR-9921",
+        "name": "Elena Vance",
+        "email": "e.vance@example.com",
+        "verification_status": "unverified",
+        "digital_records": [
+          {
+            "record_id": "DIG-551",
+            "type": "Profile Metadata",
+            "status": "active"
+          }
+        ],
+        "physical_inventory": [
+          {
+            "box_id": "BOX-A100",
+            "description": "Mortgage Application 2010",
+            "retention_status": "expired",
+            "is_commingled": false,
+            "legal_hold": false
+          },
+          {
+            "box_id": "BOX-B200",
+            "description": "Credit Card Disputes 2023",
+            "retention_status": "active",
+            "is_commingled": false,
+            "legal_hold": true
+          },
+          {
+            "box_id": "BOX-C300",
+            "description": "Branch Correspondence 2019",
+            "retention_status": "active",
+            "is_commingled": true,
+            "legal_hold": false
+          }
+        ]
+      }
+    ],
+    "pending_requests": [
+      {
+        "request_id": "DSR-772",
+        "user_id": "USR-9921",
+        "type": "Erasure",
+        "submission_date": "2024-05-10T08:30:00Z",
+        "status": "received",
+        "verification_token": "VANCE-SECURE-99"
+      }
+    ],
+    "compliance_logs": [],
+    "system_clock": "2024-05-10T09:00:00Z"
+  }
+}

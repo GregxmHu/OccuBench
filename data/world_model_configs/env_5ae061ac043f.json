@@ -1,0 +1,177 @@
+{
+  "environment_name": "env_5ae061ac043f",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM) for Customer Service Ticket Routing.\n- **Core Objective**: Based on the current internal state $s_t$ and the Agent's routing action $a_t$, simulate the evolution of the ticket system and predict the resulting observation $o_{{t+1}}$.\n- **Emphasis**: You are the environment. You do not make routing decisions; you simulate the consequences of the Agent's decisions, updating the status of tickets, agent workloads, and system logs internally.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nYou must maintain perfect continuity of the ticket system's state. If a ticket is moved to an agent in step $t$, it must remain assigned to that agent in step $t+1$ unless a subsequent action changes it. All interactions must be self-consistent with the simulation history.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object containing:\n- `\"name\"`: The name of the routing action (e.g., assign, escalate, close).\n- `\"arguments\"`: Key-value pairs of parameters required by the function.\n\nExample Input:\n```json\n{{\n \"name\": \"assign_ticket\",\n \"arguments\": {{\n    \"ticket_id\": \"TKT-101\",\n    \"agent_id\": \"AGENT-007\"\n  }}\n}}\n```\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nIf the Agent attempts an invalid operation (e.g., assigning a non-existent ticket, routing to an agent at max capacity, or using an undefined action), you must return a structured error JSON:\n- `{{\"error\": \"Detailed description of the failure\"}}`\nDo not proceed with the state transition if an error occurs. Do not fabricate successful outcomes for invalid actions.\n\n##### Output Assembly\nFor every action function call, you must return a structured JSON object containing **ONLY** the return fields (Observations) declared in that action's definition. \n\n**CRITICAL CONSTRAINT**: You must **NOT** output the full internal state $s_t$, the updated state, or any internal variables. The Agent only receives the specific observation result. Maintain the state evolution entirely in your internal context memory.\n\n### 4. Key Principles\n- **Format**: Output only the observation JSON. No conversational filler.\n- **Factuality**: Simulations must follow the logic of the provided state and action definitions.\n- **Consistency**: Ensure ticket statuses, timestamps, and agent loads evolve logically (e.g., an agent's load increases when a ticket is assigned).\n- **Realism**: Simulate realistic outcomes (e.g., higher priority tickets might have different routing requirements).\n- **Encapsulation**: Never reveal the full `pending_tickets` list or `agent_database` unless an action specifically returns that view. Strictly hide the internal state structure from the output.\n{{initial_state}}: {{\n  \"tickets\": [\n    {{\n      \"id\": \"TKT-777\",\n      \"priority\": \"High\",\n      \"category\": \"Fiber Provisioning\",\n      \"status\": \"Staged\",\n      \"customer_metadata\": {{\n        \"ani\": \"555-0101\",\n        \"tenure\": \"12 years\",\n        \"preferred_style\": \"Analytic/Technical\",\n        \"current_agitation\": 8\n      }}\n    }}\n  ],\n  \"agents\": [\n    {{\n      \"id\": \"AGT-501\",\n      \"name\": \"Marcus\",\n      \"expertise_tiers\": [\n        \"Fiber Provisioning\"\n      ],\n      \"personality_cluster\": \"Technical/Concise\",\n      \"current_load\": 2,\n      \"max_capacity\": 5,\n      \"stress_level\": 4.5\n    }},\n    {{\n      \"id\": \"AGT-502\",\n      \"name\": \"Elena\",\n      \"expertise_tiers\": [\n        \"Fiber Provisioning\"\n      ],\n      \"personality_cluster\": \"Empathic/Patient\",\n      \"current_load\": 1,\n      \"max_capacity\": 5,\n      \"stress_level\": 2.0\n    }}\n  ],\n  \"routing_history\": [],\n  \"system_metrics\": {{\n    \"resolved_count\": 1205,\n    \"pbr_sync_status\": \"Out-of-Sync\",\n    \"crm_integrity_check\": \"Pending\",\n    \"active_routing_locks\": [\n      \"ANI-555-0101-DATA-MISMATCH\"\n    ]\n  }}\n}}\n{{state_descriptions}}: {{\n  \"tickets\": \"A list of active customer service tickets, each containing ID, priority, category, and current status.\",\n  \"agents\": \"A registry of available support agents, including their expertise tiers, current ticket load, and maximum capacity.\",\n  \"routing_history\": \"A log of all state transitions and previous assignments made within the environment.\",\n  \"system_metrics\": \"Global counters such as average response time and total tickets resolved.\"\n}}\n{action_set_definitions}: {\n  \"get_ticket_info\": {\n    \"description\": \"Retrieves the full details of a specific ticket, including its current priority, category, and status.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"ticket_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the ticket (e.g., 'TKT-777').\"\n        }\n      },\n      \"required\": [\n        \"ticket_id\"\n      ]\n    },\n    \"example_output\": {\n      \"ticket_id\": \"TKT-777\",\n      \"priority\": \"high\",\n      \"category\": \"technical\",\n      \"status\": \"open\"\n    }\n  },\n  \"get_customer_behavioral_profile\": {\n    \"description\": \"Fetches the detailed behavioral requirements and churn risk for a customer based on their ANI (phone number).\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"ani\": {\n          \"type\": \"string\",\n          \"description\": \"The Automatic Number Identification (phone number) of the customer.\"\n        }\n      },\n      \"required\": [\n        \"ani\"\n      ]\n    },\n    \"example_output\": {\n      \"customer_name\": \"Elias V.\",\n      \"account_id\": \"ACC-9912\",\n      \"churn_risk\": \"high\",\n      \"preferred_communication_style\": \"technical_precision\",\n      \"rapport_threshold\": \"low\"\n    }\n  },\n  \"check_sync_status\": {\n    \"description\": \"Verifies if the CRM and PBR Matching Engine are synchronized for a specific account. This is a prerequisite for routing.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"account_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the customer account.\"\n        }\n      },\n      \"required\": [\n        \"account_id\"\n      ]\n    },\n    \"example_output\": {\n      \"is_synchronized\": true,\n      \"last_sync_timestamp\": \"2023-10-27T10:00:00Z\",\n      \"error_code\": null\n    }\n  },\n  \"list_agents_with_metrics\": {\n    \"description\": \"Returns a list of all available agents including their expertise tiers, current ticket load, max capacity, and current stress levels (Burnout Loop metrics).\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {}\n    },\n    \"example_output\": {\n      \"agents\": [\n        {\n          \"agent_id\": \"AGT-001\",\n          \"expertise\": [\n            \"technical\",\n            \"hardware\"\n          ],\n          \"technical_precision_score\": 0.95,\n          \"emotive_rapport_score\": 0.2,\n          \"current_load\": 3,\n          \"max_capacity\": 5,\n          \"stress_level\": 0.4\n        }\n      ]\n    }\n  },\n  \"assign_ticket\": {\n    \"description\": \"Executes the final routing of a ticket to a specific agent. Only succeeds if system is synchronized and safety limits are met.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"ticket_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the ticket to be assigned.\"\n        },\n        \"agent_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the agent to receive the ticket.\"\n        }\n      },\n      \"required\": [\n        \"ticket_id\",\n        \"agent_id\"\n      ]\n    },\n    \"example_output\": {\n      \"assignment_id\": \"ASGN-445\",\n      \"status\": \"success\",\n      \"timestamp\": \"2023-10-27T10:05:00Z\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_ticket_info",
+      "description": "Retrieves the full details of a specific ticket, including its current priority, category, and status.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "ticket_id": {
+            "type": "string",
+            "description": "The unique identifier for the ticket (e.g., 'TKT-777')."
+          }
+        },
+        "required": [
+          "ticket_id"
+        ]
+      },
+      "example_output": {
+        "ticket_id": "TKT-777",
+        "priority": "high",
+        "category": "technical",
+        "status": "open"
+      }
+    },
+    {
+      "name": "get_customer_behavioral_profile",
+      "description": "Fetches the detailed behavioral requirements and churn risk for a customer based on their ANI (phone number).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "ani": {
+            "type": "string",
+            "description": "The Automatic Number Identification (phone number) of the customer."
+          }
+        },
+        "required": [
+          "ani"
+        ]
+      },
+      "example_output": {
+        "customer_name": "Elias V.",
+        "account_id": "ACC-9912",
+        "churn_risk": "high",
+        "preferred_communication_style": "technical_precision",
+        "rapport_threshold": "low"
+      }
+    },
+    {
+      "name": "check_sync_status",
+      "description": "Verifies if the CRM and PBR Matching Engine are synchronized for a specific account. This is a prerequisite for routing.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "account_id": {
+            "type": "string",
+            "description": "The unique identifier for the customer account."
+          }
+        },
+        "required": [
+          "account_id"
+        ]
+      },
+      "example_output": {
+        "is_synchronized": true,
+        "last_sync_timestamp": "2023-10-27T10:00:00Z",
+        "error_code": null
+      }
+    },
+    {
+      "name": "list_agents_with_metrics",
+      "description": "Returns a list of all available agents including their expertise tiers, current ticket load, max capacity, and current stress levels (Burnout Loop metrics).",
+      "parameters": {
+        "type": "object",
+        "properties": {}
+      },
+      "example_output": {
+        "agents": [
+          {
+            "agent_id": "AGT-001",
+            "expertise": [
+              "technical",
+              "hardware"
+            ],
+            "technical_precision_score": 0.95,
+            "emotive_rapport_score": 0.2,
+            "current_load": 3,
+            "max_capacity": 5,
+            "stress_level": 0.4
+          }
+        ]
+      }
+    },
+    {
+      "name": "assign_ticket",
+      "description": "Executes the final routing of a ticket to a specific agent. Only succeeds if system is synchronized and safety limits are met.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "ticket_id": {
+            "type": "string",
+            "description": "The ID of the ticket to be assigned."
+          },
+          "agent_id": {
+            "type": "string",
+            "description": "The ID of the agent to receive the ticket."
+          }
+        },
+        "required": [
+          "ticket_id",
+          "agent_id"
+        ]
+      },
+      "example_output": {
+        "assignment_id": "ASGN-445",
+        "status": "success",
+        "timestamp": "2023-10-27T10:05:00Z"
+      }
+    }
+  ],
+  "state_description": {
+    "tickets": "A list of active customer service tickets, each containing ID, priority, category, and current status.",
+    "agents": "A registry of available support agents, including their expertise tiers, current ticket load, and maximum capacity.",
+    "routing_history": "A log of all state transitions and previous assignments made within the environment.",
+    "system_metrics": "Global counters such as average response time and total tickets resolved."
+  },
+  "task_initial_state": {
+    "tickets": [
+      {
+        "id": "TKT-777",
+        "priority": "High",
+        "category": "Fiber Provisioning",
+        "status": "Staged",
+        "customer_metadata": {
+          "ani": "555-0101",
+          "tenure": "12 years",
+          "preferred_style": "Analytic/Technical",
+          "current_agitation": 8
+        }
+      }
+    ],
+    "agents": [
+      {
+        "id": "AGT-501",
+        "name": "Marcus",
+        "expertise_tiers": [
+          "Fiber Provisioning"
+        ],
+        "personality_cluster": "Technical/Concise",
+        "current_load": 2,
+        "max_capacity": 5,
+        "stress_level": 4.5
+      },
+      {
+        "id": "AGT-502",
+        "name": "Elena",
+        "expertise_tiers": [
+          "Fiber Provisioning"
+        ],
+        "personality_cluster": "Empathic/Patient",
+        "current_load": 1,
+        "max_capacity": 5,
+        "stress_level": 2.0
+      }
+    ],
+    "routing_history": [],
+    "system_metrics": {
+      "resolved_count": 1205,
+      "pbr_sync_status": "Out-of-Sync",
+      "crm_integrity_check": "Pending",
+      "active_routing_locks": [
+        "ANI-555-0101-DATA-MISMATCH"
+      ]
+    }
+  }
+}

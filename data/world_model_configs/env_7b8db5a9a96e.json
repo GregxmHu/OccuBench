@@ -1,0 +1,315 @@
+{
+  "environment_name": "env_7b8db5a9a96e",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM) for Expense Report Auditing.\n- **Core Objective**: Based on the current internal state $s_t$ of the expense database and the Auditor Agent's action $a_t$, simulate the evolution of the audit environment and predict the observation $o_{{t+1}}$ (e.g., report details, status updates, or policy lookups).\n- **Emphasis**: You are the environment. You do not audit reports yourself; you provide the data and feedback as if the Agent were interacting with a real corporate expense management system. You perform internal state evolution (e.g., updating a report's status from 'Pending' to 'Approved') and generate the resulting observation.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation representing the database of expense claims and company policies. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions between the World Model and the Agent must maintain context consistency. If a report is approved in step $t$, it must remain 'Approved' in step $t+1$ unless a subsequent action changes it. All simulated outcomes must be grounded in the historical state and previously executed actions.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. This JSON must contain the following fields:\n- `\"name\"`: Specifies the name of the action function to execute (e.g., `approve_expense`, `get_receipt_image`).\n- The remaining fields are the parameter names and corresponding values required by that action function.\n\nExample:\n```json\n{{\n \"name\": \"reject_expense\",\n \"arguments\": {{\n    \"report_id\": \"EXP-9921\",\n    \"reason\": \"Missing itemized receipt for meal exceeding $50.\"\n  }}\n}}\n```\nYou must parse these inputs and simulate the resulting change in the internal environment state.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\n- If the Agent attempts to access a `report_id` that does not exist in the current state, return: `{{\"error\": \"Report ID 'ID_NAME' not found\"}}`.\n- If an action is missing required parameters or uses invalid values (e.g., a negative refund amount), return a structured error message.\n- Do not fabricate data or succeed on actions that violate logic (e.g., approving a report that is already 'Cancelled').\n\n##### Output Assembly\nFor every action function call, you must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition.\n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, the updated `new_state`, or any metadata regarding your internal logic. You are an API; the Agent only sees the `observation`. Do not explain the state update in text.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to JSON for all outputs.\n- **Factuality**: Do not simulate reports or policies that are not present in the internal state or established via history.\n- **Consistency**: Status transitions (Pending -> Approved/Rejected) must be persistent across the session.\n- **Realism**: Simulated behaviors (e.g., retrieval times or error messages) must align with a professional auditing software environment.\n- **Quality**: Ensure all descriptions within observations are professional and unambiguous.\n- **Encapsulation**: Strictly hide the internal state structure. Only expose information explicitly returned by the action function.\n{{initial_state}}: {{\n  \"expense_reports\": [\n    {{\n      \"report_id\": \"EXP-OCT-001\",\n      \"employee_id\": \"EMP-ALEX-01\",\n      \"amount\": 180.0,\n      \"currency\": \"USD\",\n      \"category\": \"Meals\",\n      \"date\": \"2023-10-25\",\n      \"current_status\": \"PENDING\",\n      \"claim_type\": \"OOP\"\n    }},\n    {{\n      \"report_id\": \"EXP-OCT-002\",\n      \"employee_id\": \"EMP-ALEX-01\",\n      \"amount\": 185.0,\n      \"currency\": \"USD\",\n      \"category\": \"Meals\",\n      \"date\": \"2023-10-26\",\n      \"current_status\": \"PENDING\",\n      \"claim_type\": \"OOP\"\n    }},\n    {{\n      \"report_id\": \"EXP-OCT-003\",\n      \"employee_id\": \"EMP-ALEX-01\",\n      \"amount\": 200.0,\n      \"currency\": \"USD\",\n      \"category\": \"Meals\",\n      \"date\": \"2023-10-27\",\n      \"current_status\": \"PENDING\",\n      \"claim_type\": \"OOP\"\n    }},\n    {{\n      \"report_id\": \"EXP-OCT-004\",\n      \"employee_id\": \"EMP-ALEX-01\",\n      \"amount\": 35.0,\n      \"currency\": \"USD\",\n      \"category\": \"Transport\",\n      \"date\": \"2023-10-25\",\n      \"current_status\": \"PENDING\",\n      \"claim_type\": \"OOP\"\n    }},\n    {{\n      \"report_id\": \"CC-FEED-9921\",\n      \"employee_id\": \"EMP-ALEX-01\",\n      \"amount\": 180.0,\n      \"currency\": \"USD\",\n      \"category\": \"Meals\",\n      \"date\": \"2023-10-25\",\n      \"current_status\": \"PENDING\",\n      \"claim_type\": \"CBCP\",\n      \"vendor\": \"Le Bistro\"\n    }},\n    {{\n      \"report_id\": \"CC-FEED-9922\",\n      \"employee_id\": \"EMP-ALEX-01\",\n      \"amount\": 1200.0,\n      \"currency\": \"USD\",\n      \"category\": \"Lodging\",\n      \"date\": \"2023-10-24\",\n      \"current_status\": \"PENDING\",\n      \"claim_type\": \"CBCP\",\n      \"vendor\": \"Grand Hotel\"\n    }}\n  ],\n  \"receipt_store\": {{\n    \"EXP-OCT-001\": {{\n      \"merchant\": \"Le Bistro\",\n      \"total\": 180.0,\n      \"items\": [\n        \"Steak Dinner\",\n        \"Soda\"\n      ]\n    }},\n    \"EXP-OCT-002\": {{\n      \"merchant\": \"Le Bistro\",\n      \"total\": 185.0,\n      \"items\": [\n        \"Salmon\",\n        \"Wine Glass\",\n        \"Salad\"\n      ]\n    }},\n    \"EXP-OCT-003\": {{\n      \"merchant\": \"The Grill\",\n      \"total\": 200.0,\n      \"itemization\": [\n        {{\n          \"type\": \"food\",\n          \"amount\": 120.0\n        }},\n        {{\n          \"type\": \"alcohol\",\n          \"amount\": 80.0\n        }}\n      ]\n    }},\n    \"EXP-OCT-004\": {{\n      \"merchant\": \"City Taxi\",\n      \"total\": 35.0,\n      \"items\": [\n        \"Ride to Hotel\"\n      ]\n    }}\n  }},\n  \"company_policy\": {{\n    \"meals\": {{\n      \"limit\": 250,\n      \"alcohol_cap_percent\": 20,\n      \"required_docs\": [\n        \"itemized_receipt\"\n      ]\n    }},\n    \"transport\": {{\n      \"limit\": 100,\n      \"required_docs\": []\n    }}\n  }},\n  \"audit_history\": []\n}}\n{{state_descriptions}}: {{\n  \"expense_reports\": \"A list of expense claim objects containing report_id, employee_id, amount, currency, category, date, and current_status (e.g., PENDING, APPROVED, REJECTED).\",\n  \"receipt_store\": \"A mapping of report_id to OCR text or metadata extracted from attached receipts.\",\n  \"company_policy\": \"A dictionary of category-specific rules, such as maximum spend limits and required documentation.\",\n  \"audit_history\": \"A log of all actions taken by auditors, including timestamps and comments.\"\n}}\n{action_set_definitions}: {\n  \"get_employee_id\": {\n    \"description\": \"Retrieves the unique employee_id for a given name.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"employee_name\": {\n          \"type\": \"string\",\n          \"description\": \"Full name of the employee to search for.\"\n        }\n      },\n      \"required\": [\n        \"employee_name\"\n      ]\n    },\n    \"example_output\": {\n      \"employee_id\": \"EMP_7782\"\n    }\n  },\n  \"fetch_expense_reports\": {\n    \"description\": \"Retrieves expense reports based on employee, date range, and status. Includes payment_method (OOP or CBCP).\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"employee_id\": {\n          \"type\": \"string\"\n        },\n        \"start_date\": {\n          \"type\": \"string\",\n          \"description\": \"ISO format date.\"\n        },\n        \"end_date\": {\n          \"type\": \"string\",\n          \"description\": \"ISO format date.\"\n        },\n        \"status\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"PENDING\",\n            \"APPROVED\",\n            \"REJECTED\"\n          ]\n        }\n      },\n      \"required\": [\n        \"employee_id\"\n      ]\n    },\n    \"example_output\": {\n      \"reports\": [\n        {\n          \"report_id\": \"REP-001\",\n          \"amount\": 50.0,\n          \"category\": \"Meals\",\n          \"date\": \"2023-10-12\",\n          \"payment_method\": \"OOP\"\n        }\n      ]\n    }\n  },\n  \"fetch_corporate_card_feed\": {\n    \"description\": \"Retrieves the raw transaction feed from the corporate card issuer for a specific employee and time period.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"employee_id\": {\n          \"type\": \"string\"\n        },\n        \"start_date\": {\n          \"type\": \"string\"\n        },\n        \"end_date\": {\n          \"type\": \"string\"\n        }\n      },\n      \"required\": [\n        \"employee_id\",\n        \"start_date\",\n        \"end_date\"\n      ]\n    },\n    \"example_output\": {\n      \"transactions\": [\n        {\n          \"transaction_id\": \"TXN_990\",\n          \"amount\": 45.0,\n          \"vendor\": \"Airport Cafe\",\n          \"date\": \"2023-10-12\"\n        }\n      ]\n    }\n  },\n  \"get_receipt_details\": {\n    \"description\": \"Retrieves itemized details from the receipt attached to an expense report, specifically identifying items categorized as alcohol.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"report_id\": {\n          \"type\": \"string\"\n        }\n      },\n      \"required\": [\n        \"report_id\"\n      ]\n    },\n    \"example_output\": {\n      \"items\": [\n        {\n          \"name\": \"Dinner\",\n          \"price\": 40.0,\n          \"type\": \"Food\"\n        },\n        {\n          \"name\": \"Wine\",\n          \"price\": 15.0,\n          \"type\": \"Alcohol\"\n        }\n      ],\n      \"total_alcohol_spend\": 15.0\n    }\n  },\n  \"get_corporate_policy\": {\n    \"description\": \"Retrieves specific policy rules, such as maximum spend limits for categories like Alcohol.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"categories\": {\n          \"type\": \"array\",\n          \"items\": {\n            \"type\": \"string\"\n          }\n        }\n      },\n      \"required\": [\n        \"categories\"\n      ]\n    },\n    \"example_output\": {\n      \"rules\": {\n        \"Alcohol\": {\n          \"max_limit\": 30.0\n        },\n        \"Meals\": {\n          \"require_receipt\": true\n        }\n      }\n    }\n  },\n  \"update_report_status\": {\n    \"description\": \"Updates the status of an expense report and logs the audit reason.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"report_id\": {\n          \"type\": \"string\"\n        },\n        \"status\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"APPROVED\",\n            \"REJECTED\"\n          ]\n        },\n        \"comment\": {\n          \"type\": \"string\",\n          \"description\": \"Justification for the audit decision.\"\n        }\n      },\n      \"required\": [\n        \"report_id\",\n        \"status\",\n        \"comment\"\n      ]\n    },\n    \"example_output\": {\n      \"success\": true\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_employee_id",
+      "description": "Retrieves the unique employee_id for a given name.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "employee_name": {
+            "type": "string",
+            "description": "Full name of the employee to search for."
+          }
+        },
+        "required": [
+          "employee_name"
+        ]
+      },
+      "example_output": {
+        "employee_id": "EMP_7782"
+      }
+    },
+    {
+      "name": "fetch_expense_reports",
+      "description": "Retrieves expense reports based on employee, date range, and status. Includes payment_method (OOP or CBCP).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "employee_id": {
+            "type": "string"
+          },
+          "start_date": {
+            "type": "string",
+            "description": "ISO format date."
+          },
+          "end_date": {
+            "type": "string",
+            "description": "ISO format date."
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "PENDING",
+              "APPROVED",
+              "REJECTED"
+            ]
+          }
+        },
+        "required": [
+          "employee_id"
+        ]
+      },
+      "example_output": {
+        "reports": [
+          {
+            "report_id": "REP-001",
+            "amount": 50.0,
+            "category": "Meals",
+            "date": "2023-10-12",
+            "payment_method": "OOP"
+          }
+        ]
+      }
+    },
+    {
+      "name": "fetch_corporate_card_feed",
+      "description": "Retrieves the raw transaction feed from the corporate card issuer for a specific employee and time period.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "employee_id": {
+            "type": "string"
+          },
+          "start_date": {
+            "type": "string"
+          },
+          "end_date": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "employee_id",
+          "start_date",
+          "end_date"
+        ]
+      },
+      "example_output": {
+        "transactions": [
+          {
+            "transaction_id": "TXN_990",
+            "amount": 45.0,
+            "vendor": "Airport Cafe",
+            "date": "2023-10-12"
+          }
+        ]
+      }
+    },
+    {
+      "name": "get_receipt_details",
+      "description": "Retrieves itemized details from the receipt attached to an expense report, specifically identifying items categorized as alcohol.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "report_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "report_id"
+        ]
+      },
+      "example_output": {
+        "items": [
+          {
+            "name": "Dinner",
+            "price": 40.0,
+            "type": "Food"
+          },
+          {
+            "name": "Wine",
+            "price": 15.0,
+            "type": "Alcohol"
+          }
+        ],
+        "total_alcohol_spend": 15.0
+      }
+    },
+    {
+      "name": "get_corporate_policy",
+      "description": "Retrieves specific policy rules, such as maximum spend limits for categories like Alcohol.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "categories": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "categories"
+        ]
+      },
+      "example_output": {
+        "rules": {
+          "Alcohol": {
+            "max_limit": 30.0
+          },
+          "Meals": {
+            "require_receipt": true
+          }
+        }
+      }
+    },
+    {
+      "name": "update_report_status",
+      "description": "Updates the status of an expense report and logs the audit reason.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "report_id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "APPROVED",
+              "REJECTED"
+            ]
+          },
+          "comment": {
+            "type": "string",
+            "description": "Justification for the audit decision."
+          }
+        },
+        "required": [
+          "report_id",
+          "status",
+          "comment"
+        ]
+      },
+      "example_output": {
+        "success": true
+      }
+    }
+  ],
+  "state_description": {
+    "expense_reports": "A list of expense claim objects containing report_id, employee_id, amount, currency, category, date, and current_status (e.g., PENDING, APPROVED, REJECTED).",
+    "receipt_store": "A mapping of report_id to OCR text or metadata extracted from attached receipts.",
+    "company_policy": "A dictionary of category-specific rules, such as maximum spend limits and required documentation.",
+    "audit_history": "A log of all actions taken by auditors, including timestamps and comments."
+  },
+  "task_initial_state": {
+    "expense_reports": [
+      {
+        "report_id": "EXP-OCT-001",
+        "employee_id": "EMP-ALEX-01",
+        "amount": 180.0,
+        "currency": "USD",
+        "category": "Meals",
+        "date": "2023-10-25",
+        "current_status": "PENDING",
+        "claim_type": "OOP"
+      },
+      {
+        "report_id": "EXP-OCT-002",
+        "employee_id": "EMP-ALEX-01",
+        "amount": 185.0,
+        "currency": "USD",
+        "category": "Meals",
+        "date": "2023-10-26",
+        "current_status": "PENDING",
+        "claim_type": "OOP"
+      },
+      {
+        "report_id": "EXP-OCT-003",
+        "employee_id": "EMP-ALEX-01",
+        "amount": 200.0,
+        "currency": "USD",
+        "category": "Meals",
+        "date": "2023-10-27",
+        "current_status": "PENDING",
+        "claim_type": "OOP"
+      },
+      {
+        "report_id": "EXP-OCT-004",
+        "employee_id": "EMP-ALEX-01",
+        "amount": 35.0,
+        "currency": "USD",
+        "category": "Transport",
+        "date": "2023-10-25",
+        "current_status": "PENDING",
+        "claim_type": "OOP"
+      },
+      {
+        "report_id": "CC-FEED-9921",
+        "employee_id": "EMP-ALEX-01",
+        "amount": 180.0,
+        "currency": "USD",
+        "category": "Meals",
+        "date": "2023-10-25",
+        "current_status": "PENDING",
+        "claim_type": "CBCP",
+        "vendor": "Le Bistro"
+      },
+      {
+        "report_id": "CC-FEED-9922",
+        "employee_id": "EMP-ALEX-01",
+        "amount": 1200.0,
+        "currency": "USD",
+        "category": "Lodging",
+        "date": "2023-10-24",
+        "current_status": "PENDING",
+        "claim_type": "CBCP",
+        "vendor": "Grand Hotel"
+      }
+    ],
+    "receipt_store": {
+      "EXP-OCT-001": {
+        "merchant": "Le Bistro",
+        "total": 180.0,
+        "items": [
+          "Steak Dinner",
+          "Soda"
+        ]
+      },
+      "EXP-OCT-002": {
+        "merchant": "Le Bistro",
+        "total": 185.0,
+        "items": [
+          "Salmon",
+          "Wine Glass",
+          "Salad"
+        ]
+      },
+      "EXP-OCT-003": {
+        "merchant": "The Grill",
+        "total": 200.0,
+        "itemization": [
+          {
+            "type": "food",
+            "amount": 120.0
+          },
+          {
+            "type": "alcohol",
+            "amount": 80.0
+          }
+        ]
+      },
+      "EXP-OCT-004": {
+        "merchant": "City Taxi",
+        "total": 35.0,
+        "items": [
+          "Ride to Hotel"
+        ]
+      }
+    },
+    "company_policy": {
+      "meals": {
+        "limit": 250,
+        "alcohol_cap_percent": 20,
+        "required_docs": [
+          "itemized_receipt"
+        ]
+      },
+      "transport": {
+        "limit": 100,
+        "required_docs": []
+      }
+    },
+    "audit_history": []
+  }
+}

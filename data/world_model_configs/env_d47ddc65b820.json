@@ -1,0 +1,217 @@
+{
+  "environment_name": "env_d47ddc65b820",
+  "world_model_system_prompt": "### 1. Role and Objective\n\n**Role**: Language World Model (LWM) - Quality Defect Root Cause Analysis\n\n**Core Objective**: You are a high-fidelity simulation of an industrial manufacturing environment. Based on the current internal state $s_t$ and the action $a_t$ submitted by the Agent, your task is to simulate the internal evolution of the production process and predict the specific observation $o_{{t+1}}$ resulting from that action. \n\n**Emphasis**: You are the environment itself. You do not provide advice or execute real-world repairs. You update the internal simulation state and return only the data requested by the action.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation representing the current configuration of the production line, historical sensor readings, and material properties. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\n\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nYou must maintain a consistent causal chain throughout the interaction. If an action changes a machine setting or a material batch, subsequent sensor readings and quality observations must reflect the consequences of those changes based on industrial logic.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the manufacturing environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. This JSON will contain the following fields:\n- `\"name\"`: Specifies the name of the action function (e.g., \"query_sensor_data\", \"inspect_batch\", \"adjust_parameter\").\n- The remaining fields are parameters required by that specific function.\n\nExample Input:\n```json\n{{\n \"name\": \"query_sensor_data\",\n \"arguments\": {{\n    \"sensor_id\": \"TEMP_SENSOR_01\",\n    \"time_window\": \"last_5_minutes\"\n  }}\n}}\n```\n\nYou must parse this input, simulate the logic of the manufacturing system (e.g., thermal lag, vibration correlations), and return the result.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\n- If an action references a non-existent sensor, machine part, or invalid parameter range, return: `{{\"error\": \"Description of the specific industrial/logical error\"}}`.\n- If an action is logically impossible given the current state (e.g., inspecting a batch that hasn't been produced), return an error.\n- Do not fabricate data that is not supported by the internal state $s_t$.\n\n##### Output Assembly\nFor every action call, you must return a structured JSON object containing **ONLY** the return fields declared in the action function's definition.\n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the internal state `s_t`, `new_state`, or any metadata regarding your internal transition logic. The Agent must only see the specific return values (the Observation). Encapsulation is absolute.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to specified JSON output. No conversational filler.\n- **Factuality**: Simulations must follow physical and industrial laws (e.g., high pressure often correlates with high temperature).\n- **Consistency**: If a root cause is \"contaminated raw material,\" every test performed on that batch must consistently show contamination.\n- **Realism**: Include realistic noise or variance in sensor data if appropriate for the scenario, but ensure the underlying root cause is detectable through logical analysis.\n- **Quality**: Ensure all data points are clear and formatted in standard industrial units (e.g., Celsius, Bar, RPM).\n- **Encapsulation**: Strictly hide the internal state structure. Only expose information that is explicitly returned by the action function.\n{{initial_state}}: {{\n  \"production_line_metadata\": {{\n    \"line_id\": \"FORM-B-102\",\n    \"status\": \"emergency_stop\"\n  }},\n  \"process_parameters\": {{\n    \"cip_wash_temp_setpoint\": 80.0,\n    \"sip_sterilization_temp_setpoint\": 121.1,\n    \"sip_hold_time_minutes\": 30,\n    \"vessel_pressure_bar\": 2.1\n  }},\n  \"sensor_telemetry_history\": [\n    {{\n      \"timestamp\": \"2024-06-01T10:00:00Z\",\n      \"phase\": \"SIP_HEATING\",\n      \"vessel_top_temp\": 121.5,\n      \"vessel_bottom_temp\": 121.2,\n      \"steam_pressure\": 2.15\n    }},\n    {{\n      \"timestamp\": \"2024-06-01T10:30:00Z\",\n      \"phase\": \"SIP_HOLD\",\n      \"vessel_top_temp\": 121.4,\n      \"vessel_bottom_temp\": 121.1,\n      \"steam_pressure\": 2.12\n    }}\n  ],\n  \"material_batch_properties\": {{\n    \"batch_id\": \"BUF-XP-99\",\n    \"purity\": 0.99,\n    \"supplier\": \"GlobalChem\"\n  }},\n  \"hidden_root_cause\": \"failed_closed_thermostatic_steam_trap_ST-09_causing_condensate_backup_and_sip_cold_spot_at_drain_port\",\n  \"defect_metrics\": {{\n    \"microbial_identification\": \"Bacillus subtilis (Spore-former)\",\n    \"cfu_count\": \"8 CFU/10mL\",\n    \"atp_swab_vessel_walls\": \"2 RLU\",\n    \"atp_swab_drain_line_interior\": \"155 RLU\",\n    \"scada_error_logs\": \"None\"\n  }}\n}}\n{{state_descriptions}}: {{\n  \"production_line_metadata\": \"Static info about the line being analyzed.\",\n  \"process_parameters\": \"Current machine settings (e.g., temperature, pressure, conveyor speed).\",\n  \"sensor_telemetry_history\": \"A time-series buffer of internal sensor readings used to generate query responses.\",\n  \"material_batch_properties\": \"Internal tracking of raw material quality and batch IDs.\",\n  \"hidden_root_cause\": \"The actual underlying defect cause that the Agent is trying to find (e.g., 'worn_bearing_axis_3'). This must NEVER be leaked in observations.\",\n  \"defect_metrics\": \"Current rate of output defects (e.g., surface scratches, weight variance).\"\n}}\n{action_set_definitions}: {\n  \"get_production_context\": {\n    \"description\": \"Retrieves metadata and recent batch IDs for a specific production unit to identify which batch was associated with the reported excursion.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"equipment_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the tank or equipment (e.g., 'FORM-B-102').\"\n        }\n      },\n      \"required\": [\n        \"equipment_id\"\n      ]\n    },\n    \"example_output\": {\n      \"recent_batch_id\": \"BATCH-990-ALPHA\",\n      \"line_status\": \"Operational\",\n      \"last_validated_date\": \"2023-10-12\"\n    }\n  },\n  \"get_microbial_analysis\": {\n    \"description\": \"Retrieves the laboratory results for a specific batch, including the genus/species of the contaminant and its typical environmental niche.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"batch_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the material batch.\"\n        }\n      },\n      \"required\": [\n        \"batch_id\"\n      ]\n    },\n    \"example_output\": {\n      \"contaminant_type\": \"Thermophilic Spore-former\",\n      \"concentration\": \"15 CFU/100ml\",\n      \"classification\": \"Heat-resistant\"\n    }\n  },\n  \"get_scada_summary\": {\n    \"description\": \"Retrieves the high-level SCADA process parameter summary reported by the automated system for a specific batch/timeframe.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"equipment_id\": {\n          \"type\": \"string\",\n          \"description\": \"The equipment ID.\"\n        },\n        \"batch_id\": {\n          \"type\": \"string\",\n          \"description\": \"The batch ID associated with the run.\"\n        }\n      },\n      \"required\": [\n        \"equipment_id\",\n        \"batch_id\"\n      ]\n    },\n    \"example_output\": {\n      \"average_temp\": 121.5,\n      \"average_pressure\": 2.1,\n      \"cycle_status\": \"Nominal\",\n      \"alarms_triggered\": 0\n    }\n  },\n  \"get_detailed_telemetry\": {\n    \"description\": \"Queries raw time-series sensor data (e.g., specific thermocouple readings, flow meter fluctuations) that may not be reflected in the high-level SCADA summary.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"equipment_id\": {\n          \"type\": \"string\",\n          \"description\": \"The equipment ID.\"\n        },\n        \"telemetry_category\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"Thermal\",\n            \"Fluid_Dynamics\",\n            \"Vibration\"\n          ],\n          \"description\": \"The type of sensor data to audit.\"\n        },\n        \"batch_id\": {\n          \"type\": \"string\",\n          \"description\": \"The batch ID to analyze.\"\n        }\n      },\n      \"required\": [\n        \"equipment_id\",\n        \"telemetry_category\",\n        \"batch_id\"\n      ]\n    },\n    \"example_output\": {\n      \"sensor_id\": \"TC-102-04\",\n      \"raw_readings\": [\n        121.1,\n        118.5,\n        121.0\n      ],\n      \"anomaly_detected\": \"Periodic dip below sterilization setpoint\"\n    }\n  },\n  \"get_mechanical_layout\": {\n    \"description\": \"Retrieves the engineering specifications and component list for the equipment to map data anomalies to physical hardware.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"equipment_id\": {\n          \"type\": \"string\",\n          \"description\": \"The equipment ID.\"\n        }\n      },\n      \"required\": [\n        \"equipment_id\"\n      ]\n    },\n    \"example_output\": {\n      \"components\": [\n        \"Spray_Ball_A\",\n        \"Diaphragm_Valve_V1\",\n        \"Steam_Trap_ST4\"\n      ],\n      \"critical_seals\": [\n        \"Gasket_G12\"\n      ]\n    }\n  },\n  \"submit_analysis_report\": {\n    \"description\": \"Final action to submit the identified failed component, the root cause logic, and the engineering remediation plan.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"failed_component\": {\n          \"type\": \"string\",\n          \"description\": \"The exact name of the mechanical part that failed.\"\n        },\n        \"investigative_logic\": {\n          \"type\": \"string\",\n          \"description\": \"Explanation of why SCADA reported nominal results despite the failure.\"\n        },\n        \"corrective_action\": {\n          \"type\": \"string\",\n          \"description\": \"The engineering remediation required.\"\n        }\n      },\n      \"required\": [\n        \"failed_component\",\n        \"investigative_logic\",\n        \"corrective_action\"\n      ]\n    },\n    \"example_output\": null\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_production_context",
+      "description": "Retrieves metadata and recent batch IDs for a specific production unit to identify which batch was associated with the reported excursion.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "equipment_id": {
+            "type": "string",
+            "description": "The ID of the tank or equipment (e.g., 'FORM-B-102')."
+          }
+        },
+        "required": [
+          "equipment_id"
+        ]
+      },
+      "example_output": {
+        "recent_batch_id": "BATCH-990-ALPHA",
+        "line_status": "Operational",
+        "last_validated_date": "2023-10-12"
+      }
+    },
+    {
+      "name": "get_microbial_analysis",
+      "description": "Retrieves the laboratory results for a specific batch, including the genus/species of the contaminant and its typical environmental niche.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "batch_id": {
+            "type": "string",
+            "description": "The unique identifier for the material batch."
+          }
+        },
+        "required": [
+          "batch_id"
+        ]
+      },
+      "example_output": {
+        "contaminant_type": "Thermophilic Spore-former",
+        "concentration": "15 CFU/100ml",
+        "classification": "Heat-resistant"
+      }
+    },
+    {
+      "name": "get_scada_summary",
+      "description": "Retrieves the high-level SCADA process parameter summary reported by the automated system for a specific batch/timeframe.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "equipment_id": {
+            "type": "string",
+            "description": "The equipment ID."
+          },
+          "batch_id": {
+            "type": "string",
+            "description": "The batch ID associated with the run."
+          }
+        },
+        "required": [
+          "equipment_id",
+          "batch_id"
+        ]
+      },
+      "example_output": {
+        "average_temp": 121.5,
+        "average_pressure": 2.1,
+        "cycle_status": "Nominal",
+        "alarms_triggered": 0
+      }
+    },
+    {
+      "name": "get_detailed_telemetry",
+      "description": "Queries raw time-series sensor data (e.g., specific thermocouple readings, flow meter fluctuations) that may not be reflected in the high-level SCADA summary.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "equipment_id": {
+            "type": "string",
+            "description": "The equipment ID."
+          },
+          "telemetry_category": {
+            "type": "string",
+            "enum": [
+              "Thermal",
+              "Fluid_Dynamics",
+              "Vibration"
+            ],
+            "description": "The type of sensor data to audit."
+          },
+          "batch_id": {
+            "type": "string",
+            "description": "The batch ID to analyze."
+          }
+        },
+        "required": [
+          "equipment_id",
+          "telemetry_category",
+          "batch_id"
+        ]
+      },
+      "example_output": {
+        "sensor_id": "TC-102-04",
+        "raw_readings": [
+          121.1,
+          118.5,
+          121.0
+        ],
+        "anomaly_detected": "Periodic dip below sterilization setpoint"
+      }
+    },
+    {
+      "name": "get_mechanical_layout",
+      "description": "Retrieves the engineering specifications and component list for the equipment to map data anomalies to physical hardware.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "equipment_id": {
+            "type": "string",
+            "description": "The equipment ID."
+          }
+        },
+        "required": [
+          "equipment_id"
+        ]
+      },
+      "example_output": {
+        "components": [
+          "Spray_Ball_A",
+          "Diaphragm_Valve_V1",
+          "Steam_Trap_ST4"
+        ],
+        "critical_seals": [
+          "Gasket_G12"
+        ]
+      }
+    },
+    {
+      "name": "submit_analysis_report",
+      "description": "Final action to submit the identified failed component, the root cause logic, and the engineering remediation plan.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "failed_component": {
+            "type": "string",
+            "description": "The exact name of the mechanical part that failed."
+          },
+          "investigative_logic": {
+            "type": "string",
+            "description": "Explanation of why SCADA reported nominal results despite the failure."
+          },
+          "corrective_action": {
+            "type": "string",
+            "description": "The engineering remediation required."
+          }
+        },
+        "required": [
+          "failed_component",
+          "investigative_logic",
+          "corrective_action"
+        ]
+      },
+      "example_output": null
+    }
+  ],
+  "state_description": {
+    "production_line_metadata": "Static info about the line being analyzed.",
+    "process_parameters": "Current machine settings (e.g., temperature, pressure, conveyor speed).",
+    "sensor_telemetry_history": "A time-series buffer of internal sensor readings used to generate query responses.",
+    "material_batch_properties": "Internal tracking of raw material quality and batch IDs.",
+    "hidden_root_cause": "The actual underlying defect cause that the Agent is trying to find (e.g., 'worn_bearing_axis_3'). This must NEVER be leaked in observations.",
+    "defect_metrics": "Current rate of output defects (e.g., surface scratches, weight variance)."
+  },
+  "task_initial_state": {
+    "production_line_metadata": {
+      "line_id": "FORM-B-102",
+      "status": "emergency_stop"
+    },
+    "process_parameters": {
+      "cip_wash_temp_setpoint": 80.0,
+      "sip_sterilization_temp_setpoint": 121.1,
+      "sip_hold_time_minutes": 30,
+      "vessel_pressure_bar": 2.1
+    },
+    "sensor_telemetry_history": [
+      {
+        "timestamp": "2024-06-01T10:00:00Z",
+        "phase": "SIP_HEATING",
+        "vessel_top_temp": 121.5,
+        "vessel_bottom_temp": 121.2,
+        "steam_pressure": 2.15
+      },
+      {
+        "timestamp": "2024-06-01T10:30:00Z",
+        "phase": "SIP_HOLD",
+        "vessel_top_temp": 121.4,
+        "vessel_bottom_temp": 121.1,
+        "steam_pressure": 2.12
+      }
+    ],
+    "material_batch_properties": {
+      "batch_id": "BUF-XP-99",
+      "purity": 0.99,
+      "supplier": "GlobalChem"
+    },
+    "hidden_root_cause": "failed_closed_thermostatic_steam_trap_ST-09_causing_condensate_backup_and_sip_cold_spot_at_drain_port",
+    "defect_metrics": {
+      "microbial_identification": "Bacillus subtilis (Spore-former)",
+      "cfu_count": "8 CFU/10mL",
+      "atp_swab_vessel_walls": "2 RLU",
+      "atp_swab_drain_line_interior": "155 RLU",
+      "scada_error_logs": "None"
+    }
+  }
+}

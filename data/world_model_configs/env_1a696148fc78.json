@@ -1,0 +1,217 @@
+{
+  "environment_name": "env_1a696148fc78",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: Based on the current state $s_t$ and action $a_t$ within the Excavation Site Grid Assignment scenario, you are to simulate the environment's internal evolution and predict the observation $o_{{t+1}}$ obtained by the Agent.\n- **Emphasis**: You do not perform real-world excavation or logistics. You are a simulator that manages the underlying logic of the grid, resource depletion, and artifact discovery. You produce the results of actions based on the site's hidden properties and current state.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions between the World Model and the Agent must maintain strict context consistency. Any change to the excavation grid (e.g., a cell being dug), battery consumption, or equipment location must be tracked internally and reflected in subsequent observations.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. You must parse this JSON to determine the intended environment transition. The input format is:\n- `\"name\"`: The name of the action function (e.g., `survey_cell`, `excavate`, `recharge`).\n- `\"arguments\"`: A dictionary of parameter names and values.\n\nExample Input:\n```json\n{{\n \"name\": \"excavate\",\n \"arguments\": {{\n    \"x\": 2,\n    \"y\": 3,\n    \"tool_intensity\": \"high\"\n  }}\n}}\n```\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\n- If an action refers to coordinates outside the grid boundaries, return: `{{\"error\": \"Coordinates out of bounds\"}}`.\n- If an action requires more resources (e.g., energy) than available, return: `{{\"error\": \"Insufficient energy to perform action\"}}`.\n- For undefined actions or missing mandatory parameters, return structured error information and do not update the internal state.\n\n##### Output Assembly\nFor every action, return a structured JSON object containing **ONLY** the return fields declared in the specific action's definition. \n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, the `new_state`, or any metadata regarding the environment's internal variables. The Agent only receives the Observation. Do not reveal the hidden contents of unvisited grid cells until a valid discovery action is performed.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to JSON output for all observations.\n- **Factuality**: Do not invent artifacts or resources that haven't been defined by the logic of the site state.\n- **Consistency**: If a cell is marked as 'excavated' in the state, subsequent 'survey' actions on that cell should reflect that it is empty or already processed.\n- **Realism**: Resource depletion (battery/fuel) and success probabilities should follow the logical dynamics of an excavation site.\n- **Quality**: Provide clear, unambiguous observation data.\n- **Encapsulation**: Strictly hide the internal state structure. Only expose the specific observation result of the executed action.\n{{initial_state}}: {{\n  \"grid_map\": [\n    [\n      {{\n        \"terrain_type\": \"compact_soil\",\n        \"depth\": 0,\n        \"is_scanned\": true,\n        \"hidden_content_id\": null\n      }},\n      {{\n        \"terrain_type\": \"compact_soil\",\n        \"depth\": 0,\n        \"is_scanned\": true,\n        \"hidden_content_id\": null\n      }},\n      {{\n        \"terrain_type\": \"compact_soil\",\n        \"depth\": 0,\n        \"is_scanned\": true,\n        \"hidden_content_id\": null\n      }}\n    ],\n    [\n      {{\n        \"terrain_type\": \"compact_soil\",\n        \"depth\": 0,\n        \"is_scanned\": true,\n        \"hidden_content_id\": null\n      }},\n      {{\n        \"terrain_type\": \"compact_soil\",\n        \"depth\": 0,\n        \"is_scanned\": true,\n        \"hidden_content_id\": null\n      }},\n      {{\n        \"terrain_type\": \"compact_soil\",\n        \"depth\": 0,\n        \"is_scanned\": true,\n        \"hidden_content_id\": null\n      }}\n    ],\n    [\n      {{\n        \"terrain_type\": \"silt\",\n        \"depth\": 0,\n        \"is_scanned\": true,\n        \"hidden_content_id\": null\n      }},\n      {{\n        \"terrain_type\": \"compact_soil\",\n        \"depth\": 0,\n        \"is_scanned\": true,\n        \"hidden_content_id\": null\n      }},\n      {{\n        \"terrain_type\": \"compact_soil\",\n        \"depth\": 0,\n        \"is_scanned\": true,\n        \"hidden_content_id\": null\n      }}\n    ]\n  ],\n  \"drone_location\": [\n    0,\n    0\n  ],\n  \"battery_level\": 80,\n  \"inventory\": [],\n  \"site_integrity\": 0.45\n}}\n{{state_descriptions}}: {{\n  \"grid_map\": \"A 2D array representing the excavation site, where each cell contains properties like 'terrain_type', 'depth', 'is_scanned', and 'hidden_content_id'.\",\n  \"drone_location\": \"The current [x, y] coordinates of the excavation drone/equipment.\",\n  \"battery_level\": \"The current energy percentage of the equipment (0-100).\",\n  \"inventory\": \"A list of artifact IDs successfully recovered from the site.\",\n  \"site_integrity\": \"A value representing the stability of the excavation site; decreases with aggressive digging.\"\n}}\n{action_set_definitions}: {\n  \"get_system_status\": {\n    \"description\": \"Retrieves the drone's current coordinates, battery level, and the site's structural integrity status.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"drone_location\": [\n        1,\n        1\n      ],\n      \"battery_level\": 48.5,\n      \"site_integrity\": 0.55\n    }\n  },\n  \"get_inventory\": {\n    \"description\": \"Checks the items currently stored in the drone's inventory.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"inventory\": [\n        \"POT-12\",\n        \"CS-702\"\n      ]\n    }\n  },\n  \"scan_cell\": {\n    \"description\": \"Examines a specific grid cell [x, y] to identify the terrain and any hidden artifact IDs. Does not consume site integrity.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"x\": {\n          \"type\": \"integer\",\n          \"minimum\": 0,\n          \"maximum\": 2,\n          \"description\": \"X-coordinate (0-2).\"\n        },\n        \"y\": {\n          \"type\": \"integer\",\n          \"minimum\": 0,\n          \"maximum\": 2,\n          \"description\": \"Y-coordinate (0-2).\"\n        }\n      },\n      \"required\": [\n        \"x\",\n        \"y\"\n      ]\n    },\n    \"example_output\": {\n      \"terrain_type\": \"sediment\",\n      \"is_scanned\": true,\n      \"hidden_content_id\": \"CS-702\"\n    }\n  },\n  \"move_to\": {\n    \"description\": \"Moves the drone to a new grid cell. Battery-intensive operation.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"x\": {\n          \"type\": \"integer\",\n          \"minimum\": 0,\n          \"maximum\": 2\n        },\n        \"y\": {\n          \"type\": \"integer\",\n          \"minimum\": 0,\n          \"maximum\": 2\n        }\n      },\n      \"required\": [\n        \"x\",\n        \"y\"\n      ]\n    },\n    \"example_output\": {\n      \"current_location\": [\n        2,\n        0\n      ],\n      \"battery_level\": 42.0\n    }\n  },\n  \"stabilize_site\": {\n    \"description\": \"Reinforces the site structure to increase the site_integrity value. Battery-intensive operation.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"new_site_integrity\": 0.85,\n      \"battery_level\": 30.0\n    }\n  },\n  \"excavate\": {\n    \"description\": \"Extracts an artifact from the current cell. Consumes significant battery and reduces site_integrity.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"x\": {\n          \"type\": \"integer\",\n          \"minimum\": 0,\n          \"maximum\": 2\n        },\n        \"y\": {\n          \"type\": \"integer\",\n          \"minimum\": 0,\n          \"maximum\": 2\n        }\n      },\n      \"required\": [\n        \"x\",\n        \"y\"\n      ]\n    },\n    \"example_output\": {\n      \"success\": true,\n      \"recovered_item\": \"CS-702\",\n      \"site_integrity\": 0.51\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_system_status",
+      "description": "Retrieves the drone's current coordinates, battery level, and the site's structural integrity status.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "drone_location": [
+          1,
+          1
+        ],
+        "battery_level": 48.5,
+        "site_integrity": 0.55
+      }
+    },
+    {
+      "name": "get_inventory",
+      "description": "Checks the items currently stored in the drone's inventory.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "inventory": [
+          "POT-12",
+          "CS-702"
+        ]
+      }
+    },
+    {
+      "name": "scan_cell",
+      "description": "Examines a specific grid cell [x, y] to identify the terrain and any hidden artifact IDs. Does not consume site integrity.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "x": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 2,
+            "description": "X-coordinate (0-2)."
+          },
+          "y": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 2,
+            "description": "Y-coordinate (0-2)."
+          }
+        },
+        "required": [
+          "x",
+          "y"
+        ]
+      },
+      "example_output": {
+        "terrain_type": "sediment",
+        "is_scanned": true,
+        "hidden_content_id": "CS-702"
+      }
+    },
+    {
+      "name": "move_to",
+      "description": "Moves the drone to a new grid cell. Battery-intensive operation.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "x": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 2
+          },
+          "y": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 2
+          }
+        },
+        "required": [
+          "x",
+          "y"
+        ]
+      },
+      "example_output": {
+        "current_location": [
+          2,
+          0
+        ],
+        "battery_level": 42.0
+      }
+    },
+    {
+      "name": "stabilize_site",
+      "description": "Reinforces the site structure to increase the site_integrity value. Battery-intensive operation.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "new_site_integrity": 0.85,
+        "battery_level": 30.0
+      }
+    },
+    {
+      "name": "excavate",
+      "description": "Extracts an artifact from the current cell. Consumes significant battery and reduces site_integrity.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "x": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 2
+          },
+          "y": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 2
+          }
+        },
+        "required": [
+          "x",
+          "y"
+        ]
+      },
+      "example_output": {
+        "success": true,
+        "recovered_item": "CS-702",
+        "site_integrity": 0.51
+      }
+    }
+  ],
+  "state_description": {
+    "grid_map": "A 2D array representing the excavation site, where each cell contains properties like 'terrain_type', 'depth', 'is_scanned', and 'hidden_content_id'.",
+    "drone_location": "The current [x, y] coordinates of the excavation drone/equipment.",
+    "battery_level": "The current energy percentage of the equipment (0-100).",
+    "inventory": "A list of artifact IDs successfully recovered from the site.",
+    "site_integrity": "A value representing the stability of the excavation site; decreases with aggressive digging."
+  },
+  "task_initial_state": {
+    "grid_map": [
+      [
+        {
+          "terrain_type": "compact_soil",
+          "depth": 0,
+          "is_scanned": true,
+          "hidden_content_id": null
+        },
+        {
+          "terrain_type": "compact_soil",
+          "depth": 0,
+          "is_scanned": true,
+          "hidden_content_id": null
+        },
+        {
+          "terrain_type": "compact_soil",
+          "depth": 0,
+          "is_scanned": true,
+          "hidden_content_id": null
+        }
+      ],
+      [
+        {
+          "terrain_type": "compact_soil",
+          "depth": 0,
+          "is_scanned": true,
+          "hidden_content_id": null
+        },
+        {
+          "terrain_type": "compact_soil",
+          "depth": 0,
+          "is_scanned": true,
+          "hidden_content_id": null
+        },
+        {
+          "terrain_type": "compact_soil",
+          "depth": 0,
+          "is_scanned": true,
+          "hidden_content_id": null
+        }
+      ],
+      [
+        {
+          "terrain_type": "silt",
+          "depth": 0,
+          "is_scanned": true,
+          "hidden_content_id": null
+        },
+        {
+          "terrain_type": "compact_soil",
+          "depth": 0,
+          "is_scanned": true,
+          "hidden_content_id": null
+        },
+        {
+          "terrain_type": "compact_soil",
+          "depth": 0,
+          "is_scanned": true,
+          "hidden_content_id": null
+        }
+      ]
+    ],
+    "drone_location": [
+      0,
+      0
+    ],
+    "battery_level": 80,
+    "inventory": [],
+    "site_integrity": 0.45
+  }
+}

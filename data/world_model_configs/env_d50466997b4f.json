@@ -1,0 +1,276 @@
+{
+  "environment_name": "env_d50466997b4f",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: You are the digital twin of a Warehouse Order Fulfillment environment. Based on the current internal state $s_t$ and the action $a_t$ submitted by the Agent, your task is to simulate the physical and logical evolution of the warehouse and predict the observation $o_{{t+1}}$ obtained by the Agent.\n- **Emphasis**: You are the environment itself. You do not execute real-world operations; you perform internal state transitions and generate the resulting observations. You must maintain the logic of inventory levels, robot positions, and order statuses.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions between the World Model and the Agent must maintain strict context consistency. Actions that modify the environment (e.g., picking up an item) must reflect in subsequent observations (e.g., reduced inventory at that location, robot now carrying the item).\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. You must parse this JSON to identify the action and its parameters.\n- `\"name\"`: Specifies the name of the action function to execute.\n- Parameters are provided as key-value pairs within the JSON.\n\nExample Input:\n```json\n{{\n \"name\": \"move_robot\",\n \"arguments\": {{\n    \"robot_id\": \"bot_01\",\n    \"destination\": \"zone_B\"\n  }}\n}}\n```\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nIf an action is impossible within the current state (e.g., picking an item that is out of stock, moving a robot to a non-existent location, or providing invalid parameters), return a structured error message:\n- Format: `{{\"error\": \"Specific error message\"}}`\n- Do not fabricate a successful state or provide conversational filler.\n\n##### Output Assembly\nFor every action function call, you must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition (the Observation).\n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, the `new_state`, or any metadata regarding your internal transition logic. The Agent must only receive the specific return values defined in the action. State maintenance is handled internally and is hidden from the Agent.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to specified JSON formats for all outputs.\n- **Factuality**: Do not simulate outcomes for functions or states not defined in the provided schema.\n- **Consistency**: Ensure that if a robot picks up an item, that item is no longer on the shelf in the next interaction.\n- **Realism**: Adhere to warehouse logic (e.g., a robot cannot be in two places at once; an order cannot be shipped until all items are packed).\n- **Quality**: Responses must be structurally complete and logically sound.\n- **Encapsulation**: Strictly hide the internal state structure. Only expose information that is explicitly returned as an observation.\n{{initial_state}}: {{\n  \"inventory\": {{\n    \"sku_UN1263_Paint_3L_PGII\": {{\n      \"location\": \"hazard_zone_c\",\n      \"quantity\": 25\n    }}\n  }},\n  \"robots\": {{\n    \"dg_robot_1\": {{\n      \"location\": \"charging_station\",\n      \"held_items\": [],\n      \"status\": \"idle\"\n    }}\n  }},\n  \"orders\": {{\n    \"ORD-707\": {{\n      \"items\": [\n        {{\n          \"sku\": \"sku_UN1263_Paint_3L_PGII\",\n          \"quantity\": 2\n        }}\n      ],\n      \"status\": \"pending\"\n    }}\n  }},\n  \"map_layout\": {{\n    \"zones\": [\n      \"hazard_zone_c\",\n      \"dg_packing_bench\",\n      \"shipping_dock\",\n      \"charging_station\"\n    ],\n    \"paths\": [\n      [\n        \"charging_station\",\n        \"hazard_zone_c\"\n      ],\n      [\n        \"hazard_zone_c\",\n        \"dg_packing_bench\"\n      ],\n      [\n        \"dg_packing_bench\",\n        \"shipping_dock\"\n      ]\n    ]\n  }}\n}}\n{{state_descriptions}}: {{\n  \"inventory\": \"A mapping of SKU IDs to their current location and quantity in the warehouse.\",\n  \"robots\": \"The current status of all autonomous mobile robots (AMRs), including their location and held items.\",\n  \"orders\": \"A list of customer orders to be fulfilled, tracking their progress and required SKUs.\",\n  \"map_layout\": \"Defines connections between different warehouse zones (e.g., shelves, packing stations, docks).\"\n}}\n{action_set_definitions}: {\n  \"get_order_info\": {\n    \"description\": \"Retrieves the specific items, quantities, and status of a given Order ID.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"order_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier of the order (e.g., 'ORD-707').\"\n        }\n      },\n      \"required\": [\n        \"order_id\"\n      ]\n    },\n    \"example_output\": {\n      \"order_id\": \"ORD-707\",\n      \"items\": [\n        {\n          \"sku\": \"SKU-99\",\n          \"quantity\": 2\n        }\n      ],\n      \"destination\": \"International Air\"\n    }\n  },\n  \"get_sku_hazmat_details\": {\n    \"description\": \"Retrieves safety data for a SKU, including Hazard Class, Packing Group, and IATA volume limits for different transport modes.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"sku_id\": {\n          \"type\": \"string\",\n          \"description\": \"The SKU ID to query.\"\n        }\n      },\n      \"required\": [\n        \"sku_id\"\n      ]\n    },\n    \"example_output\": {\n      \"sku_id\": \"SKU-99\",\n      \"hazard_class\": \"3\",\n      \"packing_group\": \"II\",\n      \"iata_passenger_air_limit_per_pkg\": \"5L\",\n      \"unit_volume\": \"1L\"\n    }\n  },\n  \"query_inventory_location\": {\n    \"description\": \"Finds the specific warehouse zone/shelf where a SKU is stored.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"sku_id\": {\n          \"type\": \"string\",\n          \"description\": \"The SKU ID to locate.\"\n        }\n      },\n      \"required\": [\n        \"sku_id\"\n      ]\n    },\n    \"example_output\": {\n      \"sku_id\": \"SKU-99\",\n      \"location_id\": \"ZONE-B-SHELF-12\"\n    }\n  },\n  \"list_available_robots\": {\n    \"description\": \"Lists all autonomous mobile robots (AMRs) that are currently idle and their locations.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {}\n    },\n    \"example_output\": {\n      \"robots\": [\n        {\n          \"robot_id\": \"AMR-01\",\n          \"location\": \"CHARGING-STATION-A\",\n          \"status\": \"IDLE\"\n        }\n      ]\n    }\n  },\n  \"list_warehouse_zones\": {\n    \"description\": \"Returns a list of zone IDs for specific warehouse functions like 'packing_station' or 'shipping_dock'.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"zone_type\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"packing_station\",\n            \"shipping_dock\",\n            \"inventory\",\n            \"charging\"\n          ],\n          \"description\": \"The type of zone to find.\"\n        }\n      },\n      \"required\": [\n        \"zone_type\"\n      ]\n    },\n    \"example_output\": {\n      \"zones\": [\n        \"DOCK-NORTH-01\",\n        \"DOCK-SOUTH-02\"\n      ]\n    }\n  },\n  \"get_compliant_packaging\": {\n    \"description\": \"Retrieves a list of available packaging materials that meet specific IATA Packing Group requirements.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"required_packing_group\": {\n          \"type\": \"string\",\n          \"description\": \"The required safety rating (e.g., 'I', 'II', or 'III').\"\n        },\n        \"transport_mode\": {\n          \"type\": \"string\",\n          \"description\": \"The mode of transport (e.g., 'Air-Passenger').\"\n        }\n      },\n      \"required\": [\n        \"required_packing_group\",\n        \"transport_mode\"\n      ]\n    },\n    \"example_output\": {\n      \"packaging_options\": [\n        {\n          \"package_id\": \"BOX-HAZ-05\",\n          \"max_volume\": \"10L\",\n          \"rating\": \"II\"\n        }\n      ]\n    }\n  },\n  \"execute_robot_task\": {\n    \"description\": \"Commands a robot to move to a location, pick an item, or drop an item.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"robot_id\": {\n          \"type\": \"string\"\n        },\n        \"action\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"move\",\n            \"pick\",\n            \"drop\"\n          ]\n        },\n        \"target_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the location or the SKU.\"\n        },\n        \"quantity\": {\n          \"type\": \"number\",\n          \"description\": \"Required if action is pick/drop.\"\n        }\n      },\n      \"required\": [\n        \"robot_id\",\n        \"action\",\n        \"target_id\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"success\",\n      \"current_location\": \"ZONE-B-SHELF-12\"\n    }\n  },\n  \"finalize_and_document\": {\n    \"description\": \"Finalizes the packing of the order and generates mandatory IATA DGR regulatory documentation (Shipper's Declaration).\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"order_id\": {\n          \"type\": \"string\"\n        },\n        \"package_id\": {\n          \"type\": \"string\"\n        },\n        \"skus_included\": {\n          \"type\": \"array\",\n          \"items\": {\n            \"type\": \"string\"\n          }\n        },\n        \"compliance_declaration\": {\n          \"type\": \"boolean\",\n          \"description\": \"Must be true to confirm IATA standards are met.\"\n        }\n      },\n      \"required\": [\n        \"order_id\",\n        \"package_id\",\n        \"skus_included\",\n        \"compliance_declaration\"\n      ]\n    },\n    \"example_output\": {\n      \"documentation_id\": \"DGR-DOC-2023-001\",\n      \"status\": \"COMPLIANT\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_order_info",
+      "description": "Retrieves the specific items, quantities, and status of a given Order ID.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "order_id": {
+            "type": "string",
+            "description": "The unique identifier of the order (e.g., 'ORD-707')."
+          }
+        },
+        "required": [
+          "order_id"
+        ]
+      },
+      "example_output": {
+        "order_id": "ORD-707",
+        "items": [
+          {
+            "sku": "SKU-99",
+            "quantity": 2
+          }
+        ],
+        "destination": "International Air"
+      }
+    },
+    {
+      "name": "get_sku_hazmat_details",
+      "description": "Retrieves safety data for a SKU, including Hazard Class, Packing Group, and IATA volume limits for different transport modes.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "sku_id": {
+            "type": "string",
+            "description": "The SKU ID to query."
+          }
+        },
+        "required": [
+          "sku_id"
+        ]
+      },
+      "example_output": {
+        "sku_id": "SKU-99",
+        "hazard_class": "3",
+        "packing_group": "II",
+        "iata_passenger_air_limit_per_pkg": "5L",
+        "unit_volume": "1L"
+      }
+    },
+    {
+      "name": "query_inventory_location",
+      "description": "Finds the specific warehouse zone/shelf where a SKU is stored.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "sku_id": {
+            "type": "string",
+            "description": "The SKU ID to locate."
+          }
+        },
+        "required": [
+          "sku_id"
+        ]
+      },
+      "example_output": {
+        "sku_id": "SKU-99",
+        "location_id": "ZONE-B-SHELF-12"
+      }
+    },
+    {
+      "name": "list_available_robots",
+      "description": "Lists all autonomous mobile robots (AMRs) that are currently idle and their locations.",
+      "parameters": {
+        "type": "object",
+        "properties": {}
+      },
+      "example_output": {
+        "robots": [
+          {
+            "robot_id": "AMR-01",
+            "location": "CHARGING-STATION-A",
+            "status": "IDLE"
+          }
+        ]
+      }
+    },
+    {
+      "name": "list_warehouse_zones",
+      "description": "Returns a list of zone IDs for specific warehouse functions like 'packing_station' or 'shipping_dock'.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "zone_type": {
+            "type": "string",
+            "enum": [
+              "packing_station",
+              "shipping_dock",
+              "inventory",
+              "charging"
+            ],
+            "description": "The type of zone to find."
+          }
+        },
+        "required": [
+          "zone_type"
+        ]
+      },
+      "example_output": {
+        "zones": [
+          "DOCK-NORTH-01",
+          "DOCK-SOUTH-02"
+        ]
+      }
+    },
+    {
+      "name": "get_compliant_packaging",
+      "description": "Retrieves a list of available packaging materials that meet specific IATA Packing Group requirements.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "required_packing_group": {
+            "type": "string",
+            "description": "The required safety rating (e.g., 'I', 'II', or 'III')."
+          },
+          "transport_mode": {
+            "type": "string",
+            "description": "The mode of transport (e.g., 'Air-Passenger')."
+          }
+        },
+        "required": [
+          "required_packing_group",
+          "transport_mode"
+        ]
+      },
+      "example_output": {
+        "packaging_options": [
+          {
+            "package_id": "BOX-HAZ-05",
+            "max_volume": "10L",
+            "rating": "II"
+          }
+        ]
+      }
+    },
+    {
+      "name": "execute_robot_task",
+      "description": "Commands a robot to move to a location, pick an item, or drop an item.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "robot_id": {
+            "type": "string"
+          },
+          "action": {
+            "type": "string",
+            "enum": [
+              "move",
+              "pick",
+              "drop"
+            ]
+          },
+          "target_id": {
+            "type": "string",
+            "description": "The ID of the location or the SKU."
+          },
+          "quantity": {
+            "type": "number",
+            "description": "Required if action is pick/drop."
+          }
+        },
+        "required": [
+          "robot_id",
+          "action",
+          "target_id"
+        ]
+      },
+      "example_output": {
+        "status": "success",
+        "current_location": "ZONE-B-SHELF-12"
+      }
+    },
+    {
+      "name": "finalize_and_document",
+      "description": "Finalizes the packing of the order and generates mandatory IATA DGR regulatory documentation (Shipper's Declaration).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "order_id": {
+            "type": "string"
+          },
+          "package_id": {
+            "type": "string"
+          },
+          "skus_included": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "compliance_declaration": {
+            "type": "boolean",
+            "description": "Must be true to confirm IATA standards are met."
+          }
+        },
+        "required": [
+          "order_id",
+          "package_id",
+          "skus_included",
+          "compliance_declaration"
+        ]
+      },
+      "example_output": {
+        "documentation_id": "DGR-DOC-2023-001",
+        "status": "COMPLIANT"
+      }
+    }
+  ],
+  "state_description": {
+    "inventory": "A mapping of SKU IDs to their current location and quantity in the warehouse.",
+    "robots": "The current status of all autonomous mobile robots (AMRs), including their location and held items.",
+    "orders": "A list of customer orders to be fulfilled, tracking their progress and required SKUs.",
+    "map_layout": "Defines connections between different warehouse zones (e.g., shelves, packing stations, docks)."
+  },
+  "task_initial_state": {
+    "inventory": {
+      "sku_UN1263_Paint_3L_PGII": {
+        "location": "hazard_zone_c",
+        "quantity": 25
+      }
+    },
+    "robots": {
+      "dg_robot_1": {
+        "location": "charging_station",
+        "held_items": [],
+        "status": "idle"
+      }
+    },
+    "orders": {
+      "ORD-707": {
+        "items": [
+          {
+            "sku": "sku_UN1263_Paint_3L_PGII",
+            "quantity": 2
+          }
+        ],
+        "status": "pending"
+      }
+    },
+    "map_layout": {
+      "zones": [
+        "hazard_zone_c",
+        "dg_packing_bench",
+        "shipping_dock",
+        "charging_station"
+      ],
+      "paths": [
+        [
+          "charging_station",
+          "hazard_zone_c"
+        ],
+        [
+          "hazard_zone_c",
+          "dg_packing_bench"
+        ],
+        [
+          "dg_packing_bench",
+          "shipping_dock"
+        ]
+      ]
+    }
+  }
+}

@@ -1,0 +1,221 @@
+{
+  "environment_name": "env_c896cb9a2b9a",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM) for Pharmacy Prescription Verification.\n- **Core Objective**: Based on the current internal state $s_t$ and the action $a_t$ performed by the Agent, simulate the internal evolution of the pharmacy environment and predict the resulting observation $o_{{t+1}}$ obtained by the Agent.\n- **Emphasis**: The LWM does not execute real-world pharmacy operations. It performs internal state transitions (e.g., updating inventory, logging verification results) and generates structured observations based on the logic of clinical safety and inventory management.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions between the World Model and the Agent must maintain context consistency. The model must track changes to inventory levels, patient verification statuses, and historical logs throughout the session to ensure that an action taken at time $t$ correctly influences the state and observations at time $t+n$.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. This JSON must contain the following fields:\n- `\"name\"`: Specifies the name of the action function to execute.\n- The remaining fields are the parameter names and corresponding values required by that action function.\n\nExample Input:\n```json\n{{\n \"name\": \"verify_stock\",\n \"arguments\": {{\n    \"medication_id\": \"DRUG-001\",\n    \"quantity_required\": 30\n  }}\n}}\n```\nThe Language World Model must parse this input, update the internal state (e.g., decrementing stock if a prescription is filled), and return the specific observation.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nIn the event of invalid medication IDs, patient record mismatches, insufficient inventory, or undefined actions, the model must return structured error information (e.g., `{{\"error\": \"Insufficient stock for medication_id 'XYZ'\"}}`). Do not fabricate data or return successful observations for failed logic.\n\n##### Output Assembly\nFor every action function call, the model must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition.\n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, `new_state`, or any hidden variables. You must strictly hide the internal state structure from the output. Only expose information that is explicitly returned by the action function as an Observation.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to specified JSON and text formats.\n- **Factuality**: Do not simulate successful verification if contraindications or stock issues exist within the state.\n- **Consistency**: If a drug is marked as 'dispensed' in the state, subsequent inventory checks must reflect the reduced count.\n- **Realism**: Simulated behaviors must align with pharmacy protocols (e.g., checking for drug-drug interactions before approval).\n- **Quality**: Language must be clear, professional, and structurally complete.\n- **Encapsulation**: Never output the internal state update; only output the observation result of the action.\n{{initial_state}}: {{\n  \"inventory\": {{\n    \"TRASTUZUMAB_440_MG\": {{\n      \"stock\": 15,\n      \"unit\": \"vials\"\n    }},\n    \"PERTUZUMAB_420_MG\": {{\n      \"stock\": 8,\n      \"unit\": \"vials\"\n    }}\n  }},\n  \"patient_records\": {{\n    \"PATIENT_SJ_402\": {{\n      \"name\": \"Sarah Jenkins\",\n      \"allergies\": [\n        \"Penicillin\"\n      ],\n      \"active_meds\": [\n        \"Ondansetron\",\n        \"Dexamethasone\"\n      ],\n      \"labs\": {{\n        \"anc_cells_mm3\": 2400,\n        \"platelets_cells_mm3\": 192000,\n        \"last_lab_date\": \"2024-11-01\"\n      }},\n      \"cardiac_clearance\": {{\n        \"lvef_percent\": 58,\n        \"test_date\": \"2024-10-15\"\n      }},\n      \"biomarker_status\": {{\n        \"HER2_amplification\": \"Pending Review\",\n        \"ER_status\": \"Negative\",\n        \"PR_status\": \"Negative\"\n      }},\n      \"clinical_notes\": [\n        {{\n          \"note_id\": \"PATH-REPORT-9921\",\n          \"type\": \"Pathology\",\n          \"content\": \"Biopsy of left breast mass: Infiltrating ductal carcinoma. FISH analysis confirms HER2/neu gene amplification (Ratio 4.2). Diagnosis: HER2 Positive.\"\n        }}\n      ]\n    }}\n  }},\n  \"prescription_queue\": [\n    {{\n      \"prescription_id\": \"RX-2024-BIOL-003\",\n      \"patient_id\": \"PATIENT_SJ_402\",\n      \"medication_id\": \"TRASTUZUMAB_440_MG\",\n      \"ordered_dose_mg\": 420,\n      \"regimen_day\": \"Cycle 1, Day 1\"\n    }}\n  ],\n  \"verification_history\": []\n}}\n{{state_descriptions}}: {{\n  \"inventory\": \"A mapping of medication IDs to their current stock levels and unit types.\",\n  \"patient_records\": \"Profiles of patients including known allergies and current active medications to check for interactions.\",\n  \"prescription_queue\": \"A list of pending prescriptions awaiting verification, including drug name, dosage, and patient ID.\",\n  \"verification_history\": \"A log of processed prescriptions and their outcome (Approved/Rejected/Flagged).\"\n}}\n{action_set_definitions}: {\n  \"get_current_date\": {\n    \"description\": \"Retrieves the current system date in ISO 8601 format to facilitate recency calculations for clinical tests.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"current_date\": \"2024-05-20\"\n    }\n  },\n  \"get_prescription_details\": {\n    \"description\": \"Retrieves the full details of a pending prescription including medication name, drug class, dosage, and associated patient ID.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"prescription_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the prescription (e.g., RX-2024-BIOL-003).\"\n        }\n      },\n      \"required\": [\n        \"prescription_id\"\n      ]\n    },\n    \"example_output\": {\n      \"medication_id\": \"DRUG-001\",\n      \"medication_name\": \"Trastuzumab\",\n      \"drug_class\": \"Biological Agent\",\n      \"patient_id\": \"PATIENT_SJ_402\"\n    }\n  },\n  \"get_patient_lab_results\": {\n    \"description\": \"Fetches the most recent hematological lab results (ANC and Platelets) for a specific patient.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"patient_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the patient.\"\n        }\n      },\n      \"required\": [\n        \"patient_id\"\n      ]\n    },\n    \"example_output\": {\n      \"anc_value\": 1850,\n      \"platelet_count\": 150000,\n      \"test_date\": \"2024-05-18\"\n    }\n  },\n  \"get_patient_cardiac_history\": {\n    \"description\": \"Retrieves cardiac monitoring records, specifically the Left Ventricular Ejection Fraction (LVEF) percentage and the date of the test.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"patient_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the patient.\"\n        }\n      },\n      \"required\": [\n        \"patient_id\"\n      ]\n    },\n    \"example_output\": {\n      \"lvef_percentage\": 55,\n      \"test_date\": \"2024-04-10\"\n    }\n  },\n  \"get_biomarker_profile\": {\n    \"description\": \"Queries the patient's active treatment profile to check the status of mandatory biomarkers for biological agents.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"patient_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the patient.\"\n        }\n      },\n      \"required\": [\n        \"patient_id\"\n      ]\n    },\n    \"example_output\": {\n      \"biomarker_name\": \"HER2\",\n      \"status\": \"Pending\"\n    }\n  },\n  \"query_diagnostic_documentation\": {\n    \"description\": \"Accesses external diagnostic reports to reconcile biomarker statuses if they are 'Pending' or 'Unverified' in the main profile.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"patient_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the patient.\"\n        },\n        \"biomarker_target\": {\n          \"type\": \"string\",\n          \"description\": \"The name of the biomarker to search for in documentation.\"\n        }\n      },\n      \"required\": [\n        \"patient_id\",\n        \"biomarker_target\"\n      ]\n    },\n    \"example_output\": {\n      \"findings\": \"Positive\",\n      \"verified_date\": \"2024-05-02\"\n    }\n  },\n  \"submit_verification_decision\": {\n    \"description\": \"Submits the final verification outcome (Approved, Rejected, or Flagged) and logs the clinical rationale.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"prescription_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the prescription.\"\n        },\n        \"outcome\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"Approved\",\n            \"Rejected\",\n            \"Flagged\"\n          ],\n          \"description\": \"Final decision outcome.\"\n        },\n        \"rationale\": {\n          \"type\": \"string\",\n          \"description\": \"Detailed clinical reasoning.\"\n        }\n      },\n      \"required\": [\n        \"prescription_id\",\n        \"outcome\",\n        \"rationale\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"Success\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_current_date",
+      "description": "Retrieves the current system date in ISO 8601 format to facilitate recency calculations for clinical tests.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "current_date": "2024-05-20"
+      }
+    },
+    {
+      "name": "get_prescription_details",
+      "description": "Retrieves the full details of a pending prescription including medication name, drug class, dosage, and associated patient ID.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "prescription_id": {
+            "type": "string",
+            "description": "The unique identifier for the prescription (e.g., RX-2024-BIOL-003)."
+          }
+        },
+        "required": [
+          "prescription_id"
+        ]
+      },
+      "example_output": {
+        "medication_id": "DRUG-001",
+        "medication_name": "Trastuzumab",
+        "drug_class": "Biological Agent",
+        "patient_id": "PATIENT_SJ_402"
+      }
+    },
+    {
+      "name": "get_patient_lab_results",
+      "description": "Fetches the most recent hematological lab results (ANC and Platelets) for a specific patient.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "patient_id": {
+            "type": "string",
+            "description": "The unique identifier for the patient."
+          }
+        },
+        "required": [
+          "patient_id"
+        ]
+      },
+      "example_output": {
+        "anc_value": 1850,
+        "platelet_count": 150000,
+        "test_date": "2024-05-18"
+      }
+    },
+    {
+      "name": "get_patient_cardiac_history",
+      "description": "Retrieves cardiac monitoring records, specifically the Left Ventricular Ejection Fraction (LVEF) percentage and the date of the test.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "patient_id": {
+            "type": "string",
+            "description": "The unique identifier for the patient."
+          }
+        },
+        "required": [
+          "patient_id"
+        ]
+      },
+      "example_output": {
+        "lvef_percentage": 55,
+        "test_date": "2024-04-10"
+      }
+    },
+    {
+      "name": "get_biomarker_profile",
+      "description": "Queries the patient's active treatment profile to check the status of mandatory biomarkers for biological agents.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "patient_id": {
+            "type": "string",
+            "description": "The unique identifier for the patient."
+          }
+        },
+        "required": [
+          "patient_id"
+        ]
+      },
+      "example_output": {
+        "biomarker_name": "HER2",
+        "status": "Pending"
+      }
+    },
+    {
+      "name": "query_diagnostic_documentation",
+      "description": "Accesses external diagnostic reports to reconcile biomarker statuses if they are 'Pending' or 'Unverified' in the main profile.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "patient_id": {
+            "type": "string",
+            "description": "The unique identifier for the patient."
+          },
+          "biomarker_target": {
+            "type": "string",
+            "description": "The name of the biomarker to search for in documentation."
+          }
+        },
+        "required": [
+          "patient_id",
+          "biomarker_target"
+        ]
+      },
+      "example_output": {
+        "findings": "Positive",
+        "verified_date": "2024-05-02"
+      }
+    },
+    {
+      "name": "submit_verification_decision",
+      "description": "Submits the final verification outcome (Approved, Rejected, or Flagged) and logs the clinical rationale.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "prescription_id": {
+            "type": "string",
+            "description": "The unique identifier for the prescription."
+          },
+          "outcome": {
+            "type": "string",
+            "enum": [
+              "Approved",
+              "Rejected",
+              "Flagged"
+            ],
+            "description": "Final decision outcome."
+          },
+          "rationale": {
+            "type": "string",
+            "description": "Detailed clinical reasoning."
+          }
+        },
+        "required": [
+          "prescription_id",
+          "outcome",
+          "rationale"
+        ]
+      },
+      "example_output": {
+        "status": "Success"
+      }
+    }
+  ],
+  "state_description": {
+    "inventory": "A mapping of medication IDs to their current stock levels and unit types.",
+    "patient_records": "Profiles of patients including known allergies and current active medications to check for interactions.",
+    "prescription_queue": "A list of pending prescriptions awaiting verification, including drug name, dosage, and patient ID.",
+    "verification_history": "A log of processed prescriptions and their outcome (Approved/Rejected/Flagged)."
+  },
+  "task_initial_state": {
+    "inventory": {
+      "TRASTUZUMAB_440_MG": {
+        "stock": 15,
+        "unit": "vials"
+      },
+      "PERTUZUMAB_420_MG": {
+        "stock": 8,
+        "unit": "vials"
+      }
+    },
+    "patient_records": {
+      "PATIENT_SJ_402": {
+        "name": "Sarah Jenkins",
+        "allergies": [
+          "Penicillin"
+        ],
+        "active_meds": [
+          "Ondansetron",
+          "Dexamethasone"
+        ],
+        "labs": {
+          "anc_cells_mm3": 2400,
+          "platelets_cells_mm3": 192000,
+          "last_lab_date": "2024-11-01"
+        },
+        "cardiac_clearance": {
+          "lvef_percent": 58,
+          "test_date": "2024-10-15"
+        },
+        "biomarker_status": {
+          "HER2_amplification": "Pending Review",
+          "ER_status": "Negative",
+          "PR_status": "Negative"
+        },
+        "clinical_notes": [
+          {
+            "note_id": "PATH-REPORT-9921",
+            "type": "Pathology",
+            "content": "Biopsy of left breast mass: Infiltrating ductal carcinoma. FISH analysis confirms HER2/neu gene amplification (Ratio 4.2). Diagnosis: HER2 Positive."
+          }
+        ]
+      }
+    },
+    "prescription_queue": [
+      {
+        "prescription_id": "RX-2024-BIOL-003",
+        "patient_id": "PATIENT_SJ_402",
+        "medication_id": "TRASTUZUMAB_440_MG",
+        "ordered_dose_mg": 420,
+        "regimen_day": "Cycle 1, Day 1"
+      }
+    ],
+    "verification_history": []
+  }
+}

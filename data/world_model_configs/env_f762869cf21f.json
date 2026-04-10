@@ -1,0 +1,218 @@
+{
+  "environment_name": "env_f762869cf21f",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM) for Demand Forecast Adjustment.\n- **Core Objective**: Based on the current state $s_t$ and action $a_t$, simulate environment changes regarding market demand, inventory impact, and economic variables, and predict the observation $o_{{t+1}}$ obtained by the Agent.\n- **Emphasis**: You are the simulation engine. You do not provide advice or execute real business operations; you evolve the internal environment state and generate the resulting data observations.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions between the World Model and the Agent must maintain strict context consistency. Any adjustment to a forecast must persist in the internal state and influence subsequent queries or simulations.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. You must parse this JSON to determine the evolution of the world. The input format is:\n- `\"name\"`: The specific action to execute (e.g., `adjust_sku_forecast`, `get_market_impact`).\n- `\"arguments\"`: Parameters required by the function.\n\nExample Input:\n```json\n{{\n \"name\": \"update_forecast\",\n \"arguments\": {{\n    \"sku_id\": \"DRINK-001\",\n    \"new_value\": 5000,\n    \"reason\": \"Summer promotion start\"\n  }}\n}}\n```\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nIf the Agent provides invalid SKU IDs, non-numeric forecast values, or calls functions not defined in the action set, return a structured error response: `{{\"error\": \"Description of what went wrong\"}}`. Do not hallucinate data for non-existent products.\n\n##### Output Assembly\nFor every action function call, you must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition. \n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, the updated state, or hidden variables like `forecast_records`. You must strictly hide the internal state structure. The Agent only sees the specific Observation returned by the action.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to specified JSON and text formats without conversational filler.\n- **Factuality**: Use the provided state as the ground truth; do not fabricate market data outside the defined scope.\n- **Consistency**: If a forecast is lowered, subsequent \"inventory_risk\" checks must reflect that lower demand logic.\n- **Realism**: Adjustments should simulate realistic impacts (e.g., increasing forecast might trigger a 'low stock' warning observation).\n- **Encapsulation**: Never reveal the full internal JSON state in your response. Only provide the observation relevant to the specific action called.\n{{initial_state}}: {{\n  \"forecast_records\": {{\n    \"REACTOR-750\": {{\n      \"projected_demand\": 200,\n      \"confidence_score\": 0.98\n    }}\n  }},\n  \"market_indicators\": {{\n    \"seasonality_index\": 1.0,\n    \"market_volatility\": \"low\"\n  }},\n  \"inventory_buffer\": {{\n    \"REACTOR-750\": {{\n      \"on_hand\": 215,\n      \"safety_stock\": 14\n    }}\n  }},\n  \"adjustment_log_summary\": \"Initial baseline established for Day 200 (Late Summer) movement; heavy-lift vessel 'MV-Hercules' currently under firm charter.\"\n}}\n{{state_descriptions}}: {{\n  \"forecast_records\": \"A mapping of SKU identifiers to their current projected demand units and confidence intervals.\",\n  \"market_indicators\": \"External environmental factors influencing demand such as seasonality and consumer price index.\",\n  \"inventory_buffer\": \"Current on-hand stock levels and safety stock requirements for each SKU.\",\n  \"adjustment_log_summary\": \"A brief summary of the last modification made to the environment.\"\n}}\n{action_set_definitions}: {\n  \"get_forecast\": {\n    \"description\": \"Retrieves the current projected demand and baseline dates for a specific SKU from the forecast_records.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"sku\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the item (e.g., 'REACTOR-750').\"\n        }\n      },\n      \"required\": [\n        \"sku\"\n      ]\n    },\n    \"example_output\": {\n      \"sku\": \"REACTOR-750\",\n      \"current_baseline_date\": \"2023-10-01\",\n      \"confidence_interval\": 0.95\n    }\n  },\n  \"update_forecast\": {\n    \"description\": \"Updates the baseline date for a SKU in the forecast_records based on reported delays.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"sku\": {\n          \"type\": \"string\",\n          \"description\": \"The identifier for the SKU.\"\n        },\n        \"new_baseline_date\": {\n          \"type\": \"string\",\n          \"description\": \"The new ISO-8601 formatted date for the forecast.\"\n        }\n      },\n      \"required\": [\n        \"sku\",\n        \"new_baseline_date\"\n      ]\n    },\n    \"example_output\": null\n  },\n  \"get_inventory_permits\": {\n    \"description\": \"Scans the inventory_buffer to retrieve terrestrial permits and their validity windows associated with a SKU.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"sku\": {\n          \"type\": \"string\",\n          \"description\": \"The SKU identifier.\"\n        }\n      },\n      \"required\": [\n        \"sku\"\n      ]\n    },\n    \"example_output\": {\n      \"permits\": [\n        {\n          \"permit_id\": \"PRMT-001\",\n          \"type\": \"Heavy-Lift Terrestrial\",\n          \"expiration_date\": \"2023-11-15\"\n        }\n      ]\n    }\n  },\n  \"adjust_permit\": {\n    \"description\": \"Updates the validity or status of a specific permit to align with new logistics timelines.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"permit_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the permit to adjust.\"\n        },\n        \"new_expiration_date\": {\n          \"type\": \"string\",\n          \"description\": \"The updated expiration date.\"\n        },\n        \"action\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"extend\",\n            \"renew\",\n            \"cancel\"\n          ],\n          \"description\": \"The action to perform on the permit.\"\n        }\n      },\n      \"required\": [\n        \"permit_id\",\n        \"new_expiration_date\",\n        \"action\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"success\",\n      \"new_expiry\": \"2024-01-10\"\n    }\n  },\n  \"get_asset_sop\": {\n    \"description\": \"Retrieves the Standard Operating Procedure (SOP) rules for vessel asset strategies based on the duration of a delay.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"delay_days\": {\n          \"type\": \"number\",\n          \"description\": \"The number of days the project is delayed.\"\n        }\n      },\n      \"required\": [\n        \"delay_days\"\n      ]\n    },\n    \"example_output\": {\n      \"strategy_type\": \"Re-assign Asset\",\n      \"instruction\": \"For delays > 30 days, release current booking and re-book for new window.\"\n    }\n  },\n  \"get_asset_booking\": {\n    \"description\": \"Queries the environment to find the current vessel asset booking associated with a specific SKU.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"sku\": {\n          \"type\": \"string\"\n        }\n      },\n      \"required\": [\n        \"sku\"\n      ]\n    },\n    \"example_output\": {\n      \"booking_id\": \"VESSEL-X9\",\n      \"vessel_name\": \"Titan Carrier\",\n      \"scheduled_date\": \"2023-10-05\"\n    }\n  },\n  \"update_asset_booking\": {\n    \"description\": \"Modifies or re-books vessel assets based on the updated timeline and SOP strategy.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"booking_id\": {\n          \"type\": \"string\",\n          \"description\": \"The current booking ID.\"\n        },\n        \"new_date\": {\n          \"type\": \"string\",\n          \"description\": \"The new scheduled booking date.\"\n        },\n        \"strategy\": {\n          \"type\": \"string\",\n          \"description\": \"The strategy name obtained from the SOP.\"\n        }\n      },\n      \"required\": [\n        \"booking_id\",\n        \"new_date\",\n        \"strategy\"\n      ]\n    },\n    \"example_output\": null\n  },\n  \"commit_log\": {\n    \"description\": \"Writes a summary of all changes made to the adjustment_log_summary to ensure the state transition is recorded.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"summary\": {\n          \"type\": \"string\",\n          \"description\": \"A detailed summary of all actions taken (forecast update, permit renewal, asset change).\"\n        }\n      },\n      \"required\": [\n        \"summary\"\n      ]\n    },\n    \"example_output\": null\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_forecast",
+      "description": "Retrieves the current projected demand and baseline dates for a specific SKU from the forecast_records.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "sku": {
+            "type": "string",
+            "description": "The unique identifier for the item (e.g., 'REACTOR-750')."
+          }
+        },
+        "required": [
+          "sku"
+        ]
+      },
+      "example_output": {
+        "sku": "REACTOR-750",
+        "current_baseline_date": "2023-10-01",
+        "confidence_interval": 0.95
+      }
+    },
+    {
+      "name": "update_forecast",
+      "description": "Updates the baseline date for a SKU in the forecast_records based on reported delays.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "sku": {
+            "type": "string",
+            "description": "The identifier for the SKU."
+          },
+          "new_baseline_date": {
+            "type": "string",
+            "description": "The new ISO-8601 formatted date for the forecast."
+          }
+        },
+        "required": [
+          "sku",
+          "new_baseline_date"
+        ]
+      },
+      "example_output": null
+    },
+    {
+      "name": "get_inventory_permits",
+      "description": "Scans the inventory_buffer to retrieve terrestrial permits and their validity windows associated with a SKU.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "sku": {
+            "type": "string",
+            "description": "The SKU identifier."
+          }
+        },
+        "required": [
+          "sku"
+        ]
+      },
+      "example_output": {
+        "permits": [
+          {
+            "permit_id": "PRMT-001",
+            "type": "Heavy-Lift Terrestrial",
+            "expiration_date": "2023-11-15"
+          }
+        ]
+      }
+    },
+    {
+      "name": "adjust_permit",
+      "description": "Updates the validity or status of a specific permit to align with new logistics timelines.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "permit_id": {
+            "type": "string",
+            "description": "The ID of the permit to adjust."
+          },
+          "new_expiration_date": {
+            "type": "string",
+            "description": "The updated expiration date."
+          },
+          "action": {
+            "type": "string",
+            "enum": [
+              "extend",
+              "renew",
+              "cancel"
+            ],
+            "description": "The action to perform on the permit."
+          }
+        },
+        "required": [
+          "permit_id",
+          "new_expiration_date",
+          "action"
+        ]
+      },
+      "example_output": {
+        "status": "success",
+        "new_expiry": "2024-01-10"
+      }
+    },
+    {
+      "name": "get_asset_sop",
+      "description": "Retrieves the Standard Operating Procedure (SOP) rules for vessel asset strategies based on the duration of a delay.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "delay_days": {
+            "type": "number",
+            "description": "The number of days the project is delayed."
+          }
+        },
+        "required": [
+          "delay_days"
+        ]
+      },
+      "example_output": {
+        "strategy_type": "Re-assign Asset",
+        "instruction": "For delays > 30 days, release current booking and re-book for new window."
+      }
+    },
+    {
+      "name": "get_asset_booking",
+      "description": "Queries the environment to find the current vessel asset booking associated with a specific SKU.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "sku": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "sku"
+        ]
+      },
+      "example_output": {
+        "booking_id": "VESSEL-X9",
+        "vessel_name": "Titan Carrier",
+        "scheduled_date": "2023-10-05"
+      }
+    },
+    {
+      "name": "update_asset_booking",
+      "description": "Modifies or re-books vessel assets based on the updated timeline and SOP strategy.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "booking_id": {
+            "type": "string",
+            "description": "The current booking ID."
+          },
+          "new_date": {
+            "type": "string",
+            "description": "The new scheduled booking date."
+          },
+          "strategy": {
+            "type": "string",
+            "description": "The strategy name obtained from the SOP."
+          }
+        },
+        "required": [
+          "booking_id",
+          "new_date",
+          "strategy"
+        ]
+      },
+      "example_output": null
+    },
+    {
+      "name": "commit_log",
+      "description": "Writes a summary of all changes made to the adjustment_log_summary to ensure the state transition is recorded.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "summary": {
+            "type": "string",
+            "description": "A detailed summary of all actions taken (forecast update, permit renewal, asset change)."
+          }
+        },
+        "required": [
+          "summary"
+        ]
+      },
+      "example_output": null
+    }
+  ],
+  "state_description": {
+    "forecast_records": "A mapping of SKU identifiers to their current projected demand units and confidence intervals.",
+    "market_indicators": "External environmental factors influencing demand such as seasonality and consumer price index.",
+    "inventory_buffer": "Current on-hand stock levels and safety stock requirements for each SKU.",
+    "adjustment_log_summary": "A brief summary of the last modification made to the environment."
+  },
+  "task_initial_state": {
+    "forecast_records": {
+      "REACTOR-750": {
+        "projected_demand": 200,
+        "confidence_score": 0.98
+      }
+    },
+    "market_indicators": {
+      "seasonality_index": 1.0,
+      "market_volatility": "low"
+    },
+    "inventory_buffer": {
+      "REACTOR-750": {
+        "on_hand": 215,
+        "safety_stock": 14
+      }
+    },
+    "adjustment_log_summary": "Initial baseline established for Day 200 (Late Summer) movement; heavy-lift vessel 'MV-Hercules' currently under firm charter."
+  }
+}

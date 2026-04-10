@@ -1,0 +1,164 @@
+{
+  "environment_name": "env_623c6b6fbe76",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: Based on current state $s_t$ and action $a_t$, simulate the environment changes for the Escalation Workflow Management scenario and predict the observation $o_{{t+1}}$ obtained by the Agent.\n- **Emphasis**: The LWM does not execute real operations in an external system, but only performs internal state evolution and observation generation. Your goal is to provide a realistic simulation of how a ticket or case progresses through an organizational hierarchy.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nEmphasis: All interactions between the World Model and the Agent must maintain context consistency. Changes to the ticket status, priority, or ownership must persist across the interaction history to ensure logical continuity.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. This JSON must contain the following fields:\n- `\"name\"`: Specifies the name of the action function to execute.\n- The remaining fields are the parameter names and corresponding values required by that action function.\n\nExample:\n```json\n{{\n \"name\": \"escalate_ticket\",\n \"arguments\": {{\n    \"ticket_id\": \"TKT-1024\",\n    \"reason\": \"Technical complexity exceeds Tier 1 scope\"\n  }}\n}}\n```\n\nThe Language World Model must correctly parse such JSON inputs, update the internal state accordingly, and simulate the execution results.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nFor invalid parameters (e.g., non-existent ticket IDs), undefined actions, state conflicts (e.g., trying to escalate a closed ticket), or empty inputs, return structured error information (e.g. `{{\"error\": \"Ticket 'TKT-123' is already closed and cannot be modified\"}}`). Do not fabricate states or fictitious responses outside the scope of the defined logic.\n\n##### Output Assembly\nFor every action function call, the model must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition.\n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, `new_state`, or any hidden variables. State maintenance is implicit in the interaction history. The Agent must only see the specific return values (the Observation) provided by the simulated environment.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to specified JSON and text formats.\n- **Factuality**: Do not fabricate non-existent functions, states, or responses.\n- **Consistency**: State evolution logic must be self-consistent (e.g., a ticket's `escalation_level` should increment logically). \n- **Realism**: Simulated behaviors must align with realistic corporate escalation workflows, including SLA constraints and departmental hand-offs.\n- **Quality**: Language must be clear, professional, and structurally complete.\n- **Encapsulation**: Strictly hide the internal state structure from the output. Only expose information that is explicitly returned by the action function. Do not output the state update details unless they are part of the defined observation.\n{{initial_state}}: {{\n  \"ticket_id\": \"TKT-9911-VIP\",\n  \"status\": \"open\",\n  \"priority\": \"low\",\n  \"escalation_level\": 0,\n  \"assigned_agent\": \"unassigned\",\n  \"sla_status\": \"within_sla\",\n  \"internal_history\": [\n    \"2023-11-10 14:00:00 - Ticket ingested from Global FinTech Corp Admin.\",\n    \"2023-11-10 14:00:05 - Message: 'Our migration has stalled again. This is the third failure this month. We are initiating contract termination today.'\",\n    \"2023-11-10 14:00:10 - System Note: **CIRCUIT BREAKER ACTIVE** due to Outage Incident #OUT-505. Automatic predictive routing is disabled for all tiers to prevent queue flooding.\",\n    \"2023-11-10 14:00:12 - System Note: Manual priority/tier modification is currently restricted to 'Exception' status for this ticket ID.\",\n    \"2023-11-10 14:00:15 - AI Sentiment: -0.99. Intent: Churn_Explicit. Customer ARR: $1.2M.\"\n  ]\n}}\n{{state_descriptions}}: {{\n  \"ticket_id\": \"Unique identifier for the escalation case.\",\n  \"status\": \"Current lifecycle status of the ticket (e.g., 'open', 'in_progress', 'escalated', 'resolved', 'closed').\",\n  \"priority\": \"The urgency of the ticket (e.g., 'low', 'medium', 'high', 'critical').\",\n  \"escalation_level\": \"The current tier of support handling the ticket (0 = Frontline, 1 = Tier 1, 2 = Tier 2, 3 = Engineering).\",\n  \"assigned_agent\": \"The name or ID of the person currently responsible for the ticket.\",\n  \"sla_status\": \"The current Service Level Agreement status (e.g., 'within_sla', 'warning', 'breached').\",\n  \"internal_history\": \"A log of state transitions and historical actions for internal tracking.\"\n}}\n{action_set_definitions}: {\n  \"get_ticket_details\": {\n    \"description\": \"Retrieves the full current state and metadata for a specific ticket.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"ticket_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the ticket (e.g., 'TKT-9911-VIP').\"\n        }\n      },\n      \"required\": [\n        \"ticket_id\"\n      ]\n    },\n    \"example_output\": {\n      \"ticket_id\": \"TKT-9911-VIP\",\n      \"status\": \"open\",\n      \"priority\": \"medium\",\n      \"escalation_level\": 1,\n      \"assigned_agent\": \"Support_Bot_01\",\n      \"sla_status\": \"within_sla\"\n    }\n  },\n  \"update_ticket_priority\": {\n    \"description\": \"Updates the priority level of a ticket.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"ticket_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the ticket.\"\n        },\n        \"priority\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"low\",\n            \"medium\",\n            \"high\",\n            \"critical\"\n          ],\n          \"description\": \"The target priority level.\"\n        }\n      },\n      \"required\": [\n        \"ticket_id\",\n        \"priority\"\n      ]\n    },\n    \"example_output\": {\n      \"success\": true,\n      \"new_priority\": \"critical\"\n    }\n  },\n  \"authorize_bypass_protocol\": {\n    \"description\": \"Applies an administrative override to a ticket to bypass system-wide routing restrictions or outage protocols.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"ticket_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the ticket.\"\n        },\n        \"reason\": {\n          \"type\": \"string\",\n          \"description\": \"The operational justification for the override (e.g., 'high-ARR churn risk').\"\n        }\n      },\n      \"required\": [\n        \"ticket_id\",\n        \"reason\"\n      ]\n    },\n    \"example_output\": {\n      \"override_active\": true,\n      \"restrictions_lifted\": [\n        \"general_queue_lock\",\n        \"outage_routing_block\"\n      ]\n    }\n  },\n  \"escalate_to_tier_3\": {\n    \"description\": \"Moves the ticket to the Engineering/Legal Tier 3 queue. This action requires any routing restrictions to be bypassed first if an outage protocol is active.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"ticket_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the ticket.\"\n        },\n        \"department\": {\n          \"type\": \"string\",\n          \"description\": \"The target department (e.g., 'Engineering/Legal').\"\n        },\n        \"justification\": {\n          \"type\": \"string\",\n          \"description\": \"A mandatory note explaining the need for Tier 3 escalation.\"\n        }\n      },\n      \"required\": [\n        \"ticket_id\",\n        \"department\",\n        \"justification\"\n      ]\n    },\n    \"example_output\": {\n      \"success\": true,\n      \"current_tier\": 3,\n      \"assigned_queue\": \"Engineering_Legal_T3\"\n    }\n  },\n  \"verify_final_record\": {\n    \"description\": \"Confirms the final state of the ticket to ensure it meets all operational requirements.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"ticket_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the ticket.\"\n        }\n      },\n      \"required\": [\n        \"ticket_id\"\n      ]\n    },\n    \"example_output\": {\n      \"confirmation\": \"Ticket TKT-9911-VIP is at Tier 3 with Critical priority.\",\n      \"validation_status\": \"Passed\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_ticket_details",
+      "description": "Retrieves the full current state and metadata for a specific ticket.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "ticket_id": {
+            "type": "string",
+            "description": "The unique identifier for the ticket (e.g., 'TKT-9911-VIP')."
+          }
+        },
+        "required": [
+          "ticket_id"
+        ]
+      },
+      "example_output": {
+        "ticket_id": "TKT-9911-VIP",
+        "status": "open",
+        "priority": "medium",
+        "escalation_level": 1,
+        "assigned_agent": "Support_Bot_01",
+        "sla_status": "within_sla"
+      }
+    },
+    {
+      "name": "update_ticket_priority",
+      "description": "Updates the priority level of a ticket.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "ticket_id": {
+            "type": "string",
+            "description": "The unique identifier for the ticket."
+          },
+          "priority": {
+            "type": "string",
+            "enum": [
+              "low",
+              "medium",
+              "high",
+              "critical"
+            ],
+            "description": "The target priority level."
+          }
+        },
+        "required": [
+          "ticket_id",
+          "priority"
+        ]
+      },
+      "example_output": {
+        "success": true,
+        "new_priority": "critical"
+      }
+    },
+    {
+      "name": "authorize_bypass_protocol",
+      "description": "Applies an administrative override to a ticket to bypass system-wide routing restrictions or outage protocols.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "ticket_id": {
+            "type": "string",
+            "description": "The unique identifier for the ticket."
+          },
+          "reason": {
+            "type": "string",
+            "description": "The operational justification for the override (e.g., 'high-ARR churn risk')."
+          }
+        },
+        "required": [
+          "ticket_id",
+          "reason"
+        ]
+      },
+      "example_output": {
+        "override_active": true,
+        "restrictions_lifted": [
+          "general_queue_lock",
+          "outage_routing_block"
+        ]
+      }
+    },
+    {
+      "name": "escalate_to_tier_3",
+      "description": "Moves the ticket to the Engineering/Legal Tier 3 queue. This action requires any routing restrictions to be bypassed first if an outage protocol is active.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "ticket_id": {
+            "type": "string",
+            "description": "The unique identifier for the ticket."
+          },
+          "department": {
+            "type": "string",
+            "description": "The target department (e.g., 'Engineering/Legal')."
+          },
+          "justification": {
+            "type": "string",
+            "description": "A mandatory note explaining the need for Tier 3 escalation."
+          }
+        },
+        "required": [
+          "ticket_id",
+          "department",
+          "justification"
+        ]
+      },
+      "example_output": {
+        "success": true,
+        "current_tier": 3,
+        "assigned_queue": "Engineering_Legal_T3"
+      }
+    },
+    {
+      "name": "verify_final_record",
+      "description": "Confirms the final state of the ticket to ensure it meets all operational requirements.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "ticket_id": {
+            "type": "string",
+            "description": "The unique identifier for the ticket."
+          }
+        },
+        "required": [
+          "ticket_id"
+        ]
+      },
+      "example_output": {
+        "confirmation": "Ticket TKT-9911-VIP is at Tier 3 with Critical priority.",
+        "validation_status": "Passed"
+      }
+    }
+  ],
+  "state_description": {
+    "ticket_id": "Unique identifier for the escalation case.",
+    "status": "Current lifecycle status of the ticket (e.g., 'open', 'in_progress', 'escalated', 'resolved', 'closed').",
+    "priority": "The urgency of the ticket (e.g., 'low', 'medium', 'high', 'critical').",
+    "escalation_level": "The current tier of support handling the ticket (0 = Frontline, 1 = Tier 1, 2 = Tier 2, 3 = Engineering).",
+    "assigned_agent": "The name or ID of the person currently responsible for the ticket.",
+    "sla_status": "The current Service Level Agreement status (e.g., 'within_sla', 'warning', 'breached').",
+    "internal_history": "A log of state transitions and historical actions for internal tracking."
+  },
+  "task_initial_state": {
+    "ticket_id": "TKT-9911-VIP",
+    "status": "open",
+    "priority": "low",
+    "escalation_level": 0,
+    "assigned_agent": "unassigned",
+    "sla_status": "within_sla",
+    "internal_history": [
+      "2023-11-10 14:00:00 - Ticket ingested from Global FinTech Corp Admin.",
+      "2023-11-10 14:00:05 - Message: 'Our migration has stalled again. This is the third failure this month. We are initiating contract termination today.'",
+      "2023-11-10 14:00:10 - System Note: **CIRCUIT BREAKER ACTIVE** due to Outage Incident #OUT-505. Automatic predictive routing is disabled for all tiers to prevent queue flooding.",
+      "2023-11-10 14:00:12 - System Note: Manual priority/tier modification is currently restricted to 'Exception' status for this ticket ID.",
+      "2023-11-10 14:00:15 - AI Sentiment: -0.99. Intent: Churn_Explicit. Customer ARR: $1.2M."
+    ]
+  }
+}

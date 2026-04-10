@@ -1,0 +1,270 @@
+{
+  "environment_name": "env_e2c419a7fb7c",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: Act as the backend simulation engine for a Warehouse Order Fulfillment environment. Based on the current state $s_t$ and the action $a_t$ submitted by the Agent, your task is to simulate the internal environment changes (state transition) and predict the resulting observation $o_{{t+1}}$ that the Agent receives.\n- **Emphasis**: You are a simulator, not an executor. You do not perform real-world tasks; you calculate and describe the logical consequences of actions within the warehouse logic (e.g., inventory deduction, robot movement, battery depletion).\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nYou must maintain a continuous and self-consistent simulation. Every action must build upon the state resulting from the previous action. Ensure that if a robot moves from Aisle A to Aisle B, its subsequent location is Aisle B until another movement action occurs.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object containing:\n- `\"name\"`: The name of the action (e.g., \"move_to\", \"pick_item\").\n- `\"arguments\"`: A dictionary of parameters required for that specific action.\n\nYou must parse this JSON, validate the parameters against the current environment state, and simulate the outcome.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nIf the Agent attempts an invalid operation, return a structured error. Examples include:\n- Attempting to pick an item that is not in the current location: `{{\"error\": \"Item not found at current location\"}}`.\n- Attempting to move with 0% battery: `{{\"error\": \"Insufficient battery\"}}`.\n- Undefined actions or malformed JSON: `{{\"error\": \"Invalid action format\"}}`.\nDo not fabricate successful outcomes for failed logic.\n\n##### Output Assembly\nFor every action, you must return a structured JSON object containing **ONLY** the observation fields defined in the action's specification. \n\n**CRITICAL CONSTRAINT**: You must **NOT** output the full internal state (`s_t` or `new_state`) or any background variables. The Agent only sees the `observation`. Your internal state update is kept in memory/history only.\n\n### 4. Key Principles\n- **Format**: Output strictly valid JSON for observations.\n- **Factuality**: Do not invent items, aisles, or order IDs that are not present in the state.\n- **Consistency**: Ensure physical logic holds (e.g., an item picked up is no longer on the shelf).\n- **Realism**: Simulate realistic constraints like travel time, battery usage, or weight limits if implied by the scenario.\n- **Quality**: Provide clear, unambiguous observation data.\n- **Encapsulation**: Strictly hide the internal state structure. The Agent only receives the observation defined in the action set.\n{{initial_state}}: {{\n  \"inventory\": {{\n    \"SKU-HVY-101\": {{\n      \"name\": \"Cast Iron Pump Housings\",\n      \"qty\": 0,\n      \"loc\": \"Aisle-A-10\",\n      \"weight_per_case\": 50,\n      \"crushable\": false\n    }},\n    \"SKU-FGL-202\": {{\n      \"name\": \"Precision Sensors\",\n      \"qty\": 50,\n      \"loc\": \"High-Value-Cage-04\",\n      \"weight_per_case\": 20,\n      \"crushable\": true\n    }}\n  }},\n  \"active_orders\": [\n    {{\n      \"order_id\": \"EDI-772-BOS\",\n      \"customer\": \"Boston Industrial\",\n      \"status\": \"Shortage_Flagged\",\n      \"required_items\": [\n        {{\n          \"sku\": \"SKU-HVY-101\",\n          \"qty\": 20\n        }},\n        {{\n          \"sku\": \"SKU-FGL-202\",\n          \"qty\": 10\n        }}\n      ],\n      \"carrier\": \"Old Dominion\",\n      \"target_lane\": \"Lane-7\"\n    }}\n  ],\n  \"robot_status\": {{\n    \"current_location\": \"Aisle-A-10\",\n    \"battery_level\": 85,\n    \"carried_items\": [\n      {{\n        \"item_id\": \"GMA_PALLET_042\",\n        \"type\": \"GMA_Pallet_Grade_A\",\n        \"weight\": 45,\n        \"contents\": [\n          {{\n            \"sku\": \"SKU-HVY-101\",\n            \"qty\": 20,\n            \"weight\": 1000\n          }}\n        ]\n      }}\n    ]\n  }},\n  \"warehouse_map\": {{\n    \"nodes\": {{\n      \"Aisle-A-10\": \"Storage zone for heavy industrial parts.\",\n      \"WMS_Terminal_Alpha\": {{\n        \"description\": \"Central data terminal access point.\",\n        \"logs\": {{\n          \"Short-Pick_Incident_Log\": \"Incident ID: 4492. Order: EDI-772-BOS. Missing Item: 10 units of SKU-FGL-202. Status: Replenished to High-Value-Cage-04.\"\n        }}\n      }},\n      \"High-Value-Cage-04\": \"Secure storage for electronics and fragile sensors.\",\n      \"Wrapping_Station\": \"Automated stretch wrap area.\",\n      \"Scale_W&D\": \"Weight and Dimensional verification station.\",\n      \"Lane-7\": \"Outbound staging lane for Old Dominion Freight Lines.\"\n    }},\n    \"connectivity\": [\n      \"Aisle-A-10 <-> WMS_Terminal_Alpha\",\n      \"WMS_Terminal_Alpha <-> High-Value-Cage-04\",\n      \"High-Value-Cage-04 <-> Wrapping_Station\",\n      \"Wrapping_Station <-> Scale_W&D\",\n      \"Scale_W&D <-> Lane-7\"\n    ]\n  }}\n}}\n{{state_descriptions}}: {{\n  \"inventory\": \"A mapping of item IDs to their current quantity and specific bin location (e.g., {{'SKU_001': {{'qty': 50, 'loc': 'A-101'}}).\",\n  \"active_orders\": \"A list of orders currently assigned for fulfillment, including item IDs and target quantities.\",\n  \"robot_status\": \"Details of the robot agent including 'current_location', 'battery_level', and 'carried_items'.\",\n  \"warehouse_map\": \"Connectivity graph or coordinate map of the warehouse zones/aisles.\"\n}}\n{action_set_definitions}: {\n  \"get_short_pick_log\": {\n    \"description\": \"Accesses the digital WMS Short-Pick Log to retrieve the specific item IDs and quantities that are missing for a given order.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"order_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique ID of the order to check (e.g., 'EDI-772-BOS').\"\n        }\n      },\n      \"required\": [\n        \"order_id\"\n      ]\n    },\n    \"example_output\": {\n      \"shortages\": [\n        {\n          \"sku\": \"SKU_005\",\n          \"missing_qty\": 2\n        }\n      ]\n    }\n  },\n  \"query_inventory_location\": {\n    \"description\": \"Queries the inventory system to find the current bin location and available quantity for a specific item SKU.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"item_id\": {\n          \"type\": \"string\",\n          \"description\": \"The SKU or item identifier.\"\n        }\n      },\n      \"required\": [\n        \"item_id\"\n      ]\n    },\n    \"example_output\": {\n      \"loc\": \"A-202\",\n      \"qty\": 45\n    }\n  },\n  \"navigate_to\": {\n    \"description\": \"Commands the agent/robot to move to a specific coordinate or named station within the warehouse map.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"target_location\": {\n          \"type\": \"string\",\n          \"description\": \"The destination bin code or station name (e.g., 'A-202', 'Wrapping_Station', 'Scale_W&D').\"\n        }\n      },\n      \"required\": [\n        \"target_location\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"success\",\n      \"current_position\": \"Wrapping_Station\"\n    }\n  },\n  \"pick_item\": {\n    \"description\": \"Instructs the agent to pick a specific quantity of an item from its current location into its carrying unit.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"item_id\": {\n          \"type\": \"string\",\n          \"description\": \"The SKU to be picked.\"\n        },\n        \"quantity\": {\n          \"type\": \"integer\",\n          \"description\": \"The number of units to retrieve.\"\n        }\n      },\n      \"required\": [\n        \"item_id\",\n        \"quantity\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"picked\",\n      \"total_carried\": 2\n    }\n  },\n  \"consolidate_pallet\": {\n    \"description\": \"Triggers the palletization process, applying specific stacking and safety standards.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"order_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the order being consolidated.\"\n        },\n        \"ti_hi_standard\": {\n          \"type\": \"boolean\",\n          \"description\": \"If true, apply Tier-High safety stacking standards.\"\n        },\n        \"protect_fragile\": {\n          \"type\": \"boolean\",\n          \"description\": \"If true, ensures fragile items are positioned and protected correctly.\"\n        }\n      },\n      \"required\": [\n        \"order_id\",\n        \"ti_hi_standard\",\n        \"protect_fragile\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"pallet_ready\",\n      \"pallet_id\": \"P-772\"\n    }\n  },\n  \"weigh_and_dim_pallet\": {\n    \"description\": \"Uses the Weigh & Dim station to measure the final weight and physical dimensions of the pallet.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"order_id\": {\n          \"type\": \"string\",\n          \"description\": \"The order ID associated with the pallet.\"\n        }\n      },\n      \"required\": [\n        \"order_id\"\n      ]\n    },\n    \"example_output\": {\n      \"measured_weight_lbs\": 1245,\n      \"is_verified\": true\n    }\n  },\n  \"get_outbound_lane\": {\n    \"description\": \"Retrieves the specific outbound lane identifier for the carrier assigned to the order.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"order_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier of the order.\"\n        }\n      },\n      \"required\": [\n        \"order_id\"\n      ]\n    },\n    \"example_output\": {\n      \"lane_id\": \"LANE_B_SOUTH\"\n    }\n  },\n  \"stage_pallet\": {\n    \"description\": \"Drops the consolidated pallet at the specified outbound lane for carrier pickup.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"order_id\": {\n          \"type\": \"string\"\n        },\n        \"lane_id\": {\n          \"type\": \"string\"\n        }\n      },\n      \"required\": [\n        \"order_id\",\n        \"lane_id\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"finalized\",\n      \"location\": \"LANE_B_SOUTH\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_short_pick_log",
+      "description": "Accesses the digital WMS Short-Pick Log to retrieve the specific item IDs and quantities that are missing for a given order.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "order_id": {
+            "type": "string",
+            "description": "The unique ID of the order to check (e.g., 'EDI-772-BOS')."
+          }
+        },
+        "required": [
+          "order_id"
+        ]
+      },
+      "example_output": {
+        "shortages": [
+          {
+            "sku": "SKU_005",
+            "missing_qty": 2
+          }
+        ]
+      }
+    },
+    {
+      "name": "query_inventory_location",
+      "description": "Queries the inventory system to find the current bin location and available quantity for a specific item SKU.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "item_id": {
+            "type": "string",
+            "description": "The SKU or item identifier."
+          }
+        },
+        "required": [
+          "item_id"
+        ]
+      },
+      "example_output": {
+        "loc": "A-202",
+        "qty": 45
+      }
+    },
+    {
+      "name": "navigate_to",
+      "description": "Commands the agent/robot to move to a specific coordinate or named station within the warehouse map.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "target_location": {
+            "type": "string",
+            "description": "The destination bin code or station name (e.g., 'A-202', 'Wrapping_Station', 'Scale_W&D')."
+          }
+        },
+        "required": [
+          "target_location"
+        ]
+      },
+      "example_output": {
+        "status": "success",
+        "current_position": "Wrapping_Station"
+      }
+    },
+    {
+      "name": "pick_item",
+      "description": "Instructs the agent to pick a specific quantity of an item from its current location into its carrying unit.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "item_id": {
+            "type": "string",
+            "description": "The SKU to be picked."
+          },
+          "quantity": {
+            "type": "integer",
+            "description": "The number of units to retrieve."
+          }
+        },
+        "required": [
+          "item_id",
+          "quantity"
+        ]
+      },
+      "example_output": {
+        "status": "picked",
+        "total_carried": 2
+      }
+    },
+    {
+      "name": "consolidate_pallet",
+      "description": "Triggers the palletization process, applying specific stacking and safety standards.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "order_id": {
+            "type": "string",
+            "description": "The ID of the order being consolidated."
+          },
+          "ti_hi_standard": {
+            "type": "boolean",
+            "description": "If true, apply Tier-High safety stacking standards."
+          },
+          "protect_fragile": {
+            "type": "boolean",
+            "description": "If true, ensures fragile items are positioned and protected correctly."
+          }
+        },
+        "required": [
+          "order_id",
+          "ti_hi_standard",
+          "protect_fragile"
+        ]
+      },
+      "example_output": {
+        "status": "pallet_ready",
+        "pallet_id": "P-772"
+      }
+    },
+    {
+      "name": "weigh_and_dim_pallet",
+      "description": "Uses the Weigh & Dim station to measure the final weight and physical dimensions of the pallet.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "order_id": {
+            "type": "string",
+            "description": "The order ID associated with the pallet."
+          }
+        },
+        "required": [
+          "order_id"
+        ]
+      },
+      "example_output": {
+        "measured_weight_lbs": 1245,
+        "is_verified": true
+      }
+    },
+    {
+      "name": "get_outbound_lane",
+      "description": "Retrieves the specific outbound lane identifier for the carrier assigned to the order.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "order_id": {
+            "type": "string",
+            "description": "The unique identifier of the order."
+          }
+        },
+        "required": [
+          "order_id"
+        ]
+      },
+      "example_output": {
+        "lane_id": "LANE_B_SOUTH"
+      }
+    },
+    {
+      "name": "stage_pallet",
+      "description": "Drops the consolidated pallet at the specified outbound lane for carrier pickup.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "order_id": {
+            "type": "string"
+          },
+          "lane_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "order_id",
+          "lane_id"
+        ]
+      },
+      "example_output": {
+        "status": "finalized",
+        "location": "LANE_B_SOUTH"
+      }
+    }
+  ],
+  "state_description": {
+    "inventory": "A mapping of item IDs to their current quantity and specific bin location (e.g., {'SKU_001': {'qty': 50, 'loc': 'A-101'}}).",
+    "active_orders": "A list of orders currently assigned for fulfillment, including item IDs and target quantities.",
+    "robot_status": "Details of the robot agent including 'current_location', 'battery_level', and 'carried_items'.",
+    "warehouse_map": "Connectivity graph or coordinate map of the warehouse zones/aisles."
+  },
+  "task_initial_state": {
+    "inventory": {
+      "SKU-HVY-101": {
+        "name": "Cast Iron Pump Housings",
+        "qty": 0,
+        "loc": "Aisle-A-10",
+        "weight_per_case": 50,
+        "crushable": false
+      },
+      "SKU-FGL-202": {
+        "name": "Precision Sensors",
+        "qty": 50,
+        "loc": "High-Value-Cage-04",
+        "weight_per_case": 20,
+        "crushable": true
+      }
+    },
+    "active_orders": [
+      {
+        "order_id": "EDI-772-BOS",
+        "customer": "Boston Industrial",
+        "status": "Shortage_Flagged",
+        "required_items": [
+          {
+            "sku": "SKU-HVY-101",
+            "qty": 20
+          },
+          {
+            "sku": "SKU-FGL-202",
+            "qty": 10
+          }
+        ],
+        "carrier": "Old Dominion",
+        "target_lane": "Lane-7"
+      }
+    ],
+    "robot_status": {
+      "current_location": "Aisle-A-10",
+      "battery_level": 85,
+      "carried_items": [
+        {
+          "item_id": "GMA_PALLET_042",
+          "type": "GMA_Pallet_Grade_A",
+          "weight": 45,
+          "contents": [
+            {
+              "sku": "SKU-HVY-101",
+              "qty": 20,
+              "weight": 1000
+            }
+          ]
+        }
+      ]
+    },
+    "warehouse_map": {
+      "nodes": {
+        "Aisle-A-10": "Storage zone for heavy industrial parts.",
+        "WMS_Terminal_Alpha": {
+          "description": "Central data terminal access point.",
+          "logs": {
+            "Short-Pick_Incident_Log": "Incident ID: 4492. Order: EDI-772-BOS. Missing Item: 10 units of SKU-FGL-202. Status: Replenished to High-Value-Cage-04."
+          }
+        },
+        "High-Value-Cage-04": "Secure storage for electronics and fragile sensors.",
+        "Wrapping_Station": "Automated stretch wrap area.",
+        "Scale_W&D": "Weight and Dimensional verification station.",
+        "Lane-7": "Outbound staging lane for Old Dominion Freight Lines."
+      },
+      "connectivity": [
+        "Aisle-A-10 <-> WMS_Terminal_Alpha",
+        "WMS_Terminal_Alpha <-> High-Value-Cage-04",
+        "High-Value-Cage-04 <-> Wrapping_Station",
+        "Wrapping_Station <-> Scale_W&D",
+        "Scale_W&D <-> Lane-7"
+      ]
+    }
+  }
+}

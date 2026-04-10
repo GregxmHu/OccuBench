@@ -1,0 +1,197 @@
+{
+  "environment_name": "env_75c98cdf57b2",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: Based on the current internal state $s_t$ and the action $a_t$ provided by the Agent, simulate the internal environment evolution and predict the resulting observation $o_{{t+1}}$ for the General Ledger Reconciliation process.\n- **Emphasis**: You are a simulator of the financial ledger environment. You do not perform real-world accounting; you calculate and return the consequences of actions based on financial logic, ensuring state consistency across the reconciliation lifecycle.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions between the World Model and the Agent must maintain rigorous context consistency. Every adjustment, matching operation, or flagging of a discrepancy must persist in the internal state and influence future observations (e.g., changing the 'unreconciled_balance').\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. This JSON contains:\n- `\"name\"`: The name of the action function (e.g., `match_transactions`, `create_adjustment_journal`).\n- `\"arguments\"`: Parameter names and values required by that function.\n\nYou must parse this JSON, update the internal state accordingly, and generate the corresponding observation.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\n- If an action references a non-existent transaction ID, return: `{{\"error\": \"Transaction ID [ID] not found\"}}`.\n- If a 'match' action is attempted on entries with unequal amounts without a specified variance reason, return an error or a specific discrepancy observation as defined by the action logic.\n- Do not fabricate data; if the input is malformed, return a structured error.\n\n##### Output Assembly\nFor every action function call, you must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition.\n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, `new_state`, or any hidden variables. You are the maintainer of the state; the Agent only sees the `observation` (the function return value). Do not output the state update text.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to specified JSON and text formats.\n- **Factuality**: Ensure accounting logic (Debits/Credits, Balance updates) is mathematically accurate.\n- **Consistency**: If a transaction is marked as 'reconciled', it must remain 'reconciled' in subsequent steps unless an 'unmatch' action is performed.\n- **Realism**: Simulated behaviors must align with standard financial accounting practices and reconciliation workflows.\n- **Quality**: Observations should be clear, providing specific IDs and values where applicable.\n- **Encapsulation**: Strictly hide the internal state structure from the output. Only expose information that is explicitly returned by the action function.\n{{initial_state}}: {{\n  \"general_ledger_entries\": [\n    {{\n      \"id\": \"GL-HOL-001\",\n      \"date\": \"2023-12-01\",\n      \"description\": \"Holiday-Main POS Batch - Corporate Retail\",\n      \"amount\": 50000.0,\n      \"account\": \"Merchant Clearing Asset\",\n      \"type\": \"debit\",\n      \"status\": \"LOCKED_BY_AUDIT_SERVICE\",\n      \"metadata\": \"High-volume flag: Requires Preliminary Verification call before reconciliation.\"\n    }}\n  ],\n  \"sub_ledger_entries\": [\n    {{\n      \"id\": \"BNK-ADY-992\",\n      \"date\": \"2023-12-03\",\n      \"description\": \"NET SETTLEMENT ADYEN VISA/MC\",\n      \"amount\": 37050.0,\n      \"type\": \"credit\",\n      \"processor\": \"Adyen\"\n    }},\n    {{\n      \"id\": \"BNK-AMX-441\",\n      \"date\": \"2023-12-04\",\n      \"description\": \"NET SETTLEMENT AMEX DIRECT\",\n      \"amount\": 11387.0,\n      \"type\": \"credit\",\n      \"processor\": \"American Express\"\n    }}\n  ],\n  \"matched_pairs\": [],\n  \"adjustments_log\": [],\n  \"reconciliation_summary\": {{\n    \"ledger_total\": 50000.0,\n    \"statement_total\": 48437.0,\n    \"unreconciled_difference\": 1563.0\n  }}\n}}\n{{state_descriptions}}: {{\n  \"general_ledger_entries\": \"List of transaction records currently recorded in the internal accounting system.\",\n  \"sub_ledger_entries\": \"List of transaction records from external sources (e.g., bank statements, subsidiary systems) to be reconciled.\",\n  \"matched_pairs\": \"Mapping of IDs between general_ledger_entries and sub_ledger_entries that have been successfully reconciled.\",\n  \"adjustments_log\": \"A log of journal entries created to resolve discrepancies found during reconciliation.\",\n  \"reconciliation_summary\": \"The current calculated totals including ledger balance, statement balance, and variance.\"\n}}\n{action_set_definitions}: {\n  \"search_ledger\": {\n    \"description\": \"Searches for transaction records in either the General Ledger (internal) or the Sub-Ledger (bank/external). Use this to find entry IDs and amounts.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"ledger_type\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"general_ledger\",\n            \"sub_ledger\"\n          ],\n          \"description\": \"The specific ledger to query.\"\n        },\n        \"search_term\": {\n          \"type\": \"string\",\n          \"description\": \"The keyword or batch name to search for (e.g., 'Holiday-Main', 'Adyen', 'Amex').\"\n        }\n      },\n      \"required\": [\n        \"ledger_type\",\n        \"search_term\"\n      ]\n    },\n    \"example_output\": {\n      \"entries\": [\n        {\n          \"id\": \"GL-9981\",\n          \"description\": \"Holiday-Main POS Batch\",\n          \"amount\": 50000.0,\n          \"status\": \"unreconciled\"\n        }\n      ]\n    }\n  },\n  \"acquire_record_lock\": {\n    \"description\": \"Locks a high-value transaction record to prevent concurrent modification during reconciliation, adhering to internal control protocols.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"entry_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique ID of the ledger entry to lock.\"\n        }\n      },\n      \"required\": [\n        \"entry_id\"\n      ]\n    },\n    \"example_output\": {\n      \"lock_status\": \"active\",\n      \"lock_id\": \"LCK-552\"\n    }\n  },\n  \"link_transactions\": {\n    \"description\": \"Pairs internal General Ledger entries with external Sub-Ledger entries to mark them as reconciled.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"gl_entry_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the General Ledger entry.\"\n        },\n        \"sub_ledger_entry_ids\": {\n          \"type\": \"array\",\n          \"items\": {\n            \"type\": \"string\"\n          },\n          \"description\": \"A list of IDs from the sub-ledger (bank deposits) to match against the GL entry.\"\n        }\n      },\n      \"required\": [\n        \"gl_entry_id\",\n        \"sub_ledger_entry_ids\"\n      ]\n    },\n    \"example_output\": {\n      \"matched_status\": \"success\",\n      \"matched_pairs_count\": 2\n    }\n  },\n  \"create_adjustment_entry\": {\n    \"description\": \"Creates a journal entry to record fees, chargebacks, or resolve variances in the reconciliation log.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"parent_gl_id\": {\n          \"type\": \"string\",\n          \"description\": \"The GL ID this adjustment is associated with.\"\n        },\n        \"amount\": {\n          \"type\": \"number\",\n          \"description\": \"The dollar amount of the adjustment.\"\n        },\n        \"category\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"Merchant Fee\",\n            \"Chargeback\",\n            \"Processing Error\"\n          ],\n          \"description\": \"The nature of the adjustment.\"\n        },\n        \"description\": {\n          \"type\": \"string\",\n          \"description\": \"Detailed explanation for the audit trail.\"\n        }\n      },\n      \"required\": [\n        \"parent_gl_id\",\n        \"amount\",\n        \"category\",\n        \"description\"\n      ]\n    },\n    \"example_output\": {\n      \"adjustment_id\": \"ADJ-404\",\n      \"status\": \"posted\"\n    }\n  },\n  \"get_reconciliation_summary\": {\n    \"description\": \"Retrieves the current balance and variance for a specific batch after matches and adjustments.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"gl_entry_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique ID of the General Ledger entry.\"\n        }\n      },\n      \"required\": [\n        \"gl_entry_id\"\n      ]\n    },\n    \"example_output\": {\n      \"ledger_balance\": 50000.0,\n      \"matched_subtotal\": 48500.0,\n      \"adjustments_total\": 1500.0,\n      \"variance\": 0.0\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "search_ledger",
+      "description": "Searches for transaction records in either the General Ledger (internal) or the Sub-Ledger (bank/external). Use this to find entry IDs and amounts.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "ledger_type": {
+            "type": "string",
+            "enum": [
+              "general_ledger",
+              "sub_ledger"
+            ],
+            "description": "The specific ledger to query."
+          },
+          "search_term": {
+            "type": "string",
+            "description": "The keyword or batch name to search for (e.g., 'Holiday-Main', 'Adyen', 'Amex')."
+          }
+        },
+        "required": [
+          "ledger_type",
+          "search_term"
+        ]
+      },
+      "example_output": {
+        "entries": [
+          {
+            "id": "GL-9981",
+            "description": "Holiday-Main POS Batch",
+            "amount": 50000.0,
+            "status": "unreconciled"
+          }
+        ]
+      }
+    },
+    {
+      "name": "acquire_record_lock",
+      "description": "Locks a high-value transaction record to prevent concurrent modification during reconciliation, adhering to internal control protocols.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "entry_id": {
+            "type": "string",
+            "description": "The unique ID of the ledger entry to lock."
+          }
+        },
+        "required": [
+          "entry_id"
+        ]
+      },
+      "example_output": {
+        "lock_status": "active",
+        "lock_id": "LCK-552"
+      }
+    },
+    {
+      "name": "link_transactions",
+      "description": "Pairs internal General Ledger entries with external Sub-Ledger entries to mark them as reconciled.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "gl_entry_id": {
+            "type": "string",
+            "description": "The ID of the General Ledger entry."
+          },
+          "sub_ledger_entry_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "A list of IDs from the sub-ledger (bank deposits) to match against the GL entry."
+          }
+        },
+        "required": [
+          "gl_entry_id",
+          "sub_ledger_entry_ids"
+        ]
+      },
+      "example_output": {
+        "matched_status": "success",
+        "matched_pairs_count": 2
+      }
+    },
+    {
+      "name": "create_adjustment_entry",
+      "description": "Creates a journal entry to record fees, chargebacks, or resolve variances in the reconciliation log.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "parent_gl_id": {
+            "type": "string",
+            "description": "The GL ID this adjustment is associated with."
+          },
+          "amount": {
+            "type": "number",
+            "description": "The dollar amount of the adjustment."
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "Merchant Fee",
+              "Chargeback",
+              "Processing Error"
+            ],
+            "description": "The nature of the adjustment."
+          },
+          "description": {
+            "type": "string",
+            "description": "Detailed explanation for the audit trail."
+          }
+        },
+        "required": [
+          "parent_gl_id",
+          "amount",
+          "category",
+          "description"
+        ]
+      },
+      "example_output": {
+        "adjustment_id": "ADJ-404",
+        "status": "posted"
+      }
+    },
+    {
+      "name": "get_reconciliation_summary",
+      "description": "Retrieves the current balance and variance for a specific batch after matches and adjustments.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "gl_entry_id": {
+            "type": "string",
+            "description": "The unique ID of the General Ledger entry."
+          }
+        },
+        "required": [
+          "gl_entry_id"
+        ]
+      },
+      "example_output": {
+        "ledger_balance": 50000.0,
+        "matched_subtotal": 48500.0,
+        "adjustments_total": 1500.0,
+        "variance": 0.0
+      }
+    }
+  ],
+  "state_description": {
+    "general_ledger_entries": "List of transaction records currently recorded in the internal accounting system.",
+    "sub_ledger_entries": "List of transaction records from external sources (e.g., bank statements, subsidiary systems) to be reconciled.",
+    "matched_pairs": "Mapping of IDs between general_ledger_entries and sub_ledger_entries that have been successfully reconciled.",
+    "adjustments_log": "A log of journal entries created to resolve discrepancies found during reconciliation.",
+    "reconciliation_summary": "The current calculated totals including ledger balance, statement balance, and variance."
+  },
+  "task_initial_state": {
+    "general_ledger_entries": [
+      {
+        "id": "GL-HOL-001",
+        "date": "2023-12-01",
+        "description": "Holiday-Main POS Batch - Corporate Retail",
+        "amount": 50000.0,
+        "account": "Merchant Clearing Asset",
+        "type": "debit",
+        "status": "LOCKED_BY_AUDIT_SERVICE",
+        "metadata": "High-volume flag: Requires Preliminary Verification call before reconciliation."
+      }
+    ],
+    "sub_ledger_entries": [
+      {
+        "id": "BNK-ADY-992",
+        "date": "2023-12-03",
+        "description": "NET SETTLEMENT ADYEN VISA/MC",
+        "amount": 37050.0,
+        "type": "credit",
+        "processor": "Adyen"
+      },
+      {
+        "id": "BNK-AMX-441",
+        "date": "2023-12-04",
+        "description": "NET SETTLEMENT AMEX DIRECT",
+        "amount": 11387.0,
+        "type": "credit",
+        "processor": "American Express"
+      }
+    ],
+    "matched_pairs": [],
+    "adjustments_log": [],
+    "reconciliation_summary": {
+      "ledger_total": 50000.0,
+      "statement_total": 48437.0,
+      "unreconciled_difference": 1563.0
+    }
+  }
+}

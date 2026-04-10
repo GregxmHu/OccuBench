@@ -1,0 +1,197 @@
+{
+  "environment_name": "env_2e8c3f1f2d19",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: You act as the simulation engine for an Escalation Workflow Management environment. Based on the current internal state $s_t$ and the Agent's action $a_t$, you must simulate the internal state transition $s_{{t+1}}$ and predict the observation $o_{{t+1}}$ (return values) obtained by the Agent.\n- **Emphasis**: You are not the Agent performing the work. You are the environment itself. Your goal is to provide realistic, self-consistent responses that reflect how a ticket management and escalation system would react to specific operations.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nYou must maintain the continuity of the workflow. If a ticket is escalated or assigned in a previous turn, that state must persist in your internal logic for all subsequent turns. All interactions must be logically consistent with the history of the ticket lifecycle.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. You must parse this JSON to determine the intended state transition.\nExample Input:\n```json\n{{\n \"name\": \"escalate_ticket\",\n \"arguments\": {{\n    \"ticket_id\": \"TICKET-1024\",\n    \"reason\": \"Technical complexity exceeds Tier 1 scope\"\n  }}\n}}\n```\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\n- If an action refers to a non-existent `ticket_id`, return an error observation: `{{\"error\": \"Ticket ID not found\"}}`.\n- If an action is invalid given the current state (e.g., trying to 'resolve' an already 'closed' ticket), return a descriptive error: `{{\"error\": \"Invalid state transition: cannot resolve a closed ticket\"}}`.\n- Do not fabricate data; if parameters are missing or invalid, return the appropriate error message defined by the system logic.\n\n##### Output Assembly\nFor every action call, return a structured JSON object containing **ONLY** the return fields declared in that action function's definition. \n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, `new_state`, or any hidden variables like the entire ticket database. You must strictly hide the internal state structure from the output. Only expose the specific observation (return value) resulting from the action.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to the JSON structure for all outputs.\n- **Factuality**: Simulate realistic workflow outcomes (e.g., timestamps should progress logically, IDs must remain constant).\n- **Consistency**: If a ticket's priority is high, the escalation logic should reflect that urgency in its simulated behavior.\n- **Realism**: Simulate system-level constraints like agent availability or SLA (Service Level Agreement) breaches if implied by the state.\n- **Quality**: Ensure error messages and observations are clear and professional.\n- **Encapsulation**: Never reveal the \"backend\" state JSON in your response to the Agent. Only provide the requested observation.\n{{initial_state}}: {{\n  \"tickets\": [\n    {{\n      \"ticket_id\": \"INC-9921\",\n      \"status\": \"In_Progress\",\n      \"priority\": \"Urgent\",\n      \"assigned_agent\": \"Sarah_London\",\n      \"tier\": 2,\n      \"created_at\": \"2024-01-01T14:30:00Z\"\n    }}\n  ],\n  \"agent_roster\": {{\n    \"Sarah_London\": {{\n      \"availability\": \"Shift Ends 17:00Z\",\n      \"tier\": 2,\n      \"region\": \"EMEA\",\n      \"specialty\": \"Systems\"\n    }},\n    \"Raj_NYC\": {{\n      \"availability\": \"Available (Shift Starts 17:00Z)\",\n      \"tier\": 2,\n      \"region\": \"NA\",\n      \"specialty\": \"Database\"\n    }},\n    \"Chen_Singapore\": {{\n      \"availability\": \"Offline\",\n      \"tier\": 2,\n      \"region\": \"APAC\",\n      \"specialty\": \"Database\"\n    }},\n    \"MOC_Global\": {{\n      \"availability\": \"On-Call\",\n      \"tier\": 3,\n      \"region\": \"ALL\",\n      \"specialty\": \"Management\"\n    }}\n  }},\n  \"system_time\": \"2024-01-01T16:45:00Z\"\n}}\n{{state_descriptions}}: {{\n  \"tickets\": \"A list of active and historical tickets in the system.\",\n  \"agent_roster\": \"Mapping of agent IDs to their availability and tier level.\",\n  \"system_time\": \"The current simulation clock time.\"\n}}\n{action_set_definitions}: {\n  \"get_system_clock\": {\n    \"description\": \"Retrieves the current simulation time to monitor deadlines.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"current_time\": \"16:30:00Z\"\n    }\n  },\n  \"get_ticket_details\": {\n    \"description\": \"Retrieves comprehensive information about a specific incident ticket, including priority, history, and current logs.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"ticket_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the ticket (e.g., INC-9921).\"\n        }\n      },\n      \"required\": [\n        \"ticket_id\"\n      ]\n    },\n    \"example_output\": {\n      \"priority\": \"Urgent\",\n      \"current_assignee\": \"LDN_Lead_01\",\n      \"description\": \"Critical database failure in production cluster.\",\n      \"logs\": [\n        \"Memory leak detected\",\n        \"Traffic diverted to standby\"\n      ]\n    }\n  },\n  \"query_agent_roster\": {\n    \"description\": \"Filters the roster to find available agents based on region, shift status, and technical tier level.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"region\": {\n          \"type\": \"string\",\n          \"description\": \"The geographical support region (e.g., 'North America').\"\n        },\n        \"min_tier\": {\n          \"type\": \"integer\",\n          \"description\": \"The minimum technical tier required for the incident.\"\n        }\n      },\n      \"required\": [\n        \"region\",\n        \"min_tier\"\n      ]\n    },\n    \"example_output\": {\n      \"agents\": [\n        {\n          \"agent_id\": \"Raj_NYC\",\n          \"tier\": 2,\n          \"status\": \"Available\",\n          \"specialty\": \"Database\",\n          \"shift_start\": \"17:00:00Z\"\n        }\n      ]\n    }\n  },\n  \"post_ticket_csa\": {\n    \"description\": \"Updates a ticket with a Current State Assessment (CSA) report required for handoff.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"ticket_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ticket ID.\"\n        },\n        \"csa_summary\": {\n          \"type\": \"string\",\n          \"description\": \"Detailed technical summary of the current state and steps taken.\"\n        }\n      },\n      \"required\": [\n        \"ticket_id\",\n        \"csa_summary\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"Success\",\n      \"timestamp\": \"16:50:00Z\"\n    }\n  },\n  \"assign_ticket\": {\n    \"description\": \"Formally changes the ownership of a ticket to a new agent.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"ticket_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ticket ID.\"\n        },\n        \"target_agent_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the agent receiving the ticket.\"\n        }\n      },\n      \"required\": [\n        \"ticket_id\",\n        \"target_agent_id\"\n      ]\n    },\n    \"example_output\": {\n      \"new_assignee\": \"Raj_NYC\",\n      \"transition_status\": \"Confirmed\"\n    }\n  },\n  \"log_protocol_compliance\": {\n    \"description\": \"Finalizes the handoff by logging that all high-severity/FTS protocols have been satisfied.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"ticket_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ticket ID.\"\n        },\n        \"protocol_checklist\": {\n          \"type\": \"array\",\n          \"items\": {\n            \"type\": \"string\"\n          },\n          \"description\": \"List of completed FTS requirements.\"\n        }\n      },\n      \"required\": [\n        \"ticket_id\",\n        \"protocol_checklist\"\n      ]\n    },\n    \"example_output\": {\n      \"handoff_status\": \"Complete\",\n      \"verified_by_system\": true\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_system_clock",
+      "description": "Retrieves the current simulation time to monitor deadlines.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "current_time": "16:30:00Z"
+      }
+    },
+    {
+      "name": "get_ticket_details",
+      "description": "Retrieves comprehensive information about a specific incident ticket, including priority, history, and current logs.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "ticket_id": {
+            "type": "string",
+            "description": "The unique identifier for the ticket (e.g., INC-9921)."
+          }
+        },
+        "required": [
+          "ticket_id"
+        ]
+      },
+      "example_output": {
+        "priority": "Urgent",
+        "current_assignee": "LDN_Lead_01",
+        "description": "Critical database failure in production cluster.",
+        "logs": [
+          "Memory leak detected",
+          "Traffic diverted to standby"
+        ]
+      }
+    },
+    {
+      "name": "query_agent_roster",
+      "description": "Filters the roster to find available agents based on region, shift status, and technical tier level.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "region": {
+            "type": "string",
+            "description": "The geographical support region (e.g., 'North America')."
+          },
+          "min_tier": {
+            "type": "integer",
+            "description": "The minimum technical tier required for the incident."
+          }
+        },
+        "required": [
+          "region",
+          "min_tier"
+        ]
+      },
+      "example_output": {
+        "agents": [
+          {
+            "agent_id": "Raj_NYC",
+            "tier": 2,
+            "status": "Available",
+            "specialty": "Database",
+            "shift_start": "17:00:00Z"
+          }
+        ]
+      }
+    },
+    {
+      "name": "post_ticket_csa",
+      "description": "Updates a ticket with a Current State Assessment (CSA) report required for handoff.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "ticket_id": {
+            "type": "string",
+            "description": "The ticket ID."
+          },
+          "csa_summary": {
+            "type": "string",
+            "description": "Detailed technical summary of the current state and steps taken."
+          }
+        },
+        "required": [
+          "ticket_id",
+          "csa_summary"
+        ]
+      },
+      "example_output": {
+        "status": "Success",
+        "timestamp": "16:50:00Z"
+      }
+    },
+    {
+      "name": "assign_ticket",
+      "description": "Formally changes the ownership of a ticket to a new agent.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "ticket_id": {
+            "type": "string",
+            "description": "The ticket ID."
+          },
+          "target_agent_id": {
+            "type": "string",
+            "description": "The ID of the agent receiving the ticket."
+          }
+        },
+        "required": [
+          "ticket_id",
+          "target_agent_id"
+        ]
+      },
+      "example_output": {
+        "new_assignee": "Raj_NYC",
+        "transition_status": "Confirmed"
+      }
+    },
+    {
+      "name": "log_protocol_compliance",
+      "description": "Finalizes the handoff by logging that all high-severity/FTS protocols have been satisfied.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "ticket_id": {
+            "type": "string",
+            "description": "The ticket ID."
+          },
+          "protocol_checklist": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "List of completed FTS requirements."
+          }
+        },
+        "required": [
+          "ticket_id",
+          "protocol_checklist"
+        ]
+      },
+      "example_output": {
+        "handoff_status": "Complete",
+        "verified_by_system": true
+      }
+    }
+  ],
+  "state_description": {
+    "tickets": "A list of active and historical tickets in the system.",
+    "agent_roster": "Mapping of agent IDs to their availability and tier level.",
+    "system_time": "The current simulation clock time."
+  },
+  "task_initial_state": {
+    "tickets": [
+      {
+        "ticket_id": "INC-9921",
+        "status": "In_Progress",
+        "priority": "Urgent",
+        "assigned_agent": "Sarah_London",
+        "tier": 2,
+        "created_at": "2024-01-01T14:30:00Z"
+      }
+    ],
+    "agent_roster": {
+      "Sarah_London": {
+        "availability": "Shift Ends 17:00Z",
+        "tier": 2,
+        "region": "EMEA",
+        "specialty": "Systems"
+      },
+      "Raj_NYC": {
+        "availability": "Available (Shift Starts 17:00Z)",
+        "tier": 2,
+        "region": "NA",
+        "specialty": "Database"
+      },
+      "Chen_Singapore": {
+        "availability": "Offline",
+        "tier": 2,
+        "region": "APAC",
+        "specialty": "Database"
+      },
+      "MOC_Global": {
+        "availability": "On-Call",
+        "tier": 3,
+        "region": "ALL",
+        "specialty": "Management"
+      }
+    },
+    "system_time": "2024-01-01T16:45:00Z"
+  }
+}

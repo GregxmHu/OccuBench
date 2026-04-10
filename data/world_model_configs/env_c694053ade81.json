@@ -1,0 +1,234 @@
+{
+  "environment_name": "env_c694053ade81",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: You act as a high-fidelity simulator for a Telescope Observation Scheduling environment. Based on the current internal state $s_t$ and the Agent's action $a_t$, you must simulate the physical and logical evolution of the observatory and predict the resulting observation $o_{{t+1}}$ obtained by the Agent.\n- **Emphasis**: You do not perform real astronomical observations. Your task is to calculate state transitions (e.g., time elapsed during slewing, changes in telescope orientation, success/failure of exposures) and generate the data the telescope's hardware would return.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation tracking the telescope's hardware status, celestial positioning, and environmental conditions. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nYou must maintain perfect continuity. Every action modifies the internal state (e.g., an exposure action increments the system clock). You must ensure that subsequent actions reflect these changes (e.g., if the telescope was moved to a specific coordinate in step $t$, it remains there at step $t+1$ unless moved again).\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` returned for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. You must parse this JSON to determine the intended operation. \nFormat:\n- `\"name\"`: The action function name.\n- `\"arguments\"`: A dictionary of parameters.\n\nExample:\n```json\n{{\n \"name\": \"slew_to_coordinates\",\n \"arguments\": {{\n    \"ra\": \"12h 30m 00s\",\n    \"dec\": \"+15d 00m 00s\"\n  }}\n}}\n```\n\n#### Environment Behavior Modeling\n- **Physical Logic**: Simulate realistic constraints. For example, moving a heavy telescope from one part of the sky to another takes time; attempting to observe an object below the horizon or while the dome is closed should result in specific error observations.\n- **Temporal Evolution**: Every action has a time cost. Update the `current_time` state field based on the duration of slewing, exposure, or calibration.\n\n##### Error Handling & Edge Cases\nIf the Agent provides invalid parameters (e.g., out-of-range coordinates), calls undefined actions, or attempts an operation that violates hardware safety (e.g., opening the dome during high winds), return a structured error message:\n`{{\"error\": \"Description of the specific failure\"}}`.\nDo not fabricate successful results for failed operations.\n\n##### Output Assembly\nFor every action call, return a structured JSON object containing **ONLY** the return fields declared in that action function's definition.\n\n**CRITICAL CONSTRAINT**: Your response must **NOT** include the updated internal state, the `new_state` object, or any private variables. The state update is handled internally by your simulation. The Agent must only receive the observation (the return values of the action).\n\n### 4. Key Principles\n- **Format**: Strictly adhere to JSON for all inputs and outputs.\n- **Factuality**: Use astronomical logic; do not simulate stars being visible if the weather state is 'stormy'.\n- **Consistency**: Ensure that if an instrument is cooling down, it stays warm until sufficient time has passed in the simulation.\n- **Realism**: Telescope movements and sensor readouts should follow realistic patterns.\n- **Encapsulation**: Strictly hide the internal state structure from the output. Only expose information that is explicitly returned by the action function.\n{{initial_state}}: {{\n  \"current_time\": \"2025-05-20T21:40:00Z\",\n  \"telescope_azimuth\": 0.0,\n  \"telescope_altitude\": 90.0,\n  \"dome_status\": \"closed\",\n  \"active_filter\": \"V\",\n  \"ccd_temperature\": -50.0,\n  \"weather_visibility\": 0.95,\n  \"is_tracking\": false\n}}\n{{state_descriptions}}: {{\n  \"current_time\": \"The current UTC time in ISO 8601 format.\",\n  \"telescope_azimuth\": \"Current horizontal angle of the telescope in degrees (0-360).\",\n  \"telescope_altitude\": \"Current vertical angle of the telescope in degrees (0-90).\",\n  \"dome_status\": \"The status of the observatory dome ('open' or 'closed').\",\n  \"active_filter\": \"The optical filter currently in the light path (e.g., 'U', 'B', 'V', 'R', 'I').\",\n  \"ccd_temperature\": \"Current temperature of the CCD sensor in degrees Celsius.\",\n  \"weather_visibility\": \"Atmospheric transparency score from 0.0 (opaque) to 1.0 (perfectly clear).\",\n  \"is_tracking\": \"Whether the telescope is currently compensating for Earth's rotation.\"\n}}\n{action_set_definitions}: {\n  \"get_lgs_queue\": {\n    \"description\": \"Retrieves the full list of scheduled targets for the night from the Laser Guide Star queue with priority rankings.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"targets\": [\n        {\n          \"id\": \"TGT-992\",\n          \"priority\": 1\n        },\n        {\n          \"id\": \"TGT-405\",\n          \"priority\": 2\n        }\n      ]\n    }\n  },\n  \"get_target_coordinates\": {\n    \"description\": \"Retrieves the Right Ascension (RA) and Declination (Dec) for a specific target ID.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"target_id\": {\n          \"type\": \"string\"\n        }\n      },\n      \"required\": [\n        \"target_id\"\n      ]\n    },\n    \"example_output\": {\n      \"ra\": \"12:45:00\",\n      \"dec\": \"+23:10:15\"\n    }\n  },\n  \"get_active_prm_windows\": {\n    \"description\": \"Queries the Predictive Avoidance Run Message for satellite transit windows crossing the specified coordinates.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"ra\": {\n          \"type\": \"string\"\n        },\n        \"dec\": {\n          \"type\": \"string\"\n        }\n      },\n      \"required\": [\n        \"ra\",\n        \"dec\"\n      ]\n    },\n    \"example_output\": {\n      \"windows\": [\n        {\n          \"start_utc\": \"2023-11-01T02:00:00Z\",\n          \"end_utc\": \"2023-11-01T02:00:45Z\"\n        }\n      ]\n    }\n  },\n  \"get_system_status\": {\n    \"description\": \"Retrieves current environmental state, internal clock drift vs GPS, and current UTC time.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"current_time_utc\": \"2023-11-01T01:50:00.000Z\",\n      \"clock_drift_ms\": 14.2,\n      \"dome_status\": \"closed\",\n      \"is_tracking\": false\n    }\n  },\n  \"sync_clock\": {\n    \"description\": \"Synchronizes the telescope's internal clock to within 10ms of GPS time.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"new_drift_ms\": 0.05\n    }\n  },\n  \"prepare_telescope\": {\n    \"description\": \"Sets the dome status, moves the telescope to coordinates, and enables tracking.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"ra\": {\n          \"type\": \"string\"\n        },\n        \"dec\": {\n          \"type\": \"string\"\n        },\n        \"dome\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"open\",\n            \"closed\"\n          ]\n        },\n        \"tracking\": {\n          \"type\": \"boolean\"\n        }\n      },\n      \"required\": [\n        \"ra\",\n        \"dec\",\n        \"dome\",\n        \"tracking\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"ready\"\n    }\n  },\n  \"set_laser_shutter\": {\n    \"description\": \"Physically controls the laser guide star safety shutter.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"state\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"open\",\n            \"closed\"\n          ]\n        }\n      },\n      \"required\": [\n        \"state\"\n      ]\n    },\n    \"example_output\": {\n      \"shutter_state\": \"closed\"\n    }\n  },\n  \"set_ao_system\": {\n    \"description\": \"Toggles the Adaptive Optics loop to prevent deformable mirror saturation.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"mode\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"active\",\n            \"paused\"\n          ]\n        }\n      },\n      \"required\": [\n        \"mode\"\n      ]\n    },\n    \"example_output\": {\n      \"ao_status\": \"paused\"\n    }\n  },\n  \"perform_integration\": {\n    \"description\": \"Executes science integration for the specified number of seconds.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"seconds\": {\n          \"type\": \"number\"\n        }\n      },\n      \"required\": [\n        \"seconds\"\n      ]\n    },\n    \"example_output\": {\n      \"actual_duration\": 30.0\n    }\n  },\n  \"wait\": {\n    \"description\": \"Pauses agent operations until a specific UTC timestamp.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"until_utc\": {\n          \"type\": \"string\"\n        }\n      },\n      \"required\": [\n        \"until_utc\"\n      ]\n    },\n    \"example_output\": {\n      \"slept_until\": \"timestamp\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_lgs_queue",
+      "description": "Retrieves the full list of scheduled targets for the night from the Laser Guide Star queue with priority rankings.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "targets": [
+          {
+            "id": "TGT-992",
+            "priority": 1
+          },
+          {
+            "id": "TGT-405",
+            "priority": 2
+          }
+        ]
+      }
+    },
+    {
+      "name": "get_target_coordinates",
+      "description": "Retrieves the Right Ascension (RA) and Declination (Dec) for a specific target ID.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "target_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "target_id"
+        ]
+      },
+      "example_output": {
+        "ra": "12:45:00",
+        "dec": "+23:10:15"
+      }
+    },
+    {
+      "name": "get_active_prm_windows",
+      "description": "Queries the Predictive Avoidance Run Message for satellite transit windows crossing the specified coordinates.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "ra": {
+            "type": "string"
+          },
+          "dec": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "ra",
+          "dec"
+        ]
+      },
+      "example_output": {
+        "windows": [
+          {
+            "start_utc": "2023-11-01T02:00:00Z",
+            "end_utc": "2023-11-01T02:00:45Z"
+          }
+        ]
+      }
+    },
+    {
+      "name": "get_system_status",
+      "description": "Retrieves current environmental state, internal clock drift vs GPS, and current UTC time.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "current_time_utc": "2023-11-01T01:50:00.000Z",
+        "clock_drift_ms": 14.2,
+        "dome_status": "closed",
+        "is_tracking": false
+      }
+    },
+    {
+      "name": "sync_clock",
+      "description": "Synchronizes the telescope's internal clock to within 10ms of GPS time.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "new_drift_ms": 0.05
+      }
+    },
+    {
+      "name": "prepare_telescope",
+      "description": "Sets the dome status, moves the telescope to coordinates, and enables tracking.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "ra": {
+            "type": "string"
+          },
+          "dec": {
+            "type": "string"
+          },
+          "dome": {
+            "type": "string",
+            "enum": [
+              "open",
+              "closed"
+            ]
+          },
+          "tracking": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "ra",
+          "dec",
+          "dome",
+          "tracking"
+        ]
+      },
+      "example_output": {
+        "status": "ready"
+      }
+    },
+    {
+      "name": "set_laser_shutter",
+      "description": "Physically controls the laser guide star safety shutter.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "state": {
+            "type": "string",
+            "enum": [
+              "open",
+              "closed"
+            ]
+          }
+        },
+        "required": [
+          "state"
+        ]
+      },
+      "example_output": {
+        "shutter_state": "closed"
+      }
+    },
+    {
+      "name": "set_ao_system",
+      "description": "Toggles the Adaptive Optics loop to prevent deformable mirror saturation.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "mode": {
+            "type": "string",
+            "enum": [
+              "active",
+              "paused"
+            ]
+          }
+        },
+        "required": [
+          "mode"
+        ]
+      },
+      "example_output": {
+        "ao_status": "paused"
+      }
+    },
+    {
+      "name": "perform_integration",
+      "description": "Executes science integration for the specified number of seconds.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "seconds": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "seconds"
+        ]
+      },
+      "example_output": {
+        "actual_duration": 30.0
+      }
+    },
+    {
+      "name": "wait",
+      "description": "Pauses agent operations until a specific UTC timestamp.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "until_utc": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "until_utc"
+        ]
+      },
+      "example_output": {
+        "slept_until": "timestamp"
+      }
+    }
+  ],
+  "state_description": {
+    "current_time": "The current UTC time in ISO 8601 format.",
+    "telescope_azimuth": "Current horizontal angle of the telescope in degrees (0-360).",
+    "telescope_altitude": "Current vertical angle of the telescope in degrees (0-90).",
+    "dome_status": "The status of the observatory dome ('open' or 'closed').",
+    "active_filter": "The optical filter currently in the light path (e.g., 'U', 'B', 'V', 'R', 'I').",
+    "ccd_temperature": "Current temperature of the CCD sensor in degrees Celsius.",
+    "weather_visibility": "Atmospheric transparency score from 0.0 (opaque) to 1.0 (perfectly clear).",
+    "is_tracking": "Whether the telescope is currently compensating for Earth's rotation."
+  },
+  "task_initial_state": {
+    "current_time": "2025-05-20T21:40:00Z",
+    "telescope_azimuth": 0.0,
+    "telescope_altitude": 90.0,
+    "dome_status": "closed",
+    "active_filter": "V",
+    "ccd_temperature": -50.0,
+    "weather_visibility": 0.95,
+    "is_tracking": false
+  }
+}

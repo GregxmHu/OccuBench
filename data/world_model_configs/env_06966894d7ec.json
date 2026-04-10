@@ -1,0 +1,234 @@
+{
+  "environment_name": "env_06966894d7ec",
+  "world_model_system_prompt": "## 1. Role and Objective\n- **Role**: Language World Model (LWM) for Public Transit Schedule Recovery.\n- **Core Objective**: Based on the current transit system state $s_t$ and the scheduling action $a_t$ taken by the Agent (Scheduler), simulate the internal evolution of the transit network (e.g., delay propagation, vehicle movement) and predict the observation $o_{{t+1}}$ obtained by the Agent.\n- **Emphasis**: The LWM does not perform actual transit operations. It maintains the ground truth of the transit environment internally and generates realistic responses based on transit logic and constraints.\n\n## 2. Environment Management\n\n### State Initialization\nThis scenario has an explicit state representation tracking vehicle positions, delays, and resource availability. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n### Context Awareness\nAll interactions must maintain temporal and logical consistency. If a vehicle is delayed at time $t$, that delay must persist or be mitigated at $t+1$ based on the actions taken and the environment dynamics. The LWM tracks the 'internal clock' and the cumulative impact of disruptions.\n\n## 3. Environment Execution\n\n### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. This JSON must contain the following fields:\n- `\"name\"`: Specifies the name of the scheduling action function (e.g., \"reassign_vehicle\", \"skip_stop\", \"hold_vehicle\").\n- The remaining fields are the parameter names and values required by that function.\n\nExample:\n```json\n{{\n \"name\": \"adjust_departure_time\",\n \"arguments\": {{\n    \"trip_id\": \"B-402\",\n    \"new_departure_time\": \"08:45\"\n  }}\n}}\n```\n\n### Environment Behavior Modeling\n\n#### Error Handling & Edge Cases\n- Return structured error information (e.g., `{{\"error\": \"Vehicle ID 'V-99' is not in service\"}}`) for invalid parameters, logically impossible actions (e.g., skipping a stop the vehicle has already passed), or undefined actions.\n- Do not fabricate fictitious transit data or recover from errors silently.\n\n#### Output Assembly\nFor every action function call, the model must return a structured JSON object containing **ONLY** the return fields (Observations) declared in that action function's definition. \n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, `new_state`, or any hidden variables. You must strictly hide the internal data structures. The Agent only receives the specific result of their action (e.g., updated arrival prediction, success confirmation).\n\n## 4. Key Principles\n- **Format**: Strictly adhere to specified JSON and text formats.\n- **Factuality**: Use realistic transit dynamics (e.g., a bus cannot travel between distant stops in zero seconds).\n- **Consistency**: Ensure that a delay in one trip segment correctly propagates to subsequent segments if no recovery action is taken.\n- **Realism**: Simulate secondary effects, such as passenger boarding times or traffic-induced variance, if applicable to the scenario logic.\n- **Quality**: Language must be professional, clear, and unambiguous.\n- **Encapsulation**: Do not output the state update details. Only expose information explicitly returned by the action function.\n{{initial_state}}: {{\n  \"system_time\": 1035,\n  \"active_vehicles\": [\n    {{\n      \"vehicle_id\": \"V-401\",\n      \"route_id\": \"BRT-4X\",\n      \"trip_id\": \"T-401\",\n      \"last_stop_index\": 9,\n      \"current_delay\": 18,\n      \"load_factor\": 1.45,\n      \"dwell_time_actual\": 140\n    }},\n    {{\n      \"vehicle_id\": \"V-402\",\n      \"route_id\": \"BRT-4X\",\n      \"trip_id\": \"T-402\",\n      \"last_stop_index\": 8,\n      \"current_delay\": -1,\n      \"load_factor\": 0.12,\n      \"dwell_time_actual\": 22\n    }}\n  ],\n  \"schedule_deviations\": {{\n    \"T-401\": \"delayed\",\n    \"T-402\": \"bunched\"\n  }},\n  \"resource_pool\": {{\n    \"available_spare_buses\": 0,\n    \"available_standby_drivers\": 0\n  }},\n  \"network_incidents\": [\n    {{\n      \"incident_id\": \"CROWD-10\",\n      \"type\": \"platform_overcrowding\",\n      \"stop_index\": 10,\n      \"location\": \"Central Station\",\n      \"platform_los\": \"E\",\n      \"passenger_accumulation_rate\": 22.0\n    }},\n    {{\n      \"incident_id\": \"ADA-12\",\n      \"type\": \"accessibility_priority\",\n      \"stop_index\": 12,\n      \"location\": \"South Square\",\n      \"description\": \"High-Accessibility Zone: Multiple mobility device boardings confirmed; boarding restrictions prohibited.\"\n    }}\n  ]\n}}\n{{state_descriptions}}: {{\n  \"system_time\": \"Current simulation time in minutes from the start of the service day (e.g., 480 for 08:00 AM).\",\n  \"active_vehicles\": \"List of vehicles currently in operation, including their ID, current route_id, last_stop_index, and current_delay (in minutes).\",\n  \"schedule_deviations\": \"A map of trip_ids to their current cumulative delay or status (e.g., 'on_time', 'delayed', 'cancelled').\",\n  \"resource_pool\": \"Status of spare resources, such as 'available_spare_buses' and 'available_standby_drivers'.\",\n  \"network_incidents\": \"List of active disruptions affecting specific segments of the transit network (e.g., road closures or signal failures).\"\n}}\n{action_set_definitions}: {\n  \"get_fleet_status\": {\n    \"description\": \"Retrieves the current system time and a list of active vehicles with their route progress, current delay, and trip IDs.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"system_time\": 1035,\n      \"vehicles\": [\n        {\n          \"trip_id\": \"T-401\",\n          \"delay_mins\": 18,\n          \"last_stop_index\": 9\n        },\n        {\n          \"trip_id\": \"T-402\",\n          \"delay_mins\": 2,\n          \"last_stop_index\": 8\n        }\n      ]\n    }\n  },\n  \"get_trip_telemetry\": {\n    \"description\": \"Provides detailed real-time metrics for a specific trip, including passenger load factor and exact headway distance/time to the following vehicle.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"trip_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique ID of the trip.\"\n        }\n      },\n      \"required\": [\n        \"trip_id\"\n      ]\n    },\n    \"example_output\": {\n      \"trip_id\": \"T-401\",\n      \"load_factor\": 1.45,\n      \"headway_to_follower_mins\": 1.5,\n      \"current_position_lat_long\": [\n        40.7128,\n        -74.006\n      ]\n    }\n  },\n  \"get_station_status\": {\n    \"description\": \"Returns current conditions at a specific stop, including Level of Service (LOS), platform occupancy, and safety-specific flags (e.g., skip_allowed).\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"stop_index\": {\n          \"type\": \"integer\",\n          \"description\": \"The index of the stop in the route sequence.\"\n        }\n      },\n      \"required\": [\n        \"stop_index\"\n      ]\n    },\n    \"example_output\": {\n      \"stop_index\": 10,\n      \"level_of_service\": \"E\",\n      \"safety_risk\": \"High - Platform Spillback\",\n      \"skip_allowed_by_safety\": true\n    }\n  },\n  \"set_operational_directives\": {\n    \"description\": \"Configures transit signal priority (TSP) and stop-by-stop boarding policies for a vehicle.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"trip_id\": {\n          \"type\": \"string\",\n          \"description\": \"Trip identifier.\"\n        },\n        \"tsp_enabled\": {\n          \"type\": \"boolean\",\n          \"description\": \"Enable Transit Signal Priority.\"\n        },\n        \"stop_policies\": {\n          \"type\": \"array\",\n          \"items\": {\n            \"type\": \"object\",\n            \"properties\": {\n              \"stop_index\": {\n                \"type\": \"integer\"\n              },\n              \"policy\": {\n                \"type\": \"string\",\n                \"enum\": [\n                  \"NORMAL\",\n                  \"SKIP\",\n                  \"DROP_OFF_ONLY\"\n                ]\n              }\n            }\n          }\n        }\n      },\n      \"required\": [\n        \"trip_id\",\n        \"tsp_enabled\",\n        \"stop_policies\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"Applied\",\n      \"estimated_recovery_gain\": \"5 mins\"\n    }\n  },\n  \"regulate_vehicle_flow\": {\n    \"description\": \"Adjusts the speed or dwell behavior of a vehicle to manage headway gaps.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"trip_id\": {\n          \"type\": \"string\",\n          \"description\": \"Trip identifier.\"\n        },\n        \"speed_multiplier\": {\n          \"type\": \"number\",\n          \"description\": \"Factor to adjust cruising speed (e.g., 1.1 for 10% faster).\"\n        },\n        \"hold_duration_mins\": {\n          \"type\": \"integer\",\n          \"description\": \"Duration to hold at the current stop.\"\n        }\n      },\n      \"required\": [\n        \"trip_id\",\n        \"speed_multiplier\",\n        \"hold_duration_mins\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"Flow adjusted\",\n      \"new_projected_arrival\": 1060\n    }\n  },\n  \"simulate_to_terminal\": {\n    \"description\": \"Advances the simulation until the specified trip reaches its terminal stop, reporting final delay, load, and headway compliance.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"trip_id\": {\n          \"type\": \"string\",\n          \"description\": \"Trip to monitor.\"\n        },\n        \"terminal_index\": {\n          \"type\": \"integer\",\n          \"description\": \"The stop index of the terminal.\"\n        }\n      },\n      \"required\": [\n        \"trip_id\",\n        \"terminal_index\"\n      ]\n    },\n    \"example_output\": {\n      \"final_delay\": 9,\n      \"final_load\": 0.88,\n      \"max_headway_recorded\": 5.8,\n      \"violations\": []\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_fleet_status",
+      "description": "Retrieves the current system time and a list of active vehicles with their route progress, current delay, and trip IDs.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "system_time": 1035,
+        "vehicles": [
+          {
+            "trip_id": "T-401",
+            "delay_mins": 18,
+            "last_stop_index": 9
+          },
+          {
+            "trip_id": "T-402",
+            "delay_mins": 2,
+            "last_stop_index": 8
+          }
+        ]
+      }
+    },
+    {
+      "name": "get_trip_telemetry",
+      "description": "Provides detailed real-time metrics for a specific trip, including passenger load factor and exact headway distance/time to the following vehicle.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "trip_id": {
+            "type": "string",
+            "description": "The unique ID of the trip."
+          }
+        },
+        "required": [
+          "trip_id"
+        ]
+      },
+      "example_output": {
+        "trip_id": "T-401",
+        "load_factor": 1.45,
+        "headway_to_follower_mins": 1.5,
+        "current_position_lat_long": [
+          40.7128,
+          -74.006
+        ]
+      }
+    },
+    {
+      "name": "get_station_status",
+      "description": "Returns current conditions at a specific stop, including Level of Service (LOS), platform occupancy, and safety-specific flags (e.g., skip_allowed).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "stop_index": {
+            "type": "integer",
+            "description": "The index of the stop in the route sequence."
+          }
+        },
+        "required": [
+          "stop_index"
+        ]
+      },
+      "example_output": {
+        "stop_index": 10,
+        "level_of_service": "E",
+        "safety_risk": "High - Platform Spillback",
+        "skip_allowed_by_safety": true
+      }
+    },
+    {
+      "name": "set_operational_directives",
+      "description": "Configures transit signal priority (TSP) and stop-by-stop boarding policies for a vehicle.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "trip_id": {
+            "type": "string",
+            "description": "Trip identifier."
+          },
+          "tsp_enabled": {
+            "type": "boolean",
+            "description": "Enable Transit Signal Priority."
+          },
+          "stop_policies": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "stop_index": {
+                  "type": "integer"
+                },
+                "policy": {
+                  "type": "string",
+                  "enum": [
+                    "NORMAL",
+                    "SKIP",
+                    "DROP_OFF_ONLY"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "required": [
+          "trip_id",
+          "tsp_enabled",
+          "stop_policies"
+        ]
+      },
+      "example_output": {
+        "status": "Applied",
+        "estimated_recovery_gain": "5 mins"
+      }
+    },
+    {
+      "name": "regulate_vehicle_flow",
+      "description": "Adjusts the speed or dwell behavior of a vehicle to manage headway gaps.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "trip_id": {
+            "type": "string",
+            "description": "Trip identifier."
+          },
+          "speed_multiplier": {
+            "type": "number",
+            "description": "Factor to adjust cruising speed (e.g., 1.1 for 10% faster)."
+          },
+          "hold_duration_mins": {
+            "type": "integer",
+            "description": "Duration to hold at the current stop."
+          }
+        },
+        "required": [
+          "trip_id",
+          "speed_multiplier",
+          "hold_duration_mins"
+        ]
+      },
+      "example_output": {
+        "status": "Flow adjusted",
+        "new_projected_arrival": 1060
+      }
+    },
+    {
+      "name": "simulate_to_terminal",
+      "description": "Advances the simulation until the specified trip reaches its terminal stop, reporting final delay, load, and headway compliance.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "trip_id": {
+            "type": "string",
+            "description": "Trip to monitor."
+          },
+          "terminal_index": {
+            "type": "integer",
+            "description": "The stop index of the terminal."
+          }
+        },
+        "required": [
+          "trip_id",
+          "terminal_index"
+        ]
+      },
+      "example_output": {
+        "final_delay": 9,
+        "final_load": 0.88,
+        "max_headway_recorded": 5.8,
+        "violations": []
+      }
+    }
+  ],
+  "state_description": {
+    "system_time": "Current simulation time in minutes from the start of the service day (e.g., 480 for 08:00 AM).",
+    "active_vehicles": "List of vehicles currently in operation, including their ID, current route_id, last_stop_index, and current_delay (in minutes).",
+    "schedule_deviations": "A map of trip_ids to their current cumulative delay or status (e.g., 'on_time', 'delayed', 'cancelled').",
+    "resource_pool": "Status of spare resources, such as 'available_spare_buses' and 'available_standby_drivers'.",
+    "network_incidents": "List of active disruptions affecting specific segments of the transit network (e.g., road closures or signal failures)."
+  },
+  "task_initial_state": {
+    "system_time": 1035,
+    "active_vehicles": [
+      {
+        "vehicle_id": "V-401",
+        "route_id": "BRT-4X",
+        "trip_id": "T-401",
+        "last_stop_index": 9,
+        "current_delay": 18,
+        "load_factor": 1.45,
+        "dwell_time_actual": 140
+      },
+      {
+        "vehicle_id": "V-402",
+        "route_id": "BRT-4X",
+        "trip_id": "T-402",
+        "last_stop_index": 8,
+        "current_delay": -1,
+        "load_factor": 0.12,
+        "dwell_time_actual": 22
+      }
+    ],
+    "schedule_deviations": {
+      "T-401": "delayed",
+      "T-402": "bunched"
+    },
+    "resource_pool": {
+      "available_spare_buses": 0,
+      "available_standby_drivers": 0
+    },
+    "network_incidents": [
+      {
+        "incident_id": "CROWD-10",
+        "type": "platform_overcrowding",
+        "stop_index": 10,
+        "location": "Central Station",
+        "platform_los": "E",
+        "passenger_accumulation_rate": 22.0
+      },
+      {
+        "incident_id": "ADA-12",
+        "type": "accessibility_priority",
+        "stop_index": 12,
+        "location": "South Square",
+        "description": "High-Accessibility Zone: Multiple mobility device boardings confirmed; boarding restrictions prohibited."
+      }
+    ]
+  }
+}

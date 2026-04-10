@@ -1,0 +1,176 @@
+{
+  "environment_name": "env_981af7f33b93",
+  "world_model_system_prompt": "## 1. Role and Objective\n- **Role**: Language World Model (LWM) for Runway Arrival Sequencing.\n- **Core Objective**: Based on the current air traffic state $s_t$ and the sequencing action $a_t$ taken by the Controller (Agent), simulate the evolution of aircraft trajectories, runway occupancy, and separation intervals to predict the observation $o_{{t+1}}$ (e.g., updated ETA, arrival sequence, or safety alerts).\n- **Emphasis**: The LWM does not provide advice or execute real ATC commands; it functions strictly as a simulation engine that performs internal state evolution and generates the resulting observations.\n\n## 2. Environment Management\n\n### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n### Context Awareness\nAll interactions between the World Model and the Agent must maintain rigorous context consistency. The model must track the movement of all aircraft in the queue, fuel consumption, and the temporal sequence of runway usage across multiple time steps.\n\n## 3. Environment Execution\n\n### Action Space\nThe Agent interacts with the environment by calling action functions (e.g., adjusting airspeeds, assigning holding patterns, or designating landing runways). The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n### Input Parsing & Program Execution\nThe Agent submits action requests via a structured JSON object. This JSON must contain the following fields:\n- `\"name\"`: Specifies the name of the sequencing action function to execute.\n- Parameters as defined in the specific action's schema.\n\nExample:\n```json\n{{\n \"name\": \"adjust_airspeed\",\n \"arguments\": {{\n    \"aircraft_id\": \"BAW123\",\n    \"target_knots\": 180\n  }}\n}}\n```\n\nThe LWM will parse this input, calculate the impact on flight duration and arrival time, and update the internal simulation state accordingly.\n\n### Environment Behavior Modeling\n\n#### Error Handling & Edge Cases\nFor invalid parameters (e.g., non-existent flight IDs), undefined actions, or physical/safety conflicts (e.g., assigning a runway that is closed), return structured error information (e.g., `{{\"error\": \"Aircraft ID not found\"}}`). Do not fabricate aircraft or landing clearances.\n\n#### Output Assembly\nFor every action function call, the model must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition (the Observation).\n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, `new_state`, or hidden variables like full queue coordinates unless explicitly requested by an action's return schema. The Agent must only see the specific Observation (e.g., \"Speed set successfully\", \"New ETA: 14:05\").\n\n## 4. Key Principles\n- **Format**: Strictly adhere to specified JSON and text formats.\n- **Factuality**: Do not simulate aircraft that haven't entered the sector or runways that don't exist.\n- **Consistency**: Ensure that if an aircraft slows down, its ETA increases logically. Separation must be maintained or violations must be reported consistently.\n- **Realism**: Simulated behaviors must align with aviation dynamics (e.g., maximum descent rates, standard separation minima, and fuel burn).\n- **Quality**: Observations must be clear and precise.\n- **Encapsulation**: Strictly hide the internal state structure from the output. Do not output the state update or internal 'thoughts'.\n{{initial_state}}: {{\n  \"simulation_time\": 0,\n  \"aircraft_queue\": [\n    {{\n      \"aircraft_id\": \"DAL112\",\n      \"callsign\": \"Delta 112\",\n      \"type\": \"Heavy B767\",\n      \"assigned_runway\": \"RWY_08L\",\n      \"lateral_deviation_feet\": 1950,\n      \"closure_rate_knots\": 45,\n      \"status\": \"established_localizer\",\n      \"frequency_state\": {{\n        \"primary_tower\": \"active\",\n        \"discrete_prm\": \"active\"\n      }}\n    }},\n    {{\n      \"aircraft_id\": \"AAL45\",\n      \"callsign\": \"American 45\",\n      \"type\": \"Medium A320\",\n      \"assigned_runway\": \"RWY_08R\",\n      \"lateral_deviation_feet\": 20,\n      \"closure_rate_knots\": 0,\n      \"status\": \"established_localizer\",\n      \"frequency_state\": {{\n        \"primary_tower\": \"blocked_by_stuck_mic\",\n        \"discrete_prm\": \"active\"\n      }}\n    }}\n  ],\n  \"runway_availability\": {{\n    \"RWY_08L\": {{\n      \"status\": \"open\",\n      \"prm_radar_update_rate\": 1.2\n    }},\n    \"RWY_08R\": {{\n      \"status\": \"open\",\n      \"prm_radar_update_rate\": 1.2\n    }}\n  }},\n  \"separation_violations\": false\n}}\n{{state_descriptions}}: {{\n  \"simulation_time\": \"Current simulation timestamp in seconds from start.\",\n  \"aircraft_queue\": \"List of aircraft currently in the approach sector.\",\n  \"runway_availability\": \"Status and next available landing time for each runway.\",\n  \"separation_violations\": \"Flag indicating if minimum separation standards are currently breached.\"\n}}\n{action_set_definitions}: {\n  \"get_radar_telemetry\": {\n    \"description\": \"Retrieves high-update radar telemetry for specific aircraft, including current heading, altitude, airspeed, and lateral offset from the runway centerline.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"callsigns\": {\n          \"type\": \"array\",\n          \"items\": {\n            \"type\": \"string\"\n          },\n          \"description\": \"List of aircraft callsigns to track (e.g., ['DAL112', 'AAL45']).\"\n        }\n      },\n      \"required\": [\n        \"callsigns\"\n      ]\n    },\n    \"example_output\": {\n      \"telemetry\": [\n        {\n          \"callsign\": \"DAL112\",\n          \"heading\": 80,\n          \"altitude\": 3000,\n          \"lateral_offset_meters\": 150,\n          \"ground_speed\": 160\n        }\n      ]\n    }\n  },\n  \"check_ntz_status\": {\n    \"description\": \"Monitors the No Transgression Zone (NTZ) between the two parallel approach paths and identifies if any aircraft has breached the safety buffer.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {}\n    },\n    \"example_output\": {\n      \"violating_aircraft\": \"DAL112\",\n      \"ntz_breach\": true,\n      \"severity\": \"high\"\n    }\n  },\n  \"get_comms_config\": {\n    \"description\": \"Checks the current communication channel availability and equipment state (e.g., frequency status, data link availability) to determine the appropriate protocol for issuing commands.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {}\n    },\n    \"example_output\": {\n      \"primary_frequency\": \"127.9\",\n      \"secondary_frequency\": \"119.1\",\n      \"prm_mode\": \"digital_voice\",\n      \"channel_load\": \"medium\"\n    }\n  },\n  \"issue_breakout_command\": {\n    \"description\": \"Issues an immediate PRM breakout instruction to an aircraft. This is a high-priority command to turn and climb/descend to a safe vector.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"callsign\": {\n          \"type\": \"string\",\n          \"description\": \"The callsign of the aircraft.\"\n        },\n        \"heading\": {\n          \"type\": \"number\",\n          \"description\": \"The new magnetic heading to fly.\"\n        },\n        \"altitude\": {\n          \"type\": \"number\",\n          \"description\": \"The target altitude in feet.\"\n        },\n        \"instruction_text\": {\n          \"type\": \"string\",\n          \"description\": \"The specific phraseology used (e.g., 'TRAFFIC ALERT, DAL112, TURN LEFT IMMEDIATELY HEADING 050, CLIMB AND MAINTAIN 4000').\"\n        },\n        \"comms_channel\": {\n          \"type\": \"string\",\n          \"description\": \"The frequency or channel to use.\"\n        }\n      },\n      \"required\": [\n        \"callsign\",\n        \"heading\",\n        \"altitude\",\n        \"instruction_text\",\n        \"comms_channel\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"transmitted\",\n      \"timestamp\": \"12:00:05\",\n      \"readback_received\": true\n    }\n  },\n  \"verify_separation\": {\n    \"description\": \"Calculates the current lateral and vertical separation between two aircraft to confirm if safety standards have been restored.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"callsign_a\": {\n          \"type\": \"string\"\n        },\n        \"callsign_b\": {\n          \"type\": \"string\"\n        }\n      },\n      \"required\": [\n        \"callsign_a\",\n        \"callsign_b\"\n      ]\n    },\n    \"example_output\": {\n      \"lateral_separation_nm\": 3.2,\n      \"vertical_separation_ft\": 1000,\n      \"conflict_resolved\": true\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_radar_telemetry",
+      "description": "Retrieves high-update radar telemetry for specific aircraft, including current heading, altitude, airspeed, and lateral offset from the runway centerline.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "callsigns": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "List of aircraft callsigns to track (e.g., ['DAL112', 'AAL45'])."
+          }
+        },
+        "required": [
+          "callsigns"
+        ]
+      },
+      "example_output": {
+        "telemetry": [
+          {
+            "callsign": "DAL112",
+            "heading": 80,
+            "altitude": 3000,
+            "lateral_offset_meters": 150,
+            "ground_speed": 160
+          }
+        ]
+      }
+    },
+    {
+      "name": "check_ntz_status",
+      "description": "Monitors the No Transgression Zone (NTZ) between the two parallel approach paths and identifies if any aircraft has breached the safety buffer.",
+      "parameters": {
+        "type": "object",
+        "properties": {}
+      },
+      "example_output": {
+        "violating_aircraft": "DAL112",
+        "ntz_breach": true,
+        "severity": "high"
+      }
+    },
+    {
+      "name": "get_comms_config",
+      "description": "Checks the current communication channel availability and equipment state (e.g., frequency status, data link availability) to determine the appropriate protocol for issuing commands.",
+      "parameters": {
+        "type": "object",
+        "properties": {}
+      },
+      "example_output": {
+        "primary_frequency": "127.9",
+        "secondary_frequency": "119.1",
+        "prm_mode": "digital_voice",
+        "channel_load": "medium"
+      }
+    },
+    {
+      "name": "issue_breakout_command",
+      "description": "Issues an immediate PRM breakout instruction to an aircraft. This is a high-priority command to turn and climb/descend to a safe vector.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "callsign": {
+            "type": "string",
+            "description": "The callsign of the aircraft."
+          },
+          "heading": {
+            "type": "number",
+            "description": "The new magnetic heading to fly."
+          },
+          "altitude": {
+            "type": "number",
+            "description": "The target altitude in feet."
+          },
+          "instruction_text": {
+            "type": "string",
+            "description": "The specific phraseology used (e.g., 'TRAFFIC ALERT, DAL112, TURN LEFT IMMEDIATELY HEADING 050, CLIMB AND MAINTAIN 4000')."
+          },
+          "comms_channel": {
+            "type": "string",
+            "description": "The frequency or channel to use."
+          }
+        },
+        "required": [
+          "callsign",
+          "heading",
+          "altitude",
+          "instruction_text",
+          "comms_channel"
+        ]
+      },
+      "example_output": {
+        "status": "transmitted",
+        "timestamp": "12:00:05",
+        "readback_received": true
+      }
+    },
+    {
+      "name": "verify_separation",
+      "description": "Calculates the current lateral and vertical separation between two aircraft to confirm if safety standards have been restored.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "callsign_a": {
+            "type": "string"
+          },
+          "callsign_b": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "callsign_a",
+          "callsign_b"
+        ]
+      },
+      "example_output": {
+        "lateral_separation_nm": 3.2,
+        "vertical_separation_ft": 1000,
+        "conflict_resolved": true
+      }
+    }
+  ],
+  "state_description": {
+    "simulation_time": "Current simulation timestamp in seconds from start.",
+    "aircraft_queue": "List of aircraft currently in the approach sector.",
+    "runway_availability": "Status and next available landing time for each runway.",
+    "separation_violations": "Flag indicating if minimum separation standards are currently breached."
+  },
+  "task_initial_state": {
+    "simulation_time": 0,
+    "aircraft_queue": [
+      {
+        "aircraft_id": "DAL112",
+        "callsign": "Delta 112",
+        "type": "Heavy B767",
+        "assigned_runway": "RWY_08L",
+        "lateral_deviation_feet": 1950,
+        "closure_rate_knots": 45,
+        "status": "established_localizer",
+        "frequency_state": {
+          "primary_tower": "active",
+          "discrete_prm": "active"
+        }
+      },
+      {
+        "aircraft_id": "AAL45",
+        "callsign": "American 45",
+        "type": "Medium A320",
+        "assigned_runway": "RWY_08R",
+        "lateral_deviation_feet": 20,
+        "closure_rate_knots": 0,
+        "status": "established_localizer",
+        "frequency_state": {
+          "primary_tower": "blocked_by_stuck_mic",
+          "discrete_prm": "active"
+        }
+      }
+    ],
+    "runway_availability": {
+      "RWY_08L": {
+        "status": "open",
+        "prm_radar_update_rate": 1.2
+      },
+      "RWY_08R": {
+        "status": "open",
+        "prm_radar_update_rate": 1.2
+      }
+    },
+    "separation_violations": false
+  }
+}

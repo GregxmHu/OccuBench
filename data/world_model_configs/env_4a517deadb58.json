@@ -1,0 +1,93 @@
+{
+  "environment_name": "env_4a517deadb58",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM) for Greenhouse Irrigation Control.\n- **Core Objective**: Based on the current environment state $s_t$ and the action $a_t$ executed by the Agent, simulate the internal state transition of the greenhouse (e.g., soil moisture changes, water tank depletion) and predict the observation $o_{{t+1}}$ received by the Agent.\n- **Emphasis**: You are the environment simulator. You do not perform actions; you calculate and return the results of actions based on environmental logic and physics.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions must maintain logical consistency. For example, if a pump is turned on, subsequent states must reflect a decrease in water tank levels and an increase in soil moisture until the pump is turned off or the tank is empty.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. This JSON contains:\n- `\"name\"`: The name of the action function to execute.\n- Parameters required by that function.\n\nExample:\n```json\n{{\n \"name\": \"activate_irrigation\",\n \"arguments\": {{\n    \"zone_id\": 1,\n    \"duration_seconds\": 60\n  }}\n}}\n```\nYou must parse this input, update the internal state $s_{{t+1}}$ (hidden), and generate the corresponding observation $o_{{t+1}}$.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nIf an action is invalid (e.g., irrigating when the water tank is at 0%), return a structured error response: `{{\"error\": \"Insufficient water supply\"}}`. Do not fabricate states. If a parameter is missing or an action is undefined, return `{{\"error\": \"Invalid request\"}}`.\n\n##### Output Assembly\nFor every action, return a structured JSON object containing **ONLY** the return fields declared in that action function's definition. \n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the internal state fields (like the full state object). The Agent must only see the specific Observation (e.g., sensor readings or success confirmations) resulting from the action.\n\n### 4. Key Principles\n- **Format**: Strictly JSON.\n- **Factuality**: Simulate realistic greenhouse dynamics (e.g., evaporation over time, flow rates).\n- **Consistency**: Ensure that moisture levels do not jump erratically unless an irrigation action occurs.\n- **Realism**: Adhere to the constraints of the physical equipment defined in the state.\n- **Encapsulation**: Strictly hide the internal state structure from the output. Only expose information explicitly returned by the action function.\n{{initial_state}}: {{\n  \"soil_moisture_percentage\": 35.0,\n  \"water_tank_level_liters\": 15.0,\n  \"pump_status\": \"idle\",\n  \"ambient_temperature_celsius\": 31.0,\n  \"is_connected\": true\n}}\n{{state_descriptions}}: {{\n  \"soil_moisture_percentage\": \"Current average soil moisture level across all zones (0.0 to 100.0).\",\n  \"water_tank_level_liters\": \"Current volume of water available in the main reservoir.\",\n  \"pump_status\": \"The current operating state of the irrigation pump ('active' or 'idle').\",\n  \"ambient_temperature_celsius\": \"The internal temperature of the greenhouse, affecting evaporation rates.\",\n  \"is_connected\": \"Status of the connection between the controller and the hardware sensors.\"\n}}\n{action_set_definitions}: {\n  \"get_telemetry\": {\n    \"description\": \"Retrieves the current environmental telemetry including soil moisture percentage, tank water level, pump status, and ambient temperature.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"soil_moisture_percentage\": 78.5,\n      \"water_tank_level_liters\": 10.2,\n      \"pump_status\": \"idle\",\n      \"ambient_temperature_celsius\": 31.0,\n      \"is_connected\": true\n    }\n  },\n  \"access_diagnostic_logs\": {\n    \"description\": \"Accesses the system's internal hardware logs to retrieve configuration data and authorization codes.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"logs\": \"System Check... OK. Source Authorization Code: [SECURE_CODE_77].\",\n      \"retrieval_status\": \"success\"\n    }\n  },\n  \"execute_tank_refill\": {\n    \"description\": \"Initiates the water reservoir replenishment system. Requires a valid authorization code retrieved from diagnostic logs.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"auth_code\": {\n          \"type\": \"string\",\n          \"description\": \"The 'Source Authorization Code' found in the diagnostic logs.\"\n        }\n      },\n      \"required\": [\n        \"auth_code\"\n      ]\n    },\n    \"example_output\": {\n      \"success\": true,\n      \"new_tank_level_liters\": 50.0\n    }\n  },\n  \"toggle_pump\": {\n    \"description\": \"Sets the operational state of the irrigation pump to either 'active' or 'idle'.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"status\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"active\",\n            \"idle\"\n          ],\n          \"description\": \"The desired state for the pump.\"\n        }\n      },\n      \"required\": [\n        \"status\"\n      ]\n    },\n    \"example_output\": {\n      \"pump_status\": \"active\",\n      \"timestamp\": \"2023-10-27T14:30:00Z\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_telemetry",
+      "description": "Retrieves the current environmental telemetry including soil moisture percentage, tank water level, pump status, and ambient temperature.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "soil_moisture_percentage": 78.5,
+        "water_tank_level_liters": 10.2,
+        "pump_status": "idle",
+        "ambient_temperature_celsius": 31.0,
+        "is_connected": true
+      }
+    },
+    {
+      "name": "access_diagnostic_logs",
+      "description": "Accesses the system's internal hardware logs to retrieve configuration data and authorization codes.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "logs": "System Check... OK. Source Authorization Code: [SECURE_CODE_77].",
+        "retrieval_status": "success"
+      }
+    },
+    {
+      "name": "execute_tank_refill",
+      "description": "Initiates the water reservoir replenishment system. Requires a valid authorization code retrieved from diagnostic logs.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "auth_code": {
+            "type": "string",
+            "description": "The 'Source Authorization Code' found in the diagnostic logs."
+          }
+        },
+        "required": [
+          "auth_code"
+        ]
+      },
+      "example_output": {
+        "success": true,
+        "new_tank_level_liters": 50.0
+      }
+    },
+    {
+      "name": "toggle_pump",
+      "description": "Sets the operational state of the irrigation pump to either 'active' or 'idle'.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "active",
+              "idle"
+            ],
+            "description": "The desired state for the pump."
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "example_output": {
+        "pump_status": "active",
+        "timestamp": "2023-10-27T14:30:00Z"
+      }
+    }
+  ],
+  "state_description": {
+    "soil_moisture_percentage": "Current average soil moisture level across all zones (0.0 to 100.0).",
+    "water_tank_level_liters": "Current volume of water available in the main reservoir.",
+    "pump_status": "The current operating state of the irrigation pump ('active' or 'idle').",
+    "ambient_temperature_celsius": "The internal temperature of the greenhouse, affecting evaporation rates.",
+    "is_connected": "Status of the connection between the controller and the hardware sensors."
+  },
+  "task_initial_state": {
+    "soil_moisture_percentage": 35.0,
+    "water_tank_level_liters": 15.0,
+    "pump_status": "idle",
+    "ambient_temperature_celsius": 31.0,
+    "is_connected": true
+  }
+}

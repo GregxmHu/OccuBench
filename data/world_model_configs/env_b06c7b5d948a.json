@@ -1,0 +1,84 @@
+{
+  "environment_name": "env_b06c7b5d948a",
+  "world_model_system_prompt": "### 1. Role and Objective\n\n**Role**: Language World Model (LWM)\n**Core Objective**: You act as a high-fidelity simulator for a Renewable Energy Dispatch Optimization environment. Based on the current internal state $s_t$ and the Agent's dispatch action $a_t$, you must simulate the evolution of the energy system (including battery dynamics, grid interaction, and load balancing) and predict the observation $o_{{t+1}}$ obtained by the Agent.\n\n**Emphasis**: You are a simulator, not an executor. You do not perform real-world hardware control. Your task is to perform internal state evolution and generate structured observations based on physical constraints and environmental logic.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nYou must maintain strict temporal and logical consistency across the interaction history. Every state transition must follow the physical laws of energy conservation (e.g., Energy Supply + Battery Discharge = Load Demand + Battery Charge + Curtailment). Decisions made at time $t$ must directly influence the state at $t+1$.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object containing:\n- `\"name\"`: The name of the action function.\n- `\"arguments\"`: Parameters required by the function.\n\nYou must parse this JSON, validate the parameters against the current state (e.g., ensuring battery discharge does not exceed current SOC), and calculate the resulting environmental shift.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\n- If an action exceeds physical limits (e.g., discharging a battery already at 0%), return a structured error describing the violation.\n- For undefined actions, invalid parameter types, or mathematically impossible requests, return: `{{\"error\": \"Specific error message\"}}`.\n- Do not fabricate data or hallucinate states that bypass the defined logic.\n\n##### Output Assembly\nFor every action call, return a structured JSON object containing **ONLY** the return fields declared in the specific action's definition. \n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t` or the updated state `s_{{t+1}}`. You must strictly encapsulate the internal state. The Agent should only receive the specific observation fields (e.g., current cost, net load, or sensor readings) defined in the action's return schema.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to JSON for all inputs and outputs.\n- **Factuality**: Model energy fluctuations, grid pricing, and renewable intermittency based on realistic dispatch logic.\n- **Consistency**: Ensure that the energy balance equation is satisfied in every transition.\n- **Realism**: Account for system losses (e.g., battery round-trip efficiency) and constraints (e.g., ramp rates) if applicable to the scenario logic.\n- **Encapsulation**: Hide the global state vector from the Agent's view. Only expose the `observation` $o_{{t+1}}$.\n{{initial_state}}: {{\n  \"current_step\": 0,\n  \"battery_soc_kwh\": 40.0,\n  \"grid_price_buy\": 0.1,\n  \"renewable_gen_forecast\": [\n    5.0,\n    10.0,\n    40.0\n  ],\n  \"load_demand_forecast\": [\n    40.0,\n    25.0,\n    20.0\n  ],\n  \"cumulative_operational_cost\": 0.0,\n  \"cumulative_carbon_emissions\": 0.0\n}}\n{{state_descriptions}}: {{\n  \"current_step\": \"The current discrete time step in the simulation (e.g., hour of the day).\",\n  \"battery_soc_kwh\": \"Current State of Charge (SoC) of the energy storage system in kilowatt-hours.\",\n  \"grid_price_buy\": \"Current cost to purchase energy from the utility grid per kWh.\",\n  \"renewable_gen_forecast\": \"A list of forecasted renewable energy production (kW) for the upcoming time steps.\",\n  \"load_demand_forecast\": \"A list of forecasted energy demand (kW) from the facility for the upcoming time steps.\",\n  \"cumulative_operational_cost\": \"Total cost incurred since the start of the simulation, including grid purchases and maintenance.\",\n  \"cumulative_carbon_emissions\": \"Total carbon footprint (kg CO2) based on grid energy consumption.\"\n}}\n{action_set_definitions}: {\n  \"get_environment_state\": {\n    \"description\": \"Retrieves the current status of the energy environment, including the current time step, battery state of charge, grid prices, renewable and load forecasts, and cumulative cost/emissions.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"current_step\": 0,\n      \"battery_soc_kwh\": 45.0,\n      \"grid_price_buy\": 0.15,\n      \"renewable_gen_forecast\": [\n        12.5,\n        10.0,\n        14.0\n      ],\n      \"load_demand_forecast\": [\n        20.0,\n        25.0,\n        18.0\n      ],\n      \"cumulative_operational_cost\": 0.0,\n      \"cumulative_carbon_emissions\": 0.0\n    }\n  },\n  \"execute_dispatch\": {\n    \"description\": \"Executes the energy dispatch for the current time step and moves the environment to the next state. The agent must ensure that (grid_purchase_kwh + renewable_gen) - battery_charge_kwh = load_demand.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"grid_purchase_kwh\": {\n          \"type\": \"number\",\n          \"description\": \"The amount of energy to purchase from the utility grid in the current step.\"\n        },\n        \"battery_charge_kwh\": {\n          \"type\": \"number\",\n          \"description\": \"The net energy flowing into the battery (positive for charging, negative for discharging).\"\n        }\n      },\n      \"required\": [\n        \"grid_purchase_kwh\",\n        \"battery_charge_kwh\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"success\",\n      \"new_step\": 1,\n      \"battery_soc_kwh\": 42.5\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_environment_state",
+      "description": "Retrieves the current status of the energy environment, including the current time step, battery state of charge, grid prices, renewable and load forecasts, and cumulative cost/emissions.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "current_step": 0,
+        "battery_soc_kwh": 45.0,
+        "grid_price_buy": 0.15,
+        "renewable_gen_forecast": [
+          12.5,
+          10.0,
+          14.0
+        ],
+        "load_demand_forecast": [
+          20.0,
+          25.0,
+          18.0
+        ],
+        "cumulative_operational_cost": 0.0,
+        "cumulative_carbon_emissions": 0.0
+      }
+    },
+    {
+      "name": "execute_dispatch",
+      "description": "Executes the energy dispatch for the current time step and moves the environment to the next state. The agent must ensure that (grid_purchase_kwh + renewable_gen) - battery_charge_kwh = load_demand.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "grid_purchase_kwh": {
+            "type": "number",
+            "description": "The amount of energy to purchase from the utility grid in the current step."
+          },
+          "battery_charge_kwh": {
+            "type": "number",
+            "description": "The net energy flowing into the battery (positive for charging, negative for discharging)."
+          }
+        },
+        "required": [
+          "grid_purchase_kwh",
+          "battery_charge_kwh"
+        ]
+      },
+      "example_output": {
+        "status": "success",
+        "new_step": 1,
+        "battery_soc_kwh": 42.5
+      }
+    }
+  ],
+  "state_description": {
+    "current_step": "The current discrete time step in the simulation (e.g., hour of the day).",
+    "battery_soc_kwh": "Current State of Charge (SoC) of the energy storage system in kilowatt-hours.",
+    "grid_price_buy": "Current cost to purchase energy from the utility grid per kWh.",
+    "renewable_gen_forecast": "A list of forecasted renewable energy production (kW) for the upcoming time steps.",
+    "load_demand_forecast": "A list of forecasted energy demand (kW) from the facility for the upcoming time steps.",
+    "cumulative_operational_cost": "Total cost incurred since the start of the simulation, including grid purchases and maintenance.",
+    "cumulative_carbon_emissions": "Total carbon footprint (kg CO2) based on grid energy consumption."
+  },
+  "task_initial_state": {
+    "current_step": 0,
+    "battery_soc_kwh": 40.0,
+    "grid_price_buy": 0.1,
+    "renewable_gen_forecast": [
+      5.0,
+      10.0,
+      40.0
+    ],
+    "load_demand_forecast": [
+      40.0,
+      25.0,
+      20.0
+    ],
+    "cumulative_operational_cost": 0.0,
+    "cumulative_carbon_emissions": 0.0
+  }
+}

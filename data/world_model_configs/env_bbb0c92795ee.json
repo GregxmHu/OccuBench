@@ -1,0 +1,290 @@
+{
+  "environment_name": "env_bbb0c92795ee",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM) for Food Recall Traceability.\n- **Core Objective**: Based on the current internal state $s_t$ and the action $a_t$ submitted by the Agent, simulate the evolution of the supply chain environment, update internal tracking, and predict the observation $o_{{t+1}}$ obtained by the Agent.\n- **Emphasis**: You are a simulator. You do not perform real-world recalls or logistics. Your task is to maintain a self-consistent representation of food batches, their locations, safety statuses, and movement history, providing only the specific information requested via actions.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation tracking the lineage and location of food products. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions between the World Model and the Agent must maintain context consistency. Changes to the environment (e.g., marking a batch as 'recalled' or moving a product from a warehouse to a store) must persist throughout the interaction session and influence all subsequent observations.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent submits action requests via a structured JSON object. This JSON contains:\n- `\"name\"`: The name of the action function to execute.\n- Parameters required by that specific function.\n\nExample:\n```json\n{{\n \"name\": \"trace_batch_origin\",\n \"arguments\": {{\n    \"batch_id\": \"LOT-2023-XYZ\",\n    \"depth\": 2\n  }}\n}}\n```\nYou must parse this JSON and simulate the logical outcome within the traceability environment.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\n- If an action references a `batch_id` or `location_id` that does not exist in the state, return: `{{\"error\": \"Entity [ID] not found\"}}`.\n- If an action is missing required arguments, return: `{{\"error\": \"Missing required argument: [param_name]\"}}`.\n- Do not fabricate data; if the information is not in the state or history, report it as unknown.\n\n##### Output Assembly\nFor every action call, return a structured JSON object containing **ONLY** the return fields declared in the action function's definition. \n\n**CRITICAL CONSTRAINT**: Your output must **NOT** contain the full internal state `s_t`, the updated `new_state`, or any metadata regarding the simulation logic. The Agent must only receive the specific observation (return values) defined in the action function. State maintenance is handled internally.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to specified JSON formats for all responses.\n- **Factuality**: Base all observations on the provided state and the logical consequences of the Agent's actions.\n- **Consistency**: Ensure that if a batch is flagged as 'contaminated' in one step, it remains so in future steps unless a corrective action is successfully simulated.\n- **Realism**: Supply chain dynamics (e.g., batch splitting, shipping times, storage conditions) should align with professional traceability standards.\n- **Quality**: Responses must be precise and structurally complete.\n- **Encapsulation**: Strictly hide the internal state structure. Do not output the state update process.\n{{initial_state}}: {{\n  \"batch_ledger\": [\n    {{\n      \"batch_id\": \"CS-404\",\n      \"product_name\": \"Creamy Caesar Dressing\",\n      \"current_location\": \"Retail-North\",\n      \"status\": \"active\",\n      \"production_date\": \"2023-11-01T10:00:00Z\"\n    }},\n    {{\n      \"batch_id\": \"RA-900\",\n      \"product_name\": \"Zesty Ranch\",\n      \"current_location\": \"DC-Central\",\n      \"status\": \"active\",\n      \"production_date\": \"2023-11-02T06:00:00Z\"\n    }},\n    {{\n      \"batch_id\": \"CS-505\",\n      \"product_name\": \"Creamy Caesar Dressing\",\n      \"current_location\": \"Retail-South\",\n      \"status\": \"active\",\n      \"production_date\": \"2023-11-03T09:00:00Z\"\n    }},\n    {{\n      \"batch_id\": \"RW-22\",\n      \"product_name\": \"Caesar Base Rework\",\n      \"current_location\": \"SaucePlant-X\",\n      \"status\": \"consumed\",\n      \"production_date\": \"2023-11-01T22:00:00Z\"\n    }},\n    {{\n      \"batch_id\": \"RM-E-101\",\n      \"product_name\": \"Bulk Egg Yolk\",\n      \"current_location\": \"Silo-1\",\n      \"status\": \"consumed\",\n      \"production_date\": \"2023-10-28T00:00:00Z\"\n    }},\n    {{\n      \"batch_id\": \"RM-E-102\",\n      \"product_name\": \"Bulk Egg Yolk\",\n      \"current_location\": \"Silo-1\",\n      \"status\": \"active\",\n      \"production_date\": \"2023-11-02T12:00:00Z\"\n    }}\n  ],\n  \"movement_history\": [\n    {{\n      \"timestamp\": \"2023-11-01T10:00:00Z\",\n      \"batch_id\": \"CS-404\",\n      \"from\": \"SaucePlant-X\",\n      \"to\": \"Retail-North\",\n      \"event\": \"Transformation\",\n      \"ingredients\": [\n        \"RM-E-101\",\n        \"Spice-Mix-A\"\n      ]\n    }},\n    {{\n      \"timestamp\": \"2023-11-01T22:00:00Z\",\n      \"batch_id\": \"RW-22\",\n      \"from\": \"CS-404\",\n      \"to\": \"SaucePlant-X\",\n      \"event\": \"Rework_Generation\",\n      \"description\": \"Overfill from Caesar batch CS-404\"\n    }},\n    {{\n      \"timestamp\": \"2023-11-02T06:00:00Z\",\n      \"batch_id\": \"RA-900\",\n      \"from\": \"SaucePlant-X\",\n      \"to\": \"DC-Central\",\n      \"event\": \"Transformation\",\n      \"ingredients\": [\n        \"RM-E-101\",\n        \"RW-22\",\n        \"Herb-Mix-B\"\n      ]\n    }},\n    {{\n      \"timestamp\": \"2023-11-02T08:00:00Z\",\n      \"batch_id\": \"Silo-1\",\n      \"from\": \"System\",\n      \"to\": \"System\",\n      \"event\": \"Silo_Flush_Out\",\n      \"description\": \"Full sanitation cycle; Silo-1 emptied and cleaned prior to new shipment receipt.\"\n    }},\n    {{\n      \"timestamp\": \"2023-11-02T12:00:00Z\",\n      \"batch_id\": \"RM-E-102\",\n      \"from\": \"Supplier-Y\",\n      \"to\": \"Silo-1\",\n      \"event\": \"Receiving\"\n    }},\n    {{\n      \"timestamp\": \"2023-11-03T09:00:00Z\",\n      \"batch_id\": \"CS-505\",\n      \"from\": \"SaucePlant-X\",\n      \"to\": \"Retail-South\",\n      \"event\": \"Transformation\",\n      \"ingredients\": [\n        \"RM-E-102\",\n        \"Spice-Mix-A\"\n      ]\n    }}\n  ],\n  \"inspection_records\": {{\n    \"CS-404\": {{\n      \"test\": \"Listeria monocytogenes\",\n      \"result\": \"POSITIVE\",\n      \"date\": \"2023-11-04\"\n    }},\n    \"RM-E-101\": {{\n      \"test\": \"Supplier COA\",\n      \"result\": \"Presumptive Negative\",\n      \"notes\": \"Retest triggered by downstream positive CS-404.\",\n      \"date\": \"2023-10-28\"\n    }},\n    \"RM-E-102\": {{\n      \"test\": \"Supplier COA\",\n      \"result\": \"Negative\",\n      \"date\": \"2023-11-02\"\n    }}\n  }},\n  \"supply_chain_nodes\": {{\n    \"SaucePlant-X\": {{\n      \"type\": \"plant\",\n      \"capabilities\": [\n        \"Silo Storage\",\n        \"Cold Mixing\"\n      ]\n    }},\n    \"Retail-North\": {{\n      \"type\": \"store\"\n    }},\n    \"DC-Central\": {{\n      \"type\": \"warehouse\"\n    }},\n    \"Retail-South\": {{\n      \"type\": \"store\"\n    }}\n  }},\n  \"recall_registry\": []\n}}\n{{state_descriptions}}: {{\n  \"batch_ledger\": \"A list of food batches currently in the supply chain, including their current location, status (e.g., 'active', 'recalled', 'quarantined'), and production date.\",\n  \"movement_history\": \"A chronological log of transfers between supply chain nodes (e.g., Supplier -> Distribution Center -> Retailer) linked by batch IDs.\",\n  \"inspection_records\": \"A mapping of batch IDs to laboratory test results, safety certificates, and quality control logs.\",\n  \"supply_chain_nodes\": \"Details about facilities involved, including facility type (farm, plant, warehouse, store) and contact credentials.\",\n  \"recall_registry\": \"A list of active recall orders, specifying the affected products, batches, and the reason for recall (e.g., pathogen detection).\"\n}}\n{action_set_definitions}: {\n  \"get_batch_details\": {\n    \"description\": \"Retrieves the ledger information for a specific batch ID, including product name, current location, current status, and production timestamp.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"batch_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the food batch (e.g., 'CS-404').\"\n        }\n      },\n      \"required\": [\n        \"batch_id\"\n      ]\n    },\n    \"example_output\": {\n      \"batch_id\": \"CS-404\",\n      \"product_name\": \"Creamy Caesar Dressing\",\n      \"location\": \"Retail-North\",\n      \"status\": \"active\",\n      \"production_date\": \"2023-11-01 14:00:00\"\n    }\n  },\n  \"trace_genealogy\": {\n    \"description\": \"Traces the ingredients (upstream) or the products created from a batch (downstream).\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"batch_id\": {\n          \"type\": \"string\",\n          \"description\": \"The batch ID to trace from.\"\n        },\n        \"direction\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"upstream\",\n            \"downstream\"\n          ],\n          \"description\": \"Direction of trace: 'upstream' for ingredients/raw materials, 'downstream' for finished goods/distributed lots.\"\n        }\n      },\n      \"required\": [\n        \"batch_id\",\n        \"direction\"\n      ]\n    },\n    \"example_output\": [\n      {\n        \"batch_id\": \"ING-101\",\n        \"product_name\": \"Liquid Egg\"\n      }\n    ]\n  },\n  \"get_inspection_records\": {\n    \"description\": \"Queries lab results and quality control logs for a specific batch to identify pathogens or safety failures.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"batch_id\": {\n          \"type\": \"string\",\n          \"description\": \"The batch ID to inspect.\"\n        }\n      },\n      \"required\": [\n        \"batch_id\"\n      ]\n    },\n    \"example_output\": [\n      {\n        \"test_type\": \"Listeria monocytogenes\",\n        \"result\": \"Positive\",\n        \"timestamp\": \"2023-11-01 10:00:00\"\n      }\n    ]\n  },\n  \"update_batch_status\": {\n    \"description\": \"Updates the status of a specific batch in the ledger (e.g., to 'recalled' or 'quarantined').\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"batch_id\": {\n          \"type\": \"string\",\n          \"description\": \"The batch ID to update.\"\n        },\n        \"new_status\": {\n          \"type\": \"string\",\n          \"description\": \"The target status (e.g., 'recalled').\"\n        }\n      },\n      \"required\": [\n        \"batch_id\",\n        \"new_status\"\n      ]\n    },\n    \"example_output\": {\n      \"success\": true,\n      \"updated_id\": \"CS-404\"\n    }\n  },\n  \"update_recall_registry\": {\n    \"description\": \"Adds a formal entry to the global recall registry detailing the root cause and all affected batches.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"root_cause_batch_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the batch identified as the source of contamination.\"\n        },\n        \"affected_batch_ids\": {\n          \"type\": \"array\",\n          \"items\": {\n            \"type\": \"string\"\n          },\n          \"description\": \"A list of all contaminated finished goods batch IDs.\"\n        },\n        \"reason\": {\n          \"type\": \"string\",\n          \"description\": \"Detailed explanation of the contamination and tracing logic.\"\n        }\n      },\n      \"required\": [\n        \"root_cause_batch_id\",\n        \"affected_batch_ids\",\n        \"reason\"\n      ]\n    },\n    \"example_output\": {\n      \"registry_id\": \"REC-999\",\n      \"status\": \"published\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_batch_details",
+      "description": "Retrieves the ledger information for a specific batch ID, including product name, current location, current status, and production timestamp.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "batch_id": {
+            "type": "string",
+            "description": "The unique identifier for the food batch (e.g., 'CS-404')."
+          }
+        },
+        "required": [
+          "batch_id"
+        ]
+      },
+      "example_output": {
+        "batch_id": "CS-404",
+        "product_name": "Creamy Caesar Dressing",
+        "location": "Retail-North",
+        "status": "active",
+        "production_date": "2023-11-01 14:00:00"
+      }
+    },
+    {
+      "name": "trace_genealogy",
+      "description": "Traces the ingredients (upstream) or the products created from a batch (downstream).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "batch_id": {
+            "type": "string",
+            "description": "The batch ID to trace from."
+          },
+          "direction": {
+            "type": "string",
+            "enum": [
+              "upstream",
+              "downstream"
+            ],
+            "description": "Direction of trace: 'upstream' for ingredients/raw materials, 'downstream' for finished goods/distributed lots."
+          }
+        },
+        "required": [
+          "batch_id",
+          "direction"
+        ]
+      },
+      "example_output": [
+        {
+          "batch_id": "ING-101",
+          "product_name": "Liquid Egg"
+        }
+      ]
+    },
+    {
+      "name": "get_inspection_records",
+      "description": "Queries lab results and quality control logs for a specific batch to identify pathogens or safety failures.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "batch_id": {
+            "type": "string",
+            "description": "The batch ID to inspect."
+          }
+        },
+        "required": [
+          "batch_id"
+        ]
+      },
+      "example_output": [
+        {
+          "test_type": "Listeria monocytogenes",
+          "result": "Positive",
+          "timestamp": "2023-11-01 10:00:00"
+        }
+      ]
+    },
+    {
+      "name": "update_batch_status",
+      "description": "Updates the status of a specific batch in the ledger (e.g., to 'recalled' or 'quarantined').",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "batch_id": {
+            "type": "string",
+            "description": "The batch ID to update."
+          },
+          "new_status": {
+            "type": "string",
+            "description": "The target status (e.g., 'recalled')."
+          }
+        },
+        "required": [
+          "batch_id",
+          "new_status"
+        ]
+      },
+      "example_output": {
+        "success": true,
+        "updated_id": "CS-404"
+      }
+    },
+    {
+      "name": "update_recall_registry",
+      "description": "Adds a formal entry to the global recall registry detailing the root cause and all affected batches.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "root_cause_batch_id": {
+            "type": "string",
+            "description": "The ID of the batch identified as the source of contamination."
+          },
+          "affected_batch_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "A list of all contaminated finished goods batch IDs."
+          },
+          "reason": {
+            "type": "string",
+            "description": "Detailed explanation of the contamination and tracing logic."
+          }
+        },
+        "required": [
+          "root_cause_batch_id",
+          "affected_batch_ids",
+          "reason"
+        ]
+      },
+      "example_output": {
+        "registry_id": "REC-999",
+        "status": "published"
+      }
+    }
+  ],
+  "state_description": {
+    "batch_ledger": "A list of food batches currently in the supply chain, including their current location, status (e.g., 'active', 'recalled', 'quarantined'), and production date.",
+    "movement_history": "A chronological log of transfers between supply chain nodes (e.g., Supplier -> Distribution Center -> Retailer) linked by batch IDs.",
+    "inspection_records": "A mapping of batch IDs to laboratory test results, safety certificates, and quality control logs.",
+    "supply_chain_nodes": "Details about facilities involved, including facility type (farm, plant, warehouse, store) and contact credentials.",
+    "recall_registry": "A list of active recall orders, specifying the affected products, batches, and the reason for recall (e.g., pathogen detection)."
+  },
+  "task_initial_state": {
+    "batch_ledger": [
+      {
+        "batch_id": "CS-404",
+        "product_name": "Creamy Caesar Dressing",
+        "current_location": "Retail-North",
+        "status": "active",
+        "production_date": "2023-11-01T10:00:00Z"
+      },
+      {
+        "batch_id": "RA-900",
+        "product_name": "Zesty Ranch",
+        "current_location": "DC-Central",
+        "status": "active",
+        "production_date": "2023-11-02T06:00:00Z"
+      },
+      {
+        "batch_id": "CS-505",
+        "product_name": "Creamy Caesar Dressing",
+        "current_location": "Retail-South",
+        "status": "active",
+        "production_date": "2023-11-03T09:00:00Z"
+      },
+      {
+        "batch_id": "RW-22",
+        "product_name": "Caesar Base Rework",
+        "current_location": "SaucePlant-X",
+        "status": "consumed",
+        "production_date": "2023-11-01T22:00:00Z"
+      },
+      {
+        "batch_id": "RM-E-101",
+        "product_name": "Bulk Egg Yolk",
+        "current_location": "Silo-1",
+        "status": "consumed",
+        "production_date": "2023-10-28T00:00:00Z"
+      },
+      {
+        "batch_id": "RM-E-102",
+        "product_name": "Bulk Egg Yolk",
+        "current_location": "Silo-1",
+        "status": "active",
+        "production_date": "2023-11-02T12:00:00Z"
+      }
+    ],
+    "movement_history": [
+      {
+        "timestamp": "2023-11-01T10:00:00Z",
+        "batch_id": "CS-404",
+        "from": "SaucePlant-X",
+        "to": "Retail-North",
+        "event": "Transformation",
+        "ingredients": [
+          "RM-E-101",
+          "Spice-Mix-A"
+        ]
+      },
+      {
+        "timestamp": "2023-11-01T22:00:00Z",
+        "batch_id": "RW-22",
+        "from": "CS-404",
+        "to": "SaucePlant-X",
+        "event": "Rework_Generation",
+        "description": "Overfill from Caesar batch CS-404"
+      },
+      {
+        "timestamp": "2023-11-02T06:00:00Z",
+        "batch_id": "RA-900",
+        "from": "SaucePlant-X",
+        "to": "DC-Central",
+        "event": "Transformation",
+        "ingredients": [
+          "RM-E-101",
+          "RW-22",
+          "Herb-Mix-B"
+        ]
+      },
+      {
+        "timestamp": "2023-11-02T08:00:00Z",
+        "batch_id": "Silo-1",
+        "from": "System",
+        "to": "System",
+        "event": "Silo_Flush_Out",
+        "description": "Full sanitation cycle; Silo-1 emptied and cleaned prior to new shipment receipt."
+      },
+      {
+        "timestamp": "2023-11-02T12:00:00Z",
+        "batch_id": "RM-E-102",
+        "from": "Supplier-Y",
+        "to": "Silo-1",
+        "event": "Receiving"
+      },
+      {
+        "timestamp": "2023-11-03T09:00:00Z",
+        "batch_id": "CS-505",
+        "from": "SaucePlant-X",
+        "to": "Retail-South",
+        "event": "Transformation",
+        "ingredients": [
+          "RM-E-102",
+          "Spice-Mix-A"
+        ]
+      }
+    ],
+    "inspection_records": {
+      "CS-404": {
+        "test": "Listeria monocytogenes",
+        "result": "POSITIVE",
+        "date": "2023-11-04"
+      },
+      "RM-E-101": {
+        "test": "Supplier COA",
+        "result": "Presumptive Negative",
+        "notes": "Retest triggered by downstream positive CS-404.",
+        "date": "2023-10-28"
+      },
+      "RM-E-102": {
+        "test": "Supplier COA",
+        "result": "Negative",
+        "date": "2023-11-02"
+      }
+    },
+    "supply_chain_nodes": {
+      "SaucePlant-X": {
+        "type": "plant",
+        "capabilities": [
+          "Silo Storage",
+          "Cold Mixing"
+        ]
+      },
+      "Retail-North": {
+        "type": "store"
+      },
+      "DC-Central": {
+        "type": "warehouse"
+      },
+      "Retail-South": {
+        "type": "store"
+      }
+    },
+    "recall_registry": []
+  }
+}

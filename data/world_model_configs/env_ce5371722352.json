@@ -1,0 +1,92 @@
+{
+  "environment_name": "env_ce5371722352",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: You act as a high-fidelity simulator for a Renewable Energy Dispatch Optimization environment. Based on the current internal state $s_t$ and the Agent's action $a_t$, you must simulate the underlying physical and economic evolution of the energy grid and predict the specific observation $o_{{t+1}}$ returned to the Agent.\n- **Emphasis**: You do not perform energy dispatch yourself. You are the environment. Your task is to calculate state transitions (e.g., battery level changes, cost accumulations) and generate the resulting sensor data/reports (observations).\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions between the World Model and the Agent must maintain strict context consistency. Each action updates the internal state (e.g., advancing the time step, adjusting stored energy), and subsequent observations must reflect these historical changes accurately.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. You must parse this JSON to determine the environment's response. \nExample Input:\n```json\n{{\n \"name\": \"dispatch_battery\",\n \"arguments\": {{\n    \"amount_mw\": 5.5,\n    \"mode\": \"charge\"\n  }}\n}}\n```\nYou must validate the parameters against the state (e.g., ensuring a battery isn't charged beyond capacity) before generating the observation.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nIf the Agent provides invalid parameters (e.g., discharging more energy than available), undefined action names, or if the action results in a physical impossibility, you must return a structured error response: `{{\"error\": \"Description of the specific failure\"}}`. Do not fabricate successful outcomes for failed constraints.\n\n##### Output Assembly\nFor every action function call, return a structured JSON object containing **ONLY** the return fields declared in that action function's definition. \n\n**CRITICAL CONSTRAINT**: Your output must **NOT** contain the internal state fields, the `new_state`, or any metadata not explicitly requested by the action's observation definition. You maintain the state internally through the conversation history; the Agent only sees the Observation.\n\n### 4. Key Principles\n- **Format**: Output must be strictly valid JSON.\n- **Factuality**: Use realistic physical units and constraints typical for power systems (MW, MWh, $/MWh).\n- **Consistency**: Ensure that if energy is sold to the grid, the battery level in the next step reflects that decrease.\n- **Realism**: Simulate stochastic elements if implied (e.g., slight fluctuations in solar output) while remaining logically sound.\n- **Quality**: Observations should be precise and structurally complete.\n- **Encapsulation**: Never expose the full state vector in the response. Only return what the Agent's sensors/actions would logically see.\n{{initial_state}}: {{\n  \"timestamp\": \"2024-08-14T17:30:00Z\",\n  \"battery_soc_mwh\": 12.0,\n  \"grid_demand_mw\": 135.0,\n  \"renewable_output_mw\": 40.0,\n  \"market_price_per_mwh\": 250.0,\n  \"cumulative_cost\": 0.0\n}}\n{{state_descriptions}}: {{\n  \"timestamp\": \"The current simulation time in ISO 8601 format.\",\n  \"battery_soc_mwh\": \"Current State of Charge of the energy storage system in Megawatt-hours.\",\n  \"grid_demand_mw\": \"Current power demand from the local grid in Megawatts.\",\n  \"renewable_output_mw\": \"Combined real-time power generation from solar and wind sources.\",\n  \"market_price_per_mwh\": \"Current clearing price of electricity in the wholesale market ($).\",\n  \"cumulative_cost\": \"Total operational cost or profit accumulated since the start of the episode.\"\n}}\n{action_set_definitions}: {\n  \"fetch_telemetry\": {\n    \"description\": \"Retrieves the current state of the energy environment, including grid demand, battery status, and renewable output.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"timestamp\": \"2023-10-27T17:00:00Z\",\n      \"battery_soc_mwh\": 25.5,\n      \"grid_demand_mw\": 112.4,\n      \"renewable_output_mw\": 15.2,\n      \"market_price_per_mwh\": 55.0,\n      \"cumulative_cost\": 1200.5\n    }\n  },\n  \"set_battery_power\": {\n    \"description\": \"Adjusts the power output of the battery storage system for the current interval.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"power_mw\": {\n          \"type\": \"number\",\n          \"description\": \"The power to dispatch. Positive values discharge the battery (reduce grid demand); negative values charge it.\"\n        }\n      },\n      \"required\": [\n        \"power_mw\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"success\",\n      \"applied_dispatch_mw\": 12.4\n    }\n  },\n  \"set_load_reduction\": {\n    \"description\": \"Reduces the industrial process load to lower the net grid demand.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"reduction_mw\": {\n          \"type\": \"number\",\n          \"description\": \"The amount of load to shed in Megawatts.\"\n        }\n      },\n      \"required\": [\n        \"reduction_mw\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"success\",\n      \"applied_reduction_mw\": 5.0\n    }\n  },\n  \"step_simulation\": {\n    \"description\": \"Advances the environment simulation to the next time interval and applies the dispatched actions.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"new_timestamp\": \"2023-10-27T17:15:00Z\",\n      \"status\": \"simulation_advanced\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "fetch_telemetry",
+      "description": "Retrieves the current state of the energy environment, including grid demand, battery status, and renewable output.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "timestamp": "2023-10-27T17:00:00Z",
+        "battery_soc_mwh": 25.5,
+        "grid_demand_mw": 112.4,
+        "renewable_output_mw": 15.2,
+        "market_price_per_mwh": 55.0,
+        "cumulative_cost": 1200.5
+      }
+    },
+    {
+      "name": "set_battery_power",
+      "description": "Adjusts the power output of the battery storage system for the current interval.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "power_mw": {
+            "type": "number",
+            "description": "The power to dispatch. Positive values discharge the battery (reduce grid demand); negative values charge it."
+          }
+        },
+        "required": [
+          "power_mw"
+        ]
+      },
+      "example_output": {
+        "status": "success",
+        "applied_dispatch_mw": 12.4
+      }
+    },
+    {
+      "name": "set_load_reduction",
+      "description": "Reduces the industrial process load to lower the net grid demand.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "reduction_mw": {
+            "type": "number",
+            "description": "The amount of load to shed in Megawatts."
+          }
+        },
+        "required": [
+          "reduction_mw"
+        ]
+      },
+      "example_output": {
+        "status": "success",
+        "applied_reduction_mw": 5.0
+      }
+    },
+    {
+      "name": "step_simulation",
+      "description": "Advances the environment simulation to the next time interval and applies the dispatched actions.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "new_timestamp": "2023-10-27T17:15:00Z",
+        "status": "simulation_advanced"
+      }
+    }
+  ],
+  "state_description": {
+    "timestamp": "The current simulation time in ISO 8601 format.",
+    "battery_soc_mwh": "Current State of Charge of the energy storage system in Megawatt-hours.",
+    "grid_demand_mw": "Current power demand from the local grid in Megawatts.",
+    "renewable_output_mw": "Combined real-time power generation from solar and wind sources.",
+    "market_price_per_mwh": "Current clearing price of electricity in the wholesale market ($).",
+    "cumulative_cost": "Total operational cost or profit accumulated since the start of the episode."
+  },
+  "task_initial_state": {
+    "timestamp": "2024-08-14T17:30:00Z",
+    "battery_soc_mwh": 12.0,
+    "grid_demand_mw": 135.0,
+    "renewable_output_mw": 40.0,
+    "market_price_per_mwh": 250.0,
+    "cumulative_cost": 0.0
+  }
+}

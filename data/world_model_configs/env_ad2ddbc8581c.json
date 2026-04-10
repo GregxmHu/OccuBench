@@ -1,0 +1,154 @@
+{
+  "environment_name": "env_ad2ddbc8581c",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM) for Adaptive Curriculum Sequencing.\n- **Core Objective**: Based on the current student state $s_t$ and the pedagogical action $a_t$ taken by the Agent (the Tutor/Sequencer), you must simulate the student's learning evolution and predict the observation $o_{{t+1}}$ (e.g., assessment results, engagement feedback).\n- **Emphasis**: You are the environment. You do not suggest the next lesson; you simulate how a student with specific knowledge levels and traits would respond to the Agent's curriculum choices.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation tracking student progress and cognitive load. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nYou must maintain internal consistency regarding the student's learning curve. If a student fails a prerequisite in the simulation, their performance on advanced topics should reflect that deficiency until remediation is provided.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions (e.g., delivering a lesson, conducting a quiz, or providing a hint). The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object containing the result of the pedagogical intervention.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. This JSON must contain:\n- `\"name\"`: The name of the action (e.g., `deliver_lesson`, `administer_quiz`).\n- `\"arguments\"`: Parameters for the action.\n\nExample Input:\n```json\n{{\n \"name\": \"administer_quiz\",\n \"arguments\": {{\n    \"topic_id\": \"algebra_linear_equations\",\n    \"difficulty\": \"medium\"\n  }}\n}}\n```\nYou must parse this input, update the internal student state (e.g., increasing mastery or increasing fatigue), and generate the result.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\n- If an action refers to a `topic_id` that does not exist in the curriculum: return `{{\"error\": \"Topic not found in curriculum graph\"}}`.\n- If an action is missing required parameters: return `{{\"error\": \"Missing required argument: [param_name]\"}}`.\n- Do not fabricate progress if the logic dictates a student would struggle.\n\n##### Output Assembly\nFor every action, return a structured JSON object containing **ONLY** the return fields declared in the action function definition (the Observation).\n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the internal state `s_t` or the `mastery_map`. The Agent only sees the assessment scores, time-on-task, or qualitative feedback returned by the action. State maintenance is handled internally by you.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to JSON for both inputs and outputs.\n- **Factuality**: Simulations must follow educational logic (e.g., forgetting curves, prerequisite dependencies).\n- **Consistency**: The student's response must be consistent with their established mastery levels in the history.\n- **Realism**: Simulate realistic human variance; a student might occasionally fail a known topic due to fatigue.\n- **Encapsulation**: Never expose the updated internal mastery scores or hidden state variables to the Agent. Only provide the explicit Observation.\n{{initial_state}}: {{\n  \"mastery_map\": {{\n    \"chem_atomic_symbols\": 0.88,\n    \"chem_valence_theory\": 0.12,\n    \"chem_synth_03\": 0.02\n  }},\n  \"engagement_level\": 0.65,\n  \"fatigue_index\": 0.1,\n  \"attempt_history\": [\n    \"chem_atomic_symbols_assessment_pass\"\n  ]\n}}\n{{state_descriptions}}: {{\n  \"mastery_map\": \"A dictionary where keys are topic IDs and values are floats (0.0 to 1.0) representing student mastery.\",\n  \"engagement_level\": \"Current student motivation/focus level from 0.0 (stopped learning) to 1.0 (highly focused).\",\n  \"fatigue_index\": \"Accumulated cognitive load from 0.0 to 1.0; higher values increase the probability of error.\",\n  \"attempt_history\": \"A chronological list of previous lesson or quiz IDs completed in the current session.\"\n}}\n{action_set_definitions}: {\n  \"fetch_student_metrics\": {\n    \"description\": \"Retrieves the current environmental state for a specific student, including mastery levels, engagement, and fatigue.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"student_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier of the student (e.g., 'Leo').\"\n        }\n      },\n      \"required\": [\n        \"student_id\"\n      ]\n    },\n    \"example_output\": {\n      \"mastery_map\": {\n        \"chem_basics_01\": 0.9,\n        \"chem_synth_03\": 0.4\n      },\n      \"engagement_level\": 0.85,\n      \"fatigue_index\": 0.15,\n      \"attempt_history\": [\n        \"lesson_intro_01\"\n      ]\n    }\n  },\n  \"fetch_topic_metadata\": {\n    \"description\": \"Retrieves educational metadata for a specific topic, including its prerequisite dependencies and the expected cognitive load (fatigue increase) per lesson.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"topic_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the topic to investigate.\"\n        }\n      },\n      \"required\": [\n        \"topic_id\"\n      ]\n    },\n    \"example_output\": {\n      \"topic_id\": \"chem_synth_03\",\n      \"prerequisites\": [\n        \"chem_basics_01\",\n        \"stoich_02\"\n      ],\n      \"estimated_cognitive_load\": 0.2\n    }\n  },\n  \"execute_lesson\": {\n    \"description\": \"Executes a learning session for a specific topic to increase student mastery. This action increases student fatigue.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"student_id\": {\n          \"type\": \"string\",\n          \"description\": \"The student receiving the lesson.\"\n        },\n        \"topic_id\": {\n          \"type\": \"string\",\n          \"description\": \"The topic to be taught.\"\n        }\n      },\n      \"required\": [\n        \"student_id\",\n        \"topic_id\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"completed\",\n      \"new_mastery_estimate\": 0.75\n    }\n  },\n  \"administer_assessment\": {\n    \"description\": \"Performs a formal evaluation of the student's mastery for a specific topic. This is the only way to officially validate the task completion.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"student_id\": {\n          \"type\": \"string\",\n          \"description\": \"The student being assessed.\"\n        },\n        \"topic_id\": {\n          \"type\": \"string\",\n          \"description\": \"The topic to evaluate.\"\n        }\n      },\n      \"required\": [\n        \"student_id\",\n        \"topic_id\"\n      ]\n    },\n    \"example_output\": {\n      \"formal_score\": 0.87,\n      \"passed\": true\n    }\n  },\n  \"apply_behavioral_intervention\": {\n    \"description\": \"Adjusts the student's internal state to manage fatigue or engagement.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"student_id\": {\n          \"type\": \"string\",\n          \"description\": \"The student ID.\"\n        },\n        \"intervention_type\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"rest_break\",\n            \"motivation_boost\"\n          ],\n          \"description\": \"rest_break significantly reduces fatigue_index; motivation_boost increases engagement_level.\"\n        }\n      },\n      \"required\": [\n        \"student_id\",\n        \"intervention_type\"\n      ]\n    },\n    \"example_output\": {\n      \"new_fatigue\": 0.05,\n      \"new_engagement\": 0.95\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "fetch_student_metrics",
+      "description": "Retrieves the current environmental state for a specific student, including mastery levels, engagement, and fatigue.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "student_id": {
+            "type": "string",
+            "description": "The unique identifier of the student (e.g., 'Leo')."
+          }
+        },
+        "required": [
+          "student_id"
+        ]
+      },
+      "example_output": {
+        "mastery_map": {
+          "chem_basics_01": 0.9,
+          "chem_synth_03": 0.4
+        },
+        "engagement_level": 0.85,
+        "fatigue_index": 0.15,
+        "attempt_history": [
+          "lesson_intro_01"
+        ]
+      }
+    },
+    {
+      "name": "fetch_topic_metadata",
+      "description": "Retrieves educational metadata for a specific topic, including its prerequisite dependencies and the expected cognitive load (fatigue increase) per lesson.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "topic_id": {
+            "type": "string",
+            "description": "The ID of the topic to investigate."
+          }
+        },
+        "required": [
+          "topic_id"
+        ]
+      },
+      "example_output": {
+        "topic_id": "chem_synth_03",
+        "prerequisites": [
+          "chem_basics_01",
+          "stoich_02"
+        ],
+        "estimated_cognitive_load": 0.2
+      }
+    },
+    {
+      "name": "execute_lesson",
+      "description": "Executes a learning session for a specific topic to increase student mastery. This action increases student fatigue.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "student_id": {
+            "type": "string",
+            "description": "The student receiving the lesson."
+          },
+          "topic_id": {
+            "type": "string",
+            "description": "The topic to be taught."
+          }
+        },
+        "required": [
+          "student_id",
+          "topic_id"
+        ]
+      },
+      "example_output": {
+        "status": "completed",
+        "new_mastery_estimate": 0.75
+      }
+    },
+    {
+      "name": "administer_assessment",
+      "description": "Performs a formal evaluation of the student's mastery for a specific topic. This is the only way to officially validate the task completion.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "student_id": {
+            "type": "string",
+            "description": "The student being assessed."
+          },
+          "topic_id": {
+            "type": "string",
+            "description": "The topic to evaluate."
+          }
+        },
+        "required": [
+          "student_id",
+          "topic_id"
+        ]
+      },
+      "example_output": {
+        "formal_score": 0.87,
+        "passed": true
+      }
+    },
+    {
+      "name": "apply_behavioral_intervention",
+      "description": "Adjusts the student's internal state to manage fatigue or engagement.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "student_id": {
+            "type": "string",
+            "description": "The student ID."
+          },
+          "intervention_type": {
+            "type": "string",
+            "enum": [
+              "rest_break",
+              "motivation_boost"
+            ],
+            "description": "rest_break significantly reduces fatigue_index; motivation_boost increases engagement_level."
+          }
+        },
+        "required": [
+          "student_id",
+          "intervention_type"
+        ]
+      },
+      "example_output": {
+        "new_fatigue": 0.05,
+        "new_engagement": 0.95
+      }
+    }
+  ],
+  "state_description": {
+    "mastery_map": "A dictionary where keys are topic IDs and values are floats (0.0 to 1.0) representing student mastery.",
+    "engagement_level": "Current student motivation/focus level from 0.0 (stopped learning) to 1.0 (highly focused).",
+    "fatigue_index": "Accumulated cognitive load from 0.0 to 1.0; higher values increase the probability of error.",
+    "attempt_history": "A chronological list of previous lesson or quiz IDs completed in the current session."
+  },
+  "task_initial_state": {
+    "mastery_map": {
+      "chem_atomic_symbols": 0.88,
+      "chem_valence_theory": 0.12,
+      "chem_synth_03": 0.02
+    },
+    "engagement_level": 0.65,
+    "fatigue_index": 0.1,
+    "attempt_history": [
+      "chem_atomic_symbols_assessment_pass"
+    ]
+  }
+}

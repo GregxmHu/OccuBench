@@ -1,0 +1,151 @@
+{
+  "environment_name": "env_c13609cd3bbf",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: You are acting as the internal simulation engine for a Telescope Observation Scheduling environment. Based on the current environment state $s_t$ and the action $a_t$ submitted by the Agent, your task is to simulate the logical evolution of the environment and predict the resulting observation $o_{{t+1}}$ obtained by the Agent.\n- **Emphasis**: You are a simulator, not an executor. You do not perform real-world telescope movements; instead, you calculate state transitions internally and generate the corresponding sensory or data feedback (Observations) that the telescope hardware would return.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nYou must maintain strict context consistency throughout the interaction. Every action taken by the Agent influences the internal state (e.g., time progression, telescope orientation, sensor cooling). Subsequent observations must logically follow the accumulated history of the simulation.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the telescope environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. You must parse this JSON to determine the intended transition. The format is:\n- `\"name\"`: The name of the action function to execute.\n- Parameters: The specific arguments required for that action.\n\nExample:\n```json\n{{\n \"name\": \"point_telescope\",\n \"arguments\": {{\n    \"target_ra\": \"12h 30m 00s\",\n    \"target_dec\": \"+15d 00m 00s\"\n  }}\n}}\n```\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nYou must handle physical and logical constraints realistically. If an action is invalid (e.g., pointing a telescope below the horizon, attempting an exposure during high winds, or calling an undefined action), return a structured error message:\n- Example: `{{\"error\": \"Target is currently below the local horizon (Elevation < 0)\"}}`\nDo not fabricate successful results for failed operations.\n\n##### Output Assembly\nFor every action call, return a structured JSON object containing **ONLY** the return fields declared in the specific action's definition. \n\n**CRITICAL CONSTRAINT**: Your output must **NOT** contain the internal state fields, the updated state dictionary, or any hidden variables. The internal state transition happens privately within your processing. The Agent must only receive the Observation (the explicit return values of the action).\n\n### 4. Key Principles\n- **Format**: Strictly adhere to JSON for all outputs.\n- **Factuality**: Simulate telescope dynamics (slewing time, cooling rates, Earth rotation) based on scientific realism.\n- **Consistency**: If the telescope moves to a coordinate, subsequent observations must reflect that new orientation until changed.\n- **Realism**: Account for factors such as weather, orbital mechanics, and hardware limitations.\n- **Quality**: Provide clear, unambiguous observation data.\n- **Encapsulation**: Never reveal the internal state dictionary `{{initial_state}}` or its updates in the final output string. Only provide the defined Observation JSON.\n{{initial_state}}: {{\n  \"current_time_utc\": \"2024-10-15T20:00:00Z\",\n  \"azimuth_deg\": 45.0,\n  \"elevation_deg\": 10.0,\n  \"ccd_temperature_c\": 12.0,\n  \"weather_condition\": \"partly_cloudy\",\n  \"is_calibrated\": false,\n  \"dome_status\": \"closed\"\n}}\n{{state_descriptions}}: {{\n  \"current_time_utc\": \"The current simulation time in ISO 8601 UTC format.\",\n  \"azimuth_deg\": \"Current horizontal orientation of the telescope in degrees (0-360).\",\n  \"elevation_deg\": \"Current vertical orientation of the telescope in degrees (0-90).\",\n  \"ccd_temperature_c\": \"Current temperature of the imaging sensor in degrees Celsius.\",\n  \"weather_condition\": \"Current atmospheric state: 'clear', 'partly_cloudy', 'overcast', or 'high_wind'.\",\n  \"is_calibrated\": \"Boolean flag indicating if the sensors have been calibrated for the current session.\",\n  \"dome_status\": \"The physical state of the observatory dome: 'open' or 'closed'.\"\n}}\n{action_set_definitions}: {\n  \"get_observatory_state\": {\n    \"description\": \"Retrieves the current simulation time and environmental/hardware status (weather, coordinates, temperature, calibration, dome).\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"current_time_utc\": \"2024-10-15T21:15:00Z\",\n      \"azimuth_deg\": 45.0,\n      \"elevation_deg\": 10.0,\n      \"ccd_temperature_c\": -15.0,\n      \"weather_condition\": \"overcast\",\n      \"is_calibrated\": false,\n      \"dome_status\": \"closed\"\n    }\n  },\n  \"set_telescope_target\": {\n    \"description\": \"Slews the telescope to the specified horizontal coordinates.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"azimuth\": {\n          \"type\": \"number\",\n          \"description\": \"Target azimuth in degrees (0-360).\"\n        },\n        \"elevation\": {\n          \"type\": \"number\",\n          \"description\": \"Target elevation in degrees (0-90).\"\n        }\n      },\n      \"required\": [\n        \"azimuth\",\n        \"elevation\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"slewing_complete\"\n    }\n  },\n  \"configure_cooling\": {\n    \"description\": \"Sets the target temperature for the CCD cooling system.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"target_temp_c\": {\n          \"type\": \"number\",\n          \"description\": \"Target temperature in Celsius.\"\n        }\n      },\n      \"required\": [\n        \"target_temp_c\"\n      ]\n    },\n    \"example_output\": {\n      \"cooling_active\": true\n    }\n  },\n  \"run_system_calibration\": {\n    \"description\": \"Executes the internal sensor calibration routine.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"is_calibrated\": true\n    }\n  },\n  \"set_dome_state\": {\n    \"description\": \"Opens or closes the observatory dome shutter.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"state\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"open\",\n            \"closed\"\n          ]\n        }\n      },\n      \"required\": [\n        \"state\"\n      ]\n    },\n    \"example_output\": {\n      \"dome_status\": \"open\"\n    }\n  },\n  \"wait_simulation_time\": {\n    \"description\": \"Advances the simulation time to wait for weather changes or hardware stabilization.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"minutes\": {\n          \"type\": \"integer\",\n          \"description\": \"Number of minutes to advance.\"\n        }\n      },\n      \"required\": [\n        \"minutes\"\n      ]\n    },\n    \"example_output\": {\n      \"new_time_utc\": \"2024-10-15T21:45:00Z\"\n    }\n  },\n  \"execute_science_capture\": {\n    \"description\": \"Triggers the imaging system for the high-resolution science capture.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"status\": \"success\",\n      \"data_id\": \"SCI-20241015-001\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_observatory_state",
+      "description": "Retrieves the current simulation time and environmental/hardware status (weather, coordinates, temperature, calibration, dome).",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "current_time_utc": "2024-10-15T21:15:00Z",
+        "azimuth_deg": 45.0,
+        "elevation_deg": 10.0,
+        "ccd_temperature_c": -15.0,
+        "weather_condition": "overcast",
+        "is_calibrated": false,
+        "dome_status": "closed"
+      }
+    },
+    {
+      "name": "set_telescope_target",
+      "description": "Slews the telescope to the specified horizontal coordinates.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "azimuth": {
+            "type": "number",
+            "description": "Target azimuth in degrees (0-360)."
+          },
+          "elevation": {
+            "type": "number",
+            "description": "Target elevation in degrees (0-90)."
+          }
+        },
+        "required": [
+          "azimuth",
+          "elevation"
+        ]
+      },
+      "example_output": {
+        "status": "slewing_complete"
+      }
+    },
+    {
+      "name": "configure_cooling",
+      "description": "Sets the target temperature for the CCD cooling system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "target_temp_c": {
+            "type": "number",
+            "description": "Target temperature in Celsius."
+          }
+        },
+        "required": [
+          "target_temp_c"
+        ]
+      },
+      "example_output": {
+        "cooling_active": true
+      }
+    },
+    {
+      "name": "run_system_calibration",
+      "description": "Executes the internal sensor calibration routine.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "is_calibrated": true
+      }
+    },
+    {
+      "name": "set_dome_state",
+      "description": "Opens or closes the observatory dome shutter.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "state": {
+            "type": "string",
+            "enum": [
+              "open",
+              "closed"
+            ]
+          }
+        },
+        "required": [
+          "state"
+        ]
+      },
+      "example_output": {
+        "dome_status": "open"
+      }
+    },
+    {
+      "name": "wait_simulation_time",
+      "description": "Advances the simulation time to wait for weather changes or hardware stabilization.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "minutes": {
+            "type": "integer",
+            "description": "Number of minutes to advance."
+          }
+        },
+        "required": [
+          "minutes"
+        ]
+      },
+      "example_output": {
+        "new_time_utc": "2024-10-15T21:45:00Z"
+      }
+    },
+    {
+      "name": "execute_science_capture",
+      "description": "Triggers the imaging system for the high-resolution science capture.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "status": "success",
+        "data_id": "SCI-20241015-001"
+      }
+    }
+  ],
+  "state_description": {
+    "current_time_utc": "The current simulation time in ISO 8601 UTC format.",
+    "azimuth_deg": "Current horizontal orientation of the telescope in degrees (0-360).",
+    "elevation_deg": "Current vertical orientation of the telescope in degrees (0-90).",
+    "ccd_temperature_c": "Current temperature of the imaging sensor in degrees Celsius.",
+    "weather_condition": "Current atmospheric state: 'clear', 'partly_cloudy', 'overcast', or 'high_wind'.",
+    "is_calibrated": "Boolean flag indicating if the sensors have been calibrated for the current session.",
+    "dome_status": "The physical state of the observatory dome: 'open' or 'closed'."
+  },
+  "task_initial_state": {
+    "current_time_utc": "2024-10-15T20:00:00Z",
+    "azimuth_deg": 45.0,
+    "elevation_deg": 10.0,
+    "ccd_temperature_c": 12.0,
+    "weather_condition": "partly_cloudy",
+    "is_calibrated": false,
+    "dome_status": "closed"
+  }
+}

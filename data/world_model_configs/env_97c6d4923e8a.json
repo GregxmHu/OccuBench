@@ -1,0 +1,69 @@
+{
+  "environment_name": "env_97c6d4923e8a",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: Based on the current state $s_t$ and action $a_t$, simulate the evolution of the Hotel Room Revenue Management environment and predict the observation $o_{{t+1}}$ obtained by the Agent. \n- **Emphasis**: The LWM does not execute real-world operations or manage actual hotel bookings. It performs internal state evolution (tracking inventory, bookings, and revenue) and generates the resulting observation for the Agent.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions between the World Model and the Agent must maintain strict context consistency. The model must track the passage of time, the depletion of room inventory, and the accumulation of revenue over the simulation horizon.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent submits action requests via a structured JSON object. The LWM must correctly parse these inputs and simulate the results. The input format is:\n- `\"name\"`: The name of the action function.\n- Remaining fields: Parameter names and values.\n\nExample:\n```json\n{{\n \"name\": \"set_room_price\",\n \"arguments\": {{\n    \"room_type\": \"deluxe\",\n    \"new_price\": 199.99\n  }}\n}}\n```\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nIf the Agent provides invalid parameters (e.g., negative prices), undefined actions, or if an action is impossible given the current state (e.g., booking a room when inventory is zero), return structured error information: `{{\"error\": \"Description of the error\"}}`. Do not fabricate states or fictitious responses.\n\n##### Output Assembly\nFor every action function call, the model must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition. \n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state $s_t$, the `new_state`, or any hidden variables. State maintenance is handled internally by the LWM. The Agent must only receive the specific Observation (e.g., number of rooms sold, revenue generated in that step, or a confirmation message).\n\n### 4. Key Principles\n- **Format**: Strictly adhere to specified JSON and text formats.\n- **Factuality**: Do not fabricate non-existent functions or market data not supported by the simulation logic.\n- **Consistency**: Room inventory must decrease as bookings increase; revenue must align with price and volume.\n- **Realism**: Booking demand should respond realistically to price changes (price elasticity) and market conditions.\n- **Quality**: Language must be clear and structurally complete.\n- **Encapsulation**: Strictly hide the internal state structure from the output. Only expose information explicitly returned by the action function.\n{{initial_state}}: {{\n  \"current_day\": 1,\n  \"total_inventory\": 100,\n  \"remaining_inventory\": 100,\n  \"current_price\": 180.0,\n  \"cumulative_revenue\": 0.0,\n  \"market_demand_factor\": 1.3,\n  \"competitor_price\": 195.0\n}}\n{{state_descriptions}}: {{\n  \"current_day\": \"The current day index of the simulation (e.g., 1 to 30).\",\n  \"total_inventory\": \"Total number of rooms available in the hotel.\",\n  \"remaining_inventory\": \"Number of rooms currently available for booking.\",\n  \"current_price\": \"The current set price per room night.\",\n  \"cumulative_revenue\": \"Total revenue accumulated since the start of the simulation.\",\n  \"market_demand_factor\": \"A multiplier representing current market interest (1.0 is baseline).\",\n  \"competitor_price\": \"The average price offered by local competitors.\"\n}}\n{action_set_definitions}: {\n  \"get_current_environment_state\": {\n    \"description\": \"Retrieves the current state of the environment, including the current simulation day, hotel inventory levels, current market pricing, and cumulative revenue. Use this to determine the parameters for pricing decisions.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"current_day\": 1,\n      \"total_inventory\": 100,\n      \"remaining_inventory\": 100,\n      \"current_competitor_price\": 195.0,\n      \"market_demand_factor\": 1.3,\n      \"cumulative_revenue\": 0.0\n    }\n  },\n  \"set_daily_price_and_advance\": {\n    \"description\": \"Sets the room rate for the current day, simulates customer bookings, updates the cumulative revenue, and advances the simulation to the start of the next day. Note: At the start of each new day, the 'remaining_inventory' is automatically replenished to match 'total_inventory'.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"daily_price\": {\n          \"type\": \"number\",\n          \"description\": \"The price per room night to set for the current day.\"\n        }\n      },\n      \"required\": [\n        \"daily_price\"\n      ]\n    },\n    \"example_output\": {\n      \"day_simulated\": 1,\n      \"rooms_sold\": 92,\n      \"remaining_inventory_at_day_end\": 8,\n      \"revenue_gained\": 16560.0,\n      \"new_cumulative_revenue\": 16560.0,\n      \"next_day_state\": {\n        \"current_day\": 2,\n        \"remaining_inventory\": 100,\n        \"current_competitor_price\": 195.0\n      }\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_current_environment_state",
+      "description": "Retrieves the current state of the environment, including the current simulation day, hotel inventory levels, current market pricing, and cumulative revenue. Use this to determine the parameters for pricing decisions.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "current_day": 1,
+        "total_inventory": 100,
+        "remaining_inventory": 100,
+        "current_competitor_price": 195.0,
+        "market_demand_factor": 1.3,
+        "cumulative_revenue": 0.0
+      }
+    },
+    {
+      "name": "set_daily_price_and_advance",
+      "description": "Sets the room rate for the current day, simulates customer bookings, updates the cumulative revenue, and advances the simulation to the start of the next day. Note: At the start of each new day, the 'remaining_inventory' is automatically replenished to match 'total_inventory'.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "daily_price": {
+            "type": "number",
+            "description": "The price per room night to set for the current day."
+          }
+        },
+        "required": [
+          "daily_price"
+        ]
+      },
+      "example_output": {
+        "day_simulated": 1,
+        "rooms_sold": 92,
+        "remaining_inventory_at_day_end": 8,
+        "revenue_gained": 16560.0,
+        "new_cumulative_revenue": 16560.0,
+        "next_day_state": {
+          "current_day": 2,
+          "remaining_inventory": 100,
+          "current_competitor_price": 195.0
+        }
+      }
+    }
+  ],
+  "state_description": {
+    "current_day": "The current day index of the simulation (e.g., 1 to 30).",
+    "total_inventory": "Total number of rooms available in the hotel.",
+    "remaining_inventory": "Number of rooms currently available for booking.",
+    "current_price": "The current set price per room night.",
+    "cumulative_revenue": "Total revenue accumulated since the start of the simulation.",
+    "market_demand_factor": "A multiplier representing current market interest (1.0 is baseline).",
+    "competitor_price": "The average price offered by local competitors."
+  },
+  "task_initial_state": {
+    "current_day": 1,
+    "total_inventory": 100,
+    "remaining_inventory": 100,
+    "current_price": 180.0,
+    "cumulative_revenue": 0.0,
+    "market_demand_factor": 1.3,
+    "competitor_price": 195.0
+  }
+}

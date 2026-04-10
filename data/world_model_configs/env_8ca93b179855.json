@@ -1,0 +1,203 @@
+{
+  "environment_name": "env_8ca93b179855",
+  "world_model_system_prompt": "## 1. Role and Objective\n- **Role**: Language World Model (LWM) for Ship Cargo Loading Optimization.\n- **Core Objective**: Based on the current internal state $s_t$ (ship manifest and port inventory) and the Agent's action $a_t$ (loading, unloading, or checking status), simulate the environment's state transition and predict the observation $o_{{t+1}}$ obtained by the Agent.\n- **Emphasis**: You are a simulator. You do not suggest actions or perform real-world logistics; you evolve the environment logic internally and provide the results of actions based on physical and operational constraints.\n\n## 2. Environment Management\n\n### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n### Context Awareness\nAll interactions between the World Model and the Agent must maintain context consistency. Changes to the ship's load, available slots, and port inventory must persist across the interaction history to ensure the environment remains self-consistent.\n\n## 3. Environment Execution\n\n### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. This JSON will contain:\n- `\"name\"`: The name of the action (e.g., \"load_container\", \"get_manifest\").\n- `\"arguments\"`: The parameter values required by that function.\n\nExample input:\n```json\n{{\n \"name\": \"load_container\",\n \"arguments\": {{\n    \"container_id\": \"CONT-001\",\n    \"slot_id\": \"A-12\"\n  }}\n}}\n```\nYou must parse this input, validate it against the current state (e.g., checking if the ship has enough capacity or if the slot is occupied), and simulate the outcome.\n\n### Environment Behavior Modeling\n\n#### Error Handling & Edge Cases\nIf an action violates environment constraints (e.g., exceeding maximum weight capacity, loading a non-existent container, or target slot already filled), return a structured error response: `{{\"error\": \"Reason for failure\"}}`. Do not fabricate successful outcomes for invalid actions.\n\n#### Output Assembly\nFor every action function call, you must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition. \n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state $s_t$, the updated state, or any hidden variables. You must strictly hide the internal state structure from the Agent. Only expose information explicitly defined as the observation (return value) of the action.\n\n## 4. Key Principles\n- **Format**: Strictly adhere to JSON for all inputs and outputs.\n- **Factuality**: Do not simulate the loading of containers not present in the port inventory.\n- **Consistency**: Ensure that if a container is moved to the ship, it is removed from the port inventory and the ship's remaining capacity decreases accordingly.\n- **Realism**: Adhere to the physical logic of cargo shipping (e.g., weight limits, balance, and volume constraints).\n- **Quality**: Ensure error messages and observations are clear and technically accurate.\n- **Encapsulation**: The Agent should only know about the environment through the observations returned by its actions; do not leak the underlying state JSON in your response.\n{{initial_state}}: {{\n  \"vessel_info\": {{\n    \"vessel_id\": \"VANGUARD-7\",\n    \"max_weight_capacity\": 2000.0,\n    \"total_slots\": 50\n  }},\n  \"current_metrics\": {{\n    \"current_weight\": 1940.0,\n    \"occupied_slots\": 18,\n    \"stability_index\": 0.52\n  }},\n  \"onboard_manifest\": [\n    {{\n      \"container_id\": \"CONT-ST-99\",\n      \"weight\": 520.0,\n      \"slot_id\": \"B01-R01-T06\",\n      \"type\": \"Standard\"\n    }},\n    {{\n      \"container_id\": \"CONT-REF-88\",\n      \"weight\": 410.0,\n      \"slot_id\": \"B01-R01-T05\",\n      \"type\": \"Refrigerated\"\n    }},\n    {{\n      \"container_id\": \"CONT-HAZ-77\",\n      \"weight\": 380.0,\n      \"slot_id\": \"B02-R01-T05\",\n      \"type\": \"Hazardous\"\n    }},\n    {{\n      \"container_id\": \"CONT-BASE-01\",\n      \"weight\": 315.0,\n      \"slot_id\": \"B01-R01-T01\",\n      \"type\": \"Standard\"\n    }},\n    {{\n      \"container_id\": \"CONT-BASE-02\",\n      \"weight\": 315.0,\n      \"slot_id\": \"B02-R01-T01\",\n      \"type\": \"Standard\"\n    }}\n  ],\n  \"port_inventory\": [\n    {{\n      \"container_id\": \"PR-HAM-X01\",\n      \"weight\": 75.0,\n      \"destination\": \"Hamburg\",\n      \"priority\": 1\n    }},\n    {{\n      \"container_id\": \"PR-HAM-X02\",\n      \"weight\": 75.0,\n      \"destination\": \"Hamburg\",\n      \"priority\": 1\n    }},\n    {{\n      \"container_id\": \"ST-LON-Y03\",\n      \"weight\": 120.0,\n      \"destination\": \"London\",\n      \"priority\": 2\n    }}\n  ]\n}}\n{{state_descriptions}}: {{\n  \"vessel_info\": \"General specifications of the ship.\",\n  \"current_metrics\": \"Real-time status of the ship's load.\",\n  \"onboard_manifest\": \"List of containers currently loaded on the ship\",\n  \"port_inventory\": \"List of containers at the dock waiting to be loaded\"\n}}\n{action_set_definitions}: {\n  \"get_vessel_status\": {\n    \"description\": \"Retrieves the current stability index, current total weight load, and maximum capacity of a specific vessel.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"vessel_id\": {\n          \"type\": \"string\",\n          \"description\": \"The name or ID of the vessel (e.g., 'VANGUARD-7').\"\n        }\n      },\n      \"required\": [\n        \"vessel_id\"\n      ]\n    },\n    \"example_output\": {\n      \"stability_index\": 0.62,\n      \"current_weight\": 95000,\n      \"max_capacity\": 100000\n    }\n  },\n  \"get_onboard_manifest\": {\n    \"description\": \"Returns a list of all containers currently on the vessel with details on weight, tier position, cargo type, and safety classifications.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"vessel_id\": {\n          \"type\": \"string\",\n          \"description\": \"The name or ID of the vessel.\"\n        }\n      },\n      \"required\": [\n        \"vessel_id\"\n      ]\n    },\n    \"example_output\": [\n      {\n        \"container_id\": \"CONT-99\",\n        \"weight\": 30.5,\n        \"tier\": \"06\",\n        \"cargo_type\": \"Standard\",\n        \"is_hazardous\": false,\n        \"is_refrigerated\": false\n      }\n    ]\n  },\n  \"get_port_inventory\": {\n    \"description\": \"Lists all containers at the dock ready for loading, including destination, priority, and weight.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"vessel_id\": {\n          \"type\": \"string\",\n          \"description\": \"The vessel these containers are intended for.\"\n        }\n      },\n      \"required\": [\n        \"vessel_id\"\n      ]\n    },\n    \"example_output\": [\n      {\n        \"container_id\": \"PORT-101\",\n        \"weight\": 22.0,\n        \"destination\": \"Hamburg\",\n        \"priority\": 1\n      }\n    ]\n  },\n  \"offload_container\": {\n    \"description\": \"Executes the removal of a specific container from the vessel.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"vessel_id\": {\n          \"type\": \"string\",\n          \"description\": \"The name or ID of the vessel.\"\n        },\n        \"container_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique ID of the container to offload.\"\n        }\n      },\n      \"required\": [\n        \"vessel_id\",\n        \"container_id\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"success\",\n      \"removed_id\": \"CONT-99\"\n    }\n  },\n  \"load_container\": {\n    \"description\": \"Loads a specific container from the port into a designated tier on the vessel.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"vessel_id\": {\n          \"type\": \"string\",\n          \"description\": \"The name or ID of the vessel.\"\n        },\n        \"container_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique ID of the container to load.\"\n        },\n        \"target_tier\": {\n          \"type\": \"string\",\n          \"description\": \"The tier level (e.g., '01', '02' for bottom; '05' or higher for top).\"\n        }\n      },\n      \"required\": [\n        \"vessel_id\",\n        \"container_id\",\n        \"target_tier\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"success\",\n      \"loaded_id\": \"PORT-101\",\n      \"tier\": \"01\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_vessel_status",
+      "description": "Retrieves the current stability index, current total weight load, and maximum capacity of a specific vessel.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "vessel_id": {
+            "type": "string",
+            "description": "The name or ID of the vessel (e.g., 'VANGUARD-7')."
+          }
+        },
+        "required": [
+          "vessel_id"
+        ]
+      },
+      "example_output": {
+        "stability_index": 0.62,
+        "current_weight": 95000,
+        "max_capacity": 100000
+      }
+    },
+    {
+      "name": "get_onboard_manifest",
+      "description": "Returns a list of all containers currently on the vessel with details on weight, tier position, cargo type, and safety classifications.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "vessel_id": {
+            "type": "string",
+            "description": "The name or ID of the vessel."
+          }
+        },
+        "required": [
+          "vessel_id"
+        ]
+      },
+      "example_output": [
+        {
+          "container_id": "CONT-99",
+          "weight": 30.5,
+          "tier": "06",
+          "cargo_type": "Standard",
+          "is_hazardous": false,
+          "is_refrigerated": false
+        }
+      ]
+    },
+    {
+      "name": "get_port_inventory",
+      "description": "Lists all containers at the dock ready for loading, including destination, priority, and weight.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "vessel_id": {
+            "type": "string",
+            "description": "The vessel these containers are intended for."
+          }
+        },
+        "required": [
+          "vessel_id"
+        ]
+      },
+      "example_output": [
+        {
+          "container_id": "PORT-101",
+          "weight": 22.0,
+          "destination": "Hamburg",
+          "priority": 1
+        }
+      ]
+    },
+    {
+      "name": "offload_container",
+      "description": "Executes the removal of a specific container from the vessel.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "vessel_id": {
+            "type": "string",
+            "description": "The name or ID of the vessel."
+          },
+          "container_id": {
+            "type": "string",
+            "description": "The unique ID of the container to offload."
+          }
+        },
+        "required": [
+          "vessel_id",
+          "container_id"
+        ]
+      },
+      "example_output": {
+        "status": "success",
+        "removed_id": "CONT-99"
+      }
+    },
+    {
+      "name": "load_container",
+      "description": "Loads a specific container from the port into a designated tier on the vessel.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "vessel_id": {
+            "type": "string",
+            "description": "The name or ID of the vessel."
+          },
+          "container_id": {
+            "type": "string",
+            "description": "The unique ID of the container to load."
+          },
+          "target_tier": {
+            "type": "string",
+            "description": "The tier level (e.g., '01', '02' for bottom; '05' or higher for top)."
+          }
+        },
+        "required": [
+          "vessel_id",
+          "container_id",
+          "target_tier"
+        ]
+      },
+      "example_output": {
+        "status": "success",
+        "loaded_id": "PORT-101",
+        "tier": "01"
+      }
+    }
+  ],
+  "state_description": {
+    "vessel_info": "General specifications of the ship.",
+    "current_metrics": "Real-time status of the ship's load.",
+    "onboard_manifest": "List of containers currently loaded on the ship",
+    "port_inventory": "List of containers at the dock waiting to be loaded"
+  },
+  "task_initial_state": {
+    "vessel_info": {
+      "vessel_id": "VANGUARD-7",
+      "max_weight_capacity": 2000.0,
+      "total_slots": 50
+    },
+    "current_metrics": {
+      "current_weight": 1940.0,
+      "occupied_slots": 18,
+      "stability_index": 0.52
+    },
+    "onboard_manifest": [
+      {
+        "container_id": "CONT-ST-99",
+        "weight": 520.0,
+        "slot_id": "B01-R01-T06",
+        "type": "Standard"
+      },
+      {
+        "container_id": "CONT-REF-88",
+        "weight": 410.0,
+        "slot_id": "B01-R01-T05",
+        "type": "Refrigerated"
+      },
+      {
+        "container_id": "CONT-HAZ-77",
+        "weight": 380.0,
+        "slot_id": "B02-R01-T05",
+        "type": "Hazardous"
+      },
+      {
+        "container_id": "CONT-BASE-01",
+        "weight": 315.0,
+        "slot_id": "B01-R01-T01",
+        "type": "Standard"
+      },
+      {
+        "container_id": "CONT-BASE-02",
+        "weight": 315.0,
+        "slot_id": "B02-R01-T01",
+        "type": "Standard"
+      }
+    ],
+    "port_inventory": [
+      {
+        "container_id": "PR-HAM-X01",
+        "weight": 75.0,
+        "destination": "Hamburg",
+        "priority": 1
+      },
+      {
+        "container_id": "PR-HAM-X02",
+        "weight": 75.0,
+        "destination": "Hamburg",
+        "priority": 1
+      },
+      {
+        "container_id": "ST-LON-Y03",
+        "weight": 120.0,
+        "destination": "London",
+        "priority": 2
+      }
+    ]
+  }
+}

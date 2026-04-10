@@ -1,0 +1,174 @@
+{
+  "environment_name": "env_bc0766c33f50",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: You are a specialized simulator for a CI/CD Pipeline Failure Recovery environment. Based on the current internal state $s_t$ of the pipeline and the recovery action $a_t$ executed by the Agent, you must simulate the evolution of the environment logic and predict the specific observation $o_{{t+1}}$ (logs, status reports, or command outputs) that the Agent would receive. \n- **Emphasis**: You do not perform real-world deployments or code fixes. You maintain the internal state of the CI/CD environment and generate realistic responses based on technical causalities (e.g., fixing a syntax error allows a build to proceed to the testing stage).\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions between the World Model and the Agent must maintain context consistency. You must remember previous failed stages, applied patches, and environmental configurations to ensure that the pipeline's progression or regression is logical and self-consistent.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. You must parse these requests correctly. The format is:\n- `\"name\"`: The name of the action (e.g., `inspect_logs`, `retry_pipeline`, `modify_env_var`).\n- `\"arguments\"`: The parameters required for that action.\n\nExample:\n```json\n{{\n \"name\": \"apply_hotfix\",\n \"arguments\": {{\n    \"file_path\": \"src/app.py\",\n    \"fix_content\": \"import os\\n...\"\n  }}\n}}\n```\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\n- If the Agent attempts an action on a non-existent file or uses invalid parameters, return a JSON error object (e.g., `{{\"error\": \"File not found: ...\"}}`).\n- If an action is logically impossible (e.g., trying to deploy a build that failed the 'test' stage), return an error describing the dependency failure.\n- Do not fabricate successful outcomes if the logic dictates a continued failure.\n\n##### Output Assembly\nFor every action call, return a structured JSON object containing **ONLY** the return fields defined in the action's specification.\n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the internal state `s_t`, the `new_state`, or any metadata not defined as a return value of the action. You are the environment; the Agent only sees what the tools output.\n\n### 4. Key Principles\n- **Format**: Strictly output valid JSON for observations.\n- **Factuality**: Simulate realistic CI/CD outputs (e.g., standard exit codes, stack traces, and build logs).\n- **Consistency**: If a database connection error was fixed in state $s_t$, it should not reappear in $s_{{t+1}}$ unless a new action triggers it.\n- **Realism**: Simulate the temporal nature of CI/CD; some actions might take \"time\" or result in flaky outcomes if appropriate for the scenario.\n- **Encapsulation**: Strictly hide the internal state structure from the output. Only expose information that is explicitly returned by the action function.\n{{initial_state}}: {{\n  \"pipeline_status\": \"DEGRADED\",\n  \"failed_stage\": \"canary-statistical-validation\",\n  \"last_error_log\": \"Alert [HighPredictionDrift]: Jensen-Shannon Divergence (0.85) exceeded threshold (0.15) for model 'fraud-detector-v1.5'. P99 Latency: 42ms. HTTP 200 OK: 100%.\",\n  \"environment_variables\": {{\n    \"STABLE_VERSION\": \"v1.4\",\n    \"CANDIDATE_VERSION\": \"v1.5\",\n    \"CANARY_PERCENTAGE\": \"10\",\n    \"MODEL_REGISTRY_URL\": \"http://mlflow-internal:5000\",\n    \"MONITORING_PROVIDER\": \"EvidentlyAI\"\n  }},\n  \"workspace_files\": [\n    \"k8s/inference-graph.yaml\",\n    \"k8s/canary-split.yaml\",\n    \"registry/model_metadata.json\",\n    \"gitops/deployment-config.json\"\n  ],\n  \"git_commit\": \"6fb8a21\"\n}}\n{{state_descriptions}}: {{\n  \"pipeline_status\": \"Current status of the overall pipeline (e.g., FAILED, IN_PROGRESS, SUCCESS).\",\n  \"failed_stage\": \"The specific stage where the pipeline stopped (e.g., 'lint', 'unit-test', 'docker-build', 'integration-test').\",\n  \"last_error_log\": \"The stderr or log output from the failing process.\",\n  \"environment_variables\": \"Key-value pairs representing the build environment configuration.\",\n  \"workspace_files\": \"A list of files currently in the build workspace and their simplified status/content hash.\",\n  \"git_commit\": \"The short hash of the commit being processed.\"\n}}\n{action_set_definitions}: {\n  \"get_environment_state\": {\n    \"description\": \"Retrieves the current state of the CI/CD pipeline, including workspace files, git commit hash, and overall status.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"pipeline_status\": \"FAILED\",\n      \"workspace_files\": [\n        \"deploy/canary.yaml\",\n        \"deploy/production.yaml\"\n      ],\n      \"git_commit\": \"a1b2c3d\"\n    }\n  },\n  \"query_service_telemetry\": {\n    \"description\": \"Retrieves performance metrics (latency, error rate, throughput) for a specific service version to diagnose failures.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"service_name\": {\n          \"type\": \"string\",\n          \"description\": \"Name of the service (e.g., 'fraud-detection').\"\n        },\n        \"version\": {\n          \"type\": \"string\",\n          \"description\": \"The version tag to query (e.g., 'v1.5').\"\n        }\n      },\n      \"required\": [\n        \"service_name\",\n        \"version\"\n      ]\n    },\n    \"example_output\": {\n      \"error_rate\": 0.15,\n      \"p99_latency_ms\": 1200,\n      \"status\": \"unstable\"\n    }\n  },\n  \"adjust_traffic_routing\": {\n    \"description\": \"Modifies the traffic weight distribution between different versions of a service in the production environment.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"service_name\": {\n          \"type\": \"string\"\n        },\n        \"traffic_splits\": {\n          \"type\": \"array\",\n          \"items\": {\n            \"type\": \"object\",\n            \"properties\": {\n              \"version\": {\n                \"type\": \"string\"\n              },\n              \"weight\": {\n                \"type\": \"integer\",\n                \"description\": \"Percentage of traffic (0-100).\"\n              }\n            }\n          }\n        }\n      },\n      \"required\": [\n        \"service_name\",\n        \"traffic_splits\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"success\",\n      \"current_routing\": \"v1.4: 100%, v1.5: 0%\"\n    }\n  },\n  \"file_system_operation\": {\n    \"description\": \"Reads from or writes to files in the local CI/CD workspace to modify deployment manifests.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"operation\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"read\",\n            \"write\"\n          ]\n        },\n        \"file_path\": {\n          \"type\": \"string\"\n        },\n        \"content\": {\n          \"type\": \"string\",\n          \"description\": \"Required if operation is 'write'.\"\n        }\n      },\n      \"required\": [\n        \"operation\",\n        \"file_path\"\n      ]\n    },\n    \"example_output\": {\n      \"content\": \"apiVersion: apps/v1...\",\n      \"status\": \"file_updated\"\n    }\n  },\n  \"update_model_registry\": {\n    \"description\": \"Updates the metadata and lifecycle status of a specific model version in the central registry.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"model_id\": {\n          \"type\": \"string\"\n        },\n        \"version\": {\n          \"type\": \"string\"\n        },\n        \"status_update\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"APPROVED\",\n            \"BLACKLISTED\",\n            \"DEPRECATED\"\n          ]\n        }\n      },\n      \"required\": [\n        \"model_id\",\n        \"version\",\n        \"status_update\"\n      ]\n    },\n    \"example_output\": {\n      \"registry_sync\": \"synced\",\n      \"new_status\": \"BLACKLISTED\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_environment_state",
+      "description": "Retrieves the current state of the CI/CD pipeline, including workspace files, git commit hash, and overall status.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "pipeline_status": "FAILED",
+        "workspace_files": [
+          "deploy/canary.yaml",
+          "deploy/production.yaml"
+        ],
+        "git_commit": "a1b2c3d"
+      }
+    },
+    {
+      "name": "query_service_telemetry",
+      "description": "Retrieves performance metrics (latency, error rate, throughput) for a specific service version to diagnose failures.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "service_name": {
+            "type": "string",
+            "description": "Name of the service (e.g., 'fraud-detection')."
+          },
+          "version": {
+            "type": "string",
+            "description": "The version tag to query (e.g., 'v1.5')."
+          }
+        },
+        "required": [
+          "service_name",
+          "version"
+        ]
+      },
+      "example_output": {
+        "error_rate": 0.15,
+        "p99_latency_ms": 1200,
+        "status": "unstable"
+      }
+    },
+    {
+      "name": "adjust_traffic_routing",
+      "description": "Modifies the traffic weight distribution between different versions of a service in the production environment.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "service_name": {
+            "type": "string"
+          },
+          "traffic_splits": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "version": {
+                  "type": "string"
+                },
+                "weight": {
+                  "type": "integer",
+                  "description": "Percentage of traffic (0-100)."
+                }
+              }
+            }
+          }
+        },
+        "required": [
+          "service_name",
+          "traffic_splits"
+        ]
+      },
+      "example_output": {
+        "status": "success",
+        "current_routing": "v1.4: 100%, v1.5: 0%"
+      }
+    },
+    {
+      "name": "file_system_operation",
+      "description": "Reads from or writes to files in the local CI/CD workspace to modify deployment manifests.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "operation": {
+            "type": "string",
+            "enum": [
+              "read",
+              "write"
+            ]
+          },
+          "file_path": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string",
+            "description": "Required if operation is 'write'."
+          }
+        },
+        "required": [
+          "operation",
+          "file_path"
+        ]
+      },
+      "example_output": {
+        "content": "apiVersion: apps/v1...",
+        "status": "file_updated"
+      }
+    },
+    {
+      "name": "update_model_registry",
+      "description": "Updates the metadata and lifecycle status of a specific model version in the central registry.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "model_id": {
+            "type": "string"
+          },
+          "version": {
+            "type": "string"
+          },
+          "status_update": {
+            "type": "string",
+            "enum": [
+              "APPROVED",
+              "BLACKLISTED",
+              "DEPRECATED"
+            ]
+          }
+        },
+        "required": [
+          "model_id",
+          "version",
+          "status_update"
+        ]
+      },
+      "example_output": {
+        "registry_sync": "synced",
+        "new_status": "BLACKLISTED"
+      }
+    }
+  ],
+  "state_description": {
+    "pipeline_status": "Current status of the overall pipeline (e.g., FAILED, IN_PROGRESS, SUCCESS).",
+    "failed_stage": "The specific stage where the pipeline stopped (e.g., 'lint', 'unit-test', 'docker-build', 'integration-test').",
+    "last_error_log": "The stderr or log output from the failing process.",
+    "environment_variables": "Key-value pairs representing the build environment configuration.",
+    "workspace_files": "A list of files currently in the build workspace and their simplified status/content hash.",
+    "git_commit": "The short hash of the commit being processed."
+  },
+  "task_initial_state": {
+    "pipeline_status": "DEGRADED",
+    "failed_stage": "canary-statistical-validation",
+    "last_error_log": "Alert [HighPredictionDrift]: Jensen-Shannon Divergence (0.85) exceeded threshold (0.15) for model 'fraud-detector-v1.5'. P99 Latency: 42ms. HTTP 200 OK: 100%.",
+    "environment_variables": {
+      "STABLE_VERSION": "v1.4",
+      "CANDIDATE_VERSION": "v1.5",
+      "CANARY_PERCENTAGE": "10",
+      "MODEL_REGISTRY_URL": "http://mlflow-internal:5000",
+      "MONITORING_PROVIDER": "EvidentlyAI"
+    },
+    "workspace_files": [
+      "k8s/inference-graph.yaml",
+      "k8s/canary-split.yaml",
+      "registry/model_metadata.json",
+      "gitops/deployment-config.json"
+    ],
+    "git_commit": "6fb8a21"
+  }
+}

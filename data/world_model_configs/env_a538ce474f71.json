@@ -1,0 +1,187 @@
+{
+  "environment_name": "env_a538ce474f71",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM) for Train Dispatch Conflict Resolution.\n- **Core Objective**: Based on the current environment state $s_t$ and the dispatcher's action $a_t$, simulate the progression of train movements, track occupancy, and signal changes to predict the observation $o_{{t+1}}$ obtained by the Agent.\n- **Emphasis**: You are a simulator. You do not make dispatching decisions; you calculate the physical and logical consequences of the Agent's commands (e.g., speed changes, routing, or stopping) and update the internal state of the railway network accordingly.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions between the World Model and the Agent must maintain temporal and spatial consistency. If a train moves from Block A to Block B at time $t$, it cannot be at Block C at time $t+1$ unless the distance and speed allow it. Track occupancy must be tracked to detect potential collisions or signal violations.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object containing:\n- `\"name\"`: The name of the dispatch action (e.g., `set_speed`, `change_route`, `hold_train`).\n- Additional fields for parameters required by that action.\n\nExample:\n```json\n{{\n \"name\": \"adjust_speed\",\n \"arguments\": {{\n    \"train_id\": \"G1234\",\n    \"target_speed\": 120\n  }}\n}}\n```\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\n- If an action refers to a non-existent `train_id` or `track_segment`, return `{{\"error\": \"Entity not found\"}}`.\n- If an action results in a prohibited move (e.g., routing a train into an occupied single-track block), simulate the resulting conflict (e.g., an emergency brake or a collision warning) and return the relevant observation.\n- For empty or malformed JSON, return `{{\"error\": \"Invalid format\"}}`.\n\n##### Output Assembly\nFor every action function call, the model must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition. \n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, `new_state`, or any hidden variables like the full coordinates of all trains. The Agent must only receive the specific `observation` (e.g., the success status, current speed, and the next signal aspect).\n\n### 4. Key Principles\n- **Format**: Strictly adhere to specified JSON and text formats.\n- **Factuality**: Do not fabricate railway segments, trains, or signal types that are not in the state.\n- **Consistency**: Ensure that if a train is delayed, the delay propagates to subsequent stations in the simulation unless recovered.\n- **Realism**: Movements must follow basic physics (acceleration/deceleration) and railway safety protocols (interlocking, block spacing).\n- **Quality**: Observations should be precise and reflect the new technical status of the network.\n- **Encapsulation**: Strictly hide the internal state structure from the output. Only expose information that is explicitly returned by the action function.\n{{initial_state}}: {{\n  \"current_simulation_time\": \"09:15:00\",\n  \"trains\": [\n    {{\n      \"train_id\": \"S-601\",\n      \"current_block\": \"Mainline-C50\",\n      \"speed_kmh\": 55,\n      \"delay_minutes\": 0,\n      \"next_stop\": \"Summit-Yard-T5\"\n    }},\n    {{\n      \"train_id\": \"O-333\",\n      \"current_block\": \"CP-Summit-C53\",\n      \"speed_kmh\": 0,\n      \"delay_minutes\": 40,\n      \"next_stop\": \"Mainline-East\"\n    }}\n  ],\n  \"infrastructure_status\": {{\n    \"occupied_blocks\": [\n      \"Mainline-C50\",\n      \"CP-Summit-C53\"\n    ],\n    \"signal_aspects\": {{\n      \"Signal-C51\": \"Yellow\",\n      \"Signal-C52\": \"Yellow\",\n      \"Signal-C53\": \"Red\"\n    }}\n  }},\n  \"pending_conflicts\": [\n    {{\n      \"conflict_type\": \"Mechanical Failure (Throat Blockage)\",\n      \"involved_trains\": [\n        \"O-333\"\n      ]\n    }},\n    {{\n      \"conflict_type\": \"Potential Grade Stall\",\n      \"involved_trains\": [\n        \"S-601\"\n      ]\n    }},\n    {{\n      \"conflict_type\": \"Commuter Line Obstruction Risk\",\n      \"involved_trains\": [\n        \"S-601\"\n      ]\n    }}\n  ]\n}}\n{{state_descriptions}}: {{\n  \"current_simulation_time\": \"The current time in the simulation (HH:MM:SS)\",\n  \"trains\": \"List of active trains and their current physical status\",\n  \"infrastructure_status\": \"The status of tracks and signals\",\n  \"pending_conflicts\": \"List of detected scheduling or safety conflicts\"\n}}\n{action_set_definitions}: {\n  \"get_simulation_time\": {\n    \"description\": \"Retrieves the current clock time of the simulation environment.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"current_time\": \"09:15:00\"\n    }\n  },\n  \"get_train_telemetry\": {\n    \"description\": \"Provides detailed real-time data for a specific train, including location, distance to specific waypoints, and Hours of Service (HOS) status.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"train_id\": {\n          \"type\": \"string\",\n          \"description\": \"The train ID (e.g., 'S-601').\"\n        },\n        \"target_waypoints\": {\n          \"type\": \"array\",\n          \"items\": {\n            \"type\": \"string\"\n          },\n          \"description\": \"List of block IDs to calculate distance to.\"\n        }\n      },\n      \"required\": [\n        \"train_id\"\n      ]\n    },\n    \"example_output\": {\n      \"current_block\": \"C-50\",\n      \"distance_to_waypoints_miles\": {\n        \"C-51\": 5.0,\n        \"C-53\": 12.0\n      },\n      \"hos_expiry_time\": \"10:05:00\",\n      \"hos_remaining_mins\": 50\n    }\n  },\n  \"get_infrastructure_details\": {\n    \"description\": \"Queries the status of specific track blocks, including occupancy, blockage clearance ETAs, and physical restrictions like weight limits.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"block_ids\": {\n          \"type\": \"array\",\n          \"items\": {\n            \"type\": \"string\"\n          },\n          \"description\": \"List of block IDs to inspect.\"\n        }\n      },\n      \"required\": [\n        \"block_ids\"\n      ]\n    },\n    \"example_output\": {\n      \"C-53\": {\n        \"status\": \"blocked\",\n        \"blocked_by\": \"O-333\",\n        \"clearance_time\": \"09:55:00\"\n      },\n      \"East Creek Siding\": {\n        \"weight_limit_exceeded_for_heavy_units\": true\n      }\n    }\n  },\n  \"issue_dispatch_orders\": {\n    \"description\": \"Sets the operational parameters for a train, including its target speed and the specific sequence of blocks it is authorized to traverse.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"train_id\": {\n          \"type\": \"string\",\n          \"description\": \"The train identifier.\"\n        },\n        \"target_speed_mph\": {\n          \"type\": \"number\",\n          \"description\": \"The speed to maintain to hit arrival targets.\"\n        },\n        \"authorized_route\": {\n          \"type\": \"array\",\n          \"items\": {\n            \"type\": \"string\"\n          },\n          \"description\": \"The ordered list of blocks the train is permitted to enter.\"\n        }\n      },\n      \"required\": [\n        \"train_id\",\n        \"target_speed_mph\",\n        \"authorized_route\"\n      ]\n    },\n    \"example_output\": {\n      \"order_status\": \"accepted\",\n      \"eta_at_destination\": \"10:05:00\"\n    }\n  },\n  \"advance_simulation\": {\n    \"description\": \"Advances the environment clock by a specific number of minutes.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"minutes\": {\n          \"type\": \"integer\",\n          \"description\": \"Number of minutes to simulate.\"\n        }\n      },\n      \"required\": [\n        \"minutes\"\n      ]\n    },\n    \"example_output\": {\n      \"new_time\": \"10:05:00\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_simulation_time",
+      "description": "Retrieves the current clock time of the simulation environment.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "current_time": "09:15:00"
+      }
+    },
+    {
+      "name": "get_train_telemetry",
+      "description": "Provides detailed real-time data for a specific train, including location, distance to specific waypoints, and Hours of Service (HOS) status.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "train_id": {
+            "type": "string",
+            "description": "The train ID (e.g., 'S-601')."
+          },
+          "target_waypoints": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "List of block IDs to calculate distance to."
+          }
+        },
+        "required": [
+          "train_id"
+        ]
+      },
+      "example_output": {
+        "current_block": "C-50",
+        "distance_to_waypoints_miles": {
+          "C-51": 5.0,
+          "C-53": 12.0
+        },
+        "hos_expiry_time": "10:05:00",
+        "hos_remaining_mins": 50
+      }
+    },
+    {
+      "name": "get_infrastructure_details",
+      "description": "Queries the status of specific track blocks, including occupancy, blockage clearance ETAs, and physical restrictions like weight limits.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "block_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "List of block IDs to inspect."
+          }
+        },
+        "required": [
+          "block_ids"
+        ]
+      },
+      "example_output": {
+        "C-53": {
+          "status": "blocked",
+          "blocked_by": "O-333",
+          "clearance_time": "09:55:00"
+        },
+        "East Creek Siding": {
+          "weight_limit_exceeded_for_heavy_units": true
+        }
+      }
+    },
+    {
+      "name": "issue_dispatch_orders",
+      "description": "Sets the operational parameters for a train, including its target speed and the specific sequence of blocks it is authorized to traverse.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "train_id": {
+            "type": "string",
+            "description": "The train identifier."
+          },
+          "target_speed_mph": {
+            "type": "number",
+            "description": "The speed to maintain to hit arrival targets."
+          },
+          "authorized_route": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "The ordered list of blocks the train is permitted to enter."
+          }
+        },
+        "required": [
+          "train_id",
+          "target_speed_mph",
+          "authorized_route"
+        ]
+      },
+      "example_output": {
+        "order_status": "accepted",
+        "eta_at_destination": "10:05:00"
+      }
+    },
+    {
+      "name": "advance_simulation",
+      "description": "Advances the environment clock by a specific number of minutes.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "minutes": {
+            "type": "integer",
+            "description": "Number of minutes to simulate."
+          }
+        },
+        "required": [
+          "minutes"
+        ]
+      },
+      "example_output": {
+        "new_time": "10:05:00"
+      }
+    }
+  ],
+  "state_description": {
+    "current_simulation_time": "The current time in the simulation (HH:MM:SS)",
+    "trains": "List of active trains and their current physical status",
+    "infrastructure_status": "The status of tracks and signals",
+    "pending_conflicts": "List of detected scheduling or safety conflicts"
+  },
+  "task_initial_state": {
+    "current_simulation_time": "09:15:00",
+    "trains": [
+      {
+        "train_id": "S-601",
+        "current_block": "Mainline-C50",
+        "speed_kmh": 55,
+        "delay_minutes": 0,
+        "next_stop": "Summit-Yard-T5"
+      },
+      {
+        "train_id": "O-333",
+        "current_block": "CP-Summit-C53",
+        "speed_kmh": 0,
+        "delay_minutes": 40,
+        "next_stop": "Mainline-East"
+      }
+    ],
+    "infrastructure_status": {
+      "occupied_blocks": [
+        "Mainline-C50",
+        "CP-Summit-C53"
+      ],
+      "signal_aspects": {
+        "Signal-C51": "Yellow",
+        "Signal-C52": "Yellow",
+        "Signal-C53": "Red"
+      }
+    },
+    "pending_conflicts": [
+      {
+        "conflict_type": "Mechanical Failure (Throat Blockage)",
+        "involved_trains": [
+          "O-333"
+        ]
+      },
+      {
+        "conflict_type": "Potential Grade Stall",
+        "involved_trains": [
+          "S-601"
+        ]
+      },
+      {
+        "conflict_type": "Commuter Line Obstruction Risk",
+        "involved_trains": [
+          "S-601"
+        ]
+      }
+    ]
+  }
+}

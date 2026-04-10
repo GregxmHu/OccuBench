@@ -1,0 +1,138 @@
+{
+  "environment_name": "env_f172b7010009",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: You are a high-fidelity simulator for a Pipeline Pressure Anomaly Response system. Based on the current internal state $s_t$ and the action $a_t$ executed by the Agent, you must simulate the physics and logic of the pipeline environment to predict the next state $s_{{t+1}}$ and generate the specific observation $o_{{t+1}}$ obtained by the Agent.\n- **Emphasis**: You do not perform real-world engineering actions. You are a world model that calculates how the environment (pressure levels, flow rates, safety triggers) evolves internally and what the sensor readings (observations) would be after an action is taken.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nYou must maintain strict temporal and logical consistency. Every action must build upon the state resulting from the previous action. If a valve is closed in step $t$, it remains closed in step $t+1$ unless an action explicitly changes it. Pressure changes should follow a logical progression based on pump status and valve positions.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. You must parse this JSON to determine the evolution of the environment. The input format is:\n- `\"name\"`: The action function name.\n- Remaining fields: Parameter names and values.\n\nExample input:\n```json\n{{\n \"name\": \"adjust_pump_speed\",\n \"arguments\": {{\n    \"pump_id\": \"PUMP_01\",\n    \"rpm\": 1500\n  }}\n}}\n```\n\n#### Environment Behavior Modeling\n- **Physical Logic**: If a downstream valve is closed while an upstream pump is running, simulate a realistic pressure increase in the intermediate segments.\n- **Safety Interlocks**: If pressure exceeds safety thresholds defined in the state, the model should simulate automatic triggers (e.g., emergency relief valves opening) if that is part of the environment logic.\n\n##### Error Handling & Edge Cases\nIf the Agent attempts an undefined action, targets a non-existent component (e.g., `valve_id` that doesn't exist), or provides invalid parameters (e.g., negative pressure targets), return a structured error:\n`{{\"error\": \"Description of the specific failure\"}}`. Do not fabricate successful outcomes for invalid inputs.\n\n##### Output Assembly\nFor every action, you must return a structured JSON object containing **ONLY** the return fields (Observations) declared in that action function's definition.\n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, `new_state`, or any hidden state variables. You are the environment; you keep the state secret and only provide the Agent with the sensor data or feedback defined in the action's observation output. Do not output the state update text.\n\n### 4. Key Principles\n- **Format**: Strictly output only the observation JSON.\n- **Factuality**: Simulations must be grounded in the provided state and action definitions.\n- **Consistency**: Ensure that if an action causes a leak, subsequent observations reflect the loss of pressure until repaired.\n- **Realism**: Dynamics must align with fluid transport logic (e.g., pressure doesn't equalize instantly; flow is restricted by closed valves).\n- **Encapsulation**: Never reveal the internal `state` JSON to the Agent. Only reveal the `observation` JSON.\n{{initial_state}}: {{\n  \"system_mode\": \"Normal\",\n  \"segment_pressures\": {{\n    \"SEG_01\": 880.0,\n    \"SEG_02\": 875.0\n  }},\n  \"valve_positions\": {{\n    \"VALVE_01\": \"Open\",\n    \"VALVE_02\": \"Open\"\n  }},\n  \"pump_status\": {{\n    \"PUMP_01\": \"Running\"\n  }},\n  \"active_alerts\": [\n    \"GEOTECH_STRAIN_YELLOW_0.38%_MP402\",\n    \"MAINTENANCE_PUMP_01_STARTER_FAULT\"\n  ]\n}}\n{{state_descriptions}}: {{\n  \"system_mode\": \"Current operational mode (e.g., 'Normal', 'Emergency_Shutdown', 'Maintenance')\",\n  \"segment_pressures\": \"Mapping of pipeline segment IDs to their current pressure in PSI\",\n  \"valve_positions\": \"Mapping of valve IDs to their status ('Open' or 'Closed')\",\n  \"pump_status\": \"Mapping of pump IDs to their current status ('Running', 'Idle', 'Fault')\",\n  \"active_alerts\": \"List of active system warning strings\"\n}}\n{action_set_definitions}: {\n  \"get_system_telemetry\": {\n    \"description\": \"Retrieves real-time operational data including segment pressures, current pump throttle levels, pump statuses, valve states, and active system alerts.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"segment_pressures\": {\n        \"SEG_01\": 515.0,\n        \"SEG_02\": 448.0\n      },\n      \"pump_status\": {\n        \"PUMP_01\": \"Running\"\n      },\n      \"pump_throttles\": {\n        \"PUMP_01\": 65.5\n      },\n      \"valve_positions\": {\n        \"V_01\": \"Open\"\n      },\n      \"active_alerts\": [\n        \"Milepost 402: Geohazard Strain Warning\"\n      ]\n    }\n  },\n  \"get_pipeline_topology\": {\n    \"description\": \"Identifies the relationship of valves to a specific pipeline segment, categorizing them as Upstream, Downstream, or Bypass.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"segment_id\": {\n          \"type\": \"string\",\n          \"description\": \"The segment ID to analyze (e.g., 'SEG_01').\"\n        }\n      },\n      \"required\": [\n        \"segment_id\"\n      ]\n    },\n    \"example_output\": {\n      \"upstream_valves\": [\n        \"V_IN_01\"\n      ],\n      \"downstream_valves\": [\n        \"V_OUT_01\"\n      ],\n      \"bypass_valves\": [\n        \"V_BYP_01\"\n      ]\n    }\n  },\n  \"adjust_pump_throttle\": {\n    \"description\": \"Modifies the speed/output of a pump by a specific relative percentage. Positive values increase throttle; negative values decrease it.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"pump_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the pump to adjust.\"\n        },\n        \"relative_change\": {\n          \"type\": \"number\",\n          \"description\": \"The percentage change to apply (e.g., -5.0 for a 5% reduction, -0.5 for a fine-tuned 0.5% reduction).\"\n        }\n      },\n      \"required\": [\n        \"pump_id\",\n        \"relative_change\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"Applied\",\n      \"new_throttle\": 60.5\n    }\n  },\n  \"set_valve_position\": {\n    \"description\": \"Changes the physical state of a valve to 'Open' or 'Closed' to control the flow path.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"valve_id\": {\n          \"type\": \"string\",\n          \"description\": \"The valve identifier.\"\n        },\n        \"state\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"Open\",\n            \"Closed\"\n          ]\n        }\n      },\n      \"required\": [\n        \"valve_id\",\n        \"state\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"Success\",\n      \"current_state\": \"Closed\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_system_telemetry",
+      "description": "Retrieves real-time operational data including segment pressures, current pump throttle levels, pump statuses, valve states, and active system alerts.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "segment_pressures": {
+          "SEG_01": 515.0,
+          "SEG_02": 448.0
+        },
+        "pump_status": {
+          "PUMP_01": "Running"
+        },
+        "pump_throttles": {
+          "PUMP_01": 65.5
+        },
+        "valve_positions": {
+          "V_01": "Open"
+        },
+        "active_alerts": [
+          "Milepost 402: Geohazard Strain Warning"
+        ]
+      }
+    },
+    {
+      "name": "get_pipeline_topology",
+      "description": "Identifies the relationship of valves to a specific pipeline segment, categorizing them as Upstream, Downstream, or Bypass.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "segment_id": {
+            "type": "string",
+            "description": "The segment ID to analyze (e.g., 'SEG_01')."
+          }
+        },
+        "required": [
+          "segment_id"
+        ]
+      },
+      "example_output": {
+        "upstream_valves": [
+          "V_IN_01"
+        ],
+        "downstream_valves": [
+          "V_OUT_01"
+        ],
+        "bypass_valves": [
+          "V_BYP_01"
+        ]
+      }
+    },
+    {
+      "name": "adjust_pump_throttle",
+      "description": "Modifies the speed/output of a pump by a specific relative percentage. Positive values increase throttle; negative values decrease it.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "pump_id": {
+            "type": "string",
+            "description": "The ID of the pump to adjust."
+          },
+          "relative_change": {
+            "type": "number",
+            "description": "The percentage change to apply (e.g., -5.0 for a 5% reduction, -0.5 for a fine-tuned 0.5% reduction)."
+          }
+        },
+        "required": [
+          "pump_id",
+          "relative_change"
+        ]
+      },
+      "example_output": {
+        "status": "Applied",
+        "new_throttle": 60.5
+      }
+    },
+    {
+      "name": "set_valve_position",
+      "description": "Changes the physical state of a valve to 'Open' or 'Closed' to control the flow path.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "valve_id": {
+            "type": "string",
+            "description": "The valve identifier."
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "Open",
+              "Closed"
+            ]
+          }
+        },
+        "required": [
+          "valve_id",
+          "state"
+        ]
+      },
+      "example_output": {
+        "status": "Success",
+        "current_state": "Closed"
+      }
+    }
+  ],
+  "state_description": {
+    "system_mode": "Current operational mode (e.g., 'Normal', 'Emergency_Shutdown', 'Maintenance')",
+    "segment_pressures": "Mapping of pipeline segment IDs to their current pressure in PSI",
+    "valve_positions": "Mapping of valve IDs to their status ('Open' or 'Closed')",
+    "pump_status": "Mapping of pump IDs to their current status ('Running', 'Idle', 'Fault')",
+    "active_alerts": "List of active system warning strings"
+  },
+  "task_initial_state": {
+    "system_mode": "Normal",
+    "segment_pressures": {
+      "SEG_01": 880.0,
+      "SEG_02": 875.0
+    },
+    "valve_positions": {
+      "VALVE_01": "Open",
+      "VALVE_02": "Open"
+    },
+    "pump_status": {
+      "PUMP_01": "Running"
+    },
+    "active_alerts": [
+      "GEOTECH_STRAIN_YELLOW_0.38%_MP402",
+      "MAINTENANCE_PUMP_01_STARTER_FAULT"
+    ]
+  }
+}

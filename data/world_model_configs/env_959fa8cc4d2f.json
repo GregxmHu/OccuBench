@@ -1,0 +1,250 @@
+{
+  "environment_name": "env_959fa8cc4d2f",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: You act as the simulation engine for a News Source Fact Checking environment. Based on the current internal state $s_t$ and the action $a_t$ executed by the Agent, you must simulate the evolution of the news environment and predict the specific observation $o_{{t+1}}$ obtained by the Agent.\n- **Emphasis**: You do not perform real-world web searches or external API calls. You perform internal state evolution and generate observations based on the simulated reality of the news landscape.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation to ensure factual consistency and source reliability tracking. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nYou must maintain strict context consistency throughout the interaction. Every search result, verification outcome, or source metadata provided must be consistent with previously revealed information and the internal ground truth defined in the state.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the news environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent submits action requests via a structured JSON object. This JSON contains:\n- `\"name\"`: The name of the action function to execute.\n- `\"arguments\"`: Key-value pairs for the parameters required by that function.\n\nYou must parse these JSON inputs and simulate the resulting observation based on the environment logic.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\n- If the Agent calls a non-existent function: Return `{{\"error\": \"Action '[name]' not found\"}}`.\n- If parameters are missing or invalid: Return `{{\"error\": \"Invalid parameters for action '[name]'\"}}`.\n- If an action contradicts the current environment state: Return a logically sound error or an empty result as defined by the scenario logic.\n- **Do not** fabricate fictitious responses that bypass the state constraints.\n\n##### Output Assembly\nFor every action call, you must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition.\n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the internal state `$s_t$`, the updated `new_state`, or any hidden variables. You are the environment; the Agent only sees the result of its interaction (the Observation). Encapsulate all state updates internally.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to specified JSON and text formats.\n- **Factuality**: Do not fabricate news sources or facts that do not exist within the simulated state's logic.\n- **Consistency**: Ensure that if a source is deemed 'unreliable' in the state, its generated outputs reflect that bias consistently.\n- **Realism**: Observations must align with how news databases, archives, and verification services behave in reality.\n- **Quality**: Observations should be clear, unambiguous, and structurally complete.\n- **Encapsulation**: Strictly hide the internal state structure from the output. Only expose information explicitly returned by the action function.\n{{initial_state}}: {{\n  \"truth_registry\": {{\n    \"sun_disc_authenticity\": {{\n      \"claim\": \"The Sun-Disc returned to the Larco Museum is the original 15th-century artifact.\",\n      \"status\": \"False\",\n      \"ground_truth\": \"The artifact is a high-density resin replica with a gold-leaf coating, created by 'Precision Replicas LLC' in September 2023.\",\n      \"evidence_id\": \"LAB_REPORT_8821_B\"\n    }},\n    \"sterling_fund_misuse\": {{\n      \"claim\": \"The $5M donation from the Thorne Foundation was spent entirely on the repatriation process.\",\n      \"status\": \"False\",\n      \"ground_truth\": \"$4.2M was diverted to an offshore account in the Cayman Islands linked to Dr. Sterling's shell company, 'Heritage Holdings'.\",\n      \"evidence_id\": \"THORNE_LEDGER_EXTRACT\"\n    }}\n  }},\n  \"source_authority_index\": {{\n    \"dr_alistair_sterling\": {{\n      \"reliability_score\": 0.2,\n      \"threat_index\": 5,\n      \"legal_history\": \"Successfully sued two freelance journalists for libel in 2019 and 2021; known for 'libel tourism' tactics.\",\n      \"jurisdictional_risk\": true\n    }},\n    \"cultural_heritage_watch\": {{\n      \"reliability_score\": 0.9,\n      \"threat_index\": 1,\n      \"legal_history\": \"Clean record of factual reporting.\"\n    }},\n    \"anonymous_whistleblower_x\": {{\n      \"reliability_score\": 0.5,\n      \"notes\": \"Internal GHI employee; provided initial tips but lacks primary docs.\"\n    }}\n  }},\n  \"archived_corpus\": [\n    {{\n      \"id\": \"GHI_PR_001\",\n      \"timestamp\": \"2023-10-15T09:00:00Z\",\n      \"source\": \"Global Heritage Institute\",\n      \"content\": \"Dr. Alistair Sterling successfully returns the lost Sun-Disc of Chan Chan to Peru, marking a triumph for cultural diplomacy.\",\n      \"status\": \"Public\"\n    }},\n    {{\n      \"id\": \"LAB_REPORT_8821_B\",\n      \"timestamp\": \"2023-10-20T14:30:00Z\",\n      \"source\": \"GHI Internal Server\",\n      \"content\": \"Spectroscopy analysis of Item #449 (Sun-Disc): Core material identified as synthetic polymer resin. Surface thickness of gold plating: 0.2mm. Non-authentic.\",\n      \"status\": \"Hidden\",\n      \"metadata\": {{\n        \"scrub_risk\": \"High\",\n        \"access_path\": \"Root/Security_Backups/Reports_Oct\"\n      }}\n    }},\n    {{\n      \"id\": \"LEGAL_THREAT_DATABASE_ENTRY\",\n      \"timestamp\": \"2023-01-05T10:00:00Z\",\n      \"source\": \"Media Law Center\",\n      \"content\": \"Alistair Sterling vs. Independent News: Court ruled in favor of Sterling due to lack of primary documentation for the claim of embezzlement. Case used as a warning for SLAPP tactics.\",\n      \"status\": \"Public\"\n    }}\n  ],\n  \"simulation_timestamp\": \"2023-10-27T10:00:00Z\",\n  \"investigation_log\": []\n}}\n{{state_descriptions}}: {{\n  \"truth_registry\": \"A mapping of specific claims/events to their 'ground truth' status (e.g., True, False, Unverified) and supporting evidence.\",\n  \"source_authority_index\": \"A database of news outlets, journalists, and domains with their associated reliability scores, political leanings, and history of accuracy.\",\n  \"archived_corpus\": \"A collection of simulated articles, social media posts, and official statements available for retrieval.\",\n  \"simulation_timestamp\": \"The current date and time within the simulation to manage temporal consistency of news reports.\",\n  \"investigation_log\": \"A record of which pieces of evidence have already been 'discovered' by the agent to prevent redundant observations.\"\n}}\n{action_set_definitions}: {\n  \"get_environment_metadata\": {\n    \"description\": \"Retrieves current simulation metadata including the current timestamp and the history of discovered evidence from the investigation log.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"simulation_timestamp\": \"2023-10-27T10:00:00Z\",\n      \"investigation_log\": [\n        \"Previously discovered evidence ID 101\"\n      ]\n    }\n  },\n  \"search_archived_corpus\": {\n    \"description\": \"Searches the archived corpus for articles, social media posts, and official statements related to specific keywords.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"query\": {\n          \"type\": \"string\",\n          \"description\": \"The search terms or keywords to look for in the corpus.\"\n        }\n      },\n      \"required\": [\n        \"query\"\n      ]\n    },\n    \"example_output\": {\n      \"results\": [\n        {\n          \"id\": \"doc_456\",\n          \"title\": \"Whistleblower Report on Sun-Disc\",\n          \"content\": \"Summary of content...\",\n          \"source\": \"Global News\"\n        }\n      ]\n    }\n  },\n  \"verify_with_truth_registry\": {\n    \"description\": \"Queries the truth_registry to determine the ground truth status of specific claims and identifies associated primary documentary evidence.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"claim_text\": {\n          \"type\": \"string\",\n          \"description\": \"The specific claim or allegation to verify.\"\n        }\n      },\n      \"required\": [\n        \"claim_text\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"True\",\n      \"primary_evidence_ids\": [\n        \"arch_primary_001\",\n        \"arch_primary_002\"\n      ],\n      \"details\": \"Evidence confirms the forgery through internal memos.\"\n    }\n  },\n  \"get_litigation_history\": {\n    \"description\": \"Retrieves the litigation history of a subject from the source authority index to evaluate SLAPP suit risks.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"subject_name\": {\n          \"type\": \"string\",\n          \"description\": \"The name of the individual or organization to check.\"\n        }\n      },\n      \"required\": [\n        \"subject_name\"\n      ]\n    },\n    \"example_output\": {\n      \"history\": [\n        {\n          \"case_id\": \"LIT-882\",\n          \"type\": \"Defamation\",\n          \"status\": \"Settled\"\n        }\n      ],\n      \"slapp_risk_score\": \"High\"\n    }\n  },\n  \"perma_archive_evidence\": {\n    \"description\": \"Secures primary evidence in the permanent archive to prevent digital scrubbing.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"evidence_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique ID of the document/evidence to be archived.\"\n        }\n      },\n      \"required\": [\n        \"evidence_id\"\n      ]\n    },\n    \"example_output\": {\n      \"archive_url\": \"https://perma.archives/id_992\",\n      \"status\": \"Archived Successfully\"\n    }\n  },\n  \"issue_no_surprises_letter\": {\n    \"description\": \"Sends a formal 'No Surprises Letter' to a subject, providing them a Right of Reply Lead Time (RRLT).\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"recipient\": {\n          \"type\": \"string\",\n          \"description\": \"The name of the subject being notified.\"\n        },\n        \"lead_time_hours\": {\n          \"type\": \"integer\",\n          \"description\": \"The number of hours provided for the right of reply.\"\n        },\n        \"claims_summary\": {\n          \"type\": \"string\",\n          \"description\": \"A summary of the allegations the subject is invited to respond to.\"\n        }\n      },\n      \"required\": [\n        \"recipient\",\n        \"lead_time_hours\",\n        \"claims_summary\"\n      ]\n    },\n    \"example_output\": {\n      \"dispatch_time\": \"2023-10-27T11:00:00Z\",\n      \"deadline\": \"2023-10-30T11:00:00Z\",\n      \"status\": \"Delivered\"\n    }\n  },\n  \"submit_publication_package\": {\n    \"description\": \"Submits the final investigation log and verified publication draft to the reporting interface.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"investigation_log\": {\n          \"type\": \"array\",\n          \"items\": {\n            \"type\": \"string\"\n          },\n          \"description\": \"The list of verified evidence and actions taken.\"\n        },\n        \"publication_draft\": {\n          \"type\": \"string\",\n          \"description\": \"The final content of the Defensive Publication Package.\"\n        },\n        \"ecr_score\": {\n          \"type\": \"number\",\n          \"description\": \"The calculated Evidence Corroboration Ratio.\"\n        }\n      },\n      \"required\": [\n        \"investigation_log\",\n        \"publication_draft\",\n        \"ecr_score\"\n      ]\n    },\n    \"example_output\": {\n      \"submission_id\": \"SUB-12345\",\n      \"status\": \"Task Complete\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_environment_metadata",
+      "description": "Retrieves current simulation metadata including the current timestamp and the history of discovered evidence from the investigation log.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "simulation_timestamp": "2023-10-27T10:00:00Z",
+        "investigation_log": [
+          "Previously discovered evidence ID 101"
+        ]
+      }
+    },
+    {
+      "name": "search_archived_corpus",
+      "description": "Searches the archived corpus for articles, social media posts, and official statements related to specific keywords.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "description": "The search terms or keywords to look for in the corpus."
+          }
+        },
+        "required": [
+          "query"
+        ]
+      },
+      "example_output": {
+        "results": [
+          {
+            "id": "doc_456",
+            "title": "Whistleblower Report on Sun-Disc",
+            "content": "Summary of content...",
+            "source": "Global News"
+          }
+        ]
+      }
+    },
+    {
+      "name": "verify_with_truth_registry",
+      "description": "Queries the truth_registry to determine the ground truth status of specific claims and identifies associated primary documentary evidence.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "claim_text": {
+            "type": "string",
+            "description": "The specific claim or allegation to verify."
+          }
+        },
+        "required": [
+          "claim_text"
+        ]
+      },
+      "example_output": {
+        "status": "True",
+        "primary_evidence_ids": [
+          "arch_primary_001",
+          "arch_primary_002"
+        ],
+        "details": "Evidence confirms the forgery through internal memos."
+      }
+    },
+    {
+      "name": "get_litigation_history",
+      "description": "Retrieves the litigation history of a subject from the source authority index to evaluate SLAPP suit risks.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "subject_name": {
+            "type": "string",
+            "description": "The name of the individual or organization to check."
+          }
+        },
+        "required": [
+          "subject_name"
+        ]
+      },
+      "example_output": {
+        "history": [
+          {
+            "case_id": "LIT-882",
+            "type": "Defamation",
+            "status": "Settled"
+          }
+        ],
+        "slapp_risk_score": "High"
+      }
+    },
+    {
+      "name": "perma_archive_evidence",
+      "description": "Secures primary evidence in the permanent archive to prevent digital scrubbing.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "evidence_id": {
+            "type": "string",
+            "description": "The unique ID of the document/evidence to be archived."
+          }
+        },
+        "required": [
+          "evidence_id"
+        ]
+      },
+      "example_output": {
+        "archive_url": "https://perma.archives/id_992",
+        "status": "Archived Successfully"
+      }
+    },
+    {
+      "name": "issue_no_surprises_letter",
+      "description": "Sends a formal 'No Surprises Letter' to a subject, providing them a Right of Reply Lead Time (RRLT).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "recipient": {
+            "type": "string",
+            "description": "The name of the subject being notified."
+          },
+          "lead_time_hours": {
+            "type": "integer",
+            "description": "The number of hours provided for the right of reply."
+          },
+          "claims_summary": {
+            "type": "string",
+            "description": "A summary of the allegations the subject is invited to respond to."
+          }
+        },
+        "required": [
+          "recipient",
+          "lead_time_hours",
+          "claims_summary"
+        ]
+      },
+      "example_output": {
+        "dispatch_time": "2023-10-27T11:00:00Z",
+        "deadline": "2023-10-30T11:00:00Z",
+        "status": "Delivered"
+      }
+    },
+    {
+      "name": "submit_publication_package",
+      "description": "Submits the final investigation log and verified publication draft to the reporting interface.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "investigation_log": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "The list of verified evidence and actions taken."
+          },
+          "publication_draft": {
+            "type": "string",
+            "description": "The final content of the Defensive Publication Package."
+          },
+          "ecr_score": {
+            "type": "number",
+            "description": "The calculated Evidence Corroboration Ratio."
+          }
+        },
+        "required": [
+          "investigation_log",
+          "publication_draft",
+          "ecr_score"
+        ]
+      },
+      "example_output": {
+        "submission_id": "SUB-12345",
+        "status": "Task Complete"
+      }
+    }
+  ],
+  "state_description": {
+    "truth_registry": "A mapping of specific claims/events to their 'ground truth' status (e.g., True, False, Unverified) and supporting evidence.",
+    "source_authority_index": "A database of news outlets, journalists, and domains with their associated reliability scores, political leanings, and history of accuracy.",
+    "archived_corpus": "A collection of simulated articles, social media posts, and official statements available for retrieval.",
+    "simulation_timestamp": "The current date and time within the simulation to manage temporal consistency of news reports.",
+    "investigation_log": "A record of which pieces of evidence have already been 'discovered' by the agent to prevent redundant observations."
+  },
+  "task_initial_state": {
+    "truth_registry": {
+      "sun_disc_authenticity": {
+        "claim": "The Sun-Disc returned to the Larco Museum is the original 15th-century artifact.",
+        "status": "False",
+        "ground_truth": "The artifact is a high-density resin replica with a gold-leaf coating, created by 'Precision Replicas LLC' in September 2023.",
+        "evidence_id": "LAB_REPORT_8821_B"
+      },
+      "sterling_fund_misuse": {
+        "claim": "The $5M donation from the Thorne Foundation was spent entirely on the repatriation process.",
+        "status": "False",
+        "ground_truth": "$4.2M was diverted to an offshore account in the Cayman Islands linked to Dr. Sterling's shell company, 'Heritage Holdings'.",
+        "evidence_id": "THORNE_LEDGER_EXTRACT"
+      }
+    },
+    "source_authority_index": {
+      "dr_alistair_sterling": {
+        "reliability_score": 0.2,
+        "threat_index": 5,
+        "legal_history": "Successfully sued two freelance journalists for libel in 2019 and 2021; known for 'libel tourism' tactics.",
+        "jurisdictional_risk": true
+      },
+      "cultural_heritage_watch": {
+        "reliability_score": 0.9,
+        "threat_index": 1,
+        "legal_history": "Clean record of factual reporting."
+      },
+      "anonymous_whistleblower_x": {
+        "reliability_score": 0.5,
+        "notes": "Internal GHI employee; provided initial tips but lacks primary docs."
+      }
+    },
+    "archived_corpus": [
+      {
+        "id": "GHI_PR_001",
+        "timestamp": "2023-10-15T09:00:00Z",
+        "source": "Global Heritage Institute",
+        "content": "Dr. Alistair Sterling successfully returns the lost Sun-Disc of Chan Chan to Peru, marking a triumph for cultural diplomacy.",
+        "status": "Public"
+      },
+      {
+        "id": "LAB_REPORT_8821_B",
+        "timestamp": "2023-10-20T14:30:00Z",
+        "source": "GHI Internal Server",
+        "content": "Spectroscopy analysis of Item #449 (Sun-Disc): Core material identified as synthetic polymer resin. Surface thickness of gold plating: 0.2mm. Non-authentic.",
+        "status": "Hidden",
+        "metadata": {
+          "scrub_risk": "High",
+          "access_path": "Root/Security_Backups/Reports_Oct"
+        }
+      },
+      {
+        "id": "LEGAL_THREAT_DATABASE_ENTRY",
+        "timestamp": "2023-01-05T10:00:00Z",
+        "source": "Media Law Center",
+        "content": "Alistair Sterling vs. Independent News: Court ruled in favor of Sterling due to lack of primary documentation for the claim of embezzlement. Case used as a warning for SLAPP tactics.",
+        "status": "Public"
+      }
+    ],
+    "simulation_timestamp": "2023-10-27T10:00:00Z",
+    "investigation_log": []
+  }
+}

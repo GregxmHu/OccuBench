@@ -1,0 +1,295 @@
+{
+  "environment_name": "env_516be294d324",
+  "world_model_system_prompt": "## 1. Role and Objective\n- **Role**: Language World Model (LWM) for Wildfire Evacuation Coordination.\n- **Core Objective**: Based on the current internal state $s_t$ and the evacuation action $a_t$ taken by the Emergency Coordinator (Agent), simulate the fire spread dynamics, unit movements, and evacuation progress to predict the resulting observation $o_{{t+1}}$ obtained by the Agent.\n- **Emphasis**: You are the simulation engine. You do not suggest actions; you calculate the physical and logical consequences of actions within the fire-threatened environment.\n\n## 2. Environment Management\n\n### State Initialization\nThis scenario has an explicit state representation tracking fire intensity, resource locations, and civilian safety. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n### Context Awareness\nAll interactions must maintain rigorous context consistency. Fire spreads according to wind and terrain logic across turns, and resource fuel/water levels or civilian counts must be tracked accurately throughout the session.\n\n## 3. Environment Execution\n\n### Action Space\nThe Agent interacts with the environment by calling action functions (e.g., dispatching units, setting perimeters). The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. You must parse the `\"name\"` and `\"arguments\"` to determine how the environment state evolves.\n\nExample Input:\n```json\n{{\n \"name\": \"deploy_fire_retardant\",\n \"arguments\": {{\n    \"zone_id\": \"Sector_7\",\n    \"unit_id\": \"Air_Tanker_1\"\n  }}\n}}\n```\n\n### Environment Behavior Modeling\n\n#### Fire & Human Dynamics\n- **Fire Spread**: Simulate spread based on wind speed, direction, and fuel load described in the state. \n- **Evacuation Progress**: Account for road congestion and civilian transit times.\n- **Resource Constraints**: Units cannot perform actions if they lack fuel/water or are currently in transit.\n\n#### Error Handling & Edge Cases\nIf an action is impossible (e.g., dispatching a destroyed unit, ordering evacuation of a zone with no civilians, or invalid JSON), return structured error information: `{{\"error\": \"Specific reason for failure\"}}`. Do not fabricate successful outcomes for failed logic.\n\n#### Output Assembly\nFor every action, return a structured JSON object containing **ONLY** the return fields declared in the action function's definition (the Observation).\n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, `new_state`, or any hidden variables. You maintain the state internally through the conversation history. The Agent must only receive the specific Observation data.\n\n## 4. Key Principles\n- **Format**: Strictly adhere to specified JSON and text formats.\n- **Factuality**: Do not fabricate non-existent units, zones, or environmental conditions.\n- **Consistency**: If the fire reached a coordinate at $t=1$, it remains burned or active at $t=2$ unless mitigated.\n- **Realism**: Dynamics must reflect the urgency and physics of a wildfire scenario (e.g., wind speeds affecting fire intensity).\n- **Encapsulation**: Strictly hide the internal state structure from the output. Only expose the specific return values defined in the action function.\n{{initial_state}}: {{\n  \"timestamp\": \"2025-08-15T14:45:00Z\",\n  \"weather\": {{\n    \"wind_speed_kph\": 55,\n    \"wind_direction\": \"NE\",\n    \"humidity_percent\": 6\n  }},\n  \"map_grid\": [\n    {{\n      \"sector_id\": \"S-101\",\n      \"fire_intensity\": 0,\n      \"fuel_load\": 20,\n      \"status\": \"clear\"\n    }},\n    {{\n      \"sector_id\": \"S-102\",\n      \"fire_intensity\": 8,\n      \"fuel_load\": 85,\n      \"status\": \"burning\"\n    }},\n    {{\n      \"sector_id\": \"S-103\",\n      \"fire_intensity\": 0,\n      \"fuel_load\": 95,\n      \"status\": \"threatened\"\n    }},\n    {{\n      \"sector_id\": \"S-104\",\n      \"fire_intensity\": 0,\n      \"fuel_load\": 70,\n      \"status\": \"threatened\"\n    }}\n  ],\n  \"civilian_zones\": [\n    {{\n      \"zone_id\": \"Ridge_Point_Estate\",\n      \"population\": 2200,\n      \"evacuation_status\": \"shelter_in_place\",\n      \"safety_level\": \"low\"\n    }},\n    {{\n      \"zone_id\": \"Canyon_View_Village\",\n      \"population\": 5400,\n      \"evacuation_status\": \"shelter_in_place\",\n      \"safety_level\": \"medium\"\n    }},\n    {{\n      \"zone_id\": \"Green_Valley_Park\",\n      \"population\": 800,\n      \"evacuation_status\": \"shelter_in_place\",\n      \"safety_level\": \"high\"\n    }}\n  ],\n  \"emergency_units\": [\n    {{\n      \"unit_id\": \"LE_Patrol_Alpha\",\n      \"type\": \"law_enforcement\",\n      \"location\": \"North_Station\",\n      \"status\": \"available\",\n      \"water_capacity\": 0\n    }},\n    {{\n      \"unit_id\": \"LE_Patrol_Bravo\",\n      \"type\": \"law_enforcement\",\n      \"location\": \"Central_Arterial_Junction\",\n      \"status\": \"available\",\n      \"water_capacity\": 0\n    }},\n    {{\n      \"unit_id\": \"Engine_Company_5\",\n      \"type\": \"ground_crew\",\n      \"location\": \"Base_Omega\",\n      \"status\": \"available\",\n      \"water_capacity\": 1000\n    }}\n  ],\n  \"road_network\": [\n    {{\n      \"route_id\": \"SR-42_Southbound\",\n      \"status\": \"open\",\n      \"congestion\": \"low\"\n    }},\n    {{\n      \"route_id\": \"Old_Canyon_Road\",\n      \"status\": \"restricted\",\n      \"congestion\": \"high\"\n    }}\n  ]\n}}\n{{state_descriptions}}: {{\n  \"timestamp\": \"The current simulated time and date of the emergency.\",\n  \"weather\": \"Current atmospheric conditions influencing fire behavior.\",\n  \"map_grid\": \"A list of grid sectors containing fire intensity (0-10) and fuel levels.\",\n  \"civilian_zones\": \"Status of population centers in the area.\",\n  \"emergency_units\": \"Current location and status of fire-fighting and medical resources.\",\n  \"road_network\": \"Availability and congestion levels of evacuation routes.\"\n}}\n{action_set_definitions}: {\n  \"get_incident_data\": {\n    \"description\": \"Retrieves the current simulation time, weather conditions, and the grid-based fire map to identify the ignition sector and fire front movement.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"timestamp\": \"2023-10-27T14:00:00Z\",\n      \"weather\": \"Dry, 20mph NW winds\",\n      \"fire_front\": \"Grid Sector A7 moving SE\",\n      \"fire_intensity_map\": [\n        {\n          \"sector_id\": \"A7\",\n          \"intensity\": 9,\n          \"fuel_level\": 2\n        }\n      ]\n    }\n  },\n  \"get_civilian_zones\": {\n    \"description\": \"Retrieves a list of all civilian population centers, their current populations, and coordinates.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"zones\": [\n        {\n          \"zone_id\": \"Z-101\",\n          \"name\": \"Oak Valley\",\n          \"population\": 1200,\n          \"location\": [\n            45,\n            12\n          ]\n        }\n      ]\n    }\n  },\n  \"get_road_network_status\": {\n    \"description\": \"Retrieves the status of the road network, identifying arterial routes, junctions, current traffic volume, and maximum capacity.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"routes\": [\n        {\n          \"route_id\": \"Highway-1\",\n          \"capacity\": 2000,\n          \"current_volume\": 400,\n          \"is_arterial\": true\n        }\n      ],\n      \"junctions\": [\n        {\n          \"junction_id\": \"J-5\",\n          \"location\": [\n            40,\n            10\n          ],\n          \"type\": \"main_arterial_junction\"\n        }\n      ]\n    }\n  },\n  \"get_emergency_resources\": {\n    \"description\": \"Retrieves the location and status of all emergency units, including law enforcement and fire units.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"unit_type\": {\n          \"type\": \"string\",\n          \"description\": \"Filter by unit type, e.g., 'law_enforcement'.\"\n        }\n      },\n      \"required\": [\n        \"unit_type\"\n      ]\n    },\n    \"example_output\": {\n      \"units\": [\n        {\n          \"unit_id\": \"LE-04\",\n          \"type\": \"law_enforcement\",\n          \"location\": [\n            41,\n            11\n          ],\n          \"status\": \"available\"\n        }\n      ]\n    }\n  },\n  \"calculate_safety_metrics\": {\n    \"description\": \"Computes the Fire Arrival Time (FAT) and the Evacuation Time Estimate (ETE) for a specific population zone based on current fire spread and road conditions.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"zone_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the population zone.\"\n        },\n        \"route_id\": {\n          \"type\": \"string\",\n          \"description\": \"The planned evacuation route ID.\"\n        }\n      },\n      \"required\": [\n        \"zone_id\",\n        \"route_id\"\n      ]\n    },\n    \"example_output\": {\n      \"fire_arrival_time_min\": 45,\n      \"evacuation_time_estimate_min\": 30,\n      \"projected_vc_ratio\": 0.75\n    }\n  },\n  \"deploy_unit\": {\n    \"description\": \"Dispatches a specific emergency unit to a target location (junction or zone) to establish control or support.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"unit_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the unit to deploy.\"\n        },\n        \"destination_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the junction or zone destination.\"\n        },\n        \"assignment\": {\n          \"type\": \"string\",\n          \"description\": \"Specific task, e.g., 'traffic_control_point'.\"\n        }\n      },\n      \"required\": [\n        \"unit_id\",\n        \"destination_id\",\n        \"assignment\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"en_route\",\n      \"eta\": 5\n    }\n  },\n  \"issue_mass_notification\": {\n    \"description\": \"Triggers a specific emergency protocol for a civilian zone.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"zone_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the target zone.\"\n        },\n        \"protocol\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"ROAD_EVACUATION\",\n            \"TEMPORARY_REFUGE\",\n            \"SHELTER_IN_PLACE\"\n          ],\n          \"description\": \"The chosen safety protocol.\"\n        },\n        \"priority\": {\n          \"type\": \"integer\",\n          \"description\": \"Sequence priority (1 for immediate).\"\n        }\n      },\n      \"required\": [\n        \"zone_id\",\n        \"protocol\",\n        \"priority\"\n      ]\n    },\n    \"example_output\": {\n      \"notification_sent\": true,\n      \"timestamp\": \"2023-10-27T14:10:00Z\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_incident_data",
+      "description": "Retrieves the current simulation time, weather conditions, and the grid-based fire map to identify the ignition sector and fire front movement.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "timestamp": "2023-10-27T14:00:00Z",
+        "weather": "Dry, 20mph NW winds",
+        "fire_front": "Grid Sector A7 moving SE",
+        "fire_intensity_map": [
+          {
+            "sector_id": "A7",
+            "intensity": 9,
+            "fuel_level": 2
+          }
+        ]
+      }
+    },
+    {
+      "name": "get_civilian_zones",
+      "description": "Retrieves a list of all civilian population centers, their current populations, and coordinates.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "zones": [
+          {
+            "zone_id": "Z-101",
+            "name": "Oak Valley",
+            "population": 1200,
+            "location": [
+              45,
+              12
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "get_road_network_status",
+      "description": "Retrieves the status of the road network, identifying arterial routes, junctions, current traffic volume, and maximum capacity.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "routes": [
+          {
+            "route_id": "Highway-1",
+            "capacity": 2000,
+            "current_volume": 400,
+            "is_arterial": true
+          }
+        ],
+        "junctions": [
+          {
+            "junction_id": "J-5",
+            "location": [
+              40,
+              10
+            ],
+            "type": "main_arterial_junction"
+          }
+        ]
+      }
+    },
+    {
+      "name": "get_emergency_resources",
+      "description": "Retrieves the location and status of all emergency units, including law enforcement and fire units.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "unit_type": {
+            "type": "string",
+            "description": "Filter by unit type, e.g., 'law_enforcement'."
+          }
+        },
+        "required": [
+          "unit_type"
+        ]
+      },
+      "example_output": {
+        "units": [
+          {
+            "unit_id": "LE-04",
+            "type": "law_enforcement",
+            "location": [
+              41,
+              11
+            ],
+            "status": "available"
+          }
+        ]
+      }
+    },
+    {
+      "name": "calculate_safety_metrics",
+      "description": "Computes the Fire Arrival Time (FAT) and the Evacuation Time Estimate (ETE) for a specific population zone based on current fire spread and road conditions.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "zone_id": {
+            "type": "string",
+            "description": "The ID of the population zone."
+          },
+          "route_id": {
+            "type": "string",
+            "description": "The planned evacuation route ID."
+          }
+        },
+        "required": [
+          "zone_id",
+          "route_id"
+        ]
+      },
+      "example_output": {
+        "fire_arrival_time_min": 45,
+        "evacuation_time_estimate_min": 30,
+        "projected_vc_ratio": 0.75
+      }
+    },
+    {
+      "name": "deploy_unit",
+      "description": "Dispatches a specific emergency unit to a target location (junction or zone) to establish control or support.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "unit_id": {
+            "type": "string",
+            "description": "The ID of the unit to deploy."
+          },
+          "destination_id": {
+            "type": "string",
+            "description": "The ID of the junction or zone destination."
+          },
+          "assignment": {
+            "type": "string",
+            "description": "Specific task, e.g., 'traffic_control_point'."
+          }
+        },
+        "required": [
+          "unit_id",
+          "destination_id",
+          "assignment"
+        ]
+      },
+      "example_output": {
+        "status": "en_route",
+        "eta": 5
+      }
+    },
+    {
+      "name": "issue_mass_notification",
+      "description": "Triggers a specific emergency protocol for a civilian zone.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "zone_id": {
+            "type": "string",
+            "description": "The ID of the target zone."
+          },
+          "protocol": {
+            "type": "string",
+            "enum": [
+              "ROAD_EVACUATION",
+              "TEMPORARY_REFUGE",
+              "SHELTER_IN_PLACE"
+            ],
+            "description": "The chosen safety protocol."
+          },
+          "priority": {
+            "type": "integer",
+            "description": "Sequence priority (1 for immediate)."
+          }
+        },
+        "required": [
+          "zone_id",
+          "protocol",
+          "priority"
+        ]
+      },
+      "example_output": {
+        "notification_sent": true,
+        "timestamp": "2023-10-27T14:10:00Z"
+      }
+    }
+  ],
+  "state_description": {
+    "timestamp": "The current simulated time and date of the emergency.",
+    "weather": "Current atmospheric conditions influencing fire behavior.",
+    "map_grid": "A list of grid sectors containing fire intensity (0-10) and fuel levels.",
+    "civilian_zones": "Status of population centers in the area.",
+    "emergency_units": "Current location and status of fire-fighting and medical resources.",
+    "road_network": "Availability and congestion levels of evacuation routes."
+  },
+  "task_initial_state": {
+    "timestamp": "2025-08-15T14:45:00Z",
+    "weather": {
+      "wind_speed_kph": 55,
+      "wind_direction": "NE",
+      "humidity_percent": 6
+    },
+    "map_grid": [
+      {
+        "sector_id": "S-101",
+        "fire_intensity": 0,
+        "fuel_load": 20,
+        "status": "clear"
+      },
+      {
+        "sector_id": "S-102",
+        "fire_intensity": 8,
+        "fuel_load": 85,
+        "status": "burning"
+      },
+      {
+        "sector_id": "S-103",
+        "fire_intensity": 0,
+        "fuel_load": 95,
+        "status": "threatened"
+      },
+      {
+        "sector_id": "S-104",
+        "fire_intensity": 0,
+        "fuel_load": 70,
+        "status": "threatened"
+      }
+    ],
+    "civilian_zones": [
+      {
+        "zone_id": "Ridge_Point_Estate",
+        "population": 2200,
+        "evacuation_status": "shelter_in_place",
+        "safety_level": "low"
+      },
+      {
+        "zone_id": "Canyon_View_Village",
+        "population": 5400,
+        "evacuation_status": "shelter_in_place",
+        "safety_level": "medium"
+      },
+      {
+        "zone_id": "Green_Valley_Park",
+        "population": 800,
+        "evacuation_status": "shelter_in_place",
+        "safety_level": "high"
+      }
+    ],
+    "emergency_units": [
+      {
+        "unit_id": "LE_Patrol_Alpha",
+        "type": "law_enforcement",
+        "location": "North_Station",
+        "status": "available",
+        "water_capacity": 0
+      },
+      {
+        "unit_id": "LE_Patrol_Bravo",
+        "type": "law_enforcement",
+        "location": "Central_Arterial_Junction",
+        "status": "available",
+        "water_capacity": 0
+      },
+      {
+        "unit_id": "Engine_Company_5",
+        "type": "ground_crew",
+        "location": "Base_Omega",
+        "status": "available",
+        "water_capacity": 1000
+      }
+    ],
+    "road_network": [
+      {
+        "route_id": "SR-42_Southbound",
+        "status": "open",
+        "congestion": "low"
+      },
+      {
+        "route_id": "Old_Canyon_Road",
+        "status": "restricted",
+        "congestion": "high"
+      }
+    ]
+  }
+}

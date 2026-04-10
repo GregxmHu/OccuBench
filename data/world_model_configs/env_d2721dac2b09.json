@@ -1,0 +1,106 @@
+{
+  "environment_name": "env_d2721dac2b09",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM) for Content Recommendation Curation.\n- **Core Objective**: Based on the current internal state $s_t$ and the action $a_t$ executed by the recommendation agent, simulate the environment's evolution (user behavior and platform dynamics) and predict the observation $o_{{t+1}}$ obtained by the Agent.\n- **Emphasis**: The LWM does not make recommendations. It simulates how a user or a platform audience reacts to a recommendation. It performs internal state evolution and generates the resulting observation (e.g., click, watch time, or dismissal).\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions between the World Model and the Agent must maintain context consistency. The model must track the cumulative effect of previous recommendations on user fatigue, interest shifts, and overall satisfaction.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. This JSON must contain the following fields:\n- `\"name\"`: Specifies the name of the action function to execute (e.g., `recommend_item`, `refresh_feed`).\n- The remaining fields are the parameter names and corresponding values required by that action function (e.g., `item_id`, `category`).\n\nExample:\n```json\n{{\n \"name\": \"recommend_content\",\n \"arguments\": {{\n    \"item_id\": \"vid_9821\",\n    \"category\": \"technology\"\n  }}\n}}\n```\n\nThe Language World Model must correctly parse such JSON inputs and simulate the realistic response of the user/environment.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nFor invalid parameters (e.g., non-existent item IDs), undefined actions, or logical conflicts (e.g., recommending to a non-existent user profile), return structured error information: `{{\"error\": \"Description of error\"}}`. Do not fabricate successful interactions for invalid inputs.\n\n##### Output Assembly\nFor every action function call, the model must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition (the Observation).\n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the internal state $s_t$, the updated state $s_{{t+1}}$, or any hidden metadata used for simulation. The state maintenance is internal to the model. The Agent must only receive the feedback defined in the observation.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to JSON for all inputs and outputs.\n- **Factuality**: Use the provided state and action definitions as the ground truth. Do not invent metrics or content properties not implied by the context.\n- **Consistency**: User behavior should follow logical patterns (e.g., excessive repetition of a topic should eventually lead to lower engagement/fatigue).\n- **Realism**: Simulate stochastic but reasonable user responses (e.g., a user interested in 'Sports' has a high, but not 100%, probability of clicking a sports video).\n- **Quality**: Responses must be clear, structured, and free of conversational filler.\n- **Encapsulation**: Strictly hide the internal state structure. Only expose information that is explicitly returned by the action function.\n{{initial_state}}: {{\n  \"user_affinity_scores\": {{\n    \"tech\": 0.5,\n    \"sports\": 0.2,\n    \"entertainment\": 0.4\n  }},\n  \"fatigue_levels\": {{\n    \"tech\": 0,\n    \"sports\": 0,\n    \"entertainment\": 0\n  }},\n  \"session_watch_time_total\": 450,\n  \"user_satisfaction_index\": 0.45,\n  \"last_seen_ids\": [\n    \"vid_df_99\"\n  ]\n}}\n{{state_descriptions}}: {{\n  \"user_affinity_scores\": \"A mapping of content categories to interest levels (0.0 to 1.0).\",\n  \"fatigue_levels\": \"Counter for how many times a category has been shown recently, affecting future click probability.\",\n  \"session_watch_time_total\": \"Cumulative watch time in seconds for the current session.\",\n  \"user_satisfaction_index\": \"Overall satisfaction score (0.0 to 1.0), determining session exit probability.\",\n  \"last_seen_ids\": \"A list of the last 10 content IDs shown to prevent immediate re-recommendation.\"\n}}\n{action_set_definitions}: {\n  \"get_current_state\": {\n    \"description\": \"Retrieves the user's current metrics, including affinity scores, fatigue levels, total session watch time, satisfaction index, and the history of recently seen content.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"user_affinity_scores\": {\n        \"tech\": 0.45,\n        \"gaming\": 0.6\n      },\n      \"fatigue_levels\": {\n        \"tech\": 2,\n        \"gaming\": 1\n      },\n      \"session_watch_time_total\": 120,\n      \"user_satisfaction_index\": 0.5,\n      \"last_seen_ids\": [\n        \"vid_df_99\"\n      ]\n    }\n  },\n  \"query_content\": {\n    \"description\": \"Searches the content library for items based on category and optional tags. Provides metadata for potential impact on state.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"category\": {\n          \"type\": \"string\",\n          \"description\": \"Filter by content category (e.g., 'tech', 'entertainment').\"\n        },\n        \"tags\": {\n          \"type\": \"array\",\n          \"items\": {\n            \"type\": \"string\"\n          },\n          \"description\": \"Optional list of tags to filter by (e.g., ['inoculation']).\"\n        }\n      },\n      \"required\": [\n        \"category\"\n      ]\n    },\n    \"example_output\": {\n      \"items\": [\n        {\n          \"content_id\": \"tech_v_001\",\n          \"duration\": 45,\n          \"affinity_delta\": 0.05,\n          \"satisfaction_delta\": -0.01\n        }\n      ]\n    }\n  },\n  \"recommend_item\": {\n    \"description\": \"Executes the recommendation of a content item. This action advances the environment state.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"content_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the content to be served.\"\n        }\n      },\n      \"required\": [\n        \"content_id\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"success\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_current_state",
+      "description": "Retrieves the user's current metrics, including affinity scores, fatigue levels, total session watch time, satisfaction index, and the history of recently seen content.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "user_affinity_scores": {
+          "tech": 0.45,
+          "gaming": 0.6
+        },
+        "fatigue_levels": {
+          "tech": 2,
+          "gaming": 1
+        },
+        "session_watch_time_total": 120,
+        "user_satisfaction_index": 0.5,
+        "last_seen_ids": [
+          "vid_df_99"
+        ]
+      }
+    },
+    {
+      "name": "query_content",
+      "description": "Searches the content library for items based on category and optional tags. Provides metadata for potential impact on state.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "category": {
+            "type": "string",
+            "description": "Filter by content category (e.g., 'tech', 'entertainment')."
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Optional list of tags to filter by (e.g., ['inoculation'])."
+          }
+        },
+        "required": [
+          "category"
+        ]
+      },
+      "example_output": {
+        "items": [
+          {
+            "content_id": "tech_v_001",
+            "duration": 45,
+            "affinity_delta": 0.05,
+            "satisfaction_delta": -0.01
+          }
+        ]
+      }
+    },
+    {
+      "name": "recommend_item",
+      "description": "Executes the recommendation of a content item. This action advances the environment state.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "content_id": {
+            "type": "string",
+            "description": "The ID of the content to be served."
+          }
+        },
+        "required": [
+          "content_id"
+        ]
+      },
+      "example_output": {
+        "status": "success"
+      }
+    }
+  ],
+  "state_description": {
+    "user_affinity_scores": "A mapping of content categories to interest levels (0.0 to 1.0).",
+    "fatigue_levels": "Counter for how many times a category has been shown recently, affecting future click probability.",
+    "session_watch_time_total": "Cumulative watch time in seconds for the current session.",
+    "user_satisfaction_index": "Overall satisfaction score (0.0 to 1.0), determining session exit probability.",
+    "last_seen_ids": "A list of the last 10 content IDs shown to prevent immediate re-recommendation."
+  },
+  "task_initial_state": {
+    "user_affinity_scores": {
+      "tech": 0.5,
+      "sports": 0.2,
+      "entertainment": 0.4
+    },
+    "fatigue_levels": {
+      "tech": 0,
+      "sports": 0,
+      "entertainment": 0
+    },
+    "session_watch_time_total": 450,
+    "user_satisfaction_index": 0.45,
+    "last_seen_ids": [
+      "vid_df_99"
+    ]
+  }
+}

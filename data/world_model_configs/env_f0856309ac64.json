@@ -1,0 +1,211 @@
+{
+  "environment_name": "env_f0856309ac64",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: Based on the current firewall state $s_t$ and the configuration action $a_t$ performed by the Agent, simulate the internal evolution of the firewall configuration and predict the specific observation $o_{{t+1}}$ (return result) obtained by the Agent.\n- **Emphasis**: You are a simulator. You do not apply changes to a real network device; instead, you maintain the internal logic, consistency, and state of a virtual firewall environment.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions between the World Model and the Agent must maintain strict context consistency. Any rule added, modified, or deleted in a previous step must persist in the internal state and influence the results of subsequent actions (e.g., listing rules or identifying conflicts).\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. This JSON contains:\n- `\"name\"`: The name of the firewall configuration action (e.g., `add_rule`, `delete_rule`, `show_config`).\n- `\"arguments\"`: The parameter names and values required for that specific action.\n\nThe Language World Model must parse this JSON, simulate the logic of a firewall management system, and update the internal state accordingly.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nSimulate realistic firewall constraints and return structured error information (e.g., `{{\"error\": \"Conflict: Rule with ID 10 already exists\"}}`) for the following cases:\n- **Invalid Parameters**: Port numbers out of range (0-65535), invalid IP formats, or unsupported protocols.\n- **Logic Conflicts**: Adding a rule that exactly duplicates an existing one, or deleting a non-existent rule ID.\n- **State Conflicts**: Attempting to enable the firewall when it is already active.\n- **Empty Inputs**: Submit without required arguments.\nDo not fabricate successful responses for invalid operations.\n\n##### Output Assembly\nFor every action call, return a structured JSON object containing **ONLY** the return fields declared in the action function's definition. \n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, `new_state`, or hidden configuration variables. Only expose the observation (the return value) to the Agent. For example, if the action is `add_rule`, the output should typically be a success confirmation or the created rule object, not the entire list of all rules in the firewall.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to JSON for both parsing inputs and generating outputs.\n- **Factuality**: Do not invent firewall capabilities or rule attributes not defined in the state or action space.\n- **Consistency**: Ensure that if a rule is deleted, it no longer appears in subsequent `list_rules` observations.\n- **Realism**: Simulate the firewall behavior as a deterministic system (unless network jitter/randomness is explicitly required).\n- **Quality**: Provide clear, technical error messages when operations fail.\n- **Encapsulation**: Hide the full internal state database. Only return the specific \"Observation\" as defined by the action's return signature.\n{{initial_state}}: {{\n  \"rules\": [\n    {{\n      \"id\": \"rule-fin-app\",\n      \"priority\": 100,\n      \"direction\": \"INBOUND\",\n      \"protocol\": \"TCP\",\n      \"source_ip\": \"10.50.0.0/16\",\n      \"destination_ip\": \"10.10.100.50/32\",\n      \"port\": \"443\",\n      \"action\": \"ALLOW\"\n    }}\n  ],\n  \"default_policy\": \"DROP\",\n  \"is_active\": true,\n  \"logging_enabled\": false\n}}\n{{state_descriptions}}: {{\n  \"rules\": \"A list of firewall rule objects, where each object contains id, priority, direction, protocol, source_ip, destination_ip, port, and action (ALLOW/DENY).\",\n  \"default_policy\": \"The default action taken if no rules match (e.g., 'DROP' or 'ACCEPT').\",\n  \"is_active\": \"Indicates whether the firewall engine is currently filtering traffic.\",\n  \"logging_enabled\": \"Indicates if the firewall is currently recording traffic logs to the internal state.\"\n}}\n{action_set_definitions}: {\n  \"get_firewall_state\": {\n    \"description\": \"Retrieves the current firewall configuration including rules, default policy, filtering status, and logging status.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"rules\": [\n        {\n          \"id\": \"rule-123\",\n          \"priority\": 10,\n          \"direction\": \"INBOUND\",\n          \"protocol\": \"TCP\",\n          \"source_ip\": \"0.0.0.0/0\",\n          \"destination_ip\": \"10.10.100.5/32\",\n          \"port\": 443,\n          \"action\": \"ALLOW\"\n        }\n      ],\n      \"default_policy\": \"DROP\",\n      \"is_active\": true,\n      \"logging_enabled\": false\n    }\n  },\n  \"create_config_snapshot\": {\n    \"description\": \"Captures a cryptographic snapshot of the current configuration state for backup and audit compliance. Returns a unique snapshot identifier.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"label\": {\n          \"type\": \"string\",\n          \"description\": \"A descriptive label for the snapshot (e.g., 'PRE-INCIDENT-EMERG-INC-5502').\"\n        }\n      },\n      \"required\": [\n        \"label\"\n      ]\n    },\n    \"example_output\": {\n      \"snapshot_id\": \"snap-998877\",\n      \"timestamp\": \"2023-10-27T10:00:00Z\",\n      \"hash\": \"sha256:abc123xyz...\"\n    }\n  },\n  \"check_admin_contention\": {\n    \"description\": \"Checks for existing administrative sessions or configuration locks that might prevent committing changes.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"is_locked\": true,\n      \"locked_by\": \"admin_user_2\",\n      \"lock_type\": \"exclusive_write\"\n    }\n  },\n  \"resolve_contention\": {\n    \"description\": \"Forcefully clears administrative locks or sessions to allow the current Agent to commit security policies.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"lock_id\": {\n          \"type\": \"string\",\n          \"description\": \"The identifier of the lock to be cleared.\"\n        }\n      },\n      \"required\": [\n        \"lock_id\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"success\",\n      \"message\": \"Administrative lock cleared.\"\n    }\n  },\n  \"update_logging_config\": {\n    \"description\": \"Enables or disables telemetry recording for firewall rules.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"enabled\": {\n          \"type\": \"boolean\",\n          \"description\": \"Set to true to start recording telemetry/hit counts.\"\n        }\n      },\n      \"required\": [\n        \"enabled\"\n      ]\n    },\n    \"example_output\": {\n      \"logging_enabled\": true\n    }\n  },\n  \"add_security_rule\": {\n    \"description\": \"Inserts a new firewall rule into the active policy.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"priority\": {\n          \"type\": \"number\",\n          \"description\": \"The precedence of the rule (lower numbers = higher priority).\"\n        },\n        \"source_ip\": {\n          \"type\": \"string\",\n          \"description\": \"CIDR block for the source.\"\n        },\n        \"destination_ip\": {\n          \"type\": \"string\",\n          \"description\": \"CIDR block for the destination.\"\n        },\n        \"action\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"ALLOW\",\n            \"DENY\"\n          ]\n        },\n        \"description\": {\n          \"type\": \"string\"\n        }\n      },\n      \"required\": [\n        \"priority\",\n        \"source_ip\",\n        \"destination_ip\",\n        \"action\"\n      ]\n    },\n    \"example_output\": {\n      \"rule_id\": \"rule-999\",\n      \"status\": \"applied\"\n    }\n  },\n  \"get_hit_count_telemetry\": {\n    \"description\": \"Retrieves the hit count for a specific rule to confirm traffic matches.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"rule_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the rule to check hit counts for.\"\n        }\n      },\n      \"required\": [\n        \"rule_id\"\n      ]\n    },\n    \"example_output\": {\n      \"rule_id\": \"rule-999\",\n      \"hit_count\": 42,\n      \"last_hit_timestamp\": \"2023-10-27T10:05:00Z\"\n    }\n  },\n  \"restore_snapshot\": {\n    \"description\": \"Restores the firewall configuration to a previously captured state using a snapshot ID.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"snapshot_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the snapshot to restore.\"\n        }\n      },\n      \"required\": [\n        \"snapshot_id\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"success\",\n      \"restored_at\": \"2023-10-27T10:15:00Z\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_firewall_state",
+      "description": "Retrieves the current firewall configuration including rules, default policy, filtering status, and logging status.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "rules": [
+          {
+            "id": "rule-123",
+            "priority": 10,
+            "direction": "INBOUND",
+            "protocol": "TCP",
+            "source_ip": "0.0.0.0/0",
+            "destination_ip": "10.10.100.5/32",
+            "port": 443,
+            "action": "ALLOW"
+          }
+        ],
+        "default_policy": "DROP",
+        "is_active": true,
+        "logging_enabled": false
+      }
+    },
+    {
+      "name": "create_config_snapshot",
+      "description": "Captures a cryptographic snapshot of the current configuration state for backup and audit compliance. Returns a unique snapshot identifier.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "label": {
+            "type": "string",
+            "description": "A descriptive label for the snapshot (e.g., 'PRE-INCIDENT-EMERG-INC-5502')."
+          }
+        },
+        "required": [
+          "label"
+        ]
+      },
+      "example_output": {
+        "snapshot_id": "snap-998877",
+        "timestamp": "2023-10-27T10:00:00Z",
+        "hash": "sha256:abc123xyz..."
+      }
+    },
+    {
+      "name": "check_admin_contention",
+      "description": "Checks for existing administrative sessions or configuration locks that might prevent committing changes.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "is_locked": true,
+        "locked_by": "admin_user_2",
+        "lock_type": "exclusive_write"
+      }
+    },
+    {
+      "name": "resolve_contention",
+      "description": "Forcefully clears administrative locks or sessions to allow the current Agent to commit security policies.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "lock_id": {
+            "type": "string",
+            "description": "The identifier of the lock to be cleared."
+          }
+        },
+        "required": [
+          "lock_id"
+        ]
+      },
+      "example_output": {
+        "status": "success",
+        "message": "Administrative lock cleared."
+      }
+    },
+    {
+      "name": "update_logging_config",
+      "description": "Enables or disables telemetry recording for firewall rules.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "description": "Set to true to start recording telemetry/hit counts."
+          }
+        },
+        "required": [
+          "enabled"
+        ]
+      },
+      "example_output": {
+        "logging_enabled": true
+      }
+    },
+    {
+      "name": "add_security_rule",
+      "description": "Inserts a new firewall rule into the active policy.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "priority": {
+            "type": "number",
+            "description": "The precedence of the rule (lower numbers = higher priority)."
+          },
+          "source_ip": {
+            "type": "string",
+            "description": "CIDR block for the source."
+          },
+          "destination_ip": {
+            "type": "string",
+            "description": "CIDR block for the destination."
+          },
+          "action": {
+            "type": "string",
+            "enum": [
+              "ALLOW",
+              "DENY"
+            ]
+          },
+          "description": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "priority",
+          "source_ip",
+          "destination_ip",
+          "action"
+        ]
+      },
+      "example_output": {
+        "rule_id": "rule-999",
+        "status": "applied"
+      }
+    },
+    {
+      "name": "get_hit_count_telemetry",
+      "description": "Retrieves the hit count for a specific rule to confirm traffic matches.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "rule_id": {
+            "type": "string",
+            "description": "The ID of the rule to check hit counts for."
+          }
+        },
+        "required": [
+          "rule_id"
+        ]
+      },
+      "example_output": {
+        "rule_id": "rule-999",
+        "hit_count": 42,
+        "last_hit_timestamp": "2023-10-27T10:05:00Z"
+      }
+    },
+    {
+      "name": "restore_snapshot",
+      "description": "Restores the firewall configuration to a previously captured state using a snapshot ID.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "snapshot_id": {
+            "type": "string",
+            "description": "The ID of the snapshot to restore."
+          }
+        },
+        "required": [
+          "snapshot_id"
+        ]
+      },
+      "example_output": {
+        "status": "success",
+        "restored_at": "2023-10-27T10:15:00Z"
+      }
+    }
+  ],
+  "state_description": {
+    "rules": "A list of firewall rule objects, where each object contains id, priority, direction, protocol, source_ip, destination_ip, port, and action (ALLOW/DENY).",
+    "default_policy": "The default action taken if no rules match (e.g., 'DROP' or 'ACCEPT').",
+    "is_active": "Indicates whether the firewall engine is currently filtering traffic.",
+    "logging_enabled": "Indicates if the firewall is currently recording traffic logs to the internal state."
+  },
+  "task_initial_state": {
+    "rules": [
+      {
+        "id": "rule-fin-app",
+        "priority": 100,
+        "direction": "INBOUND",
+        "protocol": "TCP",
+        "source_ip": "10.50.0.0/16",
+        "destination_ip": "10.10.100.50/32",
+        "port": "443",
+        "action": "ALLOW"
+      }
+    ],
+    "default_policy": "DROP",
+    "is_active": true,
+    "logging_enabled": false
+  }
+}

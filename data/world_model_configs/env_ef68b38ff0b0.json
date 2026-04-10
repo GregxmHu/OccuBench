@@ -1,0 +1,338 @@
+{
+  "environment_name": "env_ef68b38ff0b0",
+  "world_model_system_prompt": "### 1. Role and Objective\n\n**Role**: Language World Model (LWM)\n**Core Objective**: Act as the authoritative simulation engine for the Wildfire Evacuation Coordination scenario. Based on the current internal state $s_t$ and the action $a_t$ submitted by the Agent, you must simulate the evolution of the wildfire, the movement of resources, and the progression of the evacuation. Your output must be the observation $o_{{t+1}}$ perceived by the Agent after the state transition.\n**Emphasis**: You are a simulator, not an assistant. You do not execute real-world operations; you predict environmental changes and generate observations based on the physics and logic of the fire scenario.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nYou must maintain a consistent internal timeline and spatial logic. Every action taken by the Agent affects the internal state (e.g., dispatching a unit changes its location in the next state; fire spreads over time according to weather conditions). All subsequent observations must be derived from this evolving, self-consistent internal state.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. This JSON will contain:\n- `\"name\"`: The name of the action function.\n- `\"arguments\"`: The parameters for the action.\n\nExample Input:\n```json\n{{\n \"name\": \"deploy_fire_retardant\",\n \"arguments\": {{\n    \"zone_id\": \"Sector_B7\",\n    \"volume_liters\": 5000\n  }}\n}}\n```\nYou must parse this input, calculate the impact on the internal state (e.g., reduction in fire intensity in Sector_B7), and generate the resulting observation.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nIf an action is invalid (e.g., deploying units to a blocked route, insufficient resources, or calling an undefined function), return a structured error JSON:\n`{{\"error\": \"Reason for failure\"}}`.\nDo not fabricate successful outcomes for impossible actions.\n\n##### Output Assembly\nFor every action call, return a structured JSON object containing **ONLY** the return fields declared in the action function's definition. \n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, `new_state`, or any hidden variables. You are the environment; the Agent only sees what their sensors/reports provide. Strictly hide the internal state structure from the output.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to the JSON structure.\n- **Factuality**: Simulate fire spread patterns and evacuation delays based on realistic environmental factors (wind, terrain, congestion).\n- **Consistency**: If a road is marked as 'blocked' in one turn, it remains blocked until an action changes it or the simulation logic dictates otherwise.\n- **Realism**: Actions take effect within the logic of a high-stakes emergency scenario.\n- **Encapsulation**: Only expose information explicitly defined as return values in the `{{action_set_definitions}}`. Do not output the state update process.\n{{initial_state}}: {{\n  \"fire_dynamics\": {{\n    \"Sector_Alpha_7\": {{\n      \"intensity\": 15,\n      \"spread_direction\": \"S\"\n    }},\n    \"Sector_Delta_9\": {{\n      \"intensity\": 88,\n      \"spread_direction\": \"NW\"\n    }}\n  }},\n  \"evacuation_zones\": [\n    {{\n      \"zone_id\": \"Sector_Alpha_7\",\n      \"name\": \"Green_Valley_Detention\",\n      \"risk_level\": \"Level 1 - Ready\",\n      \"population_count\": 40,\n      \"classifications\": {{\n        \"Minimum\": 40\n      }}\n    }},\n    {{\n      \"zone_id\": \"Sector_Delta_9\",\n      \"name\": \"Iron_Gate_State_Prison\",\n      \"risk_level\": \"Level 2 - Set\",\n      \"population_count\": 85,\n      \"classifications\": {{\n        \"KSFA\": 10,\n        \"Maximum\": 25,\n        \"Medium\": 50\n      }}\n    }}\n  ],\n  \"resource_registry\": {{\n    \"Asset_V-01\": {{\n      \"type\": \"Secure Transport Vehicle (STV)\",\n      \"location\": \"Iron_Gate_State_Prison\",\n      \"status\": \"idle\",\n      \"capacity_inmates\": 20,\n      \"current_staff_count\": 2,\n      \"security_rating\": \"Hardened\",\n      \"has_medical_lockbox\": false\n    }},\n    \"Asset_V-02\": {{\n      \"type\": \"Secure Transport Vehicle (STV)\",\n      \"location\": \"Iron_Gate_State_Prison\",\n      \"status\": \"idle\",\n      \"capacity_inmates\": 20,\n      \"current_staff_count\": 2,\n      \"security_rating\": \"Hardened\",\n      \"has_medical_lockbox\": false\n    }},\n    \"Asset_B-09\": {{\n      \"type\": \"Commercial Bus\",\n      \"location\": \"Iron_Gate_State_Prison\",\n      \"status\": \"idle\",\n      \"capacity_inmates\": 50,\n      \"current_staff_count\": 3,\n      \"security_rating\": \"Standard\",\n      \"has_medical_lockbox\": false\n    }},\n    \"SRT_Team_Alpha\": {{\n      \"type\": \"Tactical_Unit\",\n      \"location\": \"Iron_Gate_State_Prison\",\n      \"status\": \"idle\"\n    }},\n    \"SRT_Team_Bravo\": {{\n      \"type\": \"Tactical_Unit\",\n      \"location\": \"Iron_Gate_State_Prison\",\n      \"status\": \"idle\"\n    }}\n  }},\n  \"infrastructure_status\": {{\n    \"Primary_Route_12\": {{\n      \"condition\": \"Heavy_Smoke\",\n      \"congestion_level\": \"Moderate\",\n      \"visibility_meters\": 25\n    }},\n    \"Alternate_Trail_East\": {{\n      \"condition\": \"Open\",\n      \"congestion_level\": \"Low\",\n      \"visibility_meters\": 800\n    }}\n  }},\n  \"weather_conditions\": {{\n    \"wind_speed_kph\": 45,\n    \"wind_direction\": \"NW\",\n    \"humidity_percent\": 10,\n    \"temperature_c\": 41\n  }},\n  \"simulation_clock\": 0\n}}\n{{state_descriptions}}: {{\n  \"fire_dynamics\": \"Mapping of zone IDs to current fire intensity (0-100) and spread direction.\",\n  \"evacuation_zones\": \"List of civilian populated areas with current risk levels and population counts.\",\n  \"resource_registry\": \"The current location, status (idle, busy, transit), and fuel/water levels of all emergency units.\",\n  \"infrastructure_status\": \"The condition and congestion levels of primary and secondary evacuation routes.\",\n  \"weather_conditions\": \"Current wind speed, wind direction, humidity, and temperature affecting fire behavior.\",\n  \"simulation_clock\": \"The elapsed time in minutes since the fire was detected.\"\n}}\n{action_set_definitions}: {\n  \"get_fire_dynamics\": {\n    \"description\": \"Retrieves the mapping of all zone IDs to their current fire intensity (0-100) and spread direction.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {}\n    },\n    \"example_output\": {\n      \"fire_map\": [\n        {\n          \"zone_id\": \"Zone_A\",\n          \"intensity\": 95,\n          \"direction\": \"NW\"\n        }\n      ]\n    }\n  },\n  \"get_facilities_in_zone\": {\n    \"description\": \"Lists all facilities within a specific zone.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"zone_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the zone to check.\"\n        }\n      },\n      \"required\": [\n        \"zone_id\"\n      ]\n    },\n    \"example_output\": {\n      \"facilities\": [\n        {\n          \"facility_id\": \"FAC_01\",\n          \"name\": \"High-Security Detention Center\"\n        }\n      ]\n    }\n  },\n  \"get_facility_manifest\": {\n    \"description\": \"Retrieves the specific population breakdown (KSFA, Maximum-security, General) and inventory (e.g., MARs) for a facility.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"facility_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique ID of the facility.\"\n        }\n      },\n      \"required\": [\n        \"facility_id\"\n      ]\n    },\n    \"example_output\": {\n      \"population\": {\n        \"KSFA\": 10,\n        \"Maximum_security\": 20,\n        \"General\": 30\n      },\n      \"total_population\": 60,\n      \"inventory\": [\n        \"Physical_MAR_Box_01\"\n      ]\n    }\n  },\n  \"query_resource_registry\": {\n    \"description\": \"Queries available units by category. Returns IDs, status, and capacity.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"category\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"specialized_transport\",\n            \"standard_transport\",\n            \"security_staff\",\n            \"tactical_units\"\n          ]\n        }\n      },\n      \"required\": [\n        \"category\"\n      ]\n    },\n    \"example_output\": {\n      \"available_units\": [\n        {\n          \"id\": \"UNIT_X\",\n          \"capacity\": 15,\n          \"status\": \"idle\"\n        }\n      ]\n    }\n  },\n  \"request_emergency_reinforcements\": {\n    \"description\": \"Requests additional resources from neighboring sectors if the current registry is insufficient.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"category\": {\n          \"type\": \"string\"\n        },\n        \"minimum_quantity\": {\n          \"type\": \"integer\"\n        }\n      },\n      \"required\": [\n        \"category\",\n        \"minimum_quantity\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"deployed\",\n      \"new_units\": [\n        {\n          \"id\": \"REINFORCE_01\"\n        }\n      ]\n    }\n  },\n  \"get_infrastructure_status\": {\n    \"description\": \"Checks visibility thresholds and fire proximity for transit corridors between two points.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"origin_zone\": {\n          \"type\": \"string\"\n        },\n        \"destination_zone\": {\n          \"type\": \"string\"\n        }\n      },\n      \"required\": [\n        \"origin_zone\",\n        \"destination_zone\"\n      ]\n    },\n    \"example_output\": {\n      \"route_id\": \"CORRIDOR_7\",\n      \"visibility_index\": 0.85,\n      \"is_clear_of_fire\": true\n    }\n  },\n  \"get_receiving_centers\": {\n    \"description\": \"Identifies the designated secure receiving center for the evacuation.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {}\n    },\n    \"example_output\": {\n      \"centers\": [\n        {\n          \"center_id\": \"SECURE_BASE_1\",\n          \"zone_id\": \"Zone_Safe\"\n        }\n      ]\n    }\n  },\n  \"execute_convoy_transport\": {\n    \"description\": \"Dispatches a vehicle with specific passengers, staff, and cargo.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"vehicle_id\": {\n          \"type\": \"string\"\n        },\n        \"staff_ids\": {\n          \"type\": \"array\",\n          \"items\": {\n            \"type\": \"string\"\n          }\n        },\n        \"tactical_unit_id\": {\n          \"type\": \"string\"\n        },\n        \"passenger_manifest\": {\n          \"type\": \"object\"\n        },\n        \"cargo\": {\n          \"type\": \"array\",\n          \"items\": {\n            \"type\": \"string\"\n          }\n        },\n        \"route_id\": {\n          \"type\": \"string\"\n        },\n        \"destination_id\": {\n          \"type\": \"string\"\n        }\n      },\n      \"required\": [\n        \"vehicle_id\",\n        \"staff_ids\",\n        \"tactical_unit_id\",\n        \"passenger_manifest\",\n        \"route_id\",\n        \"destination_id\"\n      ]\n    },\n    \"example_output\": {\n      \"convoy_status\": \"departed\",\n      \"coc_hash\": \"COC_VAL_99\"\n    }\n  },\n  \"verify_final_clearance\": {\n    \"description\": \"Confirms 100% CoC integrity and that zero population remains at the facility.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"facility_id\": {\n          \"type\": \"string\"\n        }\n      },\n      \"required\": [\n        \"facility_id\"\n      ]\n    },\n    \"example_output\": {\n      \"coc_integrity_score\": 1.0,\n      \"facility_cleared\": true\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_fire_dynamics",
+      "description": "Retrieves the mapping of all zone IDs to their current fire intensity (0-100) and spread direction.",
+      "parameters": {
+        "type": "object",
+        "properties": {}
+      },
+      "example_output": {
+        "fire_map": [
+          {
+            "zone_id": "Zone_A",
+            "intensity": 95,
+            "direction": "NW"
+          }
+        ]
+      }
+    },
+    {
+      "name": "get_facilities_in_zone",
+      "description": "Lists all facilities within a specific zone.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "zone_id": {
+            "type": "string",
+            "description": "The ID of the zone to check."
+          }
+        },
+        "required": [
+          "zone_id"
+        ]
+      },
+      "example_output": {
+        "facilities": [
+          {
+            "facility_id": "FAC_01",
+            "name": "High-Security Detention Center"
+          }
+        ]
+      }
+    },
+    {
+      "name": "get_facility_manifest",
+      "description": "Retrieves the specific population breakdown (KSFA, Maximum-security, General) and inventory (e.g., MARs) for a facility.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "facility_id": {
+            "type": "string",
+            "description": "The unique ID of the facility."
+          }
+        },
+        "required": [
+          "facility_id"
+        ]
+      },
+      "example_output": {
+        "population": {
+          "KSFA": 10,
+          "Maximum_security": 20,
+          "General": 30
+        },
+        "total_population": 60,
+        "inventory": [
+          "Physical_MAR_Box_01"
+        ]
+      }
+    },
+    {
+      "name": "query_resource_registry",
+      "description": "Queries available units by category. Returns IDs, status, and capacity.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "category": {
+            "type": "string",
+            "enum": [
+              "specialized_transport",
+              "standard_transport",
+              "security_staff",
+              "tactical_units"
+            ]
+          }
+        },
+        "required": [
+          "category"
+        ]
+      },
+      "example_output": {
+        "available_units": [
+          {
+            "id": "UNIT_X",
+            "capacity": 15,
+            "status": "idle"
+          }
+        ]
+      }
+    },
+    {
+      "name": "request_emergency_reinforcements",
+      "description": "Requests additional resources from neighboring sectors if the current registry is insufficient.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "category": {
+            "type": "string"
+          },
+          "minimum_quantity": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "category",
+          "minimum_quantity"
+        ]
+      },
+      "example_output": {
+        "status": "deployed",
+        "new_units": [
+          {
+            "id": "REINFORCE_01"
+          }
+        ]
+      }
+    },
+    {
+      "name": "get_infrastructure_status",
+      "description": "Checks visibility thresholds and fire proximity for transit corridors between two points.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "origin_zone": {
+            "type": "string"
+          },
+          "destination_zone": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "origin_zone",
+          "destination_zone"
+        ]
+      },
+      "example_output": {
+        "route_id": "CORRIDOR_7",
+        "visibility_index": 0.85,
+        "is_clear_of_fire": true
+      }
+    },
+    {
+      "name": "get_receiving_centers",
+      "description": "Identifies the designated secure receiving center for the evacuation.",
+      "parameters": {
+        "type": "object",
+        "properties": {}
+      },
+      "example_output": {
+        "centers": [
+          {
+            "center_id": "SECURE_BASE_1",
+            "zone_id": "Zone_Safe"
+          }
+        ]
+      }
+    },
+    {
+      "name": "execute_convoy_transport",
+      "description": "Dispatches a vehicle with specific passengers, staff, and cargo.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "vehicle_id": {
+            "type": "string"
+          },
+          "staff_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "tactical_unit_id": {
+            "type": "string"
+          },
+          "passenger_manifest": {
+            "type": "object"
+          },
+          "cargo": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "route_id": {
+            "type": "string"
+          },
+          "destination_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "vehicle_id",
+          "staff_ids",
+          "tactical_unit_id",
+          "passenger_manifest",
+          "route_id",
+          "destination_id"
+        ]
+      },
+      "example_output": {
+        "convoy_status": "departed",
+        "coc_hash": "COC_VAL_99"
+      }
+    },
+    {
+      "name": "verify_final_clearance",
+      "description": "Confirms 100% CoC integrity and that zero population remains at the facility.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "facility_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "facility_id"
+        ]
+      },
+      "example_output": {
+        "coc_integrity_score": 1.0,
+        "facility_cleared": true
+      }
+    }
+  ],
+  "state_description": {
+    "fire_dynamics": "Mapping of zone IDs to current fire intensity (0-100) and spread direction.",
+    "evacuation_zones": "List of civilian populated areas with current risk levels and population counts.",
+    "resource_registry": "The current location, status (idle, busy, transit), and fuel/water levels of all emergency units.",
+    "infrastructure_status": "The condition and congestion levels of primary and secondary evacuation routes.",
+    "weather_conditions": "Current wind speed, wind direction, humidity, and temperature affecting fire behavior.",
+    "simulation_clock": "The elapsed time in minutes since the fire was detected."
+  },
+  "task_initial_state": {
+    "fire_dynamics": {
+      "Sector_Alpha_7": {
+        "intensity": 15,
+        "spread_direction": "S"
+      },
+      "Sector_Delta_9": {
+        "intensity": 88,
+        "spread_direction": "NW"
+      }
+    },
+    "evacuation_zones": [
+      {
+        "zone_id": "Sector_Alpha_7",
+        "name": "Green_Valley_Detention",
+        "risk_level": "Level 1 - Ready",
+        "population_count": 40,
+        "classifications": {
+          "Minimum": 40
+        }
+      },
+      {
+        "zone_id": "Sector_Delta_9",
+        "name": "Iron_Gate_State_Prison",
+        "risk_level": "Level 2 - Set",
+        "population_count": 85,
+        "classifications": {
+          "KSFA": 10,
+          "Maximum": 25,
+          "Medium": 50
+        }
+      }
+    ],
+    "resource_registry": {
+      "Asset_V-01": {
+        "type": "Secure Transport Vehicle (STV)",
+        "location": "Iron_Gate_State_Prison",
+        "status": "idle",
+        "capacity_inmates": 20,
+        "current_staff_count": 2,
+        "security_rating": "Hardened",
+        "has_medical_lockbox": false
+      },
+      "Asset_V-02": {
+        "type": "Secure Transport Vehicle (STV)",
+        "location": "Iron_Gate_State_Prison",
+        "status": "idle",
+        "capacity_inmates": 20,
+        "current_staff_count": 2,
+        "security_rating": "Hardened",
+        "has_medical_lockbox": false
+      },
+      "Asset_B-09": {
+        "type": "Commercial Bus",
+        "location": "Iron_Gate_State_Prison",
+        "status": "idle",
+        "capacity_inmates": 50,
+        "current_staff_count": 3,
+        "security_rating": "Standard",
+        "has_medical_lockbox": false
+      },
+      "SRT_Team_Alpha": {
+        "type": "Tactical_Unit",
+        "location": "Iron_Gate_State_Prison",
+        "status": "idle"
+      },
+      "SRT_Team_Bravo": {
+        "type": "Tactical_Unit",
+        "location": "Iron_Gate_State_Prison",
+        "status": "idle"
+      }
+    },
+    "infrastructure_status": {
+      "Primary_Route_12": {
+        "condition": "Heavy_Smoke",
+        "congestion_level": "Moderate",
+        "visibility_meters": 25
+      },
+      "Alternate_Trail_East": {
+        "condition": "Open",
+        "congestion_level": "Low",
+        "visibility_meters": 800
+      }
+    },
+    "weather_conditions": {
+      "wind_speed_kph": 45,
+      "wind_direction": "NW",
+      "humidity_percent": 10,
+      "temperature_c": 41
+    },
+    "simulation_clock": 0
+  }
+}

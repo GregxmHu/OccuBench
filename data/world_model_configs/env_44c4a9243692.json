@@ -1,0 +1,159 @@
+{
+  "environment_name": "env_44c4a9243692",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: Based on the current internal state $s_t$ and the action $a_t$ executed by the Agent, simulate the evolution of the Zoning Variance Application Review environment and predict the observation $o_{{t+1}}$ obtained by the Agent.\n- **Emphasis**: You are a simulator of the zoning department's backend and legal logic. You do not perform real-world actions; you manage state transitions and generate realistic feedback based on the zoning code and application workflow.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation tracking the lifecycle of a zoning variance request. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions between the World Model and the Agent must maintain rigorous context consistency. Decisions made in previous turns (e.g., approving a document or flagging a code violation) must persist and influence future observations. The LWM must track the progression of the application from submission to final determination.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. This JSON contains:\n- `\"name\"`: The name of the action function to execute.\n- Parameters required by that specific action function.\n\nExample:\n```json\n{{\n \"name\": \"update_review_status\",\n \"arguments\": {{\n    \"application_id\": \"VAR-2024-001\",\n    \"new_status\": \"Under Review\",\n    \"comments\": \"Site plan checks out; awaiting hardship letter.\"\n  }}\n}}\n```\nYou must parse this JSON, simulate the logic of a zoning board review process, and update the internal state accordingly.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\n- Return structured error information (e.g., `{{\"error\": \"Invalid application ID\"}}`) if parameters are missing or actions are logically impossible (e.g., scheduling a hearing for a rejected application).\n- If an action violates zoning procedural rules, return a descriptive error within the JSON observation.\n- Do not fabricate data; if an application field is empty, report it as such.\n\n##### Output Assembly\nFor every action function call, you must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition. \n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, `new_state`, or any hidden variables. You are responsible for maintaining the state internally, but the Agent must only receive the specific Observation defined in the action's return signature.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to specified JSON and text formats.\n- **Factuality**: Do not simulate functions or state transitions that do not align with the provided action set.\n- **Consistency**: If a variance is noted as \"non-compliant\" in one step, it must remain so unless a corrective action is taken.\n- **Realism**: Simulate the bureaucratic nature of zoning (e.g., documents must be verified before hearings can be scheduled).\n- **Quality**: Ensure all generated observations are professional and unambiguous.\n- **Encapsulation**: Strictly hide the internal state structure from the output. Only expose the specific observation result.\n{{initial_state}}: {{\n  \"application_id\": \"VAR-2024-ADA-012\",\n  \"property_info\": {{\n    \"address\": \"422 Oak Lane\",\n    \"district_code\": \"R-1 (Single-Family Residential)\"\n  }},\n  \"review_status\": \"Pending\",\n  \"document_checklist\": {{\n    \"site_plan\": true,\n    \"hardship_statement\": false,\n    \"fee_paid\": true\n  }},\n  \"zoning_violations_found\": [\n    \"Section 402.1: Front Setback Encroachment (Proposed structure is 2 feet from property line; 20 feet required).\"\n  ],\n  \"hearing_details\": {{\n    \"scheduled_date\": null,\n    \"chamber_room\": null\n  }},\n  \"internal_reviewer_notes\": [\n    \"Application includes a signed letter from a neurologist confirming the resident has a permanent mobility disability and requires a power wheelchair.\",\n    \"Proposed structure is a modular, pre-fabricated aluminum ramp system.\",\n    \"The property is on a shallow lot with a steep rear grade, making side or rear entry inaccessible for a 1:12 slope ramp.\",\n    \"Initial site visit confirms the ramp does not obstruct the public right-of-way or sightlines for traffic.\"\n  ]\n}}\n{{state_descriptions}}: {{\n  \"application_id\": \"Unique identifier for the variance application.\",\n  \"property_info\": \"Details about the property including address and current zoning district.\",\n  \"review_status\": \"The current stage in the review pipeline (e.g., Pending, Documents_Received, Legal_Review, Hearing_Scheduled, Approved, Denied).\",\n  \"document_checklist\": \"Boolean flags indicating if required documents (site_plan, hardship_statement, fee_payment) have been submitted/verified.\",\n  \"zoning_violations_found\": \"A list of specific code sections the current proposal violates, necessitating the variance.\",\n  \"hearing_details\": \"Information regarding the public hearing date and location, if scheduled.\",\n  \"internal_reviewer_notes\": \"Private log of comments added by the zoning department staff during the review process.\"\n}}\n{action_set_definitions}: {\n  \"get_application_record\": {\n    \"description\": \"Retrieves the full current state of a variance application, including property info, review status, document checklist, and existing notes.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"application_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the variance application (e.g., 'VAR-2024-ADA-012').\"\n        }\n      },\n      \"required\": [\n        \"application_id\"\n      ]\n    },\n    \"example_output\": {\n      \"application_id\": \"VAR-2024-ADA-012\",\n      \"review_status\": \"Pending\",\n      \"document_checklist\": {\n        \"site_plan\": true,\n        \"hardship_statement\": true,\n        \"medical_necessity_doc\": false\n      },\n      \"zoning_violations_found\": [\n        \"Section 4.2: Front Yard Setback encroachment\"\n      ]\n    }\n  },\n  \"log_legal_assessment\": {\n    \"description\": \"Records the reviewer's evaluation regarding the nexus between disability and the requested accommodation, and the assessment of fundamental alterations to safety.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"application_id\": {\n          \"type\": \"string\"\n        },\n        \"nexus_description\": {\n          \"type\": \"string\",\n          \"description\": \"Detailed explanation of how the ramp alleviates the specific barriers posed by the disability.\"\n        },\n        \"safety_impact_analysis\": {\n          \"type\": \"string\",\n          \"description\": \"Evaluation of whether the structure impacts municipal safety or constitutes a fundamental alteration.\"\n        },\n        \"is_compliant_with_fha\": {\n          \"type\": \"boolean\",\n          \"description\": \"Whether the application meets Federal Fair Housing Act mandates.\"\n        }\n      },\n      \"required\": [\n        \"application_id\",\n        \"nexus_description\",\n        \"safety_impact_analysis\",\n        \"is_compliant_with_fha\"\n      ]\n    },\n    \"example_output\": null\n  },\n  \"fast_track_administrative_approval\": {\n    \"description\": \"Utilizes the most efficient administrative path to approve a Reasonable Accommodation request without a public hearing, preventing 'constructive denial' by delay.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"application_id\": {\n          \"type\": \"string\"\n        },\n        \"justification\": {\n          \"type\": \"string\",\n          \"description\": \"Reasoning for bypassing traditional hearing cycles (e.g., 'Mandated RA under FHA').\"\n        }\n      },\n      \"required\": [\n        \"application_id\",\n        \"justification\"\n      ]\n    },\n    \"example_output\": {\n      \"new_status\": \"Approved_Administrative\",\n      \"estimated_completion_days\": 1\n    }\n  },\n  \"finalize_determination_with_conditions\": {\n    \"description\": \"Issues the final decision and adds the formal requirement for future code restoration/reversion.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"application_id\": {\n          \"type\": \"string\"\n        },\n        \"decision\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"Approved\",\n            \"Denied\"\n          ]\n        },\n        \"reversion_clause_included\": {\n          \"type\": \"boolean\",\n          \"description\": \"Must be true. Confirms the property must be restored to code once medical necessity ends.\"\n        },\n        \"final_notes\": {\n          \"type\": \"string\"\n        }\n      },\n      \"required\": [\n        \"application_id\",\n        \"decision\",\n        \"reversion_clause_included\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"Finalized\",\n      \"determination_code\": \"RA-PERMIT-2024\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_application_record",
+      "description": "Retrieves the full current state of a variance application, including property info, review status, document checklist, and existing notes.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "application_id": {
+            "type": "string",
+            "description": "The unique identifier for the variance application (e.g., 'VAR-2024-ADA-012')."
+          }
+        },
+        "required": [
+          "application_id"
+        ]
+      },
+      "example_output": {
+        "application_id": "VAR-2024-ADA-012",
+        "review_status": "Pending",
+        "document_checklist": {
+          "site_plan": true,
+          "hardship_statement": true,
+          "medical_necessity_doc": false
+        },
+        "zoning_violations_found": [
+          "Section 4.2: Front Yard Setback encroachment"
+        ]
+      }
+    },
+    {
+      "name": "log_legal_assessment",
+      "description": "Records the reviewer's evaluation regarding the nexus between disability and the requested accommodation, and the assessment of fundamental alterations to safety.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "application_id": {
+            "type": "string"
+          },
+          "nexus_description": {
+            "type": "string",
+            "description": "Detailed explanation of how the ramp alleviates the specific barriers posed by the disability."
+          },
+          "safety_impact_analysis": {
+            "type": "string",
+            "description": "Evaluation of whether the structure impacts municipal safety or constitutes a fundamental alteration."
+          },
+          "is_compliant_with_fha": {
+            "type": "boolean",
+            "description": "Whether the application meets Federal Fair Housing Act mandates."
+          }
+        },
+        "required": [
+          "application_id",
+          "nexus_description",
+          "safety_impact_analysis",
+          "is_compliant_with_fha"
+        ]
+      },
+      "example_output": null
+    },
+    {
+      "name": "fast_track_administrative_approval",
+      "description": "Utilizes the most efficient administrative path to approve a Reasonable Accommodation request without a public hearing, preventing 'constructive denial' by delay.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "application_id": {
+            "type": "string"
+          },
+          "justification": {
+            "type": "string",
+            "description": "Reasoning for bypassing traditional hearing cycles (e.g., 'Mandated RA under FHA')."
+          }
+        },
+        "required": [
+          "application_id",
+          "justification"
+        ]
+      },
+      "example_output": {
+        "new_status": "Approved_Administrative",
+        "estimated_completion_days": 1
+      }
+    },
+    {
+      "name": "finalize_determination_with_conditions",
+      "description": "Issues the final decision and adds the formal requirement for future code restoration/reversion.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "application_id": {
+            "type": "string"
+          },
+          "decision": {
+            "type": "string",
+            "enum": [
+              "Approved",
+              "Denied"
+            ]
+          },
+          "reversion_clause_included": {
+            "type": "boolean",
+            "description": "Must be true. Confirms the property must be restored to code once medical necessity ends."
+          },
+          "final_notes": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "application_id",
+          "decision",
+          "reversion_clause_included"
+        ]
+      },
+      "example_output": {
+        "status": "Finalized",
+        "determination_code": "RA-PERMIT-2024"
+      }
+    }
+  ],
+  "state_description": {
+    "application_id": "Unique identifier for the variance application.",
+    "property_info": "Details about the property including address and current zoning district.",
+    "review_status": "The current stage in the review pipeline (e.g., Pending, Documents_Received, Legal_Review, Hearing_Scheduled, Approved, Denied).",
+    "document_checklist": "Boolean flags indicating if required documents (site_plan, hardship_statement, fee_payment) have been submitted/verified.",
+    "zoning_violations_found": "A list of specific code sections the current proposal violates, necessitating the variance.",
+    "hearing_details": "Information regarding the public hearing date and location, if scheduled.",
+    "internal_reviewer_notes": "Private log of comments added by the zoning department staff during the review process."
+  },
+  "task_initial_state": {
+    "application_id": "VAR-2024-ADA-012",
+    "property_info": {
+      "address": "422 Oak Lane",
+      "district_code": "R-1 (Single-Family Residential)"
+    },
+    "review_status": "Pending",
+    "document_checklist": {
+      "site_plan": true,
+      "hardship_statement": false,
+      "fee_paid": true
+    },
+    "zoning_violations_found": [
+      "Section 402.1: Front Setback Encroachment (Proposed structure is 2 feet from property line; 20 feet required)."
+    ],
+    "hearing_details": {
+      "scheduled_date": null,
+      "chamber_room": null
+    },
+    "internal_reviewer_notes": [
+      "Application includes a signed letter from a neurologist confirming the resident has a permanent mobility disability and requires a power wheelchair.",
+      "Proposed structure is a modular, pre-fabricated aluminum ramp system.",
+      "The property is on a shallow lot with a steep rear grade, making side or rear entry inaccessible for a 1:12 slope ramp.",
+      "Initial site visit confirms the ramp does not obstruct the public right-of-way or sightlines for traffic."
+    ]
+  }
+}

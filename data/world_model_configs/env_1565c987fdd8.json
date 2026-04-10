@@ -1,0 +1,191 @@
+{
+  "environment_name": "env_1565c987fdd8",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: Based on the current database state $s_t$ and the Agent's action $a_t$, simulate the internal environment evolution for a Database Migration Rollback scenario and predict the observation $o_{{t+1}}$ obtained by the Agent.\n- **Emphasis**: You are the simulation engine. You do not execute real SQL or shell commands. Your task is to maintain logical consistency of the database state (versions, transactions, locks) and generate realistic observations (logs, status codes, error messages) based on the action executed.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nYou must maintain perfect continuity. Every action executed affects the internal state (e.g., rolling back a version removes it from the migration history). Ensure that subsequent observations reflect previous state changes.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. This JSON contains:\n- `\"name\"`: The name of the action function to execute.\n- `\"arguments\"`: The parameter names and values for that function.\n\nYou must parse this JSON, update your internal representation of the database state, and generate the corresponding observation.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nSimulate realistic database failures. For example:\n- Attempting to rollback when `is_connected` is `false` should return a connection error.\n- Attempting to rollback the initial version (v0) should return a \"no migration to rollback\" error.\n- If a table is in `locked_tables`, actions on that table might timeout or fail.\n- For invalid parameters or undefined actions, return: `{{\"error\": \"Action 'xyz' not found\"}}` or `{{\"error\": \"Invalid parameter 'abc'\"}}`.\nDo not fabricate fictitious successful responses for invalid states.\n\n##### Output Assembly\nFor every action, return a structured JSON object containing **ONLY** the fields defined in the action's return schema.\n\n**CRITICAL CONSTRAINT**: Your response must **NOT** include the internal state object, the `new_state`, or any metadata about how you updated the state. The Agent must only receive the Observation. State maintenance is handled by you internally via the interaction history.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to JSON for both input parsing and output generation.\n- **Factuality**: Simulations must follow database logic (e.g., you cannot rollback version 3 if version 4 is still applied and migrations are sequential).\n- **Consistency**: If a transaction is started, subsequent actions must remain within that transaction context until committed or aborted.\n- **Realism**: Include realistic latencies or metadata in observations if defined in the action schema.\n- **Encapsulation**: Never reveal the hidden state variables like `migration_history` or `transaction_active` unless the specific action called (e.g., `get_status`) explicitly returns them.\n{{initial_state}}: {{\n  \"current_version\": \"20240710_v8_optimization\",\n  \"migration_history\": [\n    \"20240101_v1_initial\",\n    \"20240315_v5_indexing\",\n    \"20240601_v7_stable\",\n    \"20240710_v8_optimization\"\n  ],\n  \"is_connected\": true,\n  \"transaction_active\": false,\n  \"locked_tables\": [\n    \"ledger\"\n  ],\n  \"integrity_status\": \"corrupted\"\n}}\n{{state_descriptions}}: {{\n  \"current_version\": \"The unique identifier of the database schema version currently active.\",\n  \"migration_history\": \"A stack of applied migration IDs, where the last element is the current version.\",\n  \"is_connected\": \"Indicates if the session currently holds an active connection to the database instance.\",\n  \"transaction_active\": \"Boolean flag indicating if a database transaction block is currently open.\",\n  \"locked_tables\": \"A list of table names that are currently locked by the system, preventing specific modifications.\",\n  \"integrity_status\": \"The result of the last consistency check (e.g., 'valid', 'corrupted', 'unknown').\"\n}}\n{action_set_definitions}: {\n  \"fetch_environment_state\": {\n    \"description\": \"Retrieves the current state of the database environment, including connection status, active transactions, locked tables, and integrity status.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"is_connected\": true,\n      \"transaction_active\": false,\n      \"locked_tables\": [\n        \"ledger\",\n        \"users\"\n      ],\n      \"integrity_status\": \"corrupted\"\n    }\n  },\n  \"fetch_migration_lsn\": {\n    \"description\": \"Queries the migration audit logs to find the Log Sequence Number (LSN) of the last stable checkpoint for a specific tenant prior to a specific migration event.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"tenant_id\": {\n          \"type\": \"integer\",\n          \"description\": \"The unique ID of the tenant.\"\n        },\n        \"migration_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the migration that caused the corruption.\"\n        }\n      },\n      \"required\": [\n        \"tenant_id\",\n        \"migration_id\"\n      ]\n    },\n    \"example_output\": {\n      \"stable_lsn\": \"0/16B43C0\",\n      \"timestamp\": \"2024-07-10T08:00:00Z\"\n    }\n  },\n  \"clear_resource_lock\": {\n    \"description\": \"Manually clears resource locks on a specific table to allow administrative operations.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"table_name\": {\n          \"type\": \"string\",\n          \"description\": \"Name of the table to unlock.\"\n        }\n      },\n      \"required\": [\n        \"table_name\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"success\",\n      \"unlocked_table\": \"ledger\"\n    }\n  },\n  \"manage_transaction\": {\n    \"description\": \"Controls the database transaction state (begin, commit, or rollback).\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"action\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"begin\",\n            \"commit\",\n            \"rollback\"\n          ],\n          \"description\": \"The transaction operation to perform.\"\n        }\n      },\n      \"required\": [\n        \"action\"\n      ]\n    },\n    \"example_output\": {\n      \"transaction_active\": true\n    }\n  },\n  \"restore_tenant_data\": {\n    \"description\": \"Restores specific table records for a single tenant to a targeted LSN state. This operation does not affect other tenants.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"tenant_id\": {\n          \"type\": \"integer\",\n          \"description\": \"Target tenant ID.\"\n        },\n        \"table_name\": {\n          \"type\": \"string\",\n          \"description\": \"The table to restore.\"\n        },\n        \"target_lsn\": {\n          \"type\": \"string\",\n          \"description\": \"The Log Sequence Number to restore to.\"\n        }\n      },\n      \"required\": [\n        \"tenant_id\",\n        \"table_name\",\n        \"target_lsn\"\n      ]\n    },\n    \"example_output\": {\n      \"restored_rows\": 1540,\n      \"status\": \"completed\"\n    }\n  },\n  \"realign_identity_sequences\": {\n    \"description\": \"Re-synchronizes primary key identity sequences to the current maximum value in the table to prevent future PK collisions.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"table_name\": {\n          \"type\": \"string\",\n          \"description\": \"The table whose sequences need realignment.\"\n        }\n      },\n      \"required\": [\n        \"table_name\"\n      ]\n    },\n    \"example_output\": {\n      \"table\": \"ledger\",\n      \"new_sequence_start\": 55021\n    }\n  },\n  \"set_tenant_quarantine\": {\n    \"description\": \"Updates the quarantine status of a specific tenant.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"tenant_id\": {\n          \"type\": \"integer\",\n          \"description\": \"The unique ID of the tenant.\"\n        },\n        \"quarantine_active\": {\n          \"type\": \"boolean\",\n          \"description\": \"Set to true to quarantine, false to lift.\"\n        }\n      },\n      \"required\": [\n        \"tenant_id\",\n        \"quarantine_active\"\n      ]\n    },\n    \"example_output\": {\n      \"tenant_id\": 505,\n      \"quarantine_active\": false\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "fetch_environment_state",
+      "description": "Retrieves the current state of the database environment, including connection status, active transactions, locked tables, and integrity status.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "is_connected": true,
+        "transaction_active": false,
+        "locked_tables": [
+          "ledger",
+          "users"
+        ],
+        "integrity_status": "corrupted"
+      }
+    },
+    {
+      "name": "fetch_migration_lsn",
+      "description": "Queries the migration audit logs to find the Log Sequence Number (LSN) of the last stable checkpoint for a specific tenant prior to a specific migration event.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "tenant_id": {
+            "type": "integer",
+            "description": "The unique ID of the tenant."
+          },
+          "migration_id": {
+            "type": "string",
+            "description": "The ID of the migration that caused the corruption."
+          }
+        },
+        "required": [
+          "tenant_id",
+          "migration_id"
+        ]
+      },
+      "example_output": {
+        "stable_lsn": "0/16B43C0",
+        "timestamp": "2024-07-10T08:00:00Z"
+      }
+    },
+    {
+      "name": "clear_resource_lock",
+      "description": "Manually clears resource locks on a specific table to allow administrative operations.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "table_name": {
+            "type": "string",
+            "description": "Name of the table to unlock."
+          }
+        },
+        "required": [
+          "table_name"
+        ]
+      },
+      "example_output": {
+        "status": "success",
+        "unlocked_table": "ledger"
+      }
+    },
+    {
+      "name": "manage_transaction",
+      "description": "Controls the database transaction state (begin, commit, or rollback).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": [
+              "begin",
+              "commit",
+              "rollback"
+            ],
+            "description": "The transaction operation to perform."
+          }
+        },
+        "required": [
+          "action"
+        ]
+      },
+      "example_output": {
+        "transaction_active": true
+      }
+    },
+    {
+      "name": "restore_tenant_data",
+      "description": "Restores specific table records for a single tenant to a targeted LSN state. This operation does not affect other tenants.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "tenant_id": {
+            "type": "integer",
+            "description": "Target tenant ID."
+          },
+          "table_name": {
+            "type": "string",
+            "description": "The table to restore."
+          },
+          "target_lsn": {
+            "type": "string",
+            "description": "The Log Sequence Number to restore to."
+          }
+        },
+        "required": [
+          "tenant_id",
+          "table_name",
+          "target_lsn"
+        ]
+      },
+      "example_output": {
+        "restored_rows": 1540,
+        "status": "completed"
+      }
+    },
+    {
+      "name": "realign_identity_sequences",
+      "description": "Re-synchronizes primary key identity sequences to the current maximum value in the table to prevent future PK collisions.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "table_name": {
+            "type": "string",
+            "description": "The table whose sequences need realignment."
+          }
+        },
+        "required": [
+          "table_name"
+        ]
+      },
+      "example_output": {
+        "table": "ledger",
+        "new_sequence_start": 55021
+      }
+    },
+    {
+      "name": "set_tenant_quarantine",
+      "description": "Updates the quarantine status of a specific tenant.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "tenant_id": {
+            "type": "integer",
+            "description": "The unique ID of the tenant."
+          },
+          "quarantine_active": {
+            "type": "boolean",
+            "description": "Set to true to quarantine, false to lift."
+          }
+        },
+        "required": [
+          "tenant_id",
+          "quarantine_active"
+        ]
+      },
+      "example_output": {
+        "tenant_id": 505,
+        "quarantine_active": false
+      }
+    }
+  ],
+  "state_description": {
+    "current_version": "The unique identifier of the database schema version currently active.",
+    "migration_history": "A stack of applied migration IDs, where the last element is the current version.",
+    "is_connected": "Indicates if the session currently holds an active connection to the database instance.",
+    "transaction_active": "Boolean flag indicating if a database transaction block is currently open.",
+    "locked_tables": "A list of table names that are currently locked by the system, preventing specific modifications.",
+    "integrity_status": "The result of the last consistency check (e.g., 'valid', 'corrupted', 'unknown')."
+  },
+  "task_initial_state": {
+    "current_version": "20240710_v8_optimization",
+    "migration_history": [
+      "20240101_v1_initial",
+      "20240315_v5_indexing",
+      "20240601_v7_stable",
+      "20240710_v8_optimization"
+    ],
+    "is_connected": true,
+    "transaction_active": false,
+    "locked_tables": [
+      "ledger"
+    ],
+    "integrity_status": "corrupted"
+  }
+}

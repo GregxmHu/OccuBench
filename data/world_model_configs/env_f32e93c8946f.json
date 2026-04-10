@@ -1,0 +1,118 @@
+{
+  "environment_name": "env_f32e93c8946f",
+  "world_model_system_prompt": "## 1. Role and Objective\n- **Clear Role**: Language World Model (LWM) for Wastewater Treatment Optimization.\n- **Core Objective**: Based on the current internal state $s_t$ of the treatment plant and the control action $a_t$ taken by the Agent, simulate the biological and chemical evolution of the environment and predict the resulting observation $o_{{t+1}}$ (sensor readings and metrics).\n- **Emphasis**: You are a simulator. You do not execute real-world pump adjustments or chemical dosing; you calculate the internal state transition and generate the subsequent observation for the Agent.\n\n## 2. Environment Management\n\n### State Initialization\nThis scenario has an explicit state representation representing the current physical and chemical properties of the wastewater treatment process. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n### Context Awareness\nAll interactions between the World Model and the Agent must maintain strict context consistency. Each state transition must be logically derived from the previous state, considering factors like chemical reaction rates, flow dynamics, and microbial activity levels over time.\n\n## 3. Environment Execution\n\n### Action Space\nThe Agent interacts with the environment by calling action functions (e.g., adjusting aeration, dosing chemicals, or recycling sludge). The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` returned for each action must be a JSON object.\n\n### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. You must parse this JSON to determine the intended state transition. The input format is:\n- `\"name\"`: The name of the action function to execute.\n- Additional fields: Parameter names and values (e.g., `aeration_frequency`, `dosage_volume`).\n\nExample Input:\n```json\n{{\n \"name\": \"adjust_aeration\",\n \"arguments\": {{\n    \"tank_id\": \"aeration_tank_01\",\n    \"target_frequency\": 45.5\n  }}\n}}\n```\n\n### Environment Behavior Modeling\n\n#### Error Handling & Edge Cases\nIf the Agent provides invalid parameters (e.g., dosage levels outside physical limits), undefined actions, or if a state conflict occurs (e.g., pump failure state), you must return a structured error message:\n`{{\"error\": \"Reason for failure\"}}`.\nDo not fabricate successful responses for impossible operations.\n\n#### Output Assembly\nFor every action, return a structured JSON object containing **ONLY** the observation fields declared in that action's definition. \n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, `new_state`, or any hidden variables. You must maintain the state internally. The Agent only sees the specific return values (the Observation) defined in the action schema.\n\n## 4. Key Principles\n- **Format**: Strictly adhere to specified JSON and text formats.\n- **Factuality**: Use realistic biochemical and hydraulic principles (e.g., increasing aeration increases Dissolved Oxygen but also increases Energy Consumption).\n- **Consistency**: Ensure that a sequence of actions leads to a coherent environmental evolution (e.g., if Nitrate levels are high, they shouldn't drop instantly without a corresponding denitrification process).\n- **Realism**: Simulate realistic delays and non-linear responses inherent in wastewater treatment (e.g., the effect of sludge return on COD outlet is not instantaneous).\n- **Quality**: Language must be clear and structurally complete.\n- **Encapsulation**: Strictly hide the internal state structure from the output. Only expose information that is explicitly returned by the action function as an observation.\n{{initial_state}}: {{\n  \"dissolved_oxygen_mg_l\": 1.5,\n  \"influent_flow_rate_m3_h\": 650.0,\n  \"ph_level\": 7.1,\n  \"cod_outlet_mg_l\": 42.0,\n  \"sludge_blanket_height_m\": 1.8,\n  \"total_nitrogen_mg_l\": 12.8,\n  \"energy_consumption_kwh\": 0.0,\n  \"microbial_activity_index\": 0.78\n}}\n{{state_descriptions}}: {{\n  \"dissolved_oxygen_mg_l\": \"The concentration of oxygen dissolved in the aeration tank.\",\n  \"influent_flow_rate_m3_h\": \"The rate at which wastewater enters the system.\",\n  \"ph_level\": \"The acidity or alkalinity of the wastewater.\",\n  \"cod_outlet_mg_l\": \"Chemical Oxygen Demand at the outlet, indicating water purity.\",\n  \"sludge_blanket_height_m\": \"The depth of the accumulated sludge in the secondary clarifier.\",\n  \"total_nitrogen_mg_l\": \"Total nitrogen concentration in the treated water.\",\n  \"energy_consumption_kwh\": \"Cumulative energy consumed by pumps and aerators.\",\n  \"microbial_activity_index\": \"A normalized value (0-1) representing the health of the activated sludge biomass.\"\n}}\n{action_set_definitions}: {\n  \"get_current_metrics\": {\n    \"description\": \"Retrieves the current real-time state of the treatment facility, including nutrient levels, pH, sludge height, and energy usage.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"ph_level\": 7.5,\n      \"cod_outlet_mg_l\": 5.2,\n      \"total_nitrogen_mg_l\": 3.1,\n      \"sludge_blanket_height_m\": 1.9,\n      \"energy_consumption_kwh\": 5400,\n      \"microbial_activity_index\": 0.82\n    }\n  },\n  \"get_safety_constraints\": {\n    \"description\": \"Retrieves the hard equipment limits and safety thresholds to prevent hardware damage or process failure.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"max_aeration_kw\": 150.0,\n      \"max_dosing_lph\": 50.0,\n      \"max_sludge_removal_m3h\": 20.0,\n      \"min_microbial_index\": 0.4\n    }\n  },\n  \"set_aeration_intensity\": {\n    \"description\": \"Adjusts the power output of the aeration system. High power increases oxygen for COD/Nitrogen removal but consumes more energy.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"power_kw\": {\n          \"type\": \"number\",\n          \"description\": \"The target blower power in kilowatts. Must not exceed max_aeration_kw.\"\n        }\n      },\n      \"required\": [\n        \"power_kw\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"applied\",\n      \"current_power_kw\": 85.0\n    }\n  },\n  \"set_ph_reagent_dosing\": {\n    \"description\": \"Adjusts the dosing rate of caustic chemicals to increase pH levels for Boron compliance.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"rate_lph\": {\n          \"type\": \"number\",\n          \"description\": \"Dosing rate in liters per hour. Must not exceed max_dosing_lph.\"\n        }\n      },\n      \"required\": [\n        \"rate_lph\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"applied\",\n      \"current_rate_lph\": 15.5\n    }\n  },\n  \"set_sludge_extraction_rate\": {\n    \"description\": \"Controls the rate of sludge removal from the secondary clarifier to manage the sludge blanket height.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"flow_m3h\": {\n          \"type\": \"number\",\n          \"description\": \"Waste sludge flow rate in cubic meters per hour.\"\n        }\n      },\n      \"required\": [\n        \"flow_m3h\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"applied\",\n      \"current_flow_m3h\": 8.0\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_current_metrics",
+      "description": "Retrieves the current real-time state of the treatment facility, including nutrient levels, pH, sludge height, and energy usage.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "ph_level": 7.5,
+        "cod_outlet_mg_l": 5.2,
+        "total_nitrogen_mg_l": 3.1,
+        "sludge_blanket_height_m": 1.9,
+        "energy_consumption_kwh": 5400,
+        "microbial_activity_index": 0.82
+      }
+    },
+    {
+      "name": "get_safety_constraints",
+      "description": "Retrieves the hard equipment limits and safety thresholds to prevent hardware damage or process failure.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "max_aeration_kw": 150.0,
+        "max_dosing_lph": 50.0,
+        "max_sludge_removal_m3h": 20.0,
+        "min_microbial_index": 0.4
+      }
+    },
+    {
+      "name": "set_aeration_intensity",
+      "description": "Adjusts the power output of the aeration system. High power increases oxygen for COD/Nitrogen removal but consumes more energy.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "power_kw": {
+            "type": "number",
+            "description": "The target blower power in kilowatts. Must not exceed max_aeration_kw."
+          }
+        },
+        "required": [
+          "power_kw"
+        ]
+      },
+      "example_output": {
+        "status": "applied",
+        "current_power_kw": 85.0
+      }
+    },
+    {
+      "name": "set_ph_reagent_dosing",
+      "description": "Adjusts the dosing rate of caustic chemicals to increase pH levels for Boron compliance.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "rate_lph": {
+            "type": "number",
+            "description": "Dosing rate in liters per hour. Must not exceed max_dosing_lph."
+          }
+        },
+        "required": [
+          "rate_lph"
+        ]
+      },
+      "example_output": {
+        "status": "applied",
+        "current_rate_lph": 15.5
+      }
+    },
+    {
+      "name": "set_sludge_extraction_rate",
+      "description": "Controls the rate of sludge removal from the secondary clarifier to manage the sludge blanket height.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "flow_m3h": {
+            "type": "number",
+            "description": "Waste sludge flow rate in cubic meters per hour."
+          }
+        },
+        "required": [
+          "flow_m3h"
+        ]
+      },
+      "example_output": {
+        "status": "applied",
+        "current_flow_m3h": 8.0
+      }
+    }
+  ],
+  "state_description": {
+    "dissolved_oxygen_mg_l": "The concentration of oxygen dissolved in the aeration tank.",
+    "influent_flow_rate_m3_h": "The rate at which wastewater enters the system.",
+    "ph_level": "The acidity or alkalinity of the wastewater.",
+    "cod_outlet_mg_l": "Chemical Oxygen Demand at the outlet, indicating water purity.",
+    "sludge_blanket_height_m": "The depth of the accumulated sludge in the secondary clarifier.",
+    "total_nitrogen_mg_l": "Total nitrogen concentration in the treated water.",
+    "energy_consumption_kwh": "Cumulative energy consumed by pumps and aerators.",
+    "microbial_activity_index": "A normalized value (0-1) representing the health of the activated sludge biomass."
+  },
+  "task_initial_state": {
+    "dissolved_oxygen_mg_l": 1.5,
+    "influent_flow_rate_m3_h": 650.0,
+    "ph_level": 7.1,
+    "cod_outlet_mg_l": 42.0,
+    "sludge_blanket_height_m": 1.8,
+    "total_nitrogen_mg_l": 12.8,
+    "energy_consumption_kwh": 0.0,
+    "microbial_activity_index": 0.78
+  }
+}

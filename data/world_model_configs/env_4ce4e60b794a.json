@@ -1,0 +1,227 @@
+{
+  "environment_name": "env_4ce4e60b794a",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM) for Search and Rescue Mission Coordination.\n- **Core Objective**: Based on the current mission state $s_t$ and the coordination action $a_t$ taken by the Agent, simulate the evolution of the disaster zone environment and predict the observation $o_{{t+1}}$ received by the Agent. \n- **Emphasis**: You do not perform rescue operations. You are the environment simulator. You calculate the outcomes of drone flights, ground team movements, survivor discovery, and resource depletion within the rescue theater.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions must maintain absolute context consistency. Changes to team locations, battery levels, survivor health status, and changing weather patterns must be tracked across the interaction history to ensure the simulation remains logical and realistic over time.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. This JSON must contain:\n- `\"name\"`: Specifies the name of the action function (e.g., \"deploy_drone\", \"evacuate_survivor\").\n- Remaining fields: Parameter names and values required by that function.\n\nExample:\n```json\n{{\n \"name\": \"scan_sector\",\n \"arguments\": {{\n    \"sector_id\": \"B-12\",\n    \"sensor_type\": \"thermal\"\n  }}\n}}\n```\nYou must parse this input and simulate the environment's response based on the internal logic of a rescue operation.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nIf an action is impossible (e.g., moving to a blocked sector, searching with a drone that has 0% battery, or calling an undefined action), return a structured error message:\n`{{\"error\": \"Reason for failure\"}}`.\nDo not fabricate successful outcomes for impossible actions.\n\n##### Output Assembly\nFor every action, return a structured JSON object containing **ONLY** the return fields declared in that action's definition.\n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, `new_state`, or hidden variables like the exact coordinates of undiscovered survivors. Only expose the specific `observation` (the return value) defined in the action. State updates are maintained internally by you.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to JSON for all inputs and outputs.\n- **Factuality**: Do not invent rescue equipment or sectors not present in the initial state.\n- **Consistency**: If a bridge is marked as 'collapsed' in state $s_t$, ground teams cannot cross it in $s_{{t+1}}$ unless a repair action was successful.\n- **Realism**: Resource consumption (fuel/time) and environmental hazards must reflect the urgency and difficulty of a real search and rescue scenario.\n- **Quality**: Ensure all simulated observations are clear and provide the necessary data for the Agent to make the next decision.\n- **Encapsulation**: Strictly hide the internal state structure from the output. Only output the Observation.\n{{initial_state}}: {{\n  \"mission_clock_minutes\": 5,\n  \"weather_condition\": \"clear\",\n  \"rescue_units\": [\n    {{\n      \"unit_id\": \"UAS-Alpha\",\n      \"type\": \"drone\",\n      \"location\": \"Base\",\n      \"status\": \"ready\",\n      \"battery_soc\": 85,\n      \"resources\": [\n        \"Thermal-Payload-H20T\",\n        \"Standard-C2-Link\"\n      ]\n    }},\n    {{\n      \"unit_id\": \"UAS-Beta\",\n      \"type\": \"drone\",\n      \"location\": \"Base\",\n      \"status\": \"ready\",\n      \"battery_soc\": 95,\n      \"resources\": [\n        \"Signal-Relay-Extension-Module\"\n      ]\n    }},\n    {{\n      \"unit_id\": \"Hasty-Team-1\",\n      \"type\": \"ground_unit\",\n      \"location\": \"Base\",\n      \"status\": \"standby\",\n      \"resources\": [\n        \"Medical-Kit\",\n        \"VHF-Radio\"\n      ]\n    }}\n  ],\n  \"sector_map\": {{\n    \"Base\": \"safe_zone\",\n    \"C-2\": \"unexplored\",\n    \"D-1\": \"unexplored\"\n  }},\n  \"survivors_found\": 0,\n  \"internal_survivor_locations\": [\n    {{\n      \"subject_id\": \"SUB-J9\",\n      \"sector\": \"D-1\",\n      \"lat_long\": \"45.152, -120.612\",\n      \"status\": \"unconscious\",\n      \"thermal_signature\": \"fetal_position_high_delta_t\"\n    }}\n  ]\n}}\n{{state_descriptions}}: {{\n  \"mission_clock_minutes\": \"Total minutes elapsed since the start of the mission.\",\n  \"weather_condition\": \"Current atmospheric conditions affecting flight and visibility (e.g., 'clear', 'heavy_rain', 'fog').\",\n  \"rescue_units\": \"List of active units including drones and ground teams with their current location, status, and resources.\",\n  \"sector_map\": \"A mapping of sector IDs to their status (e.g., 'unexplored', 'searched', 'hazard_detected').\",\n  \"survivors_found\": \"The count of survivors successfully located and identified.\",\n  \"internal_survivor_locations\": \"Hidden data representing the actual location and health of survivors yet to be found. (Internal use only).\"\n}}\n{action_set_definitions}: {\n  \"get_mission_state\": {\n    \"description\": \"Retrieves the current mission clock, weather conditions, and total survivors found.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"mission_clock_minutes\": 15,\n      \"weather_condition\": \"clear\",\n      \"survivors_found\": 0\n    }\n  },\n  \"list_rescue_units\": {\n    \"description\": \"Returns a list of all active UAS and Ground units with their current ID, type, battery level, location, and C2 link status.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"units\": [\n        {\n          \"unit_id\": \"UAS-01\",\n          \"type\": \"drone\",\n          \"battery\": 85,\n          \"location\": \"Base\",\n          \"c2_link\": \"stable\"\n        }\n      ]\n    }\n  },\n  \"get_sector_info\": {\n    \"description\": \"Provides detailed information about a specific sector, including signal strength and hazard status.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"sector_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the sector to query (e.g., 'Sector D-1').\"\n        }\n      },\n      \"required\": [\n        \"sector_id\"\n      ]\n    },\n    \"example_output\": {\n      \"signal_strength\": 0.4,\n      \"hazards\": \"none\",\n      \"status\": \"unexplored\"\n    }\n  },\n  \"move_unit\": {\n    \"description\": \"Dispatches a specific unit to a target sector. Consumes battery based on distance.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"unit_id\": {\n          \"type\": \"string\",\n          \"description\": \"ID of the unit to move.\"\n        },\n        \"target_sector\": {\n          \"type\": \"string\",\n          \"description\": \"The destination sector ID.\"\n        }\n      },\n      \"required\": [\n        \"unit_id\",\n        \"target_sector\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"in_transit\",\n      \"estimated_arrival\": 5,\n      \"remaining_battery\": 70\n    }\n  },\n  \"optimize_signal\": {\n    \"description\": \"Deploys a signal relay or adjusts UAS positioning to stabilize Command-and-Control (C2) links in a sector.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"sector_id\": {\n          \"type\": \"string\",\n          \"description\": \"The sector where signal needs stabilization.\"\n        },\n        \"unit_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unit performing the relay/optimization.\"\n        }\n      },\n      \"required\": [\n        \"sector_id\",\n        \"unit_id\"\n      ]\n    },\n    \"example_output\": {\n      \"new_signal_strength\": 0.9,\n      \"c2_status\": \"stable\"\n    }\n  },\n  \"perform_thermal_interrogation\": {\n    \"description\": \"Executes a thermal scan to confirm the heat signature of a subject. Must be performed by a UAS unit.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"unit_id\": {\n          \"type\": \"string\",\n          \"description\": \"ID of the UAS unit.\"\n        },\n        \"sector_id\": {\n          \"type\": \"string\",\n          \"description\": \"The sector to scan.\"\n        }\n      },\n      \"required\": [\n        \"unit_id\",\n        \"sector_id\"\n      ]\n    },\n    \"example_output\": {\n      \"thermal_match\": true,\n      \"confidence_level\": 0.98\n    }\n  },\n  \"initiate_evacuation\": {\n    \"description\": \"Starts the extraction process for a found subject. Requires a ground team and a stable communication path to the recovery zone.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"ground_unit_id\": {\n          \"type\": \"string\",\n          \"description\": \"ID of the ground team performing extraction.\"\n        },\n        \"sector_id\": {\n          \"type\": \"string\",\n          \"description\": \"Sector where the survivor is located.\"\n        },\n        \"recovery_zone\": {\n          \"type\": \"string\",\n          \"description\": \"The destination sector for the survivor.\"\n        }\n      },\n      \"required\": [\n        \"ground_unit_id\",\n        \"sector_id\",\n        \"recovery_zone\"\n      ]\n    },\n    \"example_output\": {\n      \"extraction_status\": \"success\",\n      \"mission_completed\": true\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_mission_state",
+      "description": "Retrieves the current mission clock, weather conditions, and total survivors found.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "mission_clock_minutes": 15,
+        "weather_condition": "clear",
+        "survivors_found": 0
+      }
+    },
+    {
+      "name": "list_rescue_units",
+      "description": "Returns a list of all active UAS and Ground units with their current ID, type, battery level, location, and C2 link status.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "units": [
+          {
+            "unit_id": "UAS-01",
+            "type": "drone",
+            "battery": 85,
+            "location": "Base",
+            "c2_link": "stable"
+          }
+        ]
+      }
+    },
+    {
+      "name": "get_sector_info",
+      "description": "Provides detailed information about a specific sector, including signal strength and hazard status.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "sector_id": {
+            "type": "string",
+            "description": "The ID of the sector to query (e.g., 'Sector D-1')."
+          }
+        },
+        "required": [
+          "sector_id"
+        ]
+      },
+      "example_output": {
+        "signal_strength": 0.4,
+        "hazards": "none",
+        "status": "unexplored"
+      }
+    },
+    {
+      "name": "move_unit",
+      "description": "Dispatches a specific unit to a target sector. Consumes battery based on distance.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "unit_id": {
+            "type": "string",
+            "description": "ID of the unit to move."
+          },
+          "target_sector": {
+            "type": "string",
+            "description": "The destination sector ID."
+          }
+        },
+        "required": [
+          "unit_id",
+          "target_sector"
+        ]
+      },
+      "example_output": {
+        "status": "in_transit",
+        "estimated_arrival": 5,
+        "remaining_battery": 70
+      }
+    },
+    {
+      "name": "optimize_signal",
+      "description": "Deploys a signal relay or adjusts UAS positioning to stabilize Command-and-Control (C2) links in a sector.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "sector_id": {
+            "type": "string",
+            "description": "The sector where signal needs stabilization."
+          },
+          "unit_id": {
+            "type": "string",
+            "description": "The unit performing the relay/optimization."
+          }
+        },
+        "required": [
+          "sector_id",
+          "unit_id"
+        ]
+      },
+      "example_output": {
+        "new_signal_strength": 0.9,
+        "c2_status": "stable"
+      }
+    },
+    {
+      "name": "perform_thermal_interrogation",
+      "description": "Executes a thermal scan to confirm the heat signature of a subject. Must be performed by a UAS unit.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "unit_id": {
+            "type": "string",
+            "description": "ID of the UAS unit."
+          },
+          "sector_id": {
+            "type": "string",
+            "description": "The sector to scan."
+          }
+        },
+        "required": [
+          "unit_id",
+          "sector_id"
+        ]
+      },
+      "example_output": {
+        "thermal_match": true,
+        "confidence_level": 0.98
+      }
+    },
+    {
+      "name": "initiate_evacuation",
+      "description": "Starts the extraction process for a found subject. Requires a ground team and a stable communication path to the recovery zone.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "ground_unit_id": {
+            "type": "string",
+            "description": "ID of the ground team performing extraction."
+          },
+          "sector_id": {
+            "type": "string",
+            "description": "Sector where the survivor is located."
+          },
+          "recovery_zone": {
+            "type": "string",
+            "description": "The destination sector for the survivor."
+          }
+        },
+        "required": [
+          "ground_unit_id",
+          "sector_id",
+          "recovery_zone"
+        ]
+      },
+      "example_output": {
+        "extraction_status": "success",
+        "mission_completed": true
+      }
+    }
+  ],
+  "state_description": {
+    "mission_clock_minutes": "Total minutes elapsed since the start of the mission.",
+    "weather_condition": "Current atmospheric conditions affecting flight and visibility (e.g., 'clear', 'heavy_rain', 'fog').",
+    "rescue_units": "List of active units including drones and ground teams with their current location, status, and resources.",
+    "sector_map": "A mapping of sector IDs to their status (e.g., 'unexplored', 'searched', 'hazard_detected').",
+    "survivors_found": "The count of survivors successfully located and identified.",
+    "internal_survivor_locations": "Hidden data representing the actual location and health of survivors yet to be found. (Internal use only)."
+  },
+  "task_initial_state": {
+    "mission_clock_minutes": 5,
+    "weather_condition": "clear",
+    "rescue_units": [
+      {
+        "unit_id": "UAS-Alpha",
+        "type": "drone",
+        "location": "Base",
+        "status": "ready",
+        "battery_soc": 85,
+        "resources": [
+          "Thermal-Payload-H20T",
+          "Standard-C2-Link"
+        ]
+      },
+      {
+        "unit_id": "UAS-Beta",
+        "type": "drone",
+        "location": "Base",
+        "status": "ready",
+        "battery_soc": 95,
+        "resources": [
+          "Signal-Relay-Extension-Module"
+        ]
+      },
+      {
+        "unit_id": "Hasty-Team-1",
+        "type": "ground_unit",
+        "location": "Base",
+        "status": "standby",
+        "resources": [
+          "Medical-Kit",
+          "VHF-Radio"
+        ]
+      }
+    ],
+    "sector_map": {
+      "Base": "safe_zone",
+      "C-2": "unexplored",
+      "D-1": "unexplored"
+    },
+    "survivors_found": 0,
+    "internal_survivor_locations": [
+      {
+        "subject_id": "SUB-J9",
+        "sector": "D-1",
+        "lat_long": "45.152, -120.612",
+        "status": "unconscious",
+        "thermal_signature": "fetal_position_high_delta_t"
+      }
+    ]
+  }
+}

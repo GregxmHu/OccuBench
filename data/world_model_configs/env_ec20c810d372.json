@@ -1,0 +1,236 @@
+{
+  "environment_name": "env_ec20c810d372",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: You are a specialized simulator for a Ballot Counting Discrepancy Resolution environment. Based on the current internal state $s_t$ and the Agent's audit action $a_t$, you must simulate the evolution of the election audit and generate the observation $o_{{t+1}}$ (audit results, recount data, or system logs).\n- **Emphasis**: You do not perform real-world counting or legal certification. You simulate the internal logic of a voting database and physical batch records, providing observations based on the consistency of the data.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation tracking ballot batches, discrepancy logs, and reconciliation status. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions between the World Model and the Agent must maintain strict context consistency. If a batch is recounted, that result must persist in the internal state and influence all subsequent observations related to that batch or the total tally.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent submits action requests via a structured JSON object containing:\n- `\"name\"`: The name of the audit action (e.g., `recount_batch`, `compare_signatures`).\n- Additional fields for parameters required by that specific action.\n\nExample:\n```json\n{{\n \"name\": \"inspect_batch_details\",\n \"arguments\": {{\n    \"batch_id\": \"B-001\"\n  }}\n}}\n```\nYou must parse these JSON inputs and simulate the resulting observation based on the internal state evolution.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nIf the Agent requests an action on a non-existent batch ID, provides invalid tally numbers, or calls an undefined function, return a structured error response: `{{\"error\": \"Specific error message\"}}`. Do not fabricate results for non-existent entities.\n\n##### Output Assembly\nFor every action call, return a structured JSON object containing **ONLY** the fields declared in that action function's definition (the Observation). \n\n**CRITICAL CONSTRAINT**: You must **NOT** output the full internal state `s_t`, the updated `new_state`, or any hidden tracking variables. The Agent must only receive the specific observation data defined in the action's return schema. State maintenance is handled internally and silently.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to JSON for all observations and errors.\n- **Factuality**: Do not invent discrepancies that don't exist in the internal state logic; stay true to the simulated data.\n- **Consistency**: If a discrepancy is \"resolved\" in one step, it must remain resolved in all future observations unless a new action triggers a change.\n- **Realism**: Simulated recount variations or administrative errors must follow the logic of typical election auditing procedures.\n- **Quality**: Ensure all simulated audit logs and observations are professional and unambiguous.\n- **Encapsulation**: Hide the internal database structure. Only show what an auditor would see on their screen or in a physical report via the action's return values.\n{{initial_state}}: {{\n  \"batches\": {{\n    \"B-89-ALPHA\": {{\n      \"precinct\": \"89\",\n      \"original_tally\": 500,\n      \"physical_count\": 483,\n      \"audit_status\": \"Awaiting Triage\",\n      \"damage_type\": \"WATER_SATURATED\",\n      \"notes\": \"Recovered from flood-damaged transit vehicle; ballots currently clumped and wet.\"\n    }},\n    \"B-89-ALFA\": {{\n      \"precinct\": \"89\",\n      \"original_tally\": 17,\n      \"physical_count\": 17,\n      \"audit_status\": \"Resolved\",\n      \"damage_type\": \"NONE\",\n      \"notes\": \"Resolved discrepancy from earlier shift; system record retained for audit history.\"\n    }},\n    \"B-89-ALPHB\": {{\n      \"precinct\": \"89\",\n      \"original_tally\": 300,\n      \"physical_count\": 283,\n      \"audit_status\": \"Awaiting Triage\",\n      \"damage_type\": \"THERMAL_DISCOLORATION\",\n      \"notes\": \"VVPAT scrolls exposed to high heat in storage; requires infrared imaging.\"\n    }},\n    \"B-98-ALPHA\": {{\n      \"precinct\": \"98\",\n      \"original_tally\": 17,\n      \"physical_count\": 0,\n      \"audit_status\": \"Pending Review\",\n      \"damage_type\": \"MECHANICAL_TEAR\",\n      \"notes\": \"Precinct 98 batch with mechanical scanning errors; unrelated to water damage event.\"\n    }},\n    \"B-89-A\": {{\n      \"precinct\": \"89\",\n      \"original_tally\": 0,\n      \"physical_count\": 0,\n      \"audit_status\": \"System Error\",\n      \"damage_type\": \"UNKNOWN\",\n      \"notes\": \"Placeholder entry created during database synchronization error.\"\n    }}\n  }},\n  \"audit_log\": [\n    {{\n      \"timestamp\": \"2024-11-06T02:00:00Z\",\n      \"action\": \"System_Import\",\n      \"outcome\": \"Detected multiple discrepancies in South District batches. Flagged for manual triage.\"\n    }}\n  ],\n  \"total_discrepancy_count\": 34,\n  \"resolution_status\": \"In Progress\"\n}}\n{{state_descriptions}}: {{\n  \"batches\": \"A collection of ballot batches, where keys are batch IDs and values contain original tallies, physical counts, and audit status.\",\n  \"audit_log\": \"A historical sequence of all reconciliation actions taken and their outcomes.\",\n  \"total_discrepancy_count\": \"The current numerical difference between the electronic tally and the physical verification across all batches.\",\n  \"resolution_status\": \"The overall status of the audit (e.g., 'In Progress', 'Resolved', 'Disputed').\"\n}}\n{action_set_definitions}: {\n  \"get_global_system_state\": {\n    \"description\": \"Retrieves the current audit overview, including the total discrepancy count across all batches and the global resolution status.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"total_discrepancy_count\": 5,\n      \"resolution_status\": \"In Progress\"\n    }\n  },\n  \"list_batches\": {\n    \"description\": \"Returns a list of batch summaries, optionally filtered by precinct identifier.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"precinct_id\": {\n          \"type\": \"string\",\n          \"description\": \"The precinct number to filter by (e.g., '89').\"\n        }\n      },\n      \"required\": []\n    },\n    \"example_output\": {\n      \"batches\": [\n        {\n          \"batch_id\": \"B89-001\",\n          \"precinct\": \"89\",\n          \"discrepancy\": 2\n        }\n      ]\n    }\n  },\n  \"get_batch_details\": {\n    \"description\": \"Retrieves comprehensive information for a specific batch, including damage type, physical vs. electronic counts, and current processing stage.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"batch_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the ballot batch.\"\n        }\n      },\n      \"required\": [\n        \"batch_id\"\n      ]\n    },\n    \"example_output\": {\n      \"batch_id\": \"B89-001\",\n      \"damage_type\": \"water-saturated\",\n      \"requires_forensics\": true,\n      \"physical_count\": 100,\n      \"electronic_tally\": 102\n    }\n  },\n  \"lookup_forensic_protocol\": {\n    \"description\": \"Retrieves the official forensic protocol code required for a specific type of ballot damage (e.g., 'water-saturated', 'thermal-degraded') to prevent procedural errors.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"damage_type\": {\n          \"type\": \"string\",\n          \"description\": \"The type of damage identified in the batch details.\"\n        }\n      },\n      \"required\": [\n        \"damage_type\"\n      ]\n    },\n    \"example_output\": {\n      \"protocol_code\": \"LYO-BIO-882\",\n      \"procedure_name\": \"Vacuum Lyophilization\"\n    }\n  },\n  \"execute_stabilization\": {\n    \"description\": \"Applies the specified forensic stabilization procedure to a batch using a valid protocol code.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"batch_id\": {\n          \"type\": \"string\",\n          \"description\": \"The batch ID to stabilize.\"\n        },\n        \"protocol_code\": {\n          \"type\": \"string\",\n          \"description\": \"The code retrieved from the lookup_forensic_protocol tool.\"\n        }\n      },\n      \"required\": [\n        \"batch_id\",\n        \"protocol_code\"\n      ]\n    },\n    \"example_output\": {\n      \"stabilization_successful\": true,\n      \"ready_for_adjudication\": true\n    }\n  },\n  \"submit_to_bab_adjudication\": {\n    \"description\": \"Submits a stabilized batch to the Bipartisan Adjudication Board (BAB) for final voter intent determination and manual count verification.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"batch_id\": {\n          \"type\": \"string\",\n          \"description\": \"The batch ID to adjudicate.\"\n        }\n      },\n      \"required\": [\n        \"batch_id\"\n      ]\n    },\n    \"example_output\": {\n      \"adjudicated_physical_count\": 102,\n      \"bab_certification_id\": \"CERT-9921\"\n    }\n  },\n  \"update_batch_tabulation\": {\n    \"description\": \"Synchronizes the official electronic record with the BAB-certified physical count, resolving the discrepancy for that specific batch.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"batch_id\": {\n          \"type\": \"string\",\n          \"description\": \"The batch ID to update.\"\n        },\n        \"certified_count\": {\n          \"type\": \"number\",\n          \"description\": \"The final count determined by the BAB.\"\n        }\n      },\n      \"required\": [\n        \"batch_id\",\n        \"certified_count\"\n      ]\n    },\n    \"example_output\": {\n      \"batch_discrepancy\": 0,\n      \"sync_status\": \"Success\"\n    }\n  },\n  \"resolve_incident_status\": {\n    \"description\": \"Updates the global resolution_status to 'Resolved' for the specific incident.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"status\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"Resolved\"\n          ],\n          \"description\": \"The target status.\"\n        }\n      },\n      \"required\": [\n        \"status\"\n      ]\n    },\n    \"example_output\": {\n      \"resolution_status\": \"Resolved\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_global_system_state",
+      "description": "Retrieves the current audit overview, including the total discrepancy count across all batches and the global resolution status.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "total_discrepancy_count": 5,
+        "resolution_status": "In Progress"
+      }
+    },
+    {
+      "name": "list_batches",
+      "description": "Returns a list of batch summaries, optionally filtered by precinct identifier.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "precinct_id": {
+            "type": "string",
+            "description": "The precinct number to filter by (e.g., '89')."
+          }
+        },
+        "required": []
+      },
+      "example_output": {
+        "batches": [
+          {
+            "batch_id": "B89-001",
+            "precinct": "89",
+            "discrepancy": 2
+          }
+        ]
+      }
+    },
+    {
+      "name": "get_batch_details",
+      "description": "Retrieves comprehensive information for a specific batch, including damage type, physical vs. electronic counts, and current processing stage.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "batch_id": {
+            "type": "string",
+            "description": "The unique identifier for the ballot batch."
+          }
+        },
+        "required": [
+          "batch_id"
+        ]
+      },
+      "example_output": {
+        "batch_id": "B89-001",
+        "damage_type": "water-saturated",
+        "requires_forensics": true,
+        "physical_count": 100,
+        "electronic_tally": 102
+      }
+    },
+    {
+      "name": "lookup_forensic_protocol",
+      "description": "Retrieves the official forensic protocol code required for a specific type of ballot damage (e.g., 'water-saturated', 'thermal-degraded') to prevent procedural errors.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "damage_type": {
+            "type": "string",
+            "description": "The type of damage identified in the batch details."
+          }
+        },
+        "required": [
+          "damage_type"
+        ]
+      },
+      "example_output": {
+        "protocol_code": "LYO-BIO-882",
+        "procedure_name": "Vacuum Lyophilization"
+      }
+    },
+    {
+      "name": "execute_stabilization",
+      "description": "Applies the specified forensic stabilization procedure to a batch using a valid protocol code.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "batch_id": {
+            "type": "string",
+            "description": "The batch ID to stabilize."
+          },
+          "protocol_code": {
+            "type": "string",
+            "description": "The code retrieved from the lookup_forensic_protocol tool."
+          }
+        },
+        "required": [
+          "batch_id",
+          "protocol_code"
+        ]
+      },
+      "example_output": {
+        "stabilization_successful": true,
+        "ready_for_adjudication": true
+      }
+    },
+    {
+      "name": "submit_to_bab_adjudication",
+      "description": "Submits a stabilized batch to the Bipartisan Adjudication Board (BAB) for final voter intent determination and manual count verification.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "batch_id": {
+            "type": "string",
+            "description": "The batch ID to adjudicate."
+          }
+        },
+        "required": [
+          "batch_id"
+        ]
+      },
+      "example_output": {
+        "adjudicated_physical_count": 102,
+        "bab_certification_id": "CERT-9921"
+      }
+    },
+    {
+      "name": "update_batch_tabulation",
+      "description": "Synchronizes the official electronic record with the BAB-certified physical count, resolving the discrepancy for that specific batch.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "batch_id": {
+            "type": "string",
+            "description": "The batch ID to update."
+          },
+          "certified_count": {
+            "type": "number",
+            "description": "The final count determined by the BAB."
+          }
+        },
+        "required": [
+          "batch_id",
+          "certified_count"
+        ]
+      },
+      "example_output": {
+        "batch_discrepancy": 0,
+        "sync_status": "Success"
+      }
+    },
+    {
+      "name": "resolve_incident_status",
+      "description": "Updates the global resolution_status to 'Resolved' for the specific incident.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "Resolved"
+            ],
+            "description": "The target status."
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "example_output": {
+        "resolution_status": "Resolved"
+      }
+    }
+  ],
+  "state_description": {
+    "batches": "A collection of ballot batches, where keys are batch IDs and values contain original tallies, physical counts, and audit status.",
+    "audit_log": "A historical sequence of all reconciliation actions taken and their outcomes.",
+    "total_discrepancy_count": "The current numerical difference between the electronic tally and the physical verification across all batches.",
+    "resolution_status": "The overall status of the audit (e.g., 'In Progress', 'Resolved', 'Disputed')."
+  },
+  "task_initial_state": {
+    "batches": {
+      "B-89-ALPHA": {
+        "precinct": "89",
+        "original_tally": 500,
+        "physical_count": 483,
+        "audit_status": "Awaiting Triage",
+        "damage_type": "WATER_SATURATED",
+        "notes": "Recovered from flood-damaged transit vehicle; ballots currently clumped and wet."
+      },
+      "B-89-ALFA": {
+        "precinct": "89",
+        "original_tally": 17,
+        "physical_count": 17,
+        "audit_status": "Resolved",
+        "damage_type": "NONE",
+        "notes": "Resolved discrepancy from earlier shift; system record retained for audit history."
+      },
+      "B-89-ALPHB": {
+        "precinct": "89",
+        "original_tally": 300,
+        "physical_count": 283,
+        "audit_status": "Awaiting Triage",
+        "damage_type": "THERMAL_DISCOLORATION",
+        "notes": "VVPAT scrolls exposed to high heat in storage; requires infrared imaging."
+      },
+      "B-98-ALPHA": {
+        "precinct": "98",
+        "original_tally": 17,
+        "physical_count": 0,
+        "audit_status": "Pending Review",
+        "damage_type": "MECHANICAL_TEAR",
+        "notes": "Precinct 98 batch with mechanical scanning errors; unrelated to water damage event."
+      },
+      "B-89-A": {
+        "precinct": "89",
+        "original_tally": 0,
+        "physical_count": 0,
+        "audit_status": "System Error",
+        "damage_type": "UNKNOWN",
+        "notes": "Placeholder entry created during database synchronization error."
+      }
+    },
+    "audit_log": [
+      {
+        "timestamp": "2024-11-06T02:00:00Z",
+        "action": "System_Import",
+        "outcome": "Detected multiple discrepancies in South District batches. Flagged for manual triage."
+      }
+    ],
+    "total_discrepancy_count": 34,
+    "resolution_status": "In Progress"
+  }
+}

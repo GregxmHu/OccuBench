@@ -1,0 +1,160 @@
+{
+  "environment_name": "env_40816760051c",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: Based on the current database state $s_t$ and the SQL optimization action $a_t$ (such as creating indexes or rewriting queries), simulate the internal evolution of the database environment and predict the resulting observation $o_{{t+1}}$ (such as execution plans, costs, or performance metrics) obtained by the Agent.\n- **Emphasis**: The LWM does not execute real SQL on a physical database. It performs internal state evolution (tracking schema changes, index availability, and query versions) and generates simulated observations based on relational algebra and database optimization principles.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions between the World Model and the Agent must maintain context consistency. If an index is created in step $t$, it must be available for the query optimizer in step $t+1$ and all subsequent steps until explicitly dropped.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will not send actions in the form of function call strings, but will always submit action requests via a structured JSON object. This JSON must contain the following fields:\n- `\"name\"`: Specifies the name of the action function to execute (e.g., \"create_index\", \"rewrite_query\").\n- The remaining fields are the parameter names and corresponding values required by that action function.\n\nExample:\n```json\n{{\n \"name\": \"create_index\",\n \"arguments\": {{\n    \"table_name\": \"orders\",\n    \"column_name\": \"customer_id\",\n    \"index_name\": \"idx_cust_id\"\n  }}\n}}\n```\n\nThe Language World Model must correctly parse such JSON inputs, update the internal database state (e.g., adding the index to the metadata), and simulate the execution results.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nFor invalid parameters (e.g., indexing a non-existent column), undefined actions, state conflicts (e.g., creating an index that already exists), or malformed JSON, return structured error information (e.g., `{{\"error\": \"Column 'xyz' not found in table 'abc'\"}}`). Do not fabricate states or fictitious successful responses for failed operations.\n\n##### Output Assembly\nFor every action function call, the model must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition (the Observation).\n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, `new_state`, or any hidden variables like the complete DDL or internal statistics. The Agent must only see the specific return values defined in the action (e.g., the `execution_plan` or `estimated_cost`).\n\n### 4. Key Principles\n- **Format**: Strictly adhere to specified JSON and text formats.\n- **Factuality**: Do not fabricate non-existent SQL functions, table schemas, or database behaviors.\n- **Consistency**: State evolution must be self-consistent. If an index is added, the `get_execution_plan` action must reflect the potential use of that index in its cost estimation.\n- **Realism**: Simulated behaviors must align with the logic of modern cost-based optimizers (CBOs). For example, adding a relevant index should generally reduce the estimated cost of a SELECT query.\n- **Quality**: Language must be clear, unambiguous, and structurally complete.\n- **Encapsulation**: Strictly hide the internal state structure from the output. Only expose information that is explicitly returned by the action function. Do not output the state update details.\n{{initial_state}}: {{\n  \"database_schema\": {{\n    \"system_audit_logs\": {{\n      \"columns\": {{\n        \"log_id\": \"BIGINT\",\n        \"raw_payload\": \"JSONB\"\n      }}\n    }}\n  }},\n  \"active_indexes\": [\n    {{\n      \"index_name\": \"system_audit_logs_pkey\",\n      \"table\": \"system_audit_logs\",\n      \"columns\": [\n        \"log_id\"\n      ],\n      \"index_type\": \"btree\"\n    }}\n  ],\n  \"query_statement\": \"SELECT log_id FROM system_audit_logs WHERE raw_payload->'context'->'identity'->>'request_id' = 'REQ-001-9923';\",\n  \"table_statistics\": {{\n    \"system_audit_logs\": {{\n      \"row_count\": 80000000,\n      \"avg_row_size_bytes\": 32000,\n      \"total_table_size_bytes\": 2560000000000,\n      \"toast_blocks_read_avg\": 1450,\n      \"nested_paths_cardinality\": {{\n        \"raw_payload->'context'->'identity'->>'request_id'\": 79500000,\n        \"raw_payload->'status'\": 5\n      }},\n      \"immutability_status\": {{\n        \"jsonb_extract_path_text\": \"immutable\",\n        \"cast_to_uuid\": \"immutable\"\n      }}\n    }}\n  }}\n}}\n{{state_descriptions}}: {{\n  \"database_schema\": \"The DDL structure of tables, including column names and data types.\",\n  \"active_indexes\": \"A list of currently existing indexes in the database environment.\",\n  \"query_statement\": \"The current SQL query string that is being optimized.\",\n  \"table_statistics\": \"Metadata regarding table sizes, row counts, and column cardinality used for cost simulation.\"\n}}\n{action_set_definitions}: {\n  \"get_environment_info\": {\n    \"description\": \"Retrieves the initial database schema, active indexes, and the target SQL query statement to identify the table and column names.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"database_schema\": \"CREATE TABLE events (id serial, data jsonb);\",\n      \"query_statement\": \"SELECT * FROM events WHERE data->>'req_id' = 'abc';\",\n      \"active_indexes\": [\n        \"PRIMARY KEY (id)\"\n      ]\n    }\n  },\n  \"get_storage_metrics\": {\n    \"description\": \"Retrieves table-level and system-level storage statistics, including total heap size and individual table sizes to calculate overhead constraints.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"table_name\": {\n          \"type\": \"string\",\n          \"description\": \"The name of the table to check.\"\n        }\n      },\n      \"required\": [\n        \"table_name\"\n      ]\n    },\n    \"example_output\": {\n      \"heap_size_bytes\": 10737418240,\n      \"table_size_bytes\": 524288000,\n      \"toast_size_bytes\": 209715200\n    }\n  },\n  \"inspect_json_column\": {\n    \"description\": \"Analyzes a JSONB/JSON column to identify specific keys, their cardinality (uniqueness), data types, and whether they are stored in TOAST (out-of-line).\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"table_name\": {\n          \"type\": \"string\",\n          \"description\": \"Name of the table.\"\n        },\n        \"column_name\": {\n          \"type\": \"string\",\n          \"description\": \"Name of the JSON column.\"\n        }\n      },\n      \"required\": [\n        \"table_name\",\n        \"column_name\"\n      ]\n    },\n    \"example_output\": {\n      \"paths\": [\n        {\n          \"path\": \"metadata.request_id\",\n          \"cardinality\": \"high\",\n          \"immutable\": true,\n          \"avg_size_bytes\": 36\n        }\n      ],\n      \"is_toasted\": true\n    }\n  },\n  \"apply_optimization\": {\n    \"description\": \"Executes a DDL command to optimize the database, such as creating a B-Tree index or adding a generated column.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"ddl_command\": {\n          \"type\": \"string\",\n          \"description\": \"The SQL DDL string (e.g., CREATE INDEX...).\"\n        }\n      },\n      \"required\": [\n        \"ddl_command\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"success\",\n      \"message\": \"Index created successfully.\"\n    }\n  },\n  \"verify_execution_plan\": {\n    \"description\": \"Runs EXPLAIN (ANALYZE, BUFFERS) on the query to verify the execution path and TOAST block interactions.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"query\": {\n          \"type\": \"string\",\n          \"description\": \"The SQL query to analyze.\"\n        }\n      },\n      \"required\": [\n        \"query\"\n      ]\n    },\n    \"example_output\": {\n      \"plan_type\": \"Index Scan using idx_request_id\",\n      \"execution_time_ms\": 0.05,\n      \"toast_reads\": 0,\n      \"index_cond\": \"(data -> 'metadata' ->> 'request_id'::text)\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_environment_info",
+      "description": "Retrieves the initial database schema, active indexes, and the target SQL query statement to identify the table and column names.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "database_schema": "CREATE TABLE events (id serial, data jsonb);",
+        "query_statement": "SELECT * FROM events WHERE data->>'req_id' = 'abc';",
+        "active_indexes": [
+          "PRIMARY KEY (id)"
+        ]
+      }
+    },
+    {
+      "name": "get_storage_metrics",
+      "description": "Retrieves table-level and system-level storage statistics, including total heap size and individual table sizes to calculate overhead constraints.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "table_name": {
+            "type": "string",
+            "description": "The name of the table to check."
+          }
+        },
+        "required": [
+          "table_name"
+        ]
+      },
+      "example_output": {
+        "heap_size_bytes": 10737418240,
+        "table_size_bytes": 524288000,
+        "toast_size_bytes": 209715200
+      }
+    },
+    {
+      "name": "inspect_json_column",
+      "description": "Analyzes a JSONB/JSON column to identify specific keys, their cardinality (uniqueness), data types, and whether they are stored in TOAST (out-of-line).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "table_name": {
+            "type": "string",
+            "description": "Name of the table."
+          },
+          "column_name": {
+            "type": "string",
+            "description": "Name of the JSON column."
+          }
+        },
+        "required": [
+          "table_name",
+          "column_name"
+        ]
+      },
+      "example_output": {
+        "paths": [
+          {
+            "path": "metadata.request_id",
+            "cardinality": "high",
+            "immutable": true,
+            "avg_size_bytes": 36
+          }
+        ],
+        "is_toasted": true
+      }
+    },
+    {
+      "name": "apply_optimization",
+      "description": "Executes a DDL command to optimize the database, such as creating a B-Tree index or adding a generated column.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "ddl_command": {
+            "type": "string",
+            "description": "The SQL DDL string (e.g., CREATE INDEX...)."
+          }
+        },
+        "required": [
+          "ddl_command"
+        ]
+      },
+      "example_output": {
+        "status": "success",
+        "message": "Index created successfully."
+      }
+    },
+    {
+      "name": "verify_execution_plan",
+      "description": "Runs EXPLAIN (ANALYZE, BUFFERS) on the query to verify the execution path and TOAST block interactions.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "description": "The SQL query to analyze."
+          }
+        },
+        "required": [
+          "query"
+        ]
+      },
+      "example_output": {
+        "plan_type": "Index Scan using idx_request_id",
+        "execution_time_ms": 0.05,
+        "toast_reads": 0,
+        "index_cond": "(data -> 'metadata' ->> 'request_id'::text)"
+      }
+    }
+  ],
+  "state_description": {
+    "database_schema": "The DDL structure of tables, including column names and data types.",
+    "active_indexes": "A list of currently existing indexes in the database environment.",
+    "query_statement": "The current SQL query string that is being optimized.",
+    "table_statistics": "Metadata regarding table sizes, row counts, and column cardinality used for cost simulation."
+  },
+  "task_initial_state": {
+    "database_schema": {
+      "system_audit_logs": {
+        "columns": {
+          "log_id": "BIGINT",
+          "raw_payload": "JSONB"
+        }
+      }
+    },
+    "active_indexes": [
+      {
+        "index_name": "system_audit_logs_pkey",
+        "table": "system_audit_logs",
+        "columns": [
+          "log_id"
+        ],
+        "index_type": "btree"
+      }
+    ],
+    "query_statement": "SELECT log_id FROM system_audit_logs WHERE raw_payload->'context'->'identity'->>'request_id' = 'REQ-001-9923';",
+    "table_statistics": {
+      "system_audit_logs": {
+        "row_count": 80000000,
+        "avg_row_size_bytes": 32000,
+        "total_table_size_bytes": 2560000000000,
+        "toast_blocks_read_avg": 1450,
+        "nested_paths_cardinality": {
+          "raw_payload->'context'->'identity'->>'request_id'": 79500000,
+          "raw_payload->'status'": 5
+        },
+        "immutability_status": {
+          "jsonb_extract_path_text": "immutable",
+          "cast_to_uuid": "immutable"
+        }
+      }
+    }
+  }
+}

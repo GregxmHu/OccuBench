@@ -1,0 +1,239 @@
+{
+  "environment_name": "env_ce7f80a7e938",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: Based on current state $s_t$ and action $a_t$, simulate the evolution of the warehouse environment and predict the observation $o_{{t+1}}$ obtained by the Robot Agent. \n- **Emphasis**: The LWM does not execute physical movements or real API calls. It performs internal state evolution and generates the corresponding observation result based on the logic of warehouse operations.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation tracking robots, tasks, and inventory. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions between the World Model and the Agent must maintain context consistency. The World Model must track the cumulative changes to robot positions, battery levels, task completion statuses, and inventory counts across the entire interaction history to ensure logical continuity.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object containing:\n- `\"name\"`: The name of the action (e.g., `move_to`, `pick_item`, `assign_task`).\n- The remaining fields are the parameter names and values required by that function.\n\nThe Language World Model must parse this JSON, update the internal state $s_t \\rightarrow s_{{t+1}}$ based on warehouse physics (e.g., travel time, battery consumption), and generate the result.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nIn the following scenarios, return structured error information (e.g., `{{\"error\": \"Reason for failure\"}}`) and do not evolve the state in a way that violates constraints:\n- Undefined actions or invalid parameters.\n- A robot attempting to pick an item at the wrong location.\n- A robot running out of battery mid-transit.\n- Assigning a task to a robot that is already busy.\n- Accessing inventory that is out of stock.\n\n##### Output Assembly\nFor every action function call, the model must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition (the Observation $o_{{t+1}}$).\n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, `new_state`, or any hidden variables. The state maintenance is implicit in the LWM's memory. The Agent must only see the specific return values defined in the action.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to JSON for both input parsing and output generation.\n- **Factuality**: Do not fabricate inventory levels, robot IDs, or locations not present in the state.\n- **Consistency**: If a robot moves from Aisle A to Aisle B, its subsequent location in the internal state must remain Aisle B until another move action occurs.\n- **Realism**: Battery consumption and travel logic should reflect a warehouse setting (e.g., actions fail if battery is 0%).\n- **Quality**: Observations should be precise and structurally complete.\n- **Encapsulation**: Strictly hide the internal state structure from the output. Only expose information that is explicitly returned by the action function.\n{{initial_state}}: {{\n  \"robots\": [\n    {{\n      \"robot_id\": \"AMR_01\",\n      \"location\": \"Aisle_Cold_A1\",\n      \"battery_level\": 45,\n      \"status\": \"idle (Thermal Exposure: 112/120m)\",\n      \"held_item_id\": null,\n      \"assigned_task_id\": null\n    }},\n    {{\n      \"robot_id\": \"AMR_02\",\n      \"location\": \"Aisle_Cold_A2\",\n      \"battery_level\": 28,\n      \"status\": \"idle (Thermal Exposure: 20/120m)\",\n      \"held_item_id\": null,\n      \"assigned_task_id\": null\n    }},\n    {{\n      \"robot_id\": \"AMR_03\",\n      \"location\": \"Airlock_Staging_Ambient\",\n      \"battery_level\": 95,\n      \"status\": \"idle\",\n      \"held_item_id\": null,\n      \"assigned_task_id\": null\n    }}\n  ],\n  \"tasks\": [\n    {{\n      \"task_id\": \"TASK_VAC_DELIVERY\",\n      \"item_id\": \"VACCINE_LOT_99\",\n      \"pickup_location\": \"Aisle_Cold_A4\",\n      \"delivery_location\": \"Shipping_Dock_01\",\n      \"priority\": 5,\n      \"status\": \"unassigned\"\n    }}\n  ],\n  \"inventory\": {{\n    \"Aisle_Cold_A4\": {{\n      \"VACCINE_LOT_99\": 1\n    }},\n    \"Aisle_Cold_A1\": {{}},\n    \"Aisle_Cold_A2\": {{}},\n    \"Airlock_Staging_Ambient\": {{}},\n    \"Shipping_Dock_01\": {{}}\n  }},\n  \"warehouse_map\": {{\n    \"locations\": [\n      \"Aisle_Cold_A1\",\n      \"Aisle_Cold_A2\",\n      \"Aisle_Cold_A4\",\n      \"Airlock_Zone\",\n      \"Airlock_Staging_Ambient\",\n      \"Shipping_Dock_01\"\n    ],\n    \"adjacency\": {{\n      \"Aisle_Cold_A1\": {{\n        \"Aisle_Cold_A4\": 5\n      }},\n      \"Aisle_Cold_A2\": {{\n        \"Aisle_Cold_A4\": 3\n      }},\n      \"Aisle_Cold_A4\": {{\n        \"Airlock_Zone\": 8,\n        \"Aisle_Cold_A1\": 5,\n        \"Aisle_Cold_A2\": 3\n      }},\n      \"Airlock_Zone\": {{\n        \"Aisle_Cold_A4\": 8,\n        \"Airlock_Staging_Ambient\": 2\n      }},\n      \"Airlock_Staging_Ambient\": {{\n        \"Airlock_Zone\": 2,\n        \"Shipping_Dock_01\": 4\n      }},\n      \"Shipping_Dock_01\": {{\n        \"Airlock_Staging_Ambient\": 4\n      }}\n    }}\n  }}\n}}\n{{state_descriptions}}: {{\n  \"robots\": \"List of active warehouse robots and their current physical/operational status.\",\n  \"tasks\": \"List of pending and active warehouse tasks.\",\n  \"inventory\": \"Mapping of location IDs to item counts.\",\n  \"warehouse_map\": \"Connectivity and distance matrix between locations to simulate travel costs.\"\n}}\n{action_set_definitions}: {\n  \"get_warehouse_map\": {\n    \"description\": \"Retrieves the warehouse layout, including distances between nodes, connectivity, and zone classifications (e.g., Freezer vs. Ambient).\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"locations\": [\n        \"Aisle_Cold_A4\",\n        \"Shipping_Dock_01\"\n      ],\n      \"zones\": {\n        \"Aisle_Cold_A4\": \"Freezer\",\n        \"Shipping_Dock_01\": \"Ambient\"\n      },\n      \"distances\": {\n        \"Aisle_Cold_A4_to_Shipping_Dock_01\": 50\n      }\n    }\n  },\n  \"list_robots\": {\n    \"description\": \"Returns a list of all active Autonomous Mobile Robot (AMR) unit IDs currently in the warehouse.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"robot_ids\": [\n        \"AMR_01\",\n        \"AMR_02\",\n        \"AMR_05\"\n      ]\n    }\n  },\n  \"get_robot_telemetry\": {\n    \"description\": \"Retrieves real-time status for a specific robot, including battery percentage, current thermal exposure timer (minutes), current location, and operational status.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"robot_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier of the robot.\"\n        }\n      },\n      \"required\": [\n        \"robot_id\"\n      ]\n    },\n    \"example_output\": {\n      \"robot_id\": \"AMR_01\",\n      \"battery_level\": 85,\n      \"thermal_exposure_mins\": 45,\n      \"current_location\": \"Charging_Station_Beta\",\n      \"status\": \"IDLE\"\n    }\n  },\n  \"move_robot\": {\n    \"description\": \"Commands a robot to move to a specific location. Note: Transitioning from Freezer to Ambient zones will trigger a mandatory desiccation period during which the robot is unresponsive.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"robot_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier of the robot.\"\n        },\n        \"destination_id\": {\n          \"type\": \"string\",\n          \"description\": \"The target location ID.\"\n        }\n      },\n      \"required\": [\n        \"robot_id\",\n        \"destination_id\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"MOVING\",\n      \"estimated_arrival_time\": 120\n    }\n  },\n  \"pick_up_item\": {\n    \"description\": \"Commands a robot to pick up a specific inventory item from its current location.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"robot_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier of the robot.\"\n        },\n        \"item_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the cargo to be picked up.\"\n        },\n        \"location_id\": {\n          \"type\": \"string\",\n          \"description\": \"The location where the item is stored.\"\n        }\n      },\n      \"required\": [\n        \"robot_id\",\n        \"item_id\",\n        \"location_id\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"SUCCESS\",\n      \"held_item\": \"VACCINE_LOT_99\"\n    }\n  },\n  \"drop_off_item\": {\n    \"description\": \"Commands a robot to drop off its held item at a specific location.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"robot_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier of the robot.\"\n        },\n        \"item_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the cargo to be dropped off.\"\n        },\n        \"location_id\": {\n          \"type\": \"string\",\n          \"description\": \"The destination location ID.\"\n        }\n      },\n      \"required\": [\n        \"robot_id\",\n        \"item_id\",\n        \"location_id\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"SUCCESS\",\n      \"location\": \"Shipping_Dock_01\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_warehouse_map",
+      "description": "Retrieves the warehouse layout, including distances between nodes, connectivity, and zone classifications (e.g., Freezer vs. Ambient).",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "locations": [
+          "Aisle_Cold_A4",
+          "Shipping_Dock_01"
+        ],
+        "zones": {
+          "Aisle_Cold_A4": "Freezer",
+          "Shipping_Dock_01": "Ambient"
+        },
+        "distances": {
+          "Aisle_Cold_A4_to_Shipping_Dock_01": 50
+        }
+      }
+    },
+    {
+      "name": "list_robots",
+      "description": "Returns a list of all active Autonomous Mobile Robot (AMR) unit IDs currently in the warehouse.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "robot_ids": [
+          "AMR_01",
+          "AMR_02",
+          "AMR_05"
+        ]
+      }
+    },
+    {
+      "name": "get_robot_telemetry",
+      "description": "Retrieves real-time status for a specific robot, including battery percentage, current thermal exposure timer (minutes), current location, and operational status.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "robot_id": {
+            "type": "string",
+            "description": "The unique identifier of the robot."
+          }
+        },
+        "required": [
+          "robot_id"
+        ]
+      },
+      "example_output": {
+        "robot_id": "AMR_01",
+        "battery_level": 85,
+        "thermal_exposure_mins": 45,
+        "current_location": "Charging_Station_Beta",
+        "status": "IDLE"
+      }
+    },
+    {
+      "name": "move_robot",
+      "description": "Commands a robot to move to a specific location. Note: Transitioning from Freezer to Ambient zones will trigger a mandatory desiccation period during which the robot is unresponsive.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "robot_id": {
+            "type": "string",
+            "description": "The unique identifier of the robot."
+          },
+          "destination_id": {
+            "type": "string",
+            "description": "The target location ID."
+          }
+        },
+        "required": [
+          "robot_id",
+          "destination_id"
+        ]
+      },
+      "example_output": {
+        "status": "MOVING",
+        "estimated_arrival_time": 120
+      }
+    },
+    {
+      "name": "pick_up_item",
+      "description": "Commands a robot to pick up a specific inventory item from its current location.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "robot_id": {
+            "type": "string",
+            "description": "The unique identifier of the robot."
+          },
+          "item_id": {
+            "type": "string",
+            "description": "The ID of the cargo to be picked up."
+          },
+          "location_id": {
+            "type": "string",
+            "description": "The location where the item is stored."
+          }
+        },
+        "required": [
+          "robot_id",
+          "item_id",
+          "location_id"
+        ]
+      },
+      "example_output": {
+        "status": "SUCCESS",
+        "held_item": "VACCINE_LOT_99"
+      }
+    },
+    {
+      "name": "drop_off_item",
+      "description": "Commands a robot to drop off its held item at a specific location.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "robot_id": {
+            "type": "string",
+            "description": "The unique identifier of the robot."
+          },
+          "item_id": {
+            "type": "string",
+            "description": "The ID of the cargo to be dropped off."
+          },
+          "location_id": {
+            "type": "string",
+            "description": "The destination location ID."
+          }
+        },
+        "required": [
+          "robot_id",
+          "item_id",
+          "location_id"
+        ]
+      },
+      "example_output": {
+        "status": "SUCCESS",
+        "location": "Shipping_Dock_01"
+      }
+    }
+  ],
+  "state_description": {
+    "robots": "List of active warehouse robots and their current physical/operational status.",
+    "tasks": "List of pending and active warehouse tasks.",
+    "inventory": "Mapping of location IDs to item counts.",
+    "warehouse_map": "Connectivity and distance matrix between locations to simulate travel costs."
+  },
+  "task_initial_state": {
+    "robots": [
+      {
+        "robot_id": "AMR_01",
+        "location": "Aisle_Cold_A1",
+        "battery_level": 45,
+        "status": "idle (Thermal Exposure: 112/120m)",
+        "held_item_id": null,
+        "assigned_task_id": null
+      },
+      {
+        "robot_id": "AMR_02",
+        "location": "Aisle_Cold_A2",
+        "battery_level": 28,
+        "status": "idle (Thermal Exposure: 20/120m)",
+        "held_item_id": null,
+        "assigned_task_id": null
+      },
+      {
+        "robot_id": "AMR_03",
+        "location": "Airlock_Staging_Ambient",
+        "battery_level": 95,
+        "status": "idle",
+        "held_item_id": null,
+        "assigned_task_id": null
+      }
+    ],
+    "tasks": [
+      {
+        "task_id": "TASK_VAC_DELIVERY",
+        "item_id": "VACCINE_LOT_99",
+        "pickup_location": "Aisle_Cold_A4",
+        "delivery_location": "Shipping_Dock_01",
+        "priority": 5,
+        "status": "unassigned"
+      }
+    ],
+    "inventory": {
+      "Aisle_Cold_A4": {
+        "VACCINE_LOT_99": 1
+      },
+      "Aisle_Cold_A1": {},
+      "Aisle_Cold_A2": {},
+      "Airlock_Staging_Ambient": {},
+      "Shipping_Dock_01": {}
+    },
+    "warehouse_map": {
+      "locations": [
+        "Aisle_Cold_A1",
+        "Aisle_Cold_A2",
+        "Aisle_Cold_A4",
+        "Airlock_Zone",
+        "Airlock_Staging_Ambient",
+        "Shipping_Dock_01"
+      ],
+      "adjacency": {
+        "Aisle_Cold_A1": {
+          "Aisle_Cold_A4": 5
+        },
+        "Aisle_Cold_A2": {
+          "Aisle_Cold_A4": 3
+        },
+        "Aisle_Cold_A4": {
+          "Airlock_Zone": 8,
+          "Aisle_Cold_A1": 5,
+          "Aisle_Cold_A2": 3
+        },
+        "Airlock_Zone": {
+          "Aisle_Cold_A4": 8,
+          "Airlock_Staging_Ambient": 2
+        },
+        "Airlock_Staging_Ambient": {
+          "Airlock_Zone": 2,
+          "Shipping_Dock_01": 4
+        },
+        "Shipping_Dock_01": {
+          "Airlock_Staging_Ambient": 4
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,215 @@
+{
+  "environment_name": "env_eb1dd33e99e3",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: Based on the current inventory state $s_t$ and the action $a_t$ performed by the Agent, simulate the internal evolution of the retail environment and predict the resulting observation $o_{{t+1}}$.\n- **Emphasis**: You are a simulator of a Retail Inventory Synchronization system. You do not execute real-world database writes or logistics; you calculate and return the logical consequences of actions within this simulated environment.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions between the World Model and the Agent must maintain strict context consistency. You must track inventory levels, shipment statuses, and synchronization flags across the interaction history to ensure that a product sold in one step is correctly reflected as reduced stock in the next.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object containing:\n- `\"name\"`: The name of the action function to execute.\n- Parameters as defined in the action schema.\n\nYou must parse these JSON inputs, determine the impact on the internal state (e.g., deducting stock, updating timestamps), and generate the appropriate observation.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\n- **Insufficient Stock**: If an action attempts to ship more items than available in the current state, return an error observation (e.g., `{{\"error\": \"Insufficient inventory for SKU [ID]\"}}`).\n- **Invalid Actions**: If an action name is not found in the definition or parameters are missing/malformed, return `{{\"error\": \"Invalid action or parameters\"}}`.\n- **Concurrency/Logic Conflicts**: If a synchronization is already in progress or a warehouse is marked as 'inactive' in the state, simulate the appropriate failure response.\n- **No Fabrication**: Do not invent products or warehouses that do not exist in the state.\n\n##### Output Assembly\nFor every action function call, you must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition.\n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, `new_state`, or any hidden variables. You manage the state internally; the Agent only receives the specific Observation (the return value of the function).\n\n### 4. Key Principles\n- **Format**: Strictly adhere to specified JSON formats for all outputs.\n- **Factuality**: Simulations must be grounded in the provided state and action definitions.\n- **Consistency**: If stock is moved from Warehouse A to Warehouse B, the total count must remain consistent unless an external loss/gain is part of the action logic.\n- **Realism**: Latency in synchronization or verification steps should be simulated if implied by the state logic.\n- **Quality**: Responses must be precise and structurally complete.\n- **Encapsulation**: Strictly hide the internal state structure from the output. Only expose information that is explicitly returned by the action function.\n{{initial_state}}: {{\n  \"inventory_levels\": {{\n    \"ATH-992-F\": {{\n      \"quantity\": 12,\n      \"location\": \"Fitness-Zone-Display\"\n    }},\n    \"ATH-992-B\": {{\n      \"quantity\": 40,\n      \"location\": \"Reserve-Alpha\"\n    }},\n    \"YOGA-101-F\": {{\n      \"quantity\": 15,\n      \"location\": \"Yoga-Zone-Display\"\n    }}\n  }},\n  \"channel_sync_status\": {{\n    \"online_store\": \"synced\",\n    \"pos_system\": \"pending\"\n  }},\n  \"pending_transfers\": [\n    {{\n      \"sku_id\": \"ATH-992-F\",\n      \"origin\": \"Reserve-Alpha\",\n      \"destination\": \"Fitness-Zone-Display\",\n      \"quantity\": 3,\n      \"transfer_id\": \"TRF-5050\"\n    }}\n  ],\n  \"last_sync_timestamp\": \"2023-10-27T10:00:00Z\"\n}}\n{{state_descriptions}}: {{\n  \"inventory_levels\": \"A mapping of SKU IDs to their current stock count and warehouse location.\",\n  \"channel_sync_status\": \"Current synchronization status for various sales channels (e.g., Online Store, POS, Marketplace).\",\n  \"pending_transfers\": \"A list of stock transfers currently in transit between locations.\",\n  \"last_sync_timestamp\": \"The ISO 8601 timestamp of the last global inventory reconciliation.\"\n}}\n{action_set_definitions}: {\n  \"list_locations\": {\n    \"description\": \"Retrieves a list of all physical and logical storage locations, including display zones and warehouses.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"locations\": [\n        {\n          \"location_id\": \"LOC-101\",\n          \"name\": \"Fitness Display Zone A\",\n          \"type\": \"retail_floor\"\n        },\n        {\n          \"location_id\": \"WH-001\",\n          \"name\": \"Primary Storage Reserve\",\n          \"type\": \"warehouse\"\n        }\n      ]\n    }\n  },\n  \"get_items_in_location\": {\n    \"description\": \"Lists all items currently assigned to a specific location with their basic attributes.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"location_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique ID of the location to query.\"\n        }\n      },\n      \"required\": [\n        \"location_id\"\n      ]\n    },\n    \"example_output\": {\n      \"items\": [\n        {\n          \"sku_id\": \"SKU-9921\",\n          \"name\": \"Ultra-Performance Tech Leggings\",\n          \"tier\": \"premium\",\n          \"category\": \"apparel\"\n        }\n      ]\n    }\n  },\n  \"get_sync_report\": {\n    \"description\": \"Returns the synchronization status across all sales channels for a specific item.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"sku_id\": {\n          \"type\": \"string\",\n          \"description\": \"The SKU ID of the item to check.\"\n        }\n      },\n      \"required\": [\n        \"sku_id\"\n      ]\n    },\n    \"example_output\": {\n      \"sku_id\": \"SKU-9921\",\n      \"channels\": [\n        {\n          \"channel_name\": \"POS\",\n          \"status\": \"delayed\",\n          \"last_sync\": \"2023-10-27T10:00:00Z\"\n        },\n        {\n          \"channel_name\": \"Online Store\",\n          \"status\": \"synced\",\n          \"last_sync\": \"2023-10-27T14:00:00Z\"\n        }\n      ]\n    }\n  },\n  \"get_inventory_details\": {\n    \"description\": \"Provides detailed stock counts for a SKU, including physical on-hand amounts at specific locations and pending incoming transfers.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"sku_id\": {\n          \"type\": \"string\",\n          \"description\": \"The SKU ID to query.\"\n        }\n      },\n      \"required\": [\n        \"sku_id\"\n      ]\n    },\n    \"example_output\": {\n      \"sku_id\": \"SKU-9921\",\n      \"on_hand_counts\": [\n        {\n          \"location_id\": \"LOC-101\",\n          \"count\": 12\n        }\n      ],\n      \"pending_transfers\": [\n        {\n          \"transfer_id\": \"TR-55\",\n          \"destination_id\": \"LOC-101\",\n          \"quantity\": 3,\n          \"status\": \"in-transit\"\n        }\n      ]\n    }\n  },\n  \"resolve_channel_sync\": {\n    \"description\": \"Forces a synchronization update for a specific item on a specific channel to resolve delays or discrepancies.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"sku_id\": {\n          \"type\": \"string\",\n          \"description\": \"The SKU ID to sync.\"\n        },\n        \"channel_name\": {\n          \"type\": \"string\",\n          \"description\": \"The name of the channel (e.g., 'POS').\"\n        }\n      },\n      \"required\": [\n        \"sku_id\",\n        \"channel_name\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"success\",\n      \"message\": \"POS sync initiated.\"\n    }\n  },\n  \"initiate_stock_transfer\": {\n    \"description\": \"Creates a request to move inventory from one location to another.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"sku_id\": {\n          \"type\": \"string\",\n          \"description\": \"The item SKU to move.\"\n        },\n        \"from_location_id\": {\n          \"type\": \"string\",\n          \"description\": \"Source location ID.\"\n        },\n        \"to_location_id\": {\n          \"type\": \"string\",\n          \"description\": \"Destination location ID.\"\n        },\n        \"quantity\": {\n          \"type\": \"integer\",\n          \"description\": \"Number of units to transfer.\"\n        }\n      },\n      \"required\": [\n        \"sku_id\",\n        \"from_location_id\",\n        \"to_location_id\",\n        \"quantity\"\n      ]\n    },\n    \"example_output\": {\n      \"transfer_id\": \"TR-102\",\n      \"status\": \"initiated\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "list_locations",
+      "description": "Retrieves a list of all physical and logical storage locations, including display zones and warehouses.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "locations": [
+          {
+            "location_id": "LOC-101",
+            "name": "Fitness Display Zone A",
+            "type": "retail_floor"
+          },
+          {
+            "location_id": "WH-001",
+            "name": "Primary Storage Reserve",
+            "type": "warehouse"
+          }
+        ]
+      }
+    },
+    {
+      "name": "get_items_in_location",
+      "description": "Lists all items currently assigned to a specific location with their basic attributes.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "location_id": {
+            "type": "string",
+            "description": "The unique ID of the location to query."
+          }
+        },
+        "required": [
+          "location_id"
+        ]
+      },
+      "example_output": {
+        "items": [
+          {
+            "sku_id": "SKU-9921",
+            "name": "Ultra-Performance Tech Leggings",
+            "tier": "premium",
+            "category": "apparel"
+          }
+        ]
+      }
+    },
+    {
+      "name": "get_sync_report",
+      "description": "Returns the synchronization status across all sales channels for a specific item.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "sku_id": {
+            "type": "string",
+            "description": "The SKU ID of the item to check."
+          }
+        },
+        "required": [
+          "sku_id"
+        ]
+      },
+      "example_output": {
+        "sku_id": "SKU-9921",
+        "channels": [
+          {
+            "channel_name": "POS",
+            "status": "delayed",
+            "last_sync": "2023-10-27T10:00:00Z"
+          },
+          {
+            "channel_name": "Online Store",
+            "status": "synced",
+            "last_sync": "2023-10-27T14:00:00Z"
+          }
+        ]
+      }
+    },
+    {
+      "name": "get_inventory_details",
+      "description": "Provides detailed stock counts for a SKU, including physical on-hand amounts at specific locations and pending incoming transfers.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "sku_id": {
+            "type": "string",
+            "description": "The SKU ID to query."
+          }
+        },
+        "required": [
+          "sku_id"
+        ]
+      },
+      "example_output": {
+        "sku_id": "SKU-9921",
+        "on_hand_counts": [
+          {
+            "location_id": "LOC-101",
+            "count": 12
+          }
+        ],
+        "pending_transfers": [
+          {
+            "transfer_id": "TR-55",
+            "destination_id": "LOC-101",
+            "quantity": 3,
+            "status": "in-transit"
+          }
+        ]
+      }
+    },
+    {
+      "name": "resolve_channel_sync",
+      "description": "Forces a synchronization update for a specific item on a specific channel to resolve delays or discrepancies.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "sku_id": {
+            "type": "string",
+            "description": "The SKU ID to sync."
+          },
+          "channel_name": {
+            "type": "string",
+            "description": "The name of the channel (e.g., 'POS')."
+          }
+        },
+        "required": [
+          "sku_id",
+          "channel_name"
+        ]
+      },
+      "example_output": {
+        "status": "success",
+        "message": "POS sync initiated."
+      }
+    },
+    {
+      "name": "initiate_stock_transfer",
+      "description": "Creates a request to move inventory from one location to another.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "sku_id": {
+            "type": "string",
+            "description": "The item SKU to move."
+          },
+          "from_location_id": {
+            "type": "string",
+            "description": "Source location ID."
+          },
+          "to_location_id": {
+            "type": "string",
+            "description": "Destination location ID."
+          },
+          "quantity": {
+            "type": "integer",
+            "description": "Number of units to transfer."
+          }
+        },
+        "required": [
+          "sku_id",
+          "from_location_id",
+          "to_location_id",
+          "quantity"
+        ]
+      },
+      "example_output": {
+        "transfer_id": "TR-102",
+        "status": "initiated"
+      }
+    }
+  ],
+  "state_description": {
+    "inventory_levels": "A mapping of SKU IDs to their current stock count and warehouse location.",
+    "channel_sync_status": "Current synchronization status for various sales channels (e.g., Online Store, POS, Marketplace).",
+    "pending_transfers": "A list of stock transfers currently in transit between locations.",
+    "last_sync_timestamp": "The ISO 8601 timestamp of the last global inventory reconciliation."
+  },
+  "task_initial_state": {
+    "inventory_levels": {
+      "ATH-992-F": {
+        "quantity": 12,
+        "location": "Fitness-Zone-Display"
+      },
+      "ATH-992-B": {
+        "quantity": 40,
+        "location": "Reserve-Alpha"
+      },
+      "YOGA-101-F": {
+        "quantity": 15,
+        "location": "Yoga-Zone-Display"
+      }
+    },
+    "channel_sync_status": {
+      "online_store": "synced",
+      "pos_system": "pending"
+    },
+    "pending_transfers": [
+      {
+        "sku_id": "ATH-992-F",
+        "origin": "Reserve-Alpha",
+        "destination": "Fitness-Zone-Display",
+        "quantity": 3,
+        "transfer_id": "TRF-5050"
+      }
+    ],
+    "last_sync_timestamp": "2023-10-27T10:00:00Z"
+  }
+}

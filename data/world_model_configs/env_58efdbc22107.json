@@ -1,0 +1,144 @@
+{
+  "environment_name": "env_58efdbc22107",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: Based on the current state $s_t$ and action $a_t$, simulate the environment changes and predict the observation $o_{{t+1}}$ for the Restaurant Table Reservation Optimization scenario. \n- **Emphasis**: You are a simulator of the restaurant's backend and physical environment. You do not execute real-world operations; you only perform internal state evolution and generate the resulting observations for the Agent.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions between the World Model and the Agent must maintain strict context consistency. You must track which tables are occupied, which are reserved for future slots, and how the passage of time affects availability within the simulation session.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. This JSON must contain the following fields:\n- `\"name\"`: Specifies the name of the action function to execute.\n- The remaining fields are the parameter names and corresponding values required by that action function.\n\nExample:\n```json\n{{\n \"name\": \"reserve_table\",\n \"arguments\": {{\n    \"customer_name\": \"John Doe\",\n    \"party_size\": 4,\n    \"time_slot\": \"19:00\"\n  }}\n}}\n```\n\nAs the Language World Model, you must parse this input, update the internal restaurant state (e.g., marking a table as reserved), and return the observation defined by the action function.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nIf the Agent attempts to book a table for a party size exceeding capacity, selects a non-existent table ID, or requests an action during closed hours, return structured error information (e.g., `{{\"error\": \"No tables available for party size 10\"}}`). Do not fabricate states or fictitious responses.\n\n##### Output Assembly\nFor every action function call, you must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition.\n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, `new_state`, or any hidden variables. You must strictly hide the internal table mapping or reservation database from the output unless the action explicitly asks for a list of data. The Agent must only see the specific return values (the Observation).\n\n### 4. Key Principles\n- **Format**: Strictly adhere to specified JSON and text formats.\n- **Factuality**: Do not fabricate non-existent functions, table IDs, or customer records.\n- **Consistency**: If a table is marked 'occupied' at time $t$, it must remain so until a 'clear_table' action is simulated or the reservation expires.\n- **Realism**: Simulated behaviors must align with restaurant dynamics (e.g., a table for 2 cannot fit 6 people).\n- **Quality**: Language must be clear and structurally complete.\n- **Encapsulation**: Strictly hide the internal state structure. Only expose information that is explicitly returned by the action function. Do not output the state update process.\n{{initial_state}}: {{\n  \"tables\": [\n    {{\n      \"table_id\": 1,\n      \"capacity\": 2,\n      \"status\": \"occupied\"\n    }},\n    {{\n      \"table_id\": 2,\n      \"capacity\": 4,\n      \"status\": \"available\"\n    }},\n    {{\n      \"table_id\": 3,\n      \"capacity\": 8,\n      \"status\": \"reserved\"\n    }}\n  ],\n  \"reservations\": [\n    {{\n      \"reservation_id\": \"RES-882\",\n      \"customer_name\": \"Hanks\",\n      \"party_size\": 2,\n      \"time_slot\": \"19:00\",\n      \"table_id\": 3\n    }},\n    {{\n      \"reservation_id\": \"RES-883\",\n      \"customer_name\": \"Jones\",\n      \"party_size\": 2,\n      \"time_slot\": \"19:00\",\n      \"table_id\": 3\n    }}\n  ],\n  \"current_time\": \"18:45\",\n  \"restaurant_capacity_limit\": 15,\n  \"waitlist\": [\n    {{\n      \"customer_name\": \"Vanderbilt\",\n      \"party_size\": 7,\n      \"requested_time\": \"19:00\"\n    }}\n  ]\n}}\n{{state_descriptions}}: {{\n  \"tables\": \"A list of table objects containing 'table_id' (int), 'capacity' (int), and 'status' (string: 'available', 'occupied', 'reserved').\",\n  \"reservations\": \"Active bookings containing 'reservation_id', 'customer_name', 'time_slot', and 'table_id'.\",\n  \"current_time\": \"The current wall-clock time in the simulation (HH:MM format).\",\n  \"restaurant_capacity_limit\": \"Total number of guests allowed in the restaurant simultaneously due to fire codes.\",\n  \"waitlist\": \"A queue of customers waiting for a table when none are available.\"\n}}\n{action_set_definitions}: {\n  \"get_restaurant_config\": {\n    \"description\": \"Retrieves environmental constraints including the maximum total guest capacity limit (fire code/occupancy limit).\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"restaurant_capacity_limit\": 15\n    }\n  },\n  \"list_reservations\": {\n    \"description\": \"Retrieves all confirmed reservations for a specific time slot, including customer names, party sizes, and assigned table IDs.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"time_slot\": {\n          \"type\": \"string\",\n          \"description\": \"The time to check, formatted as HH:MM.\"\n        }\n      },\n      \"required\": [\n        \"time_slot\"\n      ]\n    },\n    \"example_output\": {\n      \"reservations\": [\n        {\n          \"reservation_id\": \"RES001\",\n          \"customer_name\": \"Doe\",\n          \"party_size\": 4,\n          \"table_id\": 10\n        }\n      ]\n    }\n  },\n  \"list_table_status\": {\n    \"description\": \"Retrieves the list of all tables in the restaurant, their physical seating capacity, and their current base status.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"tables\": [\n        {\n          \"table_id\": 1,\n          \"capacity\": 8,\n          \"status\": \"available\"\n        }\n      ]\n    }\n  },\n  \"add_reservation\": {\n    \"description\": \"Creates a new reservation entry in the internal database and assigns it to a specific table.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"customer_name\": {\n          \"type\": \"string\"\n        },\n        \"party_size\": {\n          \"type\": \"integer\"\n        },\n        \"time_slot\": {\n          \"type\": \"string\"\n        },\n        \"table_id\": {\n          \"type\": \"integer\"\n        }\n      },\n      \"required\": [\n        \"customer_name\",\n        \"party_size\",\n        \"time_slot\",\n        \"table_id\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"confirmed\",\n      \"reservation_id\": \"RES002\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_restaurant_config",
+      "description": "Retrieves environmental constraints including the maximum total guest capacity limit (fire code/occupancy limit).",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "restaurant_capacity_limit": 15
+      }
+    },
+    {
+      "name": "list_reservations",
+      "description": "Retrieves all confirmed reservations for a specific time slot, including customer names, party sizes, and assigned table IDs.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "time_slot": {
+            "type": "string",
+            "description": "The time to check, formatted as HH:MM."
+          }
+        },
+        "required": [
+          "time_slot"
+        ]
+      },
+      "example_output": {
+        "reservations": [
+          {
+            "reservation_id": "RES001",
+            "customer_name": "Doe",
+            "party_size": 4,
+            "table_id": 10
+          }
+        ]
+      }
+    },
+    {
+      "name": "list_table_status",
+      "description": "Retrieves the list of all tables in the restaurant, their physical seating capacity, and their current base status.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "tables": [
+          {
+            "table_id": 1,
+            "capacity": 8,
+            "status": "available"
+          }
+        ]
+      }
+    },
+    {
+      "name": "add_reservation",
+      "description": "Creates a new reservation entry in the internal database and assigns it to a specific table.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "customer_name": {
+            "type": "string"
+          },
+          "party_size": {
+            "type": "integer"
+          },
+          "time_slot": {
+            "type": "string"
+          },
+          "table_id": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "customer_name",
+          "party_size",
+          "time_slot",
+          "table_id"
+        ]
+      },
+      "example_output": {
+        "status": "confirmed",
+        "reservation_id": "RES002"
+      }
+    }
+  ],
+  "state_description": {
+    "tables": "A list of table objects containing 'table_id' (int), 'capacity' (int), and 'status' (string: 'available', 'occupied', 'reserved').",
+    "reservations": "Active bookings containing 'reservation_id', 'customer_name', 'time_slot', and 'table_id'.",
+    "current_time": "The current wall-clock time in the simulation (HH:MM format).",
+    "restaurant_capacity_limit": "Total number of guests allowed in the restaurant simultaneously due to fire codes.",
+    "waitlist": "A queue of customers waiting for a table when none are available."
+  },
+  "task_initial_state": {
+    "tables": [
+      {
+        "table_id": 1,
+        "capacity": 2,
+        "status": "occupied"
+      },
+      {
+        "table_id": 2,
+        "capacity": 4,
+        "status": "available"
+      },
+      {
+        "table_id": 3,
+        "capacity": 8,
+        "status": "reserved"
+      }
+    ],
+    "reservations": [
+      {
+        "reservation_id": "RES-882",
+        "customer_name": "Hanks",
+        "party_size": 2,
+        "time_slot": "19:00",
+        "table_id": 3
+      },
+      {
+        "reservation_id": "RES-883",
+        "customer_name": "Jones",
+        "party_size": 2,
+        "time_slot": "19:00",
+        "table_id": 3
+      }
+    ],
+    "current_time": "18:45",
+    "restaurant_capacity_limit": 15,
+    "waitlist": [
+      {
+        "customer_name": "Vanderbilt",
+        "party_size": 7,
+        "requested_time": "19:00"
+      }
+    ]
+  }
+}

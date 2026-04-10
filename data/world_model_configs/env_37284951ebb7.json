@@ -1,0 +1,237 @@
+{
+  "environment_name": "env_37284951ebb7",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: Based on the current ship state $s_t$ and the loading/unloading action $a_t$ performed by the Agent, simulate the physical and logistical evolution of the environment and predict the resulting observation $o_{{t+1}}$.\n- **Emphasis**: The LWM functions as a deterministic physics and logic engine for maritime logistics. It does not perform cargo operations itself but computes the consequences of actions on the ship's stability, capacity, and manifest.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation involving ship hydrostatics, bay configurations, and cargo manifests. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions between the World Model and the Agent must maintain strict context consistency. Any container loaded into a bay must remain there until explicitly moved or unloaded. Changes to weight distribution must persistently affect the ship's trim, list, and stability metrics.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. This JSON must contain the following fields:\n- `\"name\"`: Specifies the name of the action function to execute (e.g., \"load_container\", \"calculate_stability\").\n- The remaining fields are the parameter names and corresponding values required by that action function.\n\nExample:\n```json\n{{\n \"name\": \"load_container\",\n \"arguments\": {{\n    \"container_id\": \"CONT-001\",\n    \"bay_id\": \"BAY-A1\",\n    \"tier\": 1,\n    \"row\": 2\n  }}\n}}\n```\n\nThe Language World Model must correctly parse such JSON inputs and simulate the resulting state transition and observation.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nFor invalid operations, the LWM must return structured error information. Examples include:\n- Exceeding the maximum permissible weight of a bay or the ship.\n- Attempting to load a container into an occupied slot.\n- Stability failures (e.g., the ship capsizing or exceeding safe trim limits).\n- Non-existent container IDs or bay identifiers.\nIn these cases, return `{{\"error\": \"Reason for failure\"}}` and do not update the internal state.\n\n##### Output Assembly\nFor every action function call, the model must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition.\n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, `new_state`, or hidden stability variables. The Agent must only see the specific return values (Observations) defined in the action. State maintenance is managed internally by the LWM.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to specified JSON and text formats.\n- **Factuality**: Do not fabricate cargo, equipment, or bay capacities not present in the state.\n- **Consistency**: Maintain a continuous and logical flow of operations (e.g., a container cannot be in two places at once).\n- **Realism**: Simulated behaviors must align with maritime engineering principles (e.g., loading weight lower reduces the center of gravity; uneven lateral loading increases list).\n- **Quality**: Language must be technical, clear, and structurally complete.\n- **Encapsulation**: Strictly hide the internal state structure. Only expose information explicitly returned by the action function. Do not output the state update process.\n{{initial_state}}: {{\n  \"ship_metadata\": {{\n    \"vessel_name\": \"MV-Stellar-Horizon\",\n    \"max_deadweight_tons\": 55000\n  }},\n  \"hydrostatics\": {{\n    \"trim_meters\": 0.0,\n    \"list_degrees\": 0.0,\n    \"metacentric_height_gm\": 3.1\n  }},\n  \"bays\": [\n    {{\n      \"bay_id\": \"Bay-01-Fwd\",\n      \"max_capacity_teu\": 80,\n      \"current_weight_tons\": 120.0,\n      \"occupied_slots\": [\n        \"01-01\",\n        \"01-02\",\n        \"02-01\",\n        \"02-02\"\n      ]\n    }},\n    {{\n      \"bay_id\": \"Bay-02-Mid\",\n      \"max_capacity_teu\": 80,\n      \"current_weight_tons\": 150.0,\n      \"occupied_slots\": [\n        \"01-01\",\n        \"01-02\",\n        \"03-01\",\n        \"03-02\"\n      ]\n    }},\n    {{\n      \"bay_id\": \"Bay-03-Aft\",\n      \"max_capacity_teu\": 80,\n      \"current_weight_tons\": 90.0,\n      \"occupied_slots\": [\n        \"01-01\",\n        \"01-02\"\n      ]\n    }}\n  ],\n  \"dock_inventory\": [\n    {{\n      \"container_id\": \"IND-MACH-770\",\n      \"weight_tons\": 86.5,\n      \"is_hazardous\": false\n    }},\n    {{\n      \"container_id\": \"IND-MACH-771\",\n      \"weight_tons\": 82.0,\n      \"is_hazardous\": false\n    }},\n    {{\n      \"container_id\": \"IND-MACH-920\",\n      \"weight_tons\": 79.5,\n      \"is_hazardous\": false\n    }},\n    {{\n      \"container_id\": \"IND-MACH-925\",\n      \"weight_tons\": 74.0,\n      \"is_hazardous\": false\n    }},\n    {{\n      \"container_id\": \"GEN-PURP-001\",\n      \"weight_tons\": 12.0,\n      \"is_hazardous\": false\n    }},\n    {{\n      \"container_id\": \"GEN-PURP-002\",\n      \"weight_tons\": 15.0,\n      \"is_hazardous\": false\n    }}\n  ]\n}}\n{{state_descriptions}}: {{\n  \"ship_metadata\": \"General ship information and global constraints.\",\n  \"hydrostatics\": \"Current physical balance of the ship.\",\n  \"bays\": \"List of cargo bays and their current occupancy.\",\n  \"dock_inventory\": \"Containers currently on the pier waiting to be loaded.\"\n}}\n{action_set_definitions}: {\n  \"get_vessel_stability_data\": {\n    \"description\": \"Retrieves the current hydrostatic stability metrics of the ship, specifically the Metacentric Height (GM) and the Vertical Center of Gravity (KG).\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"gm_meters\": 2.5,\n      \"kg_meters\": 11.2,\n      \"is_stable\": true\n    }\n  },\n  \"scan_pier_inventory\": {\n    \"description\": \"Retrieves a list of all cargo units currently on the pier, including their unique IDs, categories, and weights in tons.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"inventory\": [\n        {\n          \"unit_id\": \"IM-9001\",\n          \"category\": \"Industrial Machinery\",\n          \"weight_tons\": 45.0\n        }\n      ]\n    }\n  },\n  \"get_bay_loading_status\": {\n    \"description\": \"Provides the current weight distribution of the ship's bays. Each bay has a strict total weight capacity limit of 200.0 tons.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"bays\": [\n        {\n          \"bay_id\": \"BAY_01\",\n          \"current_total_weight\": 140.0,\n          \"max_capacity\": 200.0,\n          \"occupied_tiers\": [\n            2,\n            4,\n            6\n          ]\n        }\n      ]\n    }\n  },\n  \"load_cargo_unit\": {\n    \"description\": \"Loads a specific cargo unit into a targeted bay and tier. This increases the total weight of the bay and shifts the vessel's center of gravity.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"unit_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the unit to load.\"\n        },\n        \"bay_id\": {\n          \"type\": \"string\",\n          \"description\": \"The target bay ID.\"\n        },\n        \"tier_level\": {\n          \"type\": \"integer\",\n          \"description\": \"The vertical tier level (e.g., 8, 10, 12 for high-tier positions).\"\n        }\n      },\n      \"required\": [\n        \"unit_id\",\n        \"bay_id\",\n        \"tier_level\"\n      ]\n    },\n    \"example_output\": {\n      \"success\": true,\n      \"updated_bay_weight\": 185.0\n    }\n  },\n  \"unload_cargo_unit\": {\n    \"description\": \"Removes a cargo unit from a specific bay and tier. This is used to free up weight capacity in a bay if the 200.0 ton limit would be exceeded by new cargo.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"bay_id\": {\n          \"type\": \"string\",\n          \"description\": \"The bay ID from which to unload.\"\n        },\n        \"tier_level\": {\n          \"type\": \"integer\",\n          \"description\": \"The tier level of the unit to be removed.\"\n        }\n      },\n      \"required\": [\n        \"bay_id\",\n        \"tier_level\"\n      ]\n    },\n    \"example_output\": {\n      \"success\": true,\n      \"removed_unit_id\": \"CONT-112\",\n      \"updated_bay_weight\": 120.0\n    }\n  },\n  \"adjust_ballast_system\": {\n    \"description\": \"Adjusts the liquid ballast in the ship's tanks to fine-tune the GM when cargo placement alone is insufficient. 'top_tanks' reduces GM; 'bottom_tanks' increases GM.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"target_tanks\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"top_tanks\",\n            \"bottom_tanks\"\n          ],\n          \"description\": \"Location of tanks to fill/empty.\"\n        },\n        \"operation\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"fill\",\n            \"discharge\"\n          ],\n          \"description\": \"Action to perform on the tanks.\"\n        },\n        \"amount_m3\": {\n          \"type\": \"number\",\n          \"description\": \"Volume of ballast water to move.\"\n        }\n      },\n      \"required\": [\n        \"target_tanks\",\n        \"operation\",\n        \"amount_m3\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"adjustment_complete\",\n      \"resultant_gm\": 1.45\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_vessel_stability_data",
+      "description": "Retrieves the current hydrostatic stability metrics of the ship, specifically the Metacentric Height (GM) and the Vertical Center of Gravity (KG).",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "gm_meters": 2.5,
+        "kg_meters": 11.2,
+        "is_stable": true
+      }
+    },
+    {
+      "name": "scan_pier_inventory",
+      "description": "Retrieves a list of all cargo units currently on the pier, including their unique IDs, categories, and weights in tons.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "inventory": [
+          {
+            "unit_id": "IM-9001",
+            "category": "Industrial Machinery",
+            "weight_tons": 45.0
+          }
+        ]
+      }
+    },
+    {
+      "name": "get_bay_loading_status",
+      "description": "Provides the current weight distribution of the ship's bays. Each bay has a strict total weight capacity limit of 200.0 tons.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "bays": [
+          {
+            "bay_id": "BAY_01",
+            "current_total_weight": 140.0,
+            "max_capacity": 200.0,
+            "occupied_tiers": [
+              2,
+              4,
+              6
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "load_cargo_unit",
+      "description": "Loads a specific cargo unit into a targeted bay and tier. This increases the total weight of the bay and shifts the vessel's center of gravity.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "unit_id": {
+            "type": "string",
+            "description": "The ID of the unit to load."
+          },
+          "bay_id": {
+            "type": "string",
+            "description": "The target bay ID."
+          },
+          "tier_level": {
+            "type": "integer",
+            "description": "The vertical tier level (e.g., 8, 10, 12 for high-tier positions)."
+          }
+        },
+        "required": [
+          "unit_id",
+          "bay_id",
+          "tier_level"
+        ]
+      },
+      "example_output": {
+        "success": true,
+        "updated_bay_weight": 185.0
+      }
+    },
+    {
+      "name": "unload_cargo_unit",
+      "description": "Removes a cargo unit from a specific bay and tier. This is used to free up weight capacity in a bay if the 200.0 ton limit would be exceeded by new cargo.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "bay_id": {
+            "type": "string",
+            "description": "The bay ID from which to unload."
+          },
+          "tier_level": {
+            "type": "integer",
+            "description": "The tier level of the unit to be removed."
+          }
+        },
+        "required": [
+          "bay_id",
+          "tier_level"
+        ]
+      },
+      "example_output": {
+        "success": true,
+        "removed_unit_id": "CONT-112",
+        "updated_bay_weight": 120.0
+      }
+    },
+    {
+      "name": "adjust_ballast_system",
+      "description": "Adjusts the liquid ballast in the ship's tanks to fine-tune the GM when cargo placement alone is insufficient. 'top_tanks' reduces GM; 'bottom_tanks' increases GM.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "target_tanks": {
+            "type": "string",
+            "enum": [
+              "top_tanks",
+              "bottom_tanks"
+            ],
+            "description": "Location of tanks to fill/empty."
+          },
+          "operation": {
+            "type": "string",
+            "enum": [
+              "fill",
+              "discharge"
+            ],
+            "description": "Action to perform on the tanks."
+          },
+          "amount_m3": {
+            "type": "number",
+            "description": "Volume of ballast water to move."
+          }
+        },
+        "required": [
+          "target_tanks",
+          "operation",
+          "amount_m3"
+        ]
+      },
+      "example_output": {
+        "status": "adjustment_complete",
+        "resultant_gm": 1.45
+      }
+    }
+  ],
+  "state_description": {
+    "ship_metadata": "General ship information and global constraints.",
+    "hydrostatics": "Current physical balance of the ship.",
+    "bays": "List of cargo bays and their current occupancy.",
+    "dock_inventory": "Containers currently on the pier waiting to be loaded."
+  },
+  "task_initial_state": {
+    "ship_metadata": {
+      "vessel_name": "MV-Stellar-Horizon",
+      "max_deadweight_tons": 55000
+    },
+    "hydrostatics": {
+      "trim_meters": 0.0,
+      "list_degrees": 0.0,
+      "metacentric_height_gm": 3.1
+    },
+    "bays": [
+      {
+        "bay_id": "Bay-01-Fwd",
+        "max_capacity_teu": 80,
+        "current_weight_tons": 120.0,
+        "occupied_slots": [
+          "01-01",
+          "01-02",
+          "02-01",
+          "02-02"
+        ]
+      },
+      {
+        "bay_id": "Bay-02-Mid",
+        "max_capacity_teu": 80,
+        "current_weight_tons": 150.0,
+        "occupied_slots": [
+          "01-01",
+          "01-02",
+          "03-01",
+          "03-02"
+        ]
+      },
+      {
+        "bay_id": "Bay-03-Aft",
+        "max_capacity_teu": 80,
+        "current_weight_tons": 90.0,
+        "occupied_slots": [
+          "01-01",
+          "01-02"
+        ]
+      }
+    ],
+    "dock_inventory": [
+      {
+        "container_id": "IND-MACH-770",
+        "weight_tons": 86.5,
+        "is_hazardous": false
+      },
+      {
+        "container_id": "IND-MACH-771",
+        "weight_tons": 82.0,
+        "is_hazardous": false
+      },
+      {
+        "container_id": "IND-MACH-920",
+        "weight_tons": 79.5,
+        "is_hazardous": false
+      },
+      {
+        "container_id": "IND-MACH-925",
+        "weight_tons": 74.0,
+        "is_hazardous": false
+      },
+      {
+        "container_id": "GEN-PURP-001",
+        "weight_tons": 12.0,
+        "is_hazardous": false
+      },
+      {
+        "container_id": "GEN-PURP-002",
+        "weight_tons": 15.0,
+        "is_hazardous": false
+      }
+    ]
+  }
+}

@@ -1,0 +1,165 @@
+{
+  "environment_name": "env_d22d6da8502e",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM) for Treatment Plan Sequencing.\n- **Core Objective**: Based on the patient's current internal physiological state $s_t$ and the clinical action $a_t$ selected by the Agent, simulate the biological evolution of the patient's condition and predict the resulting clinical observation $o_{{t+1}}$.\n- **Emphasis**: The LWM acts as a sophisticated medical simulator. It does not provide medical advice; it calculates the outcome of actions within a simulated clinical environment, maintaining internal consistency of the patient's health trajectory.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation tracking the patient's underlying health status. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions must maintain longitudinal consistency. Every treatment administered must have cumulative effects (e.g., toxicity, drug resistance, or recovery) that influence the outcomes of future actions. The model must remember the history of interventions to ensure the simulated patient's response remains medically plausible over time.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions (e.g., administering therapy, ordering tests, or surgery). The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object containing:\n- `\"name\"`: The name of the treatment or diagnostic action.\n- The remaining fields are parameters (e.g., dosage, duration, target area).\n\nExample:\n```json\n{{\n \"name\": \"administer_chemotherapy\",\n \"arguments\": {{\n    \"drug_name\": \"Cisplatin\",\n    \"dosage_mg_m2\": 75\n  }}\n}}\n```\nThe LWM will parse this input, update the internal state $s_t \\rightarrow s_{{t+1}}$ according to clinical dynamics, and generate the corresponding observation.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\n- **Invalid Parameters**: If a dosage is outside physiological limits or a drug is undefined, return an error: `{{\"error\": \"Invalid dosage for [Drug]\"}}`.\n- **Contraindications**: If an action is attempted that is logically impossible given the current state (e.g., performing surgery on an unstable patient), return a structured clinical failure observation.\n- **No Fabrication**: Do not invent patient improvements or data points not supported by the internal state transition logic.\n\n##### Output Assembly\nFor every action call, the model must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition (the Observation $o_{{t+1}}$).\n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the internal state fields, hidden physiological markers, or updated state variables. The Agent must only receive the specific results (e.g., lab reports, vital sign readings) intended for the observer. Encapsulation of the state is mandatory.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to JSON output for observations.\n- **Factuality**: Simulated responses must align with established biomedical principles and the logic of the provided task.\n- **Consistency**: The patient’s condition cannot fluctuate erratically without a physiological cause.\n- **Realism**: Simulate realistic side effects, delayed responses, and treatment efficacy variances.\n- **Quality**: Observations must be concise, professional, and structurally complete.\n- **Encapsulation**: Never reveal the internal state dictionary in the output. Only provide the specified observation fields.\n{{initial_state}}: {{\n  \"patient_vitals\": {{\n    \"heart_rate\": 98,\n    \"blood_pressure\": \"142/90\",\n    \"oxygen_saturation\": 97\n  }},\n  \"disease_metrics\": {{\n    \"tumor_size_mm\": 6.8,\n    \"circulating_tumor_cells\": 0.0,\n    \"inflammatory_markers\": 5.4\n  }},\n  \"cumulative_toxicity\": 10.0,\n  \"treatment_history\": [],\n  \"patient_status\": \"stable\"\n}}\n{{state_descriptions}}: {{\n  \"patient_vitals\": \"Current physiological vitals of the patient.\",\n  \"disease_metrics\": \"Internal markers of disease progression not directly visible without testing.\",\n  \"cumulative_toxicity\": \"Aggregate level of physical strain/toxicity from treatments (0-100 scale).\",\n  \"treatment_history\": \"List of all actions previously executed on this patient.\",\n  \"patient_status\": \"The general physiological classification of the patient.\"\n}}\n{action_set_definitions}: {\n  \"get_clinical_state\": {\n    \"description\": \"Retrieves the current environmental state including patient vitals, status, and cumulative toxicity.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"patient_vitals\": \"Stable\",\n      \"cumulative_toxicity\": 15,\n      \"patient_status\": \"Healthy adult\",\n      \"treatment_history\": []\n    }\n  },\n  \"measure_lesion_depth\": {\n    \"description\": \"Performs diagnostic testing on a specific tooth to determine the internal depth of a lesion.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"tooth_id\": {\n          \"type\": \"string\",\n          \"description\": \"Identifier for the tooth (e.g., 'molar', 'mesial_neighbor').\"\n        }\n      },\n      \"required\": [\n        \"tooth_id\"\n      ]\n    },\n    \"example_output\": {\n      \"depth_mm\": 3.5,\n      \"safety_threshold_exceeded\": true\n    }\n  },\n  \"administer_anesthesia\": {\n    \"description\": \"Applies anesthetic to the patient to manage pain and procedural stability.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"method\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"primary\",\n            \"supplementary\"\n          ],\n          \"description\": \"The type of anesthesia strategy to employ.\"\n        }\n      },\n      \"required\": [\n        \"method\"\n      ]\n    },\n    \"example_output\": {\n      \"anesthesia_level\": \"Optimal\",\n      \"toxicity_increase\": 5\n    }\n  },\n  \"execute_dentin_engagement\": {\n    \"description\": \"Proceeds with the preparation/excavation of dentin. This action triggers physiological responses visible in vitals.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"tooth_id\": {\n          \"type\": \"string\",\n          \"description\": \"The tooth being worked on.\"\n        }\n      },\n      \"required\": [\n        \"tooth_id\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"In progress\",\n      \"physiological_trigger_observed\": true\n    }\n  },\n  \"apply_pulp_protection\": {\n    \"description\": \"Applies specialized pulp-protection protocol for deep lesions prior to impressions.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"tooth_id\": {\n          \"type\": \"string\",\n          \"description\": \"Target tooth.\"\n        }\n      },\n      \"required\": [\n        \"tooth_id\"\n      ]\n    },\n    \"example_output\": {\n      \"protection_status\": \"Applied\"\n    }\n  },\n  \"place_direct_restoration\": {\n    \"description\": \"Places direct composite restoration on designated teeth.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"tooth_id\": {\n          \"type\": \"string\",\n          \"description\": \"Target tooth for composite.\"\n        }\n      },\n      \"required\": [\n        \"tooth_id\"\n      ]\n    },\n    \"example_output\": {\n      \"restoration_complete\": true\n    }\n  },\n  \"capture_definitive_impression\": {\n    \"description\": \"Captures the final impression for indirect crown preparation.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"tooth_id\": {\n          \"type\": \"string\",\n          \"description\": \"Target tooth for the crown.\"\n        }\n      },\n      \"required\": [\n        \"tooth_id\"\n      ]\n    },\n    \"example_output\": {\n      \"impression_quality\": \"High\",\n      \"procedure_complete\": true\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_clinical_state",
+      "description": "Retrieves the current environmental state including patient vitals, status, and cumulative toxicity.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "patient_vitals": "Stable",
+        "cumulative_toxicity": 15,
+        "patient_status": "Healthy adult",
+        "treatment_history": []
+      }
+    },
+    {
+      "name": "measure_lesion_depth",
+      "description": "Performs diagnostic testing on a specific tooth to determine the internal depth of a lesion.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "tooth_id": {
+            "type": "string",
+            "description": "Identifier for the tooth (e.g., 'molar', 'mesial_neighbor')."
+          }
+        },
+        "required": [
+          "tooth_id"
+        ]
+      },
+      "example_output": {
+        "depth_mm": 3.5,
+        "safety_threshold_exceeded": true
+      }
+    },
+    {
+      "name": "administer_anesthesia",
+      "description": "Applies anesthetic to the patient to manage pain and procedural stability.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "method": {
+            "type": "string",
+            "enum": [
+              "primary",
+              "supplementary"
+            ],
+            "description": "The type of anesthesia strategy to employ."
+          }
+        },
+        "required": [
+          "method"
+        ]
+      },
+      "example_output": {
+        "anesthesia_level": "Optimal",
+        "toxicity_increase": 5
+      }
+    },
+    {
+      "name": "execute_dentin_engagement",
+      "description": "Proceeds with the preparation/excavation of dentin. This action triggers physiological responses visible in vitals.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "tooth_id": {
+            "type": "string",
+            "description": "The tooth being worked on."
+          }
+        },
+        "required": [
+          "tooth_id"
+        ]
+      },
+      "example_output": {
+        "status": "In progress",
+        "physiological_trigger_observed": true
+      }
+    },
+    {
+      "name": "apply_pulp_protection",
+      "description": "Applies specialized pulp-protection protocol for deep lesions prior to impressions.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "tooth_id": {
+            "type": "string",
+            "description": "Target tooth."
+          }
+        },
+        "required": [
+          "tooth_id"
+        ]
+      },
+      "example_output": {
+        "protection_status": "Applied"
+      }
+    },
+    {
+      "name": "place_direct_restoration",
+      "description": "Places direct composite restoration on designated teeth.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "tooth_id": {
+            "type": "string",
+            "description": "Target tooth for composite."
+          }
+        },
+        "required": [
+          "tooth_id"
+        ]
+      },
+      "example_output": {
+        "restoration_complete": true
+      }
+    },
+    {
+      "name": "capture_definitive_impression",
+      "description": "Captures the final impression for indirect crown preparation.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "tooth_id": {
+            "type": "string",
+            "description": "Target tooth for the crown."
+          }
+        },
+        "required": [
+          "tooth_id"
+        ]
+      },
+      "example_output": {
+        "impression_quality": "High",
+        "procedure_complete": true
+      }
+    }
+  ],
+  "state_description": {
+    "patient_vitals": "Current physiological vitals of the patient.",
+    "disease_metrics": "Internal markers of disease progression not directly visible without testing.",
+    "cumulative_toxicity": "Aggregate level of physical strain/toxicity from treatments (0-100 scale).",
+    "treatment_history": "List of all actions previously executed on this patient.",
+    "patient_status": "The general physiological classification of the patient."
+  },
+  "task_initial_state": {
+    "patient_vitals": {
+      "heart_rate": 98,
+      "blood_pressure": "142/90",
+      "oxygen_saturation": 97
+    },
+    "disease_metrics": {
+      "tumor_size_mm": 6.8,
+      "circulating_tumor_cells": 0.0,
+      "inflammatory_markers": 5.4
+    },
+    "cumulative_toxicity": 10.0,
+    "treatment_history": [],
+    "patient_status": "stable"
+  }
+}

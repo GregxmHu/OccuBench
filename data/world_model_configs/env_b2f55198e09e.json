@@ -1,0 +1,200 @@
+{
+  "environment_name": "env_b2f55198e09e",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM) for Clinical Diagnostic Reasoning.\n- **Core Objective**: Based on the current patient state $s_t$ and the diagnostic action $a_t$ taken by the Agent (clinician), simulate the evolution of the clinical case and predict the specific observation $o_{{t+1}}$ (e.g., patient response, physical exam finding, or lab result).\n- **Emphasis**: The LWM does not provide medical advice or execute real clinical procedures. It performs internal state evolution to maintain the patient's underlying physiological truth and generates realistic observations based on that truth.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions between the World Model and the Agent must maintain strict context consistency. The model must track which tests have already been performed, how the patient's condition evolves over time (if applicable), and ensure that subsequent observations are physiologically consistent with previous ones.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions (e.g., inquiry, physical_examination, order_test, finalize_diagnosis). The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. This JSON must contain the following fields:\n- `\"name\"`: Specifies the name of the action function to execute.\n- The remaining fields are the parameter names and corresponding values required by that action function.\n\nExample:\n```json\n{{\n \"name\": \"order_lab_test\",\n \"arguments\": {{\n    \"test_name\": \"Complete Blood Count\",\n    \"priority\": \"routine\"\n  }}\n}}\n```\n\nThe Language World Model must correctly parse such JSON inputs and simulate the simulated clinical result.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nFor invalid parameters (e.g., requesting a test not available in the hospital), undefined actions, state conflicts, or empty inputs, return structured error information (e.g., `{{\"error\": \"Test 'XYZ' not available in this facility\"}}`). Do not fabricate medical data or fictitious responses if the action is invalid.\n\n##### Output Assembly\nFor every action function call, the model must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition (the Observation).\n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, `new_state`, or hidden variables like the 'ground_truth_diagnosis' unless it is explicitly returned by an action. The state maintenance is implicit in the history. The Agent must only see the specific return values defined in the action.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to specified JSON and text formats.\n- **Factuality**: Do not fabricate non-existent medical tests or impossible physiological states.\n- **Consistency**: The patient's underlying condition must remain stable unless an intervention or time-progression logic is triggered. Observations must not contradict previous findings.\n- **Realism**: Simulated behaviors must align with clinical reality, including typical ranges for lab values and common symptomatic presentations.\n- **Quality**: Language must be professional, clear, and structurally complete.\n- **Encapsulation**: Strictly hide the internal state structure (the 'ground truth') from the output. Only expose information that is explicitly returned by the action function.\n{{initial_state}}: {{\n  \"patient_demographics\": {{\n    \"age\": 80,\n    \"gender\": \"male\",\n    \"occupation\": \"retired engineer\"\n  }},\n  \"hidden_ground_truth\": {{\n    \"primary_condition\": \"Abdominal Aortic Aneurysm (AAA) rupture\",\n    \"severity\": \"life-threatening\"\n  }},\n  \"vital_signs\": {{\n    \"heart_rate\": 112,\n    \"blood_pressure\": \"95/60\",\n    \"temperature\": 36.5,\n    \"spo2\": 96\n  }},\n  \"medical_history\": {{\n    \"history\": [\n      \"Hypertension\",\n      \"Chronic Smoking (50 pack-years)\",\n      \"Hypercholesterolemia\"\n    ],\n    \"allergies\": [\n      \"Iodine-based contrast (documented reaction: hives)\"\n    ]\n  }},\n  \"test_result_manifest\": {{\n    \"physical_exam\": \"Patient is in significant distress, diaphoretic. Abdomen is slightly distended with a vague, pulsatile mass noted in the epigastrium. Lower extremity pulses are weak but equal.\",\n    \"bedside_ultrasound\": \"Dilation of the abdominal aorta measured at 6.2 cm with evidence of free intraperitoneal fluid.\",\n    \"cbc\": \"Hemoglobin 9.8 g/dL (Baseline 14.0), WBC 11,000 cells/uL\",\n    \"ecg\": \"Sinus tachycardia; no acute ST-T wave changes.\",\n    \"lumbar_xray\": \"Mild degenerative changes of the lumbar spine; no acute fractures.\"\n  }},\n  \"action_history\": [\n    {{\n      \"time\": \"T-5 mins\",\n      \"action\": \"Triage_Entry\",\n      \"detail\": \"Patient assessed by triage nurse. Impression: Acute musculoskeletal lower back pain. Priority: Level 4 (Routine).\"\n    }}\n  ]\n}}\n{{state_descriptions}}: {{\n  \"patient_demographics\": \"Basic info including age, gender, and occupation.\",\n  \"hidden_ground_truth\": \"The actual underlying pathology unknown to the agent.\",\n  \"vital_signs\": \"Current physiological metrics (heart rate, BP, temp, SpO2).\",\n  \"medical_history\": \"Past medical history, allergies, and current medications.\",\n  \"test_result_manifest\": \"A pre-defined pool of results for potential tests (CBC, Imaging, etc.) to ensure consistency.\",\n  \"action_history\": \"List of actions already performed to prevent redundant simulations.\"\n}}\n{action_set_definitions}: {\n  \"get_patient_data\": {\n    \"description\": \"Retrieves specific segments of the patient's record from the environment state, including demographics, vital signs, and past medical history.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"data_categories\": {\n          \"type\": \"array\",\n          \"items\": {\n            \"type\": \"string\",\n            \"enum\": [\n              \"demographics\",\n              \"vital_signs\",\n              \"medical_history\"\n            ]\n          },\n          \"description\": \"The categories of information to retrieve.\"\n        }\n      },\n      \"required\": [\n        \"data_categories\"\n      ]\n    },\n    \"example_output\": {\n      \"demographics\": {\n        \"age\": 80,\n        \"gender\": \"male\"\n      },\n      \"vital_signs\": {\n        \"blood_pressure\": \"110/70\",\n        \"heart_rate\": 95\n      },\n      \"medical_history\": \"History of hypertension and osteoporosis.\"\n    }\n  },\n  \"conduct_physical_examination\": {\n    \"description\": \"Simulates a physical examination focusing on specific systems to identify clinical signs (e.g., neurological deficits, midline tenderness).\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"systems_to_examine\": {\n          \"type\": \"array\",\n          \"items\": {\n            \"type\": \"string\",\n            \"enum\": [\n              \"musculoskeletal\",\n              \"neurological\",\n              \"cardiovascular\",\n              \"abdominal\"\n            ]\n          },\n          \"description\": \"Clinical systems to evaluate during the physical exam.\"\n        }\n      },\n      \"required\": [\n        \"systems_to_examine\"\n      ]\n    },\n    \"example_output\": {\n      \"findings\": \"Point tenderness over L3-L4 vertebrae; diminished sensation in right lower extremity.\"\n    }\n  },\n  \"query_diagnostic_calibration_protocol\": {\n    \"description\": \"Retrieves the mandatory safety checkpoints and diagnostic prerequisites required by the hospital's clinical oversight system for specific case types.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"protocol_id\": {\n          \"type\": \"string\",\n          \"description\": \"The name or ID of the protocol to retrieve (e.g., 'Diagnostic Calibration').\"\n        }\n      },\n      \"required\": [\n        \"protocol_id\"\n      ]\n    },\n    \"example_output\": {\n      \"required_checks\": [\n        \"vital_stability_verification\",\n        \"red_flag_screening\",\n        \"mandatory_imaging_for_geriatrics\"\n      ],\n      \"status\": \"pending\"\n    }\n  },\n  \"access_test_results\": {\n    \"description\": \"Queries the test_result_manifest for the outcomes of specific diagnostic tests (e.g., CBC, MRI, CT Scan).\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"requested_tests\": {\n          \"type\": \"array\",\n          \"items\": {\n            \"type\": \"string\"\n          },\n          \"description\": \"List of tests to retrieve results for.\"\n        }\n      },\n      \"required\": [\n        \"requested_tests\"\n      ]\n    },\n    \"example_output\": {\n      \"results\": {\n        \"MRI_Spine\": \"Acute compression fracture at L3; no signs of aortic dissection.\",\n        \"CBC\": \"Normal white cell count.\"\n      }\n    }\n  },\n  \"submit_final_diagnosis\": {\n    \"description\": \"Submits the definitive diagnosis to the clinical oversight system for final acceptance. Requires verification that safety protocols are met.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"diagnosis\": {\n          \"type\": \"string\",\n          \"description\": \"The definitive medical diagnosis.\"\n        },\n        \"supporting_evidence\": {\n          \"type\": \"array\",\n          \"items\": {\n            \"type\": \"string\"\n          },\n          \"description\": \"Clinical findings justifying the diagnosis.\"\n        },\n        \"protocol_compliance_confirmation\": {\n          \"type\": \"boolean\",\n          \"description\": \"Confirmation that all 'Diagnostic Calibration' steps were completed.\"\n        }\n      },\n      \"required\": [\n        \"diagnosis\",\n        \"supporting_evidence\",\n        \"protocol_compliance_confirmation\"\n      ]\n    },\n    \"example_output\": {\n      \"acceptance_status\": \"accepted\",\n      \"message\": \"Diagnosis confirmed and recorded.\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_patient_data",
+      "description": "Retrieves specific segments of the patient's record from the environment state, including demographics, vital signs, and past medical history.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "data_categories": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "demographics",
+                "vital_signs",
+                "medical_history"
+              ]
+            },
+            "description": "The categories of information to retrieve."
+          }
+        },
+        "required": [
+          "data_categories"
+        ]
+      },
+      "example_output": {
+        "demographics": {
+          "age": 80,
+          "gender": "male"
+        },
+        "vital_signs": {
+          "blood_pressure": "110/70",
+          "heart_rate": 95
+        },
+        "medical_history": "History of hypertension and osteoporosis."
+      }
+    },
+    {
+      "name": "conduct_physical_examination",
+      "description": "Simulates a physical examination focusing on specific systems to identify clinical signs (e.g., neurological deficits, midline tenderness).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "systems_to_examine": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "musculoskeletal",
+                "neurological",
+                "cardiovascular",
+                "abdominal"
+              ]
+            },
+            "description": "Clinical systems to evaluate during the physical exam."
+          }
+        },
+        "required": [
+          "systems_to_examine"
+        ]
+      },
+      "example_output": {
+        "findings": "Point tenderness over L3-L4 vertebrae; diminished sensation in right lower extremity."
+      }
+    },
+    {
+      "name": "query_diagnostic_calibration_protocol",
+      "description": "Retrieves the mandatory safety checkpoints and diagnostic prerequisites required by the hospital's clinical oversight system for specific case types.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "protocol_id": {
+            "type": "string",
+            "description": "The name or ID of the protocol to retrieve (e.g., 'Diagnostic Calibration')."
+          }
+        },
+        "required": [
+          "protocol_id"
+        ]
+      },
+      "example_output": {
+        "required_checks": [
+          "vital_stability_verification",
+          "red_flag_screening",
+          "mandatory_imaging_for_geriatrics"
+        ],
+        "status": "pending"
+      }
+    },
+    {
+      "name": "access_test_results",
+      "description": "Queries the test_result_manifest for the outcomes of specific diagnostic tests (e.g., CBC, MRI, CT Scan).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "requested_tests": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "List of tests to retrieve results for."
+          }
+        },
+        "required": [
+          "requested_tests"
+        ]
+      },
+      "example_output": {
+        "results": {
+          "MRI_Spine": "Acute compression fracture at L3; no signs of aortic dissection.",
+          "CBC": "Normal white cell count."
+        }
+      }
+    },
+    {
+      "name": "submit_final_diagnosis",
+      "description": "Submits the definitive diagnosis to the clinical oversight system for final acceptance. Requires verification that safety protocols are met.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "diagnosis": {
+            "type": "string",
+            "description": "The definitive medical diagnosis."
+          },
+          "supporting_evidence": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Clinical findings justifying the diagnosis."
+          },
+          "protocol_compliance_confirmation": {
+            "type": "boolean",
+            "description": "Confirmation that all 'Diagnostic Calibration' steps were completed."
+          }
+        },
+        "required": [
+          "diagnosis",
+          "supporting_evidence",
+          "protocol_compliance_confirmation"
+        ]
+      },
+      "example_output": {
+        "acceptance_status": "accepted",
+        "message": "Diagnosis confirmed and recorded."
+      }
+    }
+  ],
+  "state_description": {
+    "patient_demographics": "Basic info including age, gender, and occupation.",
+    "hidden_ground_truth": "The actual underlying pathology unknown to the agent.",
+    "vital_signs": "Current physiological metrics (heart rate, BP, temp, SpO2).",
+    "medical_history": "Past medical history, allergies, and current medications.",
+    "test_result_manifest": "A pre-defined pool of results for potential tests (CBC, Imaging, etc.) to ensure consistency.",
+    "action_history": "List of actions already performed to prevent redundant simulations."
+  },
+  "task_initial_state": {
+    "patient_demographics": {
+      "age": 80,
+      "gender": "male",
+      "occupation": "retired engineer"
+    },
+    "hidden_ground_truth": {
+      "primary_condition": "Abdominal Aortic Aneurysm (AAA) rupture",
+      "severity": "life-threatening"
+    },
+    "vital_signs": {
+      "heart_rate": 112,
+      "blood_pressure": "95/60",
+      "temperature": 36.5,
+      "spo2": 96
+    },
+    "medical_history": {
+      "history": [
+        "Hypertension",
+        "Chronic Smoking (50 pack-years)",
+        "Hypercholesterolemia"
+      ],
+      "allergies": [
+        "Iodine-based contrast (documented reaction: hives)"
+      ]
+    },
+    "test_result_manifest": {
+      "physical_exam": "Patient is in significant distress, diaphoretic. Abdomen is slightly distended with a vague, pulsatile mass noted in the epigastrium. Lower extremity pulses are weak but equal.",
+      "bedside_ultrasound": "Dilation of the abdominal aorta measured at 6.2 cm with evidence of free intraperitoneal fluid.",
+      "cbc": "Hemoglobin 9.8 g/dL (Baseline 14.0), WBC 11,000 cells/uL",
+      "ecg": "Sinus tachycardia; no acute ST-T wave changes.",
+      "lumbar_xray": "Mild degenerative changes of the lumbar spine; no acute fractures."
+    },
+    "action_history": [
+      {
+        "time": "T-5 mins",
+        "action": "Triage_Entry",
+        "detail": "Patient assessed by triage nurse. Impression: Acute musculoskeletal lower back pain. Priority: Level 4 (Routine)."
+      }
+    ]
+  }
+}

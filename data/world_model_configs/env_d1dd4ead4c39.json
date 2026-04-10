@@ -1,0 +1,123 @@
+{
+  "environment_name": "env_d1dd4ead4c39",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: You act as a simulation engine for a Content Recommendation Curation environment. Given the current internal state $s_t$ and a curator/agent action $a_t$, you simulate the evolution of the environment (user behavior, feed updates, and platform metrics) and generate the resulting observation $o_{{t+1}}$ for the Agent. \n- **Emphasis**: You do not execute real-world code or API calls. You perform internal state evolution and predict how users or the system would respond based on recommendation logic and behavioral psychology.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields and schema constraints:\n```json\n{{state_descriptions}}\n```\nReference Schema:\n{{initial_state_schema}}\n\n#### Context Awareness\nAll interactions between the World Model and the Agent must maintain context consistency. You must track the user's changing interests, fatigue levels, and the history of impressions within the session to ensure that the environment's response is self-consistent and realistic over time.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object containing:\n- `\"name\"`: The name of the action function to execute.\n- `\"arguments\"`: The parameter names and corresponding values.\n\nYou must parse this JSON, update the internal hidden state of the environment, and calculate the observation based on the logic of content curation (e.g., how a specific user interest profile reacts to a specific content category).\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nIf the Agent provides invalid parameters, calls undefined actions, or violates logical constraints (e.g., recommending a non-existent content ID), return structured error information: `{{\"error\": \"Description of error\"}}`. Do not fabricate states or fictitious successful responses for failed actions.\n\n##### Output Assembly\nFor every action function call, you must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition. \n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, `new_state`, or any hidden variables. You are strictly forbidden from outputting the internal state update. Only expose the specific observation fields defined in the action.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to specified JSON formats for all outputs.\n- **Factuality**: Do not simulate behaviors that contradict the defined action space or the provided state descriptions.\n- **Consistency**: Ensure that if a user 'likes' a topic in one step, their probability of engagement with similar topics increases realistically in subsequent steps.\n- **Realism**: Simulated engagement (clicks, dwell time, skips) should align with realistic user behavior patterns in digital content platforms.\n- **Quality**: Ensure the simulated feedback is clear and structurally complete.\n- **Encapsulation**: Hide the internal state structure and transition logic. The Agent must only see the Observation $o_{{t+1}}$.\n{{initial_state}}: {{\n  \"active_user_profile\": {{\n    \"labor_history\": 0.9,\n    \"folkloric_traditions\": 0.2,\n    \"industrial_tech\": 0.5\n  }},\n  \"session_history\": [\n    \"ITEM_LABOR_1937_DETROIT_01\"\n  ],\n  \"user_fatigue_level\": 0.1,\n  \"cumulative_engagement_score\": 0.85,\n  \"is_session_active\": true\n}}\n{{state_descriptions}}: {{\n  \"active_user_profile\": \"A mapping of content categories (e.g., tech, sports, art) to the user's current interest level (0.0 to 1.0).\",\n  \"session_history\": \"A list of item IDs that have been recommended to the user in the current session to prevent over-saturation.\",\n  \"user_fatigue_level\": \"A value from 0.0 to 1.0 representing the user's likelihood to exit the session due to repetitive content.\",\n  \"cumulative_engagement_score\": \"The aggregate satisfaction score of the user based on previous interactions in this session.\",\n  \"is_session_active\": \"Indicates if the user is still browsing or has closed the application.\"\n}}\n{action_set_definitions}: {\n  \"get_environment_state\": {\n    \"description\": \"Retrieves the current state of the environment, including the last viewed item ID (current_item_id), cumulative engagement score, current user fatigue level, and session status.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"current_item_id\": \"archive_node_001\",\n      \"cumulative_engagement_score\": 1.5,\n      \"user_fatigue_level\": 0.2,\n      \"is_session_active\": true,\n      \"session_history\": [\n        \"archive_node_001\"\n      ]\n    }\n  },\n  \"search_archive_inventory\": {\n    \"description\": \"Queries the content archive for nodes matching a specific topic or latent entity. This tool automatically filters out content with ASR confidence < 0.75 or 'TK-Restricted' labels to ensure ethical compliance and quality.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"topic_query\": {\n          \"type\": \"string\",\n          \"description\": \"The keyword or topic to search for (e.g., '1930s Labor History').\"\n        },\n        \"latent_entity\": {\n          \"type\": \"string\",\n          \"description\": \"An optional latent entity to narrow search for bridging topics (e.g., 'textile mill songs').\"\n        }\n      },\n      \"required\": [\n        \"topic_query\"\n      ]\n    },\n    \"example_output\": [\n      {\n        \"item_id\": \"node_772\",\n        \"title\": \"1934 General Strike Records\",\n        \"latent_entities\": [\n          \"labor-ballads\",\n          \"protest-folk\"\n        ],\n        \"asr_confidence\": 0.89\n      }\n    ]\n  },\n  \"evaluate_transition\": {\n    \"description\": \"Predicts the impact of moving from the current node to a target node. Returns affective distance and predicted metric increments.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"source_item_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the currently viewed or starting node.\"\n        },\n        \"target_item_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the candidate node to transition to.\"\n        }\n      },\n      \"required\": [\n        \"source_item_id\",\n        \"target_item_id\"\n      ]\n    },\n    \"example_output\": {\n      \"affective_distance\": 0.32,\n      \"rhf_increment\": 0.5,\n      \"predicted_engagement_increment\": 0.8,\n      \"predicted_fatigue_increment\": 0.04\n    }\n  },\n  \"execute_recommendation\": {\n    \"description\": \"Executes the recommendation to the user, finalizing the transition and updating environment state values.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"item_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier of the node to serve.\"\n        }\n      },\n      \"required\": [\n        \"item_id\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"success\",\n      \"updated_engagement\": 2.3,\n      \"updated_fatigue\": 0.24\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_environment_state",
+      "description": "Retrieves the current state of the environment, including the last viewed item ID (current_item_id), cumulative engagement score, current user fatigue level, and session status.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "current_item_id": "archive_node_001",
+        "cumulative_engagement_score": 1.5,
+        "user_fatigue_level": 0.2,
+        "is_session_active": true,
+        "session_history": [
+          "archive_node_001"
+        ]
+      }
+    },
+    {
+      "name": "search_archive_inventory",
+      "description": "Queries the content archive for nodes matching a specific topic or latent entity. This tool automatically filters out content with ASR confidence < 0.75 or 'TK-Restricted' labels to ensure ethical compliance and quality.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "topic_query": {
+            "type": "string",
+            "description": "The keyword or topic to search for (e.g., '1930s Labor History')."
+          },
+          "latent_entity": {
+            "type": "string",
+            "description": "An optional latent entity to narrow search for bridging topics (e.g., 'textile mill songs')."
+          }
+        },
+        "required": [
+          "topic_query"
+        ]
+      },
+      "example_output": [
+        {
+          "item_id": "node_772",
+          "title": "1934 General Strike Records",
+          "latent_entities": [
+            "labor-ballads",
+            "protest-folk"
+          ],
+          "asr_confidence": 0.89
+        }
+      ]
+    },
+    {
+      "name": "evaluate_transition",
+      "description": "Predicts the impact of moving from the current node to a target node. Returns affective distance and predicted metric increments.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "source_item_id": {
+            "type": "string",
+            "description": "The ID of the currently viewed or starting node."
+          },
+          "target_item_id": {
+            "type": "string",
+            "description": "The ID of the candidate node to transition to."
+          }
+        },
+        "required": [
+          "source_item_id",
+          "target_item_id"
+        ]
+      },
+      "example_output": {
+        "affective_distance": 0.32,
+        "rhf_increment": 0.5,
+        "predicted_engagement_increment": 0.8,
+        "predicted_fatigue_increment": 0.04
+      }
+    },
+    {
+      "name": "execute_recommendation",
+      "description": "Executes the recommendation to the user, finalizing the transition and updating environment state values.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "item_id": {
+            "type": "string",
+            "description": "The unique identifier of the node to serve."
+          }
+        },
+        "required": [
+          "item_id"
+        ]
+      },
+      "example_output": {
+        "status": "success",
+        "updated_engagement": 2.3,
+        "updated_fatigue": 0.24
+      }
+    }
+  ],
+  "state_description": {
+    "active_user_profile": "A mapping of content categories (e.g., tech, sports, art) to the user's current interest level (0.0 to 1.0).",
+    "session_history": "A list of item IDs that have been recommended to the user in the current session to prevent over-saturation.",
+    "user_fatigue_level": "A value from 0.0 to 1.0 representing the user's likelihood to exit the session due to repetitive content.",
+    "cumulative_engagement_score": "The aggregate satisfaction score of the user based on previous interactions in this session.",
+    "is_session_active": "Indicates if the user is still browsing or has closed the application."
+  },
+  "task_initial_state": {
+    "active_user_profile": {
+      "labor_history": 0.9,
+      "folkloric_traditions": 0.2,
+      "industrial_tech": 0.5
+    },
+    "session_history": [
+      "ITEM_LABOR_1937_DETROIT_01"
+    ],
+    "user_fatigue_level": 0.1,
+    "cumulative_engagement_score": 0.85,
+    "is_session_active": true
+  }
+}

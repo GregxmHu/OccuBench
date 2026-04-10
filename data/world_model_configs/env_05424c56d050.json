@@ -1,0 +1,225 @@
+{
+  "environment_name": "env_05424c56d050",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: Based on current environment state $s_t$ and the recommendation actions $a_t$ executed by the Agent, simulate the evolution of user behavior and platform dynamics to predict the observation $o_{{t+1}}$.\n- **Emphasis**: You are a simulator. You do not suggest actions; you calculate the consequences of actions. You maintain the internal state of users, content pools, and engagement history to ensure the simulated environment remains consistent and realistic.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions must maintain context consistency. The World Model tracks the user's evolving preferences, content fatigue, and session depth. Every action must build upon the cumulative history of the current simulation session.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. This JSON contains:\n- `\"name\"`: The name of the action function to execute.\n- Arguments required by that action function.\n\nExample:\n```json\n{{\n \"name\": \"serve_recommendations\",\n \"arguments\": {{\n    \"item_ids\": [\"item_101\", \"item_202\"],\n    \"layout\": \"grid\"\n  }}\n}}\n```\nYou must parse these JSON inputs and simulate the resulting user engagement (clicks, watch time, likes) or platform updates based on the internal state.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\n- If the Agent attempts to recommend non-existent content IDs: Return an error observation.\n- If an action is missing required parameters: Return a structured error.\n- If the session limit is exceeded or state conflicts occur: Return a terminal or error message.\n- Do not fabricate content metadata not present in the internal state or content pool.\n\n##### Output Assembly\nFor every action, return a structured JSON object containing **ONLY** the observation fields defined for that action. \n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state $s_t$ or updated state variables (e.g., the underlying user affinity scores). It must only expose the observation $o_{{t+1}}$ (e.g., the user's feedback or the visible UI change). State maintenance is your internal responsibility.\n\n### 4. Key Principles\n- **Format**: Strictly JSON-only for observations.\n- **Factuality**: Simulated user responses (e.g., click-through rates) should reflect the affinity scores defined in the internal state.\n- **Consistency**: If a user 'dislikes' a category, subsequent recommendations of that category should result in negative engagement in the simulation.\n- **Realism**: Simulate realistic human-like behavior, including content fatigue (declining interest in repeated topics) and serendipity.\n- **Encapsulation**: Strictly hide the internal state structure from the Agent. Only output the defined Observation.\n{{initial_state}}: {{\n  \"user_profile\": {{\n    \"two_step_equations\": 0.32,\n    \"integer_operations\": 0.35,\n    \"linear_inequalities\": 0.1,\n    \"basic_arithmetic\": 0.88\n  }},\n  \"content_inventory\": [\n    {{\n      \"id\": \"LO-910\",\n      \"category\": \"two_step_equations\",\n      \"quality_score\": 0.92,\n      \"status\": \"active\"\n    }},\n    {{\n      \"id\": \"LO-910-v2-legacy\",\n      \"category\": \"two_step_equations\",\n      \"quality_score\": 0.25,\n      \"status\": \"deprecated\"\n    }},\n    {{\n      \"id\": \"LO-910-beta-test\",\n      \"category\": \"two_step_equations\",\n      \"quality_score\": 0.4,\n      \"status\": \"inactive\"\n    }},\n    {{\n      \"id\": \"LO-911\",\n      \"category\": \"linear_inequalities\",\n      \"quality_score\": 0.85,\n      \"status\": \"active\"\n    }},\n    {{\n      \"id\": \"VID-102\",\n      \"category\": \"integer_operations\",\n      \"quality_score\": 0.88,\n      \"status\": \"active\"\n    }},\n    {{\n      \"id\": \"VID-102-lowres\",\n      \"category\": \"integer_operations\",\n      \"quality_score\": 0.15,\n      \"status\": \"active\"\n    }},\n    {{\n      \"id\": \"VID-102-preview\",\n      \"category\": \"integer_operations\",\n      \"quality_score\": 0.1,\n      \"status\": \"active\"\n    }},\n    {{\n      \"id\": \"LO-110\",\n      \"category\": \"integer_operations\",\n      \"quality_score\": 0.82,\n      \"status\": \"active\"\n    }},\n    {{\n      \"id\": \"LO-110-dup-A\",\n      \"category\": \"integer_operations\",\n      \"quality_score\": 0.3,\n      \"status\": \"active\"\n    }},\n    {{\n      \"id\": \"LO-110-dup-B\",\n      \"category\": \"integer_operations\",\n      \"quality_score\": 0.31,\n      \"status\": \"active\"\n    }},\n    {{\n      \"id\": \"LO-882\",\n      \"category\": \"two_step_equations\",\n      \"quality_score\": 0.75,\n      \"status\": \"active\"\n    }},\n    {{\n      \"id\": \"LO-882-cloned\",\n      \"category\": \"two_step_equations\",\n      \"quality_score\": 0.2,\n      \"status\": \"active\"\n    }}\n  ],\n  \"session_history\": [\n    \"LO-880\",\n    \"LO-881\",\n    \"LO-882\"\n  ],\n  \"fatigue_levels\": {{\n    \"two_step_equations\": 4,\n    \"integer_operations\": 0\n  }}\n}}\n{{state_descriptions}}: {{\n  \"user_profile\": \"A map of content categories to affinity scores (0.0 to 1.0) representing the current user's preferences.\",\n  \"content_inventory\": \"A list of available content items currently in the system's buffer, including their metadata (ID, category, quality score).\",\n  \"session_history\": \"A list of item IDs already shown to the user in this session to manage fatigue and repetition.\",\n  \"fatigue_levels\": \"A counter mapping categories to the number of times they've been recently shown; affects the probability of engagement.\"\n}}\n{action_set_definitions}: {\n  \"get_student_context\": {\n    \"description\": \"Retrieves the student's profile (affinities), fatigue levels, and current session history. Essential for initial state discovery.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"student_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the student.\"\n        }\n      },\n      \"required\": [\n        \"student_id\"\n      ]\n    },\n    \"example_output\": {\n      \"user_profile\": {\n        \"Algebraic\": 0.4,\n        \"Integer Operations\": 0.2\n      },\n      \"fatigue_levels\": {\n        \"Algebraic\": 3\n      },\n      \"session_history\": [\n        \"item_001\",\n        \"item_005\"\n      ]\n    }\n  },\n  \"search_inventory\": {\n    \"description\": \"Queries the content inventory for high-quality learning objects within a specific curriculum node.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"category\": {\n          \"type\": \"string\",\n          \"description\": \"The curriculum node to search (e.g., 'Integer Operations' or 'Algebraic').\"\n        },\n        \"min_quality_score\": {\n          \"type\": \"number\",\n          \"description\": \"The minimum quality threshold (0.0 to 1.0) to filter out low-quality items.\"\n        },\n        \"exclude_deprecated\": {\n          \"type\": \"boolean\",\n          \"description\": \"If true, filters out content marked as deprecated or inactive.\"\n        }\n      },\n      \"required\": [\n        \"category\",\n        \"min_quality_score\",\n        \"exclude_deprecated\"\n      ]\n    },\n    \"example_output\": {\n      \"items\": [\n        {\n          \"id\": \"IO_101\",\n          \"quality\": 0.9,\n          \"is_deprecated\": false,\n          \"title\": \"Understanding Negative Integers\"\n        },\n        {\n          \"id\": \"IO_102\",\n          \"quality\": 0.85,\n          \"is_deprecated\": false,\n          \"title\": \"Integer Addition\"\n        }\n      ]\n    }\n  },\n  \"recommend_content\": {\n    \"description\": \"The primary interaction tool. Recommends a specific learning object to the student. Updates the environment state and returns the student's performance observation.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"item_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the learning object to serve.\"\n        }\n      },\n      \"required\": [\n        \"item_id\"\n      ]\n    },\n    \"example_output\": {\n      \"observation\": {\n        \"success\": true,\n        \"engagement_score\": 0.8,\n        \"new_state\": \"...\"\n      }\n    }\n  },\n  \"get_item_metadata\": {\n    \"description\": \"Retrieves detailed metadata for a list of item IDs to check for near-duplicates or specific prerequisite tags.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"item_ids\": {\n          \"type\": \"array\",\n          \"items\": {\n            \"type\": \"string\"\n          },\n          \"description\": \"List of content IDs.\"\n        }\n      },\n      \"required\": [\n        \"item_ids\"\n      ]\n    },\n    \"example_output\": {\n      \"metadata\": [\n        {\n          \"id\": \"IO_101\",\n          \"is_duplicate_of\": null,\n          \"version\": \"2.0\"\n        }\n      ]\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_student_context",
+      "description": "Retrieves the student's profile (affinities), fatigue levels, and current session history. Essential for initial state discovery.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "student_id": {
+            "type": "string",
+            "description": "The unique identifier for the student."
+          }
+        },
+        "required": [
+          "student_id"
+        ]
+      },
+      "example_output": {
+        "user_profile": {
+          "Algebraic": 0.4,
+          "Integer Operations": 0.2
+        },
+        "fatigue_levels": {
+          "Algebraic": 3
+        },
+        "session_history": [
+          "item_001",
+          "item_005"
+        ]
+      }
+    },
+    {
+      "name": "search_inventory",
+      "description": "Queries the content inventory for high-quality learning objects within a specific curriculum node.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "category": {
+            "type": "string",
+            "description": "The curriculum node to search (e.g., 'Integer Operations' or 'Algebraic')."
+          },
+          "min_quality_score": {
+            "type": "number",
+            "description": "The minimum quality threshold (0.0 to 1.0) to filter out low-quality items."
+          },
+          "exclude_deprecated": {
+            "type": "boolean",
+            "description": "If true, filters out content marked as deprecated or inactive."
+          }
+        },
+        "required": [
+          "category",
+          "min_quality_score",
+          "exclude_deprecated"
+        ]
+      },
+      "example_output": {
+        "items": [
+          {
+            "id": "IO_101",
+            "quality": 0.9,
+            "is_deprecated": false,
+            "title": "Understanding Negative Integers"
+          },
+          {
+            "id": "IO_102",
+            "quality": 0.85,
+            "is_deprecated": false,
+            "title": "Integer Addition"
+          }
+        ]
+      }
+    },
+    {
+      "name": "recommend_content",
+      "description": "The primary interaction tool. Recommends a specific learning object to the student. Updates the environment state and returns the student's performance observation.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "item_id": {
+            "type": "string",
+            "description": "The ID of the learning object to serve."
+          }
+        },
+        "required": [
+          "item_id"
+        ]
+      },
+      "example_output": {
+        "observation": {
+          "success": true,
+          "engagement_score": 0.8,
+          "new_state": "..."
+        }
+      }
+    },
+    {
+      "name": "get_item_metadata",
+      "description": "Retrieves detailed metadata for a list of item IDs to check for near-duplicates or specific prerequisite tags.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "item_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "List of content IDs."
+          }
+        },
+        "required": [
+          "item_ids"
+        ]
+      },
+      "example_output": {
+        "metadata": [
+          {
+            "id": "IO_101",
+            "is_duplicate_of": null,
+            "version": "2.0"
+          }
+        ]
+      }
+    }
+  ],
+  "state_description": {
+    "user_profile": "A map of content categories to affinity scores (0.0 to 1.0) representing the current user's preferences.",
+    "content_inventory": "A list of available content items currently in the system's buffer, including their metadata (ID, category, quality score).",
+    "session_history": "A list of item IDs already shown to the user in this session to manage fatigue and repetition.",
+    "fatigue_levels": "A counter mapping categories to the number of times they've been recently shown; affects the probability of engagement."
+  },
+  "task_initial_state": {
+    "user_profile": {
+      "two_step_equations": 0.32,
+      "integer_operations": 0.35,
+      "linear_inequalities": 0.1,
+      "basic_arithmetic": 0.88
+    },
+    "content_inventory": [
+      {
+        "id": "LO-910",
+        "category": "two_step_equations",
+        "quality_score": 0.92,
+        "status": "active"
+      },
+      {
+        "id": "LO-910-v2-legacy",
+        "category": "two_step_equations",
+        "quality_score": 0.25,
+        "status": "deprecated"
+      },
+      {
+        "id": "LO-910-beta-test",
+        "category": "two_step_equations",
+        "quality_score": 0.4,
+        "status": "inactive"
+      },
+      {
+        "id": "LO-911",
+        "category": "linear_inequalities",
+        "quality_score": 0.85,
+        "status": "active"
+      },
+      {
+        "id": "VID-102",
+        "category": "integer_operations",
+        "quality_score": 0.88,
+        "status": "active"
+      },
+      {
+        "id": "VID-102-lowres",
+        "category": "integer_operations",
+        "quality_score": 0.15,
+        "status": "active"
+      },
+      {
+        "id": "VID-102-preview",
+        "category": "integer_operations",
+        "quality_score": 0.1,
+        "status": "active"
+      },
+      {
+        "id": "LO-110",
+        "category": "integer_operations",
+        "quality_score": 0.82,
+        "status": "active"
+      },
+      {
+        "id": "LO-110-dup-A",
+        "category": "integer_operations",
+        "quality_score": 0.3,
+        "status": "active"
+      },
+      {
+        "id": "LO-110-dup-B",
+        "category": "integer_operations",
+        "quality_score": 0.31,
+        "status": "active"
+      },
+      {
+        "id": "LO-882",
+        "category": "two_step_equations",
+        "quality_score": 0.75,
+        "status": "active"
+      },
+      {
+        "id": "LO-882-cloned",
+        "category": "two_step_equations",
+        "quality_score": 0.2,
+        "status": "active"
+      }
+    ],
+    "session_history": [
+      "LO-880",
+      "LO-881",
+      "LO-882"
+    ],
+    "fatigue_levels": {
+      "two_step_equations": 4,
+      "integer_operations": 0
+    }
+  }
+}

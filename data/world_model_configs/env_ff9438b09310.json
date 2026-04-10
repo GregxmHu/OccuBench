@@ -1,0 +1,184 @@
+{
+  "environment_name": "env_ff9438b09310",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM) for Property Valuation Assessment.\n- **Core Objective**: Based on the current internal state $s_t$ and the action $a_t$ performed by the Agent (Valuation Specialist/AI), simulate the response of a real estate market database and environmental context. Predict the observation $o_{{t+1}}$ that the Agent would receive.\n- **Emphasis**: You are the simulation engine. You do not provide advice; you evolve the state of the valuation task and provide data observations based on property records, market trends, and geographic information.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation to ensure consistency across multiple queries (e.g., ensuring a house's square footage doesn't change between calls). The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions must maintain context consistency. If a property is identified as having a \"leaking roof\" in one observation, that condition must persist in the state and affect subsequent valuation-related observations unless a repair action is simulated.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions defined below:\n```json\n{{action_set_definitions}}\n```\nThe `observation` returned for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. You must parse this JSON to determine the evolution of the environment. \nExample Input:\n```json\n{{\n \"name\": \"get_comparable_sales\",\n \"arguments\": {{\n    \"radius_miles\": 0.5,\n    \"lookback_months\": 6\n  }}\n}}\n```\nYou must simulate the logic of a property database returning results based on the current `property_id` in your internal state.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\n- If the Agent requests data for a non-existent property ID: return `{{\"error\": \"Property ID not found in registry\"}}`.\n- If required parameters are missing: return `{{\"error\": \"Missing required argument: [param_name]\"}}`.\n- Do not fabricate data that contradicts the internal state or established real-world logic.\n\n##### Output Assembly\nFor every action call, return a structured JSON object containing **ONLY** the fields defined in the action's return specification.\n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the internal state `$s_t$`, the updated state, or any hidden variables like `market_volatility_index`. The Agent must only see the Observation (the result of the function call). Do not include conversational filler.\n\n### 4. Key Principles\n- **Format**: Strictly JSON for all observations.\n- **Factuality**: Use realistic real estate dynamics (e.g., proximity to high-voltage lines typically decreases value).\n- **Consistency**: Maintain a single \"source of truth\" within the session state for property attributes.\n- **Realism**: Simulated market data should reflect the provided geographic and economic context.\n- **Encapsulation**: Strictly hide the internal state structure from the output. Only expose information that is explicitly returned by the action function.\n{{initial_state}}: {{\n  \"target_property_id\": \"PROP-5502-HX\",\n  \"market_condition_index\": 1.08,\n  \"internal_valuation_log\": [],\n  \"geographic_context\": {{\n    \"zoning\": \"MU-CBD (Mixed-Use Central Business District)\",\n    \"school_rating\": 7,\n    \"flood_zone\": false\n  }}\n}}\n{{state_descriptions}}: {{\n  \"target_property_id\": \"Unique identifier for the primary property being appraised.\",\n  \"market_condition_index\": \"A multiplier representing local market heat (1.0 is stable, >1.0 is a seller's market).\",\n  \"internal_valuation_log\": \"A hidden list of all data points accessed to ensure cross-reference consistency.\",\n  \"geographic_context\": \"Fixed environmental factors like zoning, school district ratings, and flood zone status.\"\n}}\n{action_set_definitions}: {\n  \"get_environment_context\": {\n    \"description\": \"Retrieves global environmental factors including the market condition index and geographic context (zoning, flood zones, etc.).\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"market_condition_index\": 1.15,\n      \"geographic_context\": {\n        \"zoning_code\": \"MU-CBD\",\n        \"historic_district\": true,\n        \"flood_zone\": \"X\"\n      }\n    }\n  },\n  \"get_property_specs\": {\n    \"description\": \"Retrieves technical and financial details for a specific property ID, including FMV, floor area, and building materials.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"property_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the property.\"\n        }\n      },\n      \"required\": [\n        \"property_id\"\n      ]\n    },\n    \"example_output\": {\n      \"base_fmv\": 25000000,\n      \"lot_sq_ft\": 15000,\n      \"existing_gfa\": 45000,\n      \"max_allowable_far\": 12.0,\n      \"facade_materials\": [\n        \"terracotta\",\n        \"masonry\"\n      ],\n      \"current_cap_rate\": 0.055\n    }\n  },\n  \"calculate_air_rights_loss\": {\n    \"description\": \"Quantifies the financial value of the development rights (air rights) being extinguished based on zoning and current density.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"lot_sq_ft\": {\n          \"type\": \"number\"\n        },\n        \"max_far\": {\n          \"type\": \"number\"\n        },\n        \"current_gfa\": {\n          \"type\": \"number\"\n        },\n        \"market_index\": {\n          \"type\": \"number\"\n        }\n      },\n      \"required\": [\n        \"lot_sq_ft\",\n        \"max_far\",\n        \"current_gfa\",\n        \"market_index\"\n      ]\n    },\n    \"example_output\": {\n      \"extinguished_sq_ft\": 135000,\n      \"air_rights_valuation\": 6750000\n    }\n  },\n  \"estimate_maintenance_premium\": {\n    \"description\": \"Calculates the increased operational expenditure (OpEx) required to maintain the facade according to SOI Standards versus standard commercial maintenance.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"materials\": {\n          \"type\": \"array\",\n          \"items\": {\n            \"type\": \"string\"\n          }\n        },\n        \"adherence_standard\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"Standard\",\n            \"SOI_Strict\"\n          ]\n        }\n      },\n      \"required\": [\n        \"materials\",\n        \"adherence_standard\"\n      ]\n    },\n    \"example_output\": {\n      \"annual_opex_increase\": 45000,\n      \"maintenance_complexity_factor\": 1.4\n    }\n  },\n  \"compute_easement_valuation\": {\n    \"description\": \"Synthesizes all factors to determine the total Easement Value and the Easement Diminution Percentage (EDP).\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"pre_easement_fmv\": {\n          \"type\": \"number\"\n        },\n        \"air_rights_loss_value\": {\n          \"type\": \"number\"\n        },\n        \"opex_increase\": {\n          \"type\": \"number\"\n        },\n        \"cap_rate_adjustment\": {\n          \"type\": \"number\",\n          \"description\": \"Basis point increase due to restricted utility/liquidity.\"\n        }\n      },\n      \"required\": [\n        \"pre_easement_fmv\",\n        \"air_rights_loss_value\",\n        \"opex_increase\",\n        \"cap_rate_adjustment\"\n      ]\n    },\n    \"example_output\": {\n      \"easement_value\": 8200000,\n      \"edp_percentage\": 32.8,\n      \"post_easement_fmv\": 16800000\n    }\n  },\n  \"log_valuation_entry\": {\n    \"description\": \"Updates the internal valuation log to ensure cross-reference consistency and auditability for IRS Form 8283.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"property_id\": {\n          \"type\": \"string\"\n        },\n        \"data_point\": {\n          \"type\": \"string\"\n        },\n        \"value\": {\n          \"type\": \"number\"\n        }\n      },\n      \"required\": [\n        \"property_id\",\n        \"data_point\",\n        \"value\"\n      ]\n    },\n    \"example_output\": null\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_environment_context",
+      "description": "Retrieves global environmental factors including the market condition index and geographic context (zoning, flood zones, etc.).",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "market_condition_index": 1.15,
+        "geographic_context": {
+          "zoning_code": "MU-CBD",
+          "historic_district": true,
+          "flood_zone": "X"
+        }
+      }
+    },
+    {
+      "name": "get_property_specs",
+      "description": "Retrieves technical and financial details for a specific property ID, including FMV, floor area, and building materials.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "property_id": {
+            "type": "string",
+            "description": "The unique identifier for the property."
+          }
+        },
+        "required": [
+          "property_id"
+        ]
+      },
+      "example_output": {
+        "base_fmv": 25000000,
+        "lot_sq_ft": 15000,
+        "existing_gfa": 45000,
+        "max_allowable_far": 12.0,
+        "facade_materials": [
+          "terracotta",
+          "masonry"
+        ],
+        "current_cap_rate": 0.055
+      }
+    },
+    {
+      "name": "calculate_air_rights_loss",
+      "description": "Quantifies the financial value of the development rights (air rights) being extinguished based on zoning and current density.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "lot_sq_ft": {
+            "type": "number"
+          },
+          "max_far": {
+            "type": "number"
+          },
+          "current_gfa": {
+            "type": "number"
+          },
+          "market_index": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "lot_sq_ft",
+          "max_far",
+          "current_gfa",
+          "market_index"
+        ]
+      },
+      "example_output": {
+        "extinguished_sq_ft": 135000,
+        "air_rights_valuation": 6750000
+      }
+    },
+    {
+      "name": "estimate_maintenance_premium",
+      "description": "Calculates the increased operational expenditure (OpEx) required to maintain the facade according to SOI Standards versus standard commercial maintenance.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "materials": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "adherence_standard": {
+            "type": "string",
+            "enum": [
+              "Standard",
+              "SOI_Strict"
+            ]
+          }
+        },
+        "required": [
+          "materials",
+          "adherence_standard"
+        ]
+      },
+      "example_output": {
+        "annual_opex_increase": 45000,
+        "maintenance_complexity_factor": 1.4
+      }
+    },
+    {
+      "name": "compute_easement_valuation",
+      "description": "Synthesizes all factors to determine the total Easement Value and the Easement Diminution Percentage (EDP).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "pre_easement_fmv": {
+            "type": "number"
+          },
+          "air_rights_loss_value": {
+            "type": "number"
+          },
+          "opex_increase": {
+            "type": "number"
+          },
+          "cap_rate_adjustment": {
+            "type": "number",
+            "description": "Basis point increase due to restricted utility/liquidity."
+          }
+        },
+        "required": [
+          "pre_easement_fmv",
+          "air_rights_loss_value",
+          "opex_increase",
+          "cap_rate_adjustment"
+        ]
+      },
+      "example_output": {
+        "easement_value": 8200000,
+        "edp_percentage": 32.8,
+        "post_easement_fmv": 16800000
+      }
+    },
+    {
+      "name": "log_valuation_entry",
+      "description": "Updates the internal valuation log to ensure cross-reference consistency and auditability for IRS Form 8283.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "property_id": {
+            "type": "string"
+          },
+          "data_point": {
+            "type": "string"
+          },
+          "value": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "property_id",
+          "data_point",
+          "value"
+        ]
+      },
+      "example_output": null
+    }
+  ],
+  "state_description": {
+    "target_property_id": "Unique identifier for the primary property being appraised.",
+    "market_condition_index": "A multiplier representing local market heat (1.0 is stable, >1.0 is a seller's market).",
+    "internal_valuation_log": "A hidden list of all data points accessed to ensure cross-reference consistency.",
+    "geographic_context": "Fixed environmental factors like zoning, school district ratings, and flood zone status."
+  },
+  "task_initial_state": {
+    "target_property_id": "PROP-5502-HX",
+    "market_condition_index": 1.08,
+    "internal_valuation_log": [],
+    "geographic_context": {
+      "zoning": "MU-CBD (Mixed-Use Central Business District)",
+      "school_rating": 7,
+      "flood_zone": false
+    }
+  }
+}

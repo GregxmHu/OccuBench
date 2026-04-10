@@ -1,0 +1,128 @@
+{
+  "environment_name": "env_d71725b07a75",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: You act as a high-fidelity simulator for a Greenhouse Irrigation Control system. Based on the current internal state $s_t$ and the action $a_t$ submitted by the Agent, you simulate the physical and environmental evolution of the greenhouse and predict the observation $o_{{t+1}}$.\n- **Emphasis**: You do not execute real-world hardware commands. Your task is strictly to perform internal state transition logic and generate the resulting sensor observations or system responses.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n\n```\n\n#### Context Awareness\nYou must maintain strict temporal and logical consistency. Every action influences the internal state (e.g., activating irrigation reduces tank levels and increases soil moisture), which in turn affects future observations. You must keep track of the cumulative effects of time and actions throughout the interaction history.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object with the following fields:\n- `\"name\"`: The name of the action function to execute.\n- Parameters as defined in the action schema.\n\nYou must parse this JSON, update the internal state based on the greenhouse's physical logic (e.g., evaporation, water flow, plant biology), and generate the output.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\n- If an action refers to a pump that is already broken, or if the water tank is empty, return an observation reflecting the failure (e.g., `{{\"status\": \"failure\", \"reason\": \"tank_empty\"}}`).\n- For invalid parameters or undefined actions, return: `{{\"error\": \"Action/Parameter invalid\"}}`.\n- Do not fabricate fictitious states or successful responses for impossible actions.\n\n##### Output Assembly\nFor every action function call, you must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition.\n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the internal state `$s_t$`, the updated state, or any hidden variables like `soil_evaporation_rate`. The Agent must only see the specific `observation` fields. Do not output the state update process textually.\n\n### 4. Key Principles\n- **Format**: Strictly output valid JSON for observations.\n- **Factuality**: Simulate realistic greenhouse dynamics (e.g., moisture levels drop faster in high temperatures).\n- **Consistency**: If the water tank level is 10L and the agent uses 5L, the next state must reflect exactly 5L remaining.\n- **Realism**: Observations should reflect sensor noise or environmental delays if typical for this scenario.\n- **Encapsulation**: Strictly hide the internal state structure. Only expose information explicitly defined as return values for the action.\n{{initial_state}}: {{\n  \"soil_moisture_percentage\": 60.0,\n  \"water_tank_level_liters\": 65.0,\n  \"ambient_temperature_celsius\": 31.5,\n  \"ambient_humidity_percentage\": 50.0,\n  \"pump_active_status\": false,\n  \"plant_stress_index\": 0.12\n}}\n{{state_descriptions}}: {{\n  \"soil_moisture_percentage\": \"Current average soil moisture level across greenhouse zones (0-100).\",\n  \"water_tank_level_liters\": \"Current volume of water available in the main reservoir.\",\n  \"ambient_temperature_celsius\": \"The current air temperature inside the greenhouse.\",\n  \"ambient_humidity_percentage\": \"The current relative humidity of the greenhouse air.\",\n  \"pump_active_status\": \"Indicates if the irrigation pump is currently running.\",\n  \"plant_stress_index\": \"A metric (0.0 to 1.0) representing plant health; increases if moisture is too low or temperature too high.\"\n}}\n{action_set_definitions}: {\n  \"get_greenhouse_status\": {\n    \"description\": \"Retrieves the current telemetry from the greenhouse sensors, including moisture, water tank levels, ambient conditions, and plant stress.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"soil_moisture_percentage\": 65.5,\n      \"water_tank_level_liters\": 67.0,\n      \"ambient_temperature_celsius\": 34.2,\n      \"ambient_humidity_percentage\": 40.0,\n      \"pump_active_status\": false,\n      \"ventilation_active_status\": false,\n      \"plant_stress_index\": 0.12\n    }\n  },\n  \"set_pump_state\": {\n    \"description\": \"Turns the irrigation pump ON or OFF to manage soil moisture levels.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"state\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"ON\",\n            \"OFF\"\n          ],\n          \"description\": \"The desired state of the pump.\"\n        }\n      },\n      \"required\": [\n        \"state\"\n      ]\n    },\n    \"example_output\": {\n      \"success\": true,\n      \"current_pump_status\": \"ON\"\n    }\n  },\n  \"set_ventilation_state\": {\n    \"description\": \"Controls the greenhouse cooling and ventilation system to reduce ambient temperature and mitigate plant stress.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"state\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"ON\",\n            \"OFF\"\n          ],\n          \"description\": \"The desired state of the ventilation/cooling system.\"\n        }\n      },\n      \"required\": [\n        \"state\"\n      ]\n    },\n    \"example_output\": {\n      \"success\": true,\n      \"current_ventilation_status\": \"ON\"\n    }\n  },\n  \"refill_water_tank\": {\n    \"description\": \"Adds water to the main reservoir to ensure the tank level stays above the conservation limit.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"amount_liters\": {\n          \"type\": \"number\",\n          \"description\": \"The volume of water to add to the reservoir.\"\n        }\n      },\n      \"required\": [\n        \"amount_liters\"\n      ]\n    },\n    \"example_output\": {\n      \"new_tank_level\": 85.0,\n      \"status\": \"Refill complete\"\n    }\n  },\n  \"advance_time\": {\n    \"description\": \"Simulates the passage of time to allow the environment to react to actions like irrigation or cooling.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"minutes\": {\n          \"type\": \"integer\",\n          \"description\": \"The number of minutes to wait.\"\n        }\n      },\n      \"required\": [\n        \"minutes\"\n      ]\n    },\n    \"example_output\": {\n      \"elapsed_time\": 5,\n      \"status\": \"Time advanced\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_greenhouse_status",
+      "description": "Retrieves the current telemetry from the greenhouse sensors, including moisture, water tank levels, ambient conditions, and plant stress.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "soil_moisture_percentage": 65.5,
+        "water_tank_level_liters": 67.0,
+        "ambient_temperature_celsius": 34.2,
+        "ambient_humidity_percentage": 40.0,
+        "pump_active_status": false,
+        "ventilation_active_status": false,
+        "plant_stress_index": 0.12
+      }
+    },
+    {
+      "name": "set_pump_state",
+      "description": "Turns the irrigation pump ON or OFF to manage soil moisture levels.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "state": {
+            "type": "string",
+            "enum": [
+              "ON",
+              "OFF"
+            ],
+            "description": "The desired state of the pump."
+          }
+        },
+        "required": [
+          "state"
+        ]
+      },
+      "example_output": {
+        "success": true,
+        "current_pump_status": "ON"
+      }
+    },
+    {
+      "name": "set_ventilation_state",
+      "description": "Controls the greenhouse cooling and ventilation system to reduce ambient temperature and mitigate plant stress.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "state": {
+            "type": "string",
+            "enum": [
+              "ON",
+              "OFF"
+            ],
+            "description": "The desired state of the ventilation/cooling system."
+          }
+        },
+        "required": [
+          "state"
+        ]
+      },
+      "example_output": {
+        "success": true,
+        "current_ventilation_status": "ON"
+      }
+    },
+    {
+      "name": "refill_water_tank",
+      "description": "Adds water to the main reservoir to ensure the tank level stays above the conservation limit.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "amount_liters": {
+            "type": "number",
+            "description": "The volume of water to add to the reservoir."
+          }
+        },
+        "required": [
+          "amount_liters"
+        ]
+      },
+      "example_output": {
+        "new_tank_level": 85.0,
+        "status": "Refill complete"
+      }
+    },
+    {
+      "name": "advance_time",
+      "description": "Simulates the passage of time to allow the environment to react to actions like irrigation or cooling.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "minutes": {
+            "type": "integer",
+            "description": "The number of minutes to wait."
+          }
+        },
+        "required": [
+          "minutes"
+        ]
+      },
+      "example_output": {
+        "elapsed_time": 5,
+        "status": "Time advanced"
+      }
+    }
+  ],
+  "state_description": {
+    "soil_moisture_percentage": "Current average soil moisture level across greenhouse zones (0-100).",
+    "water_tank_level_liters": "Current volume of water available in the main reservoir.",
+    "ambient_temperature_celsius": "The current air temperature inside the greenhouse.",
+    "ambient_humidity_percentage": "The current relative humidity of the greenhouse air.",
+    "pump_active_status": "Indicates if the irrigation pump is currently running.",
+    "plant_stress_index": "A metric (0.0 to 1.0) representing plant health; increases if moisture is too low or temperature too high."
+  },
+  "task_initial_state": {
+    "soil_moisture_percentage": 60.0,
+    "water_tank_level_liters": 65.0,
+    "ambient_temperature_celsius": 31.5,
+    "ambient_humidity_percentage": 50.0,
+    "pump_active_status": false,
+    "plant_stress_index": 0.12
+  }
+}

@@ -1,0 +1,213 @@
+{
+  "environment_name": "env_e1aadb6e4cda",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: Based on the current internal state $s_t$ and the action $a_t$ provided by the Agent, you are responsible for simulating the evolution of the Aircraft Component Inspection environment. Your goal is to predict the next internal state $s_{{t+1}}$ and generate the specific observation $o_{{t+1}}$ that the Agent receives.\n- **Emphasis**: You are a simulator, not an executor. Do not perform real-world actions. Your task is to maintain the continuity of the inspection scenario, ensuring that component defects, environmental conditions, and tool statuses remain logically consistent across the timeline.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation tracking the physical condition of the aircraft and the status of the inspector/drone. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions must maintain absolute context consistency. If a component is identified as 'damaged' in state $s_t$, it must remain 'damaged' in $s_{{t+1}}$ unless a repair action is successfully simulated. You must track the history of the inspection to ensure the Agent does not receive contradictory information.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object containing:\n- `\"name\"`: The name of the action (e.g., move_to_component, capture_image, measure_tolerance).\n- `\"arguments\"`: The parameters for the action.\n\nExample Input:\n```json\n{{\n \"name\": \"inspect_component\",\n \"arguments\": {{\n    \"component_id\": \"engine_fan_blade_01\",\n    \"mode\": \"ultrasonic\"\n  }}\n}}\n```\nYou must parse this input, update the internal state based on aircraft inspection logic (e.g., reduce battery, update location, check if the component is within reach), and generate the resulting observation.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nIf the Agent attempts to inspect a component from the wrong location, uses an incompatible tool, or provides invalid IDs, return structured error information: `{{\"error\": \"Description of the specific failure\"}}`. Do not fabricate successful outcomes for impossible actions.\n\n##### Output Assembly\nFor every action call, return a structured JSON object containing **ONLY** the return fields declared in the action function's definition. \n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, `new_state`, or hidden environment variables (like the 'true' hidden damage value if the action only returns a 'visual summary'). The Agent must only see the specific return values (the Observation). \n\n### 4. Key Principles\n- **Format**: Strictly adhere to JSON for both state tracking and observation output.\n- **Factuality**: Use aeronautical logic; do not invent non-existent aircraft parts or physics.\n- **Consistency**: If a crack is detected on the wing spar, it must persist in the state until a repair is simulated.\n- **Realism**: Simulate realistic inspection constraints, such as lighting interference, sensor noise, or physical accessibility limits.\n- **Quality**: Observations should be technical, clear, and structured.\n- **Encapsulation**: Never reveal the full internal state JSON to the Agent. Only output the `observation` resulting from the specific action.\n{{initial_state}}: {{\n  \"aircraft_metadata\": {{\n    \"tail_number\": \"N777GE\",\n    \"model\": \"Boeing 777-300ER (GE90-115B)\",\n    \"maintenance_summary\": \"N2 vibration spike recorded at 2.8 ips; check telemetry module for localized stage data.\"\n  }},\n  \"agent_location\": \"hangar_floor\",\n  \"component_conditions\": {{\n    \"engine_core\": {{\n      \"integrity\": 1.0,\n      \"defects\": [\n        \"current_core_temp_74_celsius\"\n      ],\n      \"is_visible\": true\n    }},\n    \"telemetry_data_module\": {{\n      \"integrity\": 1.0,\n      \"defects\": [\n        \"vibration_peak_localized_to_HPC_Stage_6\"\n      ],\n      \"is_visible\": true\n    }},\n    \"hpc_stage_6_blade_12\": {{\n      \"integrity\": 0.75,\n      \"defects\": [\n        \"leading_edge_nick\",\n        \"alloy_type_inconel_718_nickel\"\n      ],\n      \"is_visible\": false\n    }}\n  }},\n  \"inspection_progress\": [],\n  \"tool_status\": {{\n    \"battery_percent\": 92,\n    \"sensor_calibration\": \"unreferenced_standard_mode\"\n  }}\n}}\n{{state_descriptions}}: {{\n  \"aircraft_metadata\": \"General info about the aircraft being inspected.\",\n  \"agent_location\": \"The current zone or component the inspector/drone is positioned at.\",\n  \"component_conditions\": \"The ground-truth status of various components (hidden from Agent unless inspected).\",\n  \"inspection_progress\": \"List of component IDs that have been successfully fully inspected.\",\n  \"tool_status\": \"Status of the inspection equipment (e.g., drone battery, sensor calibration).\"\n}}\n{action_set_definitions}: {\n  \"get_maintenance_telemetry\": {\n    \"description\": \"Retrieves the onboard maintenance telemetry data for a specific aircraft to identify exceedance details and affected stages.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"aircraft_id\": {\n          \"type\": \"string\",\n          \"description\": \"The registration number of the aircraft (e.g., 'N777GE').\"\n        }\n      },\n      \"required\": [\n        \"aircraft_id\"\n      ]\n    },\n    \"example_output\": {\n      \"affected_stage\": \"HPC Stage 4\",\n      \"exceedance_value\": \"1.5 ips\",\n      \"telemetry_timestamp\": \"2023-10-27T10:00:00Z\"\n    }\n  },\n  \"check_thermal_status\": {\n    \"description\": \"Checks if the engine has met thermal safety requirements for manual or drone-based inspection.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"aircraft_id\": {\n          \"type\": \"string\",\n          \"description\": \"The registration number of the aircraft.\"\n        }\n      },\n      \"required\": [\n        \"aircraft_id\"\n      ]\n    },\n    \"example_output\": {\n      \"current_temperature_celsius\": 45,\n      \"is_safe_to_proceed\": true,\n      \"cooldown_remaining_minutes\": 0\n    }\n  },\n  \"initialize_3d_measurement\": {\n    \"description\": \"References and calibrates the 3D Phase Measurement system against a known standard.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"system_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the measurement tool/drone system.\"\n        }\n      },\n      \"required\": [\n        \"system_id\"\n      ]\n    },\n    \"example_output\": {\n      \"is_calibrated\": true,\n      \"reference_error_margin\": 0.001\n    }\n  },\n  \"visual_identify_component\": {\n    \"description\": \"Identifies the specific component ID and its alloy type within a compressor stage via visual recognition.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"stage_id\": {\n          \"type\": \"string\",\n          \"description\": \"The compressor stage identified from telemetry.\"\n        }\n      },\n      \"required\": [\n        \"stage_id\"\n      ]\n    },\n    \"example_output\": {\n      \"component_id\": \"BLADE-HPC4-022\",\n      \"alloy_type\": \"Titanium-6Al-4V\",\n      \"visual_defect_detected\": true\n    }\n  },\n  \"measure_defect_depth\": {\n    \"description\": \"Performs a high-accuracy 3D phase measurement to determine the depth of a defect on a specific component.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"component_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique ID of the component to be measured.\"\n        }\n      },\n      \"required\": [\n        \"component_id\"\n      ]\n    },\n    \"example_output\": {\n      \"measured_depth_mm\": 0.25,\n      \"confidence_level\": 0.99\n    }\n  },\n  \"get_alloy_maintenance_limits\": {\n    \"description\": \"Retrieves the airworthiness limit thresholds for a specific stage and alloy type from the manufacturer's manual.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"stage_id\": {\n          \"type\": \"string\",\n          \"description\": \"The compressor stage.\"\n        },\n        \"alloy_type\": {\n          \"type\": \"string\",\n          \"description\": \"The material alloy of the component.\"\n        }\n      },\n      \"required\": [\n        \"stage_id\",\n        \"alloy_type\"\n      ]\n    },\n    \"example_output\": {\n      \"serviceable_max_depth\": 0.1,\n      \"blending_allowable_max_depth\": 0.5\n    }\n  },\n  \"submit_final_disposition\": {\n    \"description\": \"Records the final airworthiness decision for the engine in the maintenance log.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"aircraft_id\": {\n          \"type\": \"string\",\n          \"description\": \"The registration number of the aircraft.\"\n        },\n        \"disposition\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"Serviceable\",\n            \"On-Wing Blending\",\n            \"Engine Removal\"\n          ],\n          \"description\": \"The final status determined by the inspection.\"\n        },\n        \"inspection_data_summary\": {\n          \"type\": \"string\",\n          \"description\": \"Summary of measurements and findings leading to this decision.\"\n        }\n      },\n      \"required\": [\n        \"aircraft_id\",\n        \"disposition\",\n        \"inspection_data_summary\"\n      ]\n    },\n    \"example_output\": {\n      \"log_entry_id\": \"LOG-99821\",\n      \"status\": \"Submitted\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_maintenance_telemetry",
+      "description": "Retrieves the onboard maintenance telemetry data for a specific aircraft to identify exceedance details and affected stages.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "aircraft_id": {
+            "type": "string",
+            "description": "The registration number of the aircraft (e.g., 'N777GE')."
+          }
+        },
+        "required": [
+          "aircraft_id"
+        ]
+      },
+      "example_output": {
+        "affected_stage": "HPC Stage 4",
+        "exceedance_value": "1.5 ips",
+        "telemetry_timestamp": "2023-10-27T10:00:00Z"
+      }
+    },
+    {
+      "name": "check_thermal_status",
+      "description": "Checks if the engine has met thermal safety requirements for manual or drone-based inspection.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "aircraft_id": {
+            "type": "string",
+            "description": "The registration number of the aircraft."
+          }
+        },
+        "required": [
+          "aircraft_id"
+        ]
+      },
+      "example_output": {
+        "current_temperature_celsius": 45,
+        "is_safe_to_proceed": true,
+        "cooldown_remaining_minutes": 0
+      }
+    },
+    {
+      "name": "initialize_3d_measurement",
+      "description": "References and calibrates the 3D Phase Measurement system against a known standard.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "system_id": {
+            "type": "string",
+            "description": "The unique identifier for the measurement tool/drone system."
+          }
+        },
+        "required": [
+          "system_id"
+        ]
+      },
+      "example_output": {
+        "is_calibrated": true,
+        "reference_error_margin": 0.001
+      }
+    },
+    {
+      "name": "visual_identify_component",
+      "description": "Identifies the specific component ID and its alloy type within a compressor stage via visual recognition.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "stage_id": {
+            "type": "string",
+            "description": "The compressor stage identified from telemetry."
+          }
+        },
+        "required": [
+          "stage_id"
+        ]
+      },
+      "example_output": {
+        "component_id": "BLADE-HPC4-022",
+        "alloy_type": "Titanium-6Al-4V",
+        "visual_defect_detected": true
+      }
+    },
+    {
+      "name": "measure_defect_depth",
+      "description": "Performs a high-accuracy 3D phase measurement to determine the depth of a defect on a specific component.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "component_id": {
+            "type": "string",
+            "description": "The unique ID of the component to be measured."
+          }
+        },
+        "required": [
+          "component_id"
+        ]
+      },
+      "example_output": {
+        "measured_depth_mm": 0.25,
+        "confidence_level": 0.99
+      }
+    },
+    {
+      "name": "get_alloy_maintenance_limits",
+      "description": "Retrieves the airworthiness limit thresholds for a specific stage and alloy type from the manufacturer's manual.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "stage_id": {
+            "type": "string",
+            "description": "The compressor stage."
+          },
+          "alloy_type": {
+            "type": "string",
+            "description": "The material alloy of the component."
+          }
+        },
+        "required": [
+          "stage_id",
+          "alloy_type"
+        ]
+      },
+      "example_output": {
+        "serviceable_max_depth": 0.1,
+        "blending_allowable_max_depth": 0.5
+      }
+    },
+    {
+      "name": "submit_final_disposition",
+      "description": "Records the final airworthiness decision for the engine in the maintenance log.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "aircraft_id": {
+            "type": "string",
+            "description": "The registration number of the aircraft."
+          },
+          "disposition": {
+            "type": "string",
+            "enum": [
+              "Serviceable",
+              "On-Wing Blending",
+              "Engine Removal"
+            ],
+            "description": "The final status determined by the inspection."
+          },
+          "inspection_data_summary": {
+            "type": "string",
+            "description": "Summary of measurements and findings leading to this decision."
+          }
+        },
+        "required": [
+          "aircraft_id",
+          "disposition",
+          "inspection_data_summary"
+        ]
+      },
+      "example_output": {
+        "log_entry_id": "LOG-99821",
+        "status": "Submitted"
+      }
+    }
+  ],
+  "state_description": {
+    "aircraft_metadata": "General info about the aircraft being inspected.",
+    "agent_location": "The current zone or component the inspector/drone is positioned at.",
+    "component_conditions": "The ground-truth status of various components (hidden from Agent unless inspected).",
+    "inspection_progress": "List of component IDs that have been successfully fully inspected.",
+    "tool_status": "Status of the inspection equipment (e.g., drone battery, sensor calibration)."
+  },
+  "task_initial_state": {
+    "aircraft_metadata": {
+      "tail_number": "N777GE",
+      "model": "Boeing 777-300ER (GE90-115B)",
+      "maintenance_summary": "N2 vibration spike recorded at 2.8 ips; check telemetry module for localized stage data."
+    },
+    "agent_location": "hangar_floor",
+    "component_conditions": {
+      "engine_core": {
+        "integrity": 1.0,
+        "defects": [
+          "current_core_temp_74_celsius"
+        ],
+        "is_visible": true
+      },
+      "telemetry_data_module": {
+        "integrity": 1.0,
+        "defects": [
+          "vibration_peak_localized_to_HPC_Stage_6"
+        ],
+        "is_visible": true
+      },
+      "hpc_stage_6_blade_12": {
+        "integrity": 0.75,
+        "defects": [
+          "leading_edge_nick",
+          "alloy_type_inconel_718_nickel"
+        ],
+        "is_visible": false
+      }
+    },
+    "inspection_progress": [],
+    "tool_status": {
+      "battery_percent": 92,
+      "sensor_calibration": "unreferenced_standard_mode"
+    }
+  }
+}

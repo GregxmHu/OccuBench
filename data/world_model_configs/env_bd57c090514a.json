@@ -1,0 +1,154 @@
+{
+  "environment_name": "env_bd57c090514a",
+  "world_model_system_prompt": "## 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: You act as a high-fidelity simulator for the Ship Cargo Loading Optimization environment. Based on the current internal state $s_t$ and the action $a_t$ executed by the Agent, you must simulate the evolution of the environment and predict the observation $o_{{t+1}}$ obtained by the Agent.\n- **Emphasis**: You are not the Agent making decisions. You are the environment. You do not execute real-world physical operations but perform internal logic evolution and generate structured feedback (observations).\n\n## 2. Environment Management\n\n### State Initialization\nThis scenario has an explicit state representation tracking vessel stability, weight distribution, and cargo inventory. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n### Context Awareness\nAll interactions between the World Model and the Agent must maintain rigorous context consistency. Every state transition must be based on the cumulative history of actions and the resulting internal state. You must ensure that physical constraints (e.g., maximum deck load, vessel stability limits) are strictly tracked across the timeline.\n\n## 3. Environment Execution\n\n### Action Space\nThe Agent interacts with the environment by calling action functions (e.g., loading cargo, shifting ballast, or calculating stability). The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` returned for each action must be a JSON object.\n\n### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object containing:\n- `\"name\"`: The name of the action function.\n- `\"arguments\"`: A dictionary of parameters required by the function.\n\nYou must parse this JSON, validate the parameters against the current state, and simulate the resulting state transition and observation.\n\n### Environment Behavior Modeling\n\n#### Error Handling & Edge Cases\nIf the Agent attempts an invalid operation (e.g., loading cargo exceeding ship capacity, placing items in occupied slots, or providing malformed JSON), you must return a structured error message (e.g., `{{\"error\": \"Exceeds maximum permissible draft\"}}`). Do not fabricate states or allow impossible physics.\n\n#### Output Assembly\nFor every action function call, you must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition (the Observation $o_{{t+1}}$).\n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, `new_state`, or any hidden variables. You maintain the state internally; the Agent only sees the specific return values (Observation) defined in the action function. Do not output the state update process.\n\n## 4. Key Principles\n- **Format**: Strictly adhere to specified JSON and text formats.\n- **Factuality**: Do not fabricate non-existent functions or response fields.\n- **Consistency**: State evolution logic must be self-consistent (e.g., if cargo is loaded at $t$, it must be present at $t+1$).\n- **Realism**: Simulated behaviors must align with maritime engineering principles, including weight distribution, center of gravity (CoG), and buoyancy dynamics.\n- **Quality**: Language must be clear, unambiguous, and structurally complete.\n- **Encapsulation**: Strictly hide the internal state structure from the output. Only expose information that is explicitly returned by the action function.\n{{initial_state}}: {{\n  \"vessel_id\": \"MV-IRON-TITAN-80\",\n  \"max_deadweight_tons\": 80000.0,\n  \"current_displacement\": 30000.0,\n  \"cargo_hold_occupancy\": {{\n    \"hold_1\": {{\n      \"used_volume_m3\": 0,\n      \"max_volume_m3\": 12000,\n      \"current_weight_tons\": 0\n    }},\n    \"hold_3\": {{\n      \"used_volume_m3\": 0,\n      \"max_volume_m3\": 15000,\n      \"current_weight_tons\": 0\n    }},\n    \"hold_5\": {{\n      \"used_volume_m3\": 0,\n      \"max_volume_m3\": 12000,\n      \"current_weight_tons\": 0\n    }}\n  }},\n  \"stability_metrics\": {{\n    \"GM_meters\": 3.85,\n    \"trim_meters\": 0.1,\n    \"list_degrees\": 0.0,\n    \"hull_deflection_cm\": 0.0,\n    \"SF_H_percent\": 10.5,\n    \"BM_H_percent\": 12.2\n  }},\n  \"inventory\": []\n}}\n{{state_descriptions}}: {{\n  \"vessel_id\": \"Unique identifier of the ship being loaded.\",\n  \"max_deadweight_tons\": \"Total weight capacity of the ship including cargo, fuel, and supplies.\",\n  \"current_displacement\": \"Current total weight of the ship.\",\n  \"cargo_hold_occupancy\": \"A mapping of hold IDs to their current used/total volume and weight capacity.\",\n  \"stability_metrics\": \"Calculated values for Metacentric Height (GM), trim, and list.\",\n  \"inventory\": \"List of cargo units currently on board with their hold locations and weights.\"\n}}\n{action_set_definitions}: {\n  \"get_vessel_status\": {\n    \"description\": \"Retrieves the current physical status of the ship, including current displacement and current trim.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"vessel_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the ship (e.g., 'MV-IRON-TITAN').\"\n        }\n      },\n      \"required\": [\n        \"vessel_id\"\n      ]\n    },\n    \"example_output\": {\n      \"current_displacement\": 32500.0,\n      \"current_trim\": 0.15\n    }\n  },\n  \"get_structural_metrics\": {\n    \"description\": \"Retrieves current hull deflection (sag), Shear Force (SF_H), and Bending Moment (BM_H) percentages relative to allowable limits.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"vessel_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the ship.\"\n        }\n      },\n      \"required\": [\n        \"vessel_id\"\n      ]\n    },\n    \"example_output\": {\n      \"sag_cm\": 6.8,\n      \"sf_h_percent\": 82.5,\n      \"bm_h_percent\": 79.2\n    }\n  },\n  \"simulate_loading_scenario\": {\n    \"description\": \"Simulates the result of a specific loading plan to predict final displacement, trim, and structural stresses without changing the vessel's state.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"vessel_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the ship.\"\n        },\n        \"incremental_loads\": {\n          \"type\": \"array\",\n          \"items\": {\n            \"type\": \"object\",\n            \"properties\": {\n              \"hold_id\": {\n                \"type\": \"integer\"\n              },\n              \"weight_mt\": {\n                \"type\": \"number\"\n              }\n            }\n          },\n          \"description\": \"A list of loads to simulate.\"\n        }\n      },\n      \"required\": [\n        \"vessel_id\",\n        \"incremental_loads\"\n      ]\n    },\n    \"example_output\": {\n      \"predicted_displacement\": 45000.0,\n      \"predicted_trim\": 0.3,\n      \"predicted_sf_h_percent\": 89.5,\n      \"predicted_bm_h_percent\": 88.0\n    }\n  },\n  \"execute_loading_operation\": {\n    \"description\": \"Executes the physical loading of cargo into a specific hold on the vessel.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"vessel_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the ship.\"\n        },\n        \"hold_id\": {\n          \"type\": \"integer\",\n          \"description\": \"The ID of the cargo hold to be loaded.\"\n        },\n        \"weight_mt\": {\n          \"type\": \"number\",\n          \"description\": \"The amount of weight in Metric Tons to load.\"\n        }\n      },\n      \"required\": [\n        \"vessel_id\",\n        \"hold_id\",\n        \"weight_mt\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"success\",\n      \"new_displacement\": 38000.0\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_vessel_status",
+      "description": "Retrieves the current physical status of the ship, including current displacement and current trim.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "vessel_id": {
+            "type": "string",
+            "description": "The unique identifier for the ship (e.g., 'MV-IRON-TITAN')."
+          }
+        },
+        "required": [
+          "vessel_id"
+        ]
+      },
+      "example_output": {
+        "current_displacement": 32500.0,
+        "current_trim": 0.15
+      }
+    },
+    {
+      "name": "get_structural_metrics",
+      "description": "Retrieves current hull deflection (sag), Shear Force (SF_H), and Bending Moment (BM_H) percentages relative to allowable limits.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "vessel_id": {
+            "type": "string",
+            "description": "The unique identifier for the ship."
+          }
+        },
+        "required": [
+          "vessel_id"
+        ]
+      },
+      "example_output": {
+        "sag_cm": 6.8,
+        "sf_h_percent": 82.5,
+        "bm_h_percent": 79.2
+      }
+    },
+    {
+      "name": "simulate_loading_scenario",
+      "description": "Simulates the result of a specific loading plan to predict final displacement, trim, and structural stresses without changing the vessel's state.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "vessel_id": {
+            "type": "string",
+            "description": "The unique identifier for the ship."
+          },
+          "incremental_loads": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "hold_id": {
+                  "type": "integer"
+                },
+                "weight_mt": {
+                  "type": "number"
+                }
+              }
+            },
+            "description": "A list of loads to simulate."
+          }
+        },
+        "required": [
+          "vessel_id",
+          "incremental_loads"
+        ]
+      },
+      "example_output": {
+        "predicted_displacement": 45000.0,
+        "predicted_trim": 0.3,
+        "predicted_sf_h_percent": 89.5,
+        "predicted_bm_h_percent": 88.0
+      }
+    },
+    {
+      "name": "execute_loading_operation",
+      "description": "Executes the physical loading of cargo into a specific hold on the vessel.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "vessel_id": {
+            "type": "string",
+            "description": "The unique identifier for the ship."
+          },
+          "hold_id": {
+            "type": "integer",
+            "description": "The ID of the cargo hold to be loaded."
+          },
+          "weight_mt": {
+            "type": "number",
+            "description": "The amount of weight in Metric Tons to load."
+          }
+        },
+        "required": [
+          "vessel_id",
+          "hold_id",
+          "weight_mt"
+        ]
+      },
+      "example_output": {
+        "status": "success",
+        "new_displacement": 38000.0
+      }
+    }
+  ],
+  "state_description": {
+    "vessel_id": "Unique identifier of the ship being loaded.",
+    "max_deadweight_tons": "Total weight capacity of the ship including cargo, fuel, and supplies.",
+    "current_displacement": "Current total weight of the ship.",
+    "cargo_hold_occupancy": "A mapping of hold IDs to their current used/total volume and weight capacity.",
+    "stability_metrics": "Calculated values for Metacentric Height (GM), trim, and list.",
+    "inventory": "List of cargo units currently on board with their hold locations and weights."
+  },
+  "task_initial_state": {
+    "vessel_id": "MV-IRON-TITAN-80",
+    "max_deadweight_tons": 80000.0,
+    "current_displacement": 30000.0,
+    "cargo_hold_occupancy": {
+      "hold_1": {
+        "used_volume_m3": 0,
+        "max_volume_m3": 12000,
+        "current_weight_tons": 0
+      },
+      "hold_3": {
+        "used_volume_m3": 0,
+        "max_volume_m3": 15000,
+        "current_weight_tons": 0
+      },
+      "hold_5": {
+        "used_volume_m3": 0,
+        "max_volume_m3": 12000,
+        "current_weight_tons": 0
+      }
+    },
+    "stability_metrics": {
+      "GM_meters": 3.85,
+      "trim_meters": 0.1,
+      "list_degrees": 0.0,
+      "hull_deflection_cm": 0.0,
+      "SF_H_percent": 10.5,
+      "BM_H_percent": 12.2
+    },
+    "inventory": []
+  }
+}

@@ -1,0 +1,216 @@
+{
+  "environment_name": "env_a69c777f0815",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM) for Building Inspection Compliance.\n- **Core Objective**: Based on the current state $s_t$ of the building and the inspector's action $a_t$, simulate the environment's internal evolution and predict the observation $o_{{t+1}}$ obtained by the Agent. \n- **Emphasis**: The LWM functions as a high-fidelity simulator. It does not perform actual physical inspections but calculates state transitions (e.g., updating compliance metrics or logging violations) and generates the resulting data or visual descriptions seen by the Agent.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions between the World Model and the Agent must maintain strict context consistency. The model must track which areas of the building have been visited, which violations have already been recorded, and how the cumulative compliance score fluctuates based on sequence of actions.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object containing:\n- `\"name\"`: The specific inspection action (e.g., `inspect_structural_element`, `verify_fire_alarm`).\n- Arguments: Necessary parameters (e.g., `location_id`, `permit_number`).\n\nExample:\n```json\n{{\n \"name\": \"inspect_area\",\n \"arguments\": {{\n    \"area_id\": \"Basement_Mechanical_Room\",\n    \"check_type\": \"electrical_wiring\"\n  }}\n}}\n```\nThe Language World Model must parse this input, update the internal building state, and return the observed result of that specific inspection step.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\n- If the Agent attempts to inspect a non-existent room or use an undefined tool, return: `{{\"error\": \"Invalid location or tool ID\"}}`.\n- If an action is attempted that contradicts the current state (e.g., inspecting a room before the building is unlocked), return: `{{\"error\": \"Pre-condition failed: Room locked\"}}`.\n- Do not fabricate data; if a parameter is missing, prompt for it via an error message.\n\n##### Output Assembly\nFor every action function call, the model must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition (the Observation).\n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, `new_state`, or any hidden variables such as the underlying compliance probability or developer-only flags. The state maintenance is implicit. The Agent must only receive the specific data (e.g., \"found frayed wiring in Sector B\") defined in the action's observation schema.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to specified JSON formats for both inputs and outputs.\n- **Factuality**: Simulations must align with building codes and engineering logic provided in the state description.\n- **Consistency**: If a violation is found in a room, it must remain there in the internal state until a remediation action is successfully simulated.\n- **Realism**: Simulated sensor readings or visual descriptions must be consistent with the building's current \"health\" state.\n- **Quality**: Use precise, professional inspection terminology.\n- **Encapsulation**: Strictly hide the internal state structure. The Agent only sees what an inspector would realistically see on their tablet or in the physical environment.\n{{initial_state}}: {{\n  \"building_id\": \"MED-TECH-HUB-4\",\n  \"inspection_phase\": \"FOLLOW_UP\",\n  \"compliance_score\": 92,\n  \"active_violations\": [\n    \"VIO-9092: Section-4 Legacy P-404-L\",\n    \"VIO-9093: Section-4 Draft P-404-S\",\n    \"VIO-9094: Section-4 Draft C-404-T\",\n    \"VIO-9095: Section-4 Pre-Existing P-404-C\",\n    \"VIO-9096: Section-4 Backup C-404-T-Aux\",\n    \"VIO-9097: Section-3 Legacy C-101\",\n    \"VIO-9098: Section-4-Storage Draft S-404\"\n  ],\n  \"inspected_zones\": [\n    \"Zone-B-Section-1\",\n    \"Zone-B-Section-2\",\n    \"Zone-B-Section-3\",\n    \"Zone-B-Section-4-Storage\",\n    \"Zone-B-Section-4-AnteRoom\"\n  ],\n  \"safety_hazards_present\": false\n}}\n{{state_descriptions}}: {{\n  \"building_id\": \"Unique identifier for the building being inspected.\",\n  \"inspection_phase\": \"Current stage of the compliance process (e.g., INITIAL, FOLLOW_UP, FINAL).\",\n  \"compliance_score\": \"Internal aggregate percentage of building compliance (0-100).\",\n  \"active_violations\": \"List of current code violations detected but not yet rectified.\",\n  \"inspected_zones\": \"List of building zones or rooms already processed by the inspector.\",\n  \"safety_hazards_present\": \"Internal flag indicating if the environment currently poses a risk to the inspector.\"\n}}\n{action_set_definitions}: {\n  \"get_building_context\": {\n    \"description\": \"Retrieves general information about the current building and the phase of the inspection.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"building_id\": \"BLDG-9921\",\n      \"inspection_phase\": \"FINAL\",\n      \"compliance_score\": 85\n    }\n  },\n  \"list_components_by_location\": {\n    \"description\": \"Retrieves a list of all penetrations and assemblies within a specific zone and wall segment.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"zone\": {\n          \"type\": \"string\",\n          \"description\": \"The building zone (e.g., 'Zone-B-Section-4').\"\n        },\n        \"wall_segment\": {\n          \"type\": \"string\",\n          \"description\": \"The specific wall identifier (e.g., 'B4-7').\"\n        }\n      },\n      \"required\": [\n        \"zone\",\n        \"wall_segment\"\n      ]\n    },\n    \"example_output\": {\n      \"components\": [\n        {\n          \"id\": \"COMP-001\",\n          \"nomenclature\": \"P-404-S\"\n        },\n        {\n          \"id\": \"COMP-002\",\n          \"nomenclature\": \"P-404-C\"\n        }\n      ]\n    }\n  },\n  \"get_component_specs\": {\n    \"description\": \"Retrieves detailed technical specifications for a specific component, including safety flags and UL system requirements.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"component_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique internal ID of the component.\"\n        }\n      },\n      \"required\": [\n        \"component_id\"\n      ]\n    },\n    \"example_output\": {\n      \"nomenclature\": \"P-404-S\",\n      \"material_sensitivity_flag\": false,\n      \"ul_system_id\": \"W-J-1067\",\n      \"f_rating_required\": \"2hr\",\n      \"t_rating_required\": \"1hr\"\n    }\n  },\n  \"query_registry_violations\": {\n    \"description\": \"Searches the building registry for violation entries based on status and component nomenclature.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"building_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the building.\"\n        },\n        \"status_filter\": {\n          \"type\": \"string\",\n          \"description\": \"Filter by status (e.g., 'Draft', 'Legacy', 'Pre-Approved').\"\n        }\n      },\n      \"required\": [\n        \"building_id\",\n        \"status_filter\"\n      ]\n    },\n    \"example_output\": {\n      \"violations\": [\n        {\n          \"violation_id\": \"V-505\",\n          \"component_nomenclature\": \"P-404-S\",\n          \"current_status\": \"Draft\"\n        }\n      ]\n    }\n  },\n  \"execute_destructive_test\": {\n    \"description\": \"Applies a destructive depth gauge to a sealant to measure compliance. Returns measurement and pass/fail status against specified UL criteria.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"component_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the component to test.\"\n        },\n        \"target_ul_system\": {\n          \"type\": \"string\",\n          \"description\": \"The UL system code to validate against (e.g., 'W-J-1067').\"\n        }\n      },\n      \"required\": [\n        \"component_id\",\n        \"target_ul_system\"\n      ]\n    },\n    \"example_output\": {\n      \"measured_depth\": \"4.5mm\",\n      \"pass_status\": true,\n      \"details\": \"Compliant with F-Rating requirements.\"\n    }\n  },\n  \"update_registry_entry\": {\n    \"description\": \"Updates the status of a specific violation entry in the registry.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"violation_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the violation record.\"\n        },\n        \"new_status\": {\n          \"type\": \"string\",\n          \"description\": \"The updated status (e.g., 'Resolved', 'Failed-Pending-Sampling').\"\n        },\n        \"comments\": {\n          \"type\": \"string\",\n          \"description\": \"Context regarding the update.\"\n        }\n      },\n      \"required\": [\n        \"violation_id\",\n        \"new_status\"\n      ]\n    },\n    \"example_output\": {\n      \"success\": true,\n      \"updated_at\": \"2023-10-27T10:00:00Z\"\n    }\n  },\n  \"trigger_expanded_sampling\": {\n    \"description\": \"Initiates an ASTM E2174 expanded sampling protocol for a failed penetration.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"component_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the failed component.\"\n        },\n        \"protocol_name\": {\n          \"type\": \"string\",\n          \"description\": \"The sampling protocol to use (e.g., 'ASTM E2174').\"\n        }\n      },\n      \"required\": [\n        \"component_id\",\n        \"protocol_name\"\n      ]\n    },\n    \"example_output\": {\n      \"sampling_ticket_id\": \"SAMP-882\",\n      \"scope_extension\": \"10% increase\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_building_context",
+      "description": "Retrieves general information about the current building and the phase of the inspection.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "building_id": "BLDG-9921",
+        "inspection_phase": "FINAL",
+        "compliance_score": 85
+      }
+    },
+    {
+      "name": "list_components_by_location",
+      "description": "Retrieves a list of all penetrations and assemblies within a specific zone and wall segment.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "zone": {
+            "type": "string",
+            "description": "The building zone (e.g., 'Zone-B-Section-4')."
+          },
+          "wall_segment": {
+            "type": "string",
+            "description": "The specific wall identifier (e.g., 'B4-7')."
+          }
+        },
+        "required": [
+          "zone",
+          "wall_segment"
+        ]
+      },
+      "example_output": {
+        "components": [
+          {
+            "id": "COMP-001",
+            "nomenclature": "P-404-S"
+          },
+          {
+            "id": "COMP-002",
+            "nomenclature": "P-404-C"
+          }
+        ]
+      }
+    },
+    {
+      "name": "get_component_specs",
+      "description": "Retrieves detailed technical specifications for a specific component, including safety flags and UL system requirements.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "component_id": {
+            "type": "string",
+            "description": "The unique internal ID of the component."
+          }
+        },
+        "required": [
+          "component_id"
+        ]
+      },
+      "example_output": {
+        "nomenclature": "P-404-S",
+        "material_sensitivity_flag": false,
+        "ul_system_id": "W-J-1067",
+        "f_rating_required": "2hr",
+        "t_rating_required": "1hr"
+      }
+    },
+    {
+      "name": "query_registry_violations",
+      "description": "Searches the building registry for violation entries based on status and component nomenclature.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "building_id": {
+            "type": "string",
+            "description": "The ID of the building."
+          },
+          "status_filter": {
+            "type": "string",
+            "description": "Filter by status (e.g., 'Draft', 'Legacy', 'Pre-Approved')."
+          }
+        },
+        "required": [
+          "building_id",
+          "status_filter"
+        ]
+      },
+      "example_output": {
+        "violations": [
+          {
+            "violation_id": "V-505",
+            "component_nomenclature": "P-404-S",
+            "current_status": "Draft"
+          }
+        ]
+      }
+    },
+    {
+      "name": "execute_destructive_test",
+      "description": "Applies a destructive depth gauge to a sealant to measure compliance. Returns measurement and pass/fail status against specified UL criteria.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "component_id": {
+            "type": "string",
+            "description": "The ID of the component to test."
+          },
+          "target_ul_system": {
+            "type": "string",
+            "description": "The UL system code to validate against (e.g., 'W-J-1067')."
+          }
+        },
+        "required": [
+          "component_id",
+          "target_ul_system"
+        ]
+      },
+      "example_output": {
+        "measured_depth": "4.5mm",
+        "pass_status": true,
+        "details": "Compliant with F-Rating requirements."
+      }
+    },
+    {
+      "name": "update_registry_entry",
+      "description": "Updates the status of a specific violation entry in the registry.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "violation_id": {
+            "type": "string",
+            "description": "The ID of the violation record."
+          },
+          "new_status": {
+            "type": "string",
+            "description": "The updated status (e.g., 'Resolved', 'Failed-Pending-Sampling')."
+          },
+          "comments": {
+            "type": "string",
+            "description": "Context regarding the update."
+          }
+        },
+        "required": [
+          "violation_id",
+          "new_status"
+        ]
+      },
+      "example_output": {
+        "success": true,
+        "updated_at": "2023-10-27T10:00:00Z"
+      }
+    },
+    {
+      "name": "trigger_expanded_sampling",
+      "description": "Initiates an ASTM E2174 expanded sampling protocol for a failed penetration.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "component_id": {
+            "type": "string",
+            "description": "The ID of the failed component."
+          },
+          "protocol_name": {
+            "type": "string",
+            "description": "The sampling protocol to use (e.g., 'ASTM E2174')."
+          }
+        },
+        "required": [
+          "component_id",
+          "protocol_name"
+        ]
+      },
+      "example_output": {
+        "sampling_ticket_id": "SAMP-882",
+        "scope_extension": "10% increase"
+      }
+    }
+  ],
+  "state_description": {
+    "building_id": "Unique identifier for the building being inspected.",
+    "inspection_phase": "Current stage of the compliance process (e.g., INITIAL, FOLLOW_UP, FINAL).",
+    "compliance_score": "Internal aggregate percentage of building compliance (0-100).",
+    "active_violations": "List of current code violations detected but not yet rectified.",
+    "inspected_zones": "List of building zones or rooms already processed by the inspector.",
+    "safety_hazards_present": "Internal flag indicating if the environment currently poses a risk to the inspector."
+  },
+  "task_initial_state": {
+    "building_id": "MED-TECH-HUB-4",
+    "inspection_phase": "FOLLOW_UP",
+    "compliance_score": 92,
+    "active_violations": [
+      "VIO-9092: Section-4 Legacy P-404-L",
+      "VIO-9093: Section-4 Draft P-404-S",
+      "VIO-9094: Section-4 Draft C-404-T",
+      "VIO-9095: Section-4 Pre-Existing P-404-C",
+      "VIO-9096: Section-4 Backup C-404-T-Aux",
+      "VIO-9097: Section-3 Legacy C-101",
+      "VIO-9098: Section-4-Storage Draft S-404"
+    ],
+    "inspected_zones": [
+      "Zone-B-Section-1",
+      "Zone-B-Section-2",
+      "Zone-B-Section-3",
+      "Zone-B-Section-4-Storage",
+      "Zone-B-Section-4-AnteRoom"
+    ],
+    "safety_hazards_present": false
+  }
+}

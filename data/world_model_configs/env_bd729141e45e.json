@@ -1,0 +1,212 @@
+{
+  "environment_name": "env_bd729141e45e",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: Based on the current telescope environment state $s_t$ and the scheduling action $a_t$ provided by the Agent, simulate the internal state transition and predict the observation $o_{{t+1}}$ obtained by the Agent. \n- **Emphasis**: You are the simulation engine. You do not perform real-world astronomical observations; you simulate the physical and logical evolution of the telescope system and the celestial conditions based on the inputs provided.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions must maintain strict context consistency. The telescope's position, the passage of time, equipment wear, and changing weather conditions must evolve logically across multiple interaction turns.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. This JSON contains:\n- `\"name\"`: Specifies the name of the action function (e.g., \"slew_to_coordinates\", \"start_exposure\", \"change_filter\").\n- Additional fields for the parameter names and values.\n\nExample:\n```json\n{{\n \"name\": \"start_exposure\",\n \"arguments\": {{\n    \"target_id\": \"M31\",\n    \"exposure_time\": 300,\n    \"filter\": \"H-alpha\"\n  }}\n}}\n```\nAs the LWM, you must parse this JSON, update the internal state (e.g., decrementing power, advancing time, updating telescope status), and generate the result.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nYou must simulate realistic constraints. Return structured error information (e.g., `{{\"error\": \"Cannot observe: Weather status 'Rainy' exceeds safety limits\"}}`) for cases such as:\n- Attempting to slew while the shutter is open.\n- Target elevation below the horizon.\n- Invalid action parameters or undefined actions.\n- Resource exhaustion (e.g., storage full).\nDo not fabricate successful responses for invalid requests.\n\n##### Output Assembly\nFor every action call, return a structured JSON object containing **ONLY** the return fields declared in the action function's definition. \n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, `new_state`, or any hidden variables like internal hardware flags. The Agent must only see the specific Observation (the return values of the function). The internal state maintenance is handled by you, the LWM, behind the scenes.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to JSON for both input parsing and output generation.\n- **Factuality**: Use realistic astronomical logic (e.g., slewing takes time proportional to distance; weather affects visibility).\n- **Consistency**: If the telescope is pointed at RA 10h at $t$, it remains there at $t+1$ unless a move action is executed.\n- **Realism**: Simulate stochastic events if appropriate for the scenario (e.g., slight tracking jitter or fluctuating cloud cover).\n- **Quality**: Provide precise technical observations.\n- **Encapsulation**: Never reveal the JSON state structure in your final response to the agent. Only output the `observation` result.\n{{initial_state}}: {{\n  \"telescope_status\": \"TRACKING\",\n  \"current_pointing\": {{\n    \"ra\": \"05:35:17\",\n    \"dec\": \"-05:23:28\"\n  }},\n  \"weather_condition\": {{\n    \"cloud_cover\": 0,\n    \"wind_speed\": 12,\n    \"humidity\": 39,\n    \"status\": \"CLEAR\"\n  }},\n  \"dome_shutter_open\": false,\n  \"active_filter\": \"Clear\",\n  \"time_utc\": \"2025-05-15T22:10:00Z\",\n  \"available_storage_gb\": 412.5\n}}\n{{state_descriptions}}: {{\n  \"telescope_status\": \"Current operational mode: 'IDLE', 'SLEWING', 'TRACKING', 'OBSERVING', 'MAINTENANCE', or 'STOWED'.\",\n  \"current_pointing\": \"The current celestial coordinates the telescope is pointing at.\",\n  \"weather_condition\": \"Current environmental parameters affecting observation quality.\",\n  \"dome_shutter_open\": \"Whether the telescope dome shutter is currently open.\",\n  \"active_filter\": \"The current optical filter in the light path (e.g., 'U', 'B', 'V', 'R', 'I', 'Clear').\",\n  \"time_utc\": \"The current simulated UTC time in ISO 8601 format.\",\n  \"available_storage_gb\": \"Remaining storage space for observation data in Gigabytes.\"\n}}\n{action_set_definitions}: {\n  \"get_observation_queue\": {\n    \"description\": \"Retrieves the current list of pending observation targets, including their categories, priority levels, and celestial coordinates (Declination).\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"targets\": [\n        {\n          \"target_id\": \"SN2024abc\",\n          \"category\": \"Transient\",\n          \"priority\": 10,\n          \"declination\": 45.2\n        }\n      ]\n    }\n  },\n  \"get_storage_status\": {\n    \"description\": \"Returns the amount of available storage space in GB.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"available_storage_gb\": 420.5\n    }\n  },\n  \"purge_data_blocks\": {\n    \"description\": \"Removes data blocks of a specified type to free up storage space.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"data_block_type\": {\n          \"type\": \"string\",\n          \"description\": \"The label of the data blocks to be deleted (e.g., 'Temporary_Calibration').\"\n        }\n      },\n      \"required\": [\n        \"data_block_type\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"success\",\n      \"freed_gb\": 150.0,\n      \"new_total_available_gb\": 570.5\n    }\n  },\n  \"set_optical_filter\": {\n    \"description\": \"Rotates the filter wheel to the specified photometric filter.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"filter_id\": {\n          \"type\": \"string\",\n          \"description\": \"The name of the filter (e.g., 'B', 'V', 'R').\"\n        }\n      },\n      \"required\": [\n        \"filter_id\"\n      ]\n    },\n    \"example_output\": {\n      \"current_filter\": \"B\",\n      \"status\": \"READY\"\n    }\n  },\n  \"slew_to_target\": {\n    \"description\": \"Moves the telescope mount to the coordinates associated with a target ID.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"target_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the object to point at.\"\n        }\n      },\n      \"required\": [\n        \"target_id\"\n      ]\n    },\n    \"example_output\": {\n      \"telescope_status\": \"SLEWING\",\n      \"target_locked\": false\n    }\n  },\n  \"set_tracking_mode\": {\n    \"description\": \"Enables or disables sidereal tracking.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"enabled\": {\n          \"type\": \"boolean\",\n          \"description\": \"Whether tracking should be active.\"\n        }\n      },\n      \"required\": [\n        \"enabled\"\n      ]\n    },\n    \"example_output\": {\n      \"telescope_status\": \"TRACKING\"\n    }\n  },\n  \"get_environment_telemetry\": {\n    \"description\": \"Retrieves real-time weather and environmental data including humidity.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"humidity_percentage\": 38.0,\n      \"wind_speed_kmh\": 12.5\n    }\n  },\n  \"wait_for_duration\": {\n    \"description\": \"Pauses the agent execution for a specified amount of time.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"seconds\": {\n          \"type\": \"integer\",\n          \"description\": \"Number of seconds to wait.\"\n        }\n      },\n      \"required\": [\n        \"seconds\"\n      ]\n    },\n    \"example_output\": null\n  },\n  \"set_dome_shutter\": {\n    \"description\": \"Controls the physical state of the observatory dome shutter.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"open\": {\n          \"type\": \"boolean\",\n          \"description\": \"True to open, False to close.\"\n        }\n      },\n      \"required\": [\n        \"open\"\n      ]\n    },\n    \"example_output\": {\n      \"dome_shutter_open\": true\n    }\n  },\n  \"execute_exposure\": {\n    \"description\": \"Triggers the camera sensor to capture data for a specific duration.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"exposure_time_seconds\": {\n          \"type\": \"integer\",\n          \"description\": \"Length of the exposure in seconds.\"\n        }\n      },\n      \"required\": [\n        \"exposure_time_seconds\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"COMPLETED\",\n      \"file_path\": \"/data/obs_001.fits\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_observation_queue",
+      "description": "Retrieves the current list of pending observation targets, including their categories, priority levels, and celestial coordinates (Declination).",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "targets": [
+          {
+            "target_id": "SN2024abc",
+            "category": "Transient",
+            "priority": 10,
+            "declination": 45.2
+          }
+        ]
+      }
+    },
+    {
+      "name": "get_storage_status",
+      "description": "Returns the amount of available storage space in GB.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "available_storage_gb": 420.5
+      }
+    },
+    {
+      "name": "purge_data_blocks",
+      "description": "Removes data blocks of a specified type to free up storage space.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "data_block_type": {
+            "type": "string",
+            "description": "The label of the data blocks to be deleted (e.g., 'Temporary_Calibration')."
+          }
+        },
+        "required": [
+          "data_block_type"
+        ]
+      },
+      "example_output": {
+        "status": "success",
+        "freed_gb": 150.0,
+        "new_total_available_gb": 570.5
+      }
+    },
+    {
+      "name": "set_optical_filter",
+      "description": "Rotates the filter wheel to the specified photometric filter.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "filter_id": {
+            "type": "string",
+            "description": "The name of the filter (e.g., 'B', 'V', 'R')."
+          }
+        },
+        "required": [
+          "filter_id"
+        ]
+      },
+      "example_output": {
+        "current_filter": "B",
+        "status": "READY"
+      }
+    },
+    {
+      "name": "slew_to_target",
+      "description": "Moves the telescope mount to the coordinates associated with a target ID.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "target_id": {
+            "type": "string",
+            "description": "The ID of the object to point at."
+          }
+        },
+        "required": [
+          "target_id"
+        ]
+      },
+      "example_output": {
+        "telescope_status": "SLEWING",
+        "target_locked": false
+      }
+    },
+    {
+      "name": "set_tracking_mode",
+      "description": "Enables or disables sidereal tracking.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "description": "Whether tracking should be active."
+          }
+        },
+        "required": [
+          "enabled"
+        ]
+      },
+      "example_output": {
+        "telescope_status": "TRACKING"
+      }
+    },
+    {
+      "name": "get_environment_telemetry",
+      "description": "Retrieves real-time weather and environmental data including humidity.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "humidity_percentage": 38.0,
+        "wind_speed_kmh": 12.5
+      }
+    },
+    {
+      "name": "wait_for_duration",
+      "description": "Pauses the agent execution for a specified amount of time.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "seconds": {
+            "type": "integer",
+            "description": "Number of seconds to wait."
+          }
+        },
+        "required": [
+          "seconds"
+        ]
+      },
+      "example_output": null
+    },
+    {
+      "name": "set_dome_shutter",
+      "description": "Controls the physical state of the observatory dome shutter.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "open": {
+            "type": "boolean",
+            "description": "True to open, False to close."
+          }
+        },
+        "required": [
+          "open"
+        ]
+      },
+      "example_output": {
+        "dome_shutter_open": true
+      }
+    },
+    {
+      "name": "execute_exposure",
+      "description": "Triggers the camera sensor to capture data for a specific duration.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "exposure_time_seconds": {
+            "type": "integer",
+            "description": "Length of the exposure in seconds."
+          }
+        },
+        "required": [
+          "exposure_time_seconds"
+        ]
+      },
+      "example_output": {
+        "status": "COMPLETED",
+        "file_path": "/data/obs_001.fits"
+      }
+    }
+  ],
+  "state_description": {
+    "telescope_status": "Current operational mode: 'IDLE', 'SLEWING', 'TRACKING', 'OBSERVING', 'MAINTENANCE', or 'STOWED'.",
+    "current_pointing": "The current celestial coordinates the telescope is pointing at.",
+    "weather_condition": "Current environmental parameters affecting observation quality.",
+    "dome_shutter_open": "Whether the telescope dome shutter is currently open.",
+    "active_filter": "The current optical filter in the light path (e.g., 'U', 'B', 'V', 'R', 'I', 'Clear').",
+    "time_utc": "The current simulated UTC time in ISO 8601 format.",
+    "available_storage_gb": "Remaining storage space for observation data in Gigabytes."
+  },
+  "task_initial_state": {
+    "telescope_status": "TRACKING",
+    "current_pointing": {
+      "ra": "05:35:17",
+      "dec": "-05:23:28"
+    },
+    "weather_condition": {
+      "cloud_cover": 0,
+      "wind_speed": 12,
+      "humidity": 39,
+      "status": "CLEAR"
+    },
+    "dome_shutter_open": false,
+    "active_filter": "Clear",
+    "time_utc": "2025-05-15T22:10:00Z",
+    "available_storage_gb": 412.5
+  }
+}

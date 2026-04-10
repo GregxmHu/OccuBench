@@ -1,0 +1,155 @@
+{
+  "environment_name": "env_7df0a625b66a",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: Based on the current environment state $s_t$ and the action $a_t$ performed by the Agent, simulate the internal evolution of the Contract Due Diligence environment and predict the resulting observation $o_{{t+1}}$.\n- **Emphasis**: You are a simulator of a legal document repository and review system. You do not perform actual legal analysis for a human; you simulate how a due diligence system responds to an Agent's queries, data extractions, and flagging actions. State transitions (e.g., updating review progress or logging discovered risks) happen internally.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions between the World Model and the Agent must maintain context consistency. The model must track which clauses have been accessed, which risks have been formally logged in the internal registry, and the current focus area of the due diligence process to ensure logical continuity.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. This JSON contains:\n- `\"name\"`: Specifies the name of the action function to execute.\n- `\"arguments\"`: The parameter names and corresponding values.\n\nExample:\n```json\n{{\n \"name\": \"search_clause\",\n \"arguments\": {{\n    \"keyword\": \"change of control\",\n    \"document_id\": \"contract_882\"\n  }}\n}}\n```\n\nYou must parse these inputs and simulate the resulting observation based on the internal environment logic.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nIf the Agent attempts to access a non-existent `document_id`, requests a clause index out of bounds, or submits malformed arguments, return a structured error response: `{{\"error\": \"Description of the failure\"}}`. Do not fabricate document content that has not been initialized or defined in the context.\n\n##### Output Assembly\nFor every action call, return a structured JSON object containing **ONLY** the return fields declared in that action's definition. \n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the internal state `$s_t$`, the updated state, or any internal variables like `risk_registry` or `review_progress_percentage` unless the action specifically defines them as part of its observation output. State maintenance is handled silently in the background.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to JSON for all observations.\n- **Factuality**: Do not hallucinate clauses or contract terms that contradict the established state or document context.\n- **Consistency**: If a risk is flagged in one step, the environment must reflect that the document's review status has progressed in subsequent steps.\n- **Realism**: Simulate realistic behaviors of document management systems (e.g., keyword searches returning snippets, metadata extraction reflecting the header of a contract).\n- **Encapsulation**: Hide the full state object. The Agent only sees what the specific function returns.\n{{initial_state}}: {{\n  \"active_document_id\": \"APA_VANGUARD_2024_001\",\n  \"review_progress_percentage\": 0,\n  \"internal_risk_log\": [],\n  \"access_history\": [],\n  \"environment_status\": \"browsing\"\n}}\n{{state_descriptions}}: {{\n  \"active_document_id\": \"The unique identifier of the contract currently being audited.\",\n  \"review_progress_percentage\": \"Completion percentage of the document review based on clauses read.\",\n  \"internal_risk_log\": \"Internal record of clauses identified as high-risk by the agent.\",\n  \"access_history\": \"List of clause indices or section headers already visited by the agent.\",\n  \"environment_status\": \"The current mode of the environment (e.g., 'browsing', 'extracting', 'finalizing').\"\n}}\n{action_set_definitions}: {\n  \"get_environment_state\": {\n    \"description\": \"Retrieves the current internal state of the audit environment, including the active document ID, current progress, and existing risk logs.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"active_document_id\": \"DOC-VANGUARD-2023\",\n      \"review_progress_percentage\": 0,\n      \"internal_risk_log\": [],\n      \"environment_status\": \"browsing\"\n    }\n  },\n  \"list_contract_sections\": {\n    \"description\": \"Lists all section headers and clause indices for a specific contract document to allow for targeted reading.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"document_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier of the contract document.\"\n        }\n      },\n      \"required\": [\n        \"document_id\"\n      ]\n    },\n    \"example_output\": {\n      \"sections\": [\n        {\n          \"index\": 0,\n          \"header\": \"Preamble\"\n        },\n        {\n          \"index\": 1,\n          \"header\": \"FAR 42.12 Novation Requirements\"\n        }\n      ]\n    }\n  },\n  \"read_section_text\": {\n    \"description\": \"Retrieves the full text of a specific section or clause within a contract for detailed analysis.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"document_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier of the contract.\"\n        },\n        \"section_index\": {\n          \"type\": \"integer\",\n          \"description\": \"The index of the section/clause to read.\"\n        }\n      },\n      \"required\": [\n        \"document_id\",\n        \"section_index\"\n      ]\n    },\n    \"example_output\": {\n      \"text\": \"The Transferee shall assume all obligations under the contract...\",\n      \"clause_reference\": \"FAR 52.242-12\"\n    }\n  },\n  \"log_novation_risk\": {\n    \"description\": \"Records a specific regulatory, financial, or compliance risk identified during the audit into the internal risk log.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"risk_category\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"size-status\",\n            \"indirect-rate-disparity\",\n            \"statutory-violation\",\n            \"novation-compliance\"\n          ],\n          \"description\": \"The category of the identified risk.\"\n        },\n        \"finding_details\": {\n          \"type\": \"string\",\n          \"description\": \"Detailed description of the impediment and its potential impact on RCO approval.\"\n        },\n        \"suggested_mitigation\": {\n          \"type\": \"string\",\n          \"description\": \"Proposed cost-recovery caps or actions to address the risk.\"\n        }\n      },\n      \"required\": [\n        \"risk_category\",\n        \"finding_details\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"success\",\n      \"log_entry_id\": \"RISK-001\"\n    }\n  },\n  \"update_audit_progress\": {\n    \"description\": \"Updates the current progress percentage and environment status to reflect the audit's advancement.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"progress_percentage\": {\n          \"type\": \"integer\",\n          \"minimum\": 0,\n          \"maximum\": 100,\n          \"description\": \"The updated completion percentage.\"\n        },\n        \"new_status\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"browsing\",\n            \"extracting\",\n            \"finalizing\"\n          ],\n          \"description\": \"The new mode of the environment.\"\n        }\n      },\n      \"required\": [\n        \"progress_percentage\",\n        \"new_status\"\n      ]\n    },\n    \"example_output\": {\n      \"current_progress\": 100,\n      \"current_status\": \"finalizing\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_environment_state",
+      "description": "Retrieves the current internal state of the audit environment, including the active document ID, current progress, and existing risk logs.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "active_document_id": "DOC-VANGUARD-2023",
+        "review_progress_percentage": 0,
+        "internal_risk_log": [],
+        "environment_status": "browsing"
+      }
+    },
+    {
+      "name": "list_contract_sections",
+      "description": "Lists all section headers and clause indices for a specific contract document to allow for targeted reading.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "document_id": {
+            "type": "string",
+            "description": "The unique identifier of the contract document."
+          }
+        },
+        "required": [
+          "document_id"
+        ]
+      },
+      "example_output": {
+        "sections": [
+          {
+            "index": 0,
+            "header": "Preamble"
+          },
+          {
+            "index": 1,
+            "header": "FAR 42.12 Novation Requirements"
+          }
+        ]
+      }
+    },
+    {
+      "name": "read_section_text",
+      "description": "Retrieves the full text of a specific section or clause within a contract for detailed analysis.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "document_id": {
+            "type": "string",
+            "description": "The unique identifier of the contract."
+          },
+          "section_index": {
+            "type": "integer",
+            "description": "The index of the section/clause to read."
+          }
+        },
+        "required": [
+          "document_id",
+          "section_index"
+        ]
+      },
+      "example_output": {
+        "text": "The Transferee shall assume all obligations under the contract...",
+        "clause_reference": "FAR 52.242-12"
+      }
+    },
+    {
+      "name": "log_novation_risk",
+      "description": "Records a specific regulatory, financial, or compliance risk identified during the audit into the internal risk log.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "risk_category": {
+            "type": "string",
+            "enum": [
+              "size-status",
+              "indirect-rate-disparity",
+              "statutory-violation",
+              "novation-compliance"
+            ],
+            "description": "The category of the identified risk."
+          },
+          "finding_details": {
+            "type": "string",
+            "description": "Detailed description of the impediment and its potential impact on RCO approval."
+          },
+          "suggested_mitigation": {
+            "type": "string",
+            "description": "Proposed cost-recovery caps or actions to address the risk."
+          }
+        },
+        "required": [
+          "risk_category",
+          "finding_details"
+        ]
+      },
+      "example_output": {
+        "status": "success",
+        "log_entry_id": "RISK-001"
+      }
+    },
+    {
+      "name": "update_audit_progress",
+      "description": "Updates the current progress percentage and environment status to reflect the audit's advancement.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "progress_percentage": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100,
+            "description": "The updated completion percentage."
+          },
+          "new_status": {
+            "type": "string",
+            "enum": [
+              "browsing",
+              "extracting",
+              "finalizing"
+            ],
+            "description": "The new mode of the environment."
+          }
+        },
+        "required": [
+          "progress_percentage",
+          "new_status"
+        ]
+      },
+      "example_output": {
+        "current_progress": 100,
+        "current_status": "finalizing"
+      }
+    }
+  ],
+  "state_description": {
+    "active_document_id": "The unique identifier of the contract currently being audited.",
+    "review_progress_percentage": "Completion percentage of the document review based on clauses read.",
+    "internal_risk_log": "Internal record of clauses identified as high-risk by the agent.",
+    "access_history": "List of clause indices or section headers already visited by the agent.",
+    "environment_status": "The current mode of the environment (e.g., 'browsing', 'extracting', 'finalizing')."
+  },
+  "task_initial_state": {
+    "active_document_id": "APA_VANGUARD_2024_001",
+    "review_progress_percentage": 0,
+    "internal_risk_log": [],
+    "access_history": [],
+    "environment_status": "browsing"
+  }
+}

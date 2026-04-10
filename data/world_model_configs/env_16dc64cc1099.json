@@ -1,0 +1,229 @@
+{
+  "environment_name": "env_16dc64cc1099",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: You act as the backend engine for a Pharmacy Prescription Verification system. Based on the current internal state $s_t$ and the action $a_t$ performed by the pharmacist (Agent), you simulate the environment's internal logic evolution and predict the resulting observation $o_{{t+1}}$ provided to the Agent. \n- **Emphasis**: You are not the pharmacist; you are the system they interact with. Do not execute real-world operations. Your task is to maintain state continuity and generate realistic feedback (observations) based on clinical and procedural logic.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation tracking prescriptions, inventory levels, and patient histories. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions must maintain absolute context consistency. Changes to inventory, prescription status (e.g., from 'pending' to 'verified'), or patient logs must persist across the interaction history to ensure that subsequent actions reflect previous decisions.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object containing:\n- `\"name\"`: The name of the action (e.g., \"check_interaction\", \"update_inventory\").\n- `\"arguments\"`: Key-value pairs of parameters required by the function.\n\nExample:\n```json\n{{\n \"name\": \"verify_prescription\",\n \"arguments\": {{\n    \"prescription_id\": \"RX-9921\",\n    \"pharmacist_id\": \"USR-04\"\n  }}\n}}\n```\nYou must parse this input, apply the logic to the internal state, and generate the corresponding observation.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\n- **Invalid Actions**: If an action is not in the defined set, return `{{\"error\": \"Action not found\"}}`.\n- **Constraint Violations**: If an action attempts to verify a prescription for a medicine out of stock, or if a required parameter is missing, return a descriptive error message (e.g., `{{\"error\": \"Insufficient inventory for Medicine X\"}}`).\n- **Logical Conflicts**: If a prescription has already been rejected, it cannot be approved without a re-submission.\n- **Do not fabricate**: Do not invent prescriptions or patients not present in the state.\n\n##### Output Assembly\nFor every action call, return a structured JSON object containing **ONLY** the return fields declared in the action function's definition. \n\n**CRITICAL CONSTRAINT**: Your output must **NOT** include the full internal state `s_t`, the updated `new_state`, or any metadata regarding your internal processing. The Agent must only receive the Observation (the result of the action). State updates are tracked internally by you.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to JSON for all observations.\n- **Factuality**: Interactions must mirror real-world pharmacy constraints (e.g., drug-drug interaction warnings, dosage limits).\n- **Consistency**: If a drug is removed from inventory in step $t$, it must remain removed in step $t+1$.\n- **Realism**: Responses should simulate a professional medical information system.\n- **Encapsulation**: Never expose the raw state object to the Agent. Only show what the specific function return describes.\n{{initial_state}}: {{\n  \"pending_prescriptions\": [\n    {{\n      \"prescription_id\": \"RX-8801\",\n      \"patient_id\": \"PAT-777\",\n      \"drug_name\": \"Warfarin\",\n      \"dosage\": \"5mg Daily at 08:00\",\n      \"prescriber\": \"Dr. Miller\",\n      \"notes\": \"New start for AFib\"\n    }},\n    {{\n      \"prescription_id\": \"RX-8802\",\n      \"patient_id\": \"PAT-778\",\n      \"drug_name\": \"Warfarin\",\n      \"dosage\": \"2mg Daily at 08:00\",\n      \"prescriber\": \"Dr. Miller\",\n      \"notes\": \"Dose adjustment\"\n    }},\n    {{\n      \"prescription_id\": \"RX-8803\",\n      \"patient_id\": \"PAT-779\",\n      \"drug_name\": \"Warfarin\",\n      \"dosage\": \"5mg Daily at 08:00\",\n      \"prescriber\": \"Dr. Smith\",\n      \"notes\": \"Refill\"\n    }},\n    {{\n      \"prescription_id\": \"RX-8804\",\n      \"patient_id\": \"PAT-777\",\n      \"drug_name\": \"Lisinopril\",\n      \"dosage\": \"10mg Daily at 08:00\",\n      \"prescriber\": \"Dr. Miller\",\n      \"notes\": \"Duplicate entry - check history\"\n    }},\n    {{\n      \"prescription_id\": \"RX-8805\",\n      \"patient_id\": \"PAT-787\",\n      \"drug_name\": \"Warfarin\",\n      \"dosage\": \"5mg Daily at 08:00\",\n      \"prescriber\": \"Dr. Miller\",\n      \"notes\": \"Hold if INR > 3.0\"\n    }}\n  ],\n  \"inventory\": {{\n    \"Warfarin 1mg Tab\": 1000,\n    \"Warfarin 2mg Tab\": 1000,\n    \"Warfarin 5mg Tab\": 500,\n    \"Warfarin 5mg Cap (Compounded)\": 50,\n    \"Lisinopril 10mg Tab\": 2000,\n    \"Amiodarone 200mg Tab\": 400\n  }},\n  \"patient_health_records\": {{\n    \"PAT-777\": {{\n      \"name\": \"George B.\",\n      \"age\": 79,\n      \"diagnoses\": [\n        \"AFib\",\n        \"Hypertension\"\n      ],\n      \"active_medications\": [\n        \"Amiodarone 200mg QD\",\n        \"Lisinopril 10mg QD\"\n      ],\n      \"labs\": {{\n        \"INR\": 4.2,\n        \"collection_date\": \"2023-11-15\"\n      }}\n    }},\n    \"PAT-778\": {{\n      \"name\": \"George B.\",\n      \"age\": 82,\n      \"diagnoses\": [\n        \"DVT Prophylaxis\"\n      ],\n      \"active_medications\": [\n        \"Furosemide 20mg QD\"\n      ],\n      \"labs\": {{\n        \"INR\": 2.1,\n        \"collection_date\": \"2023-11-14\"\n      }}\n    }},\n    \"PAT-779\": {{\n      \"name\": \"Georgette B.\",\n      \"age\": 75,\n      \"diagnoses\": [\n        \"AFib\"\n      ],\n      \"active_medications\": [],\n      \"labs\": {{\n        \"INR\": 2.5,\n        \"collection_date\": \"2023-11-12\"\n      }}\n    }}\n  }},\n  \"verification_log\": [],\n  \"system_status\": \"online\"\n}}\n{{state_descriptions}}: {{\n  \"pending_prescriptions\": \"A list of prescription objects currently awaiting verification, including patient_id, drug_name, dosage, and prescriber info.\",\n  \"inventory\": \"A mapping of drug names to their current stock quantities in the pharmacy.\",\n  \"patient_health_records\": \"Historical data for patients, including allergies and currently active medications for interaction checking.\",\n  \"verification_log\": \"A history of actions taken on prescriptions (approved, rejected, flagged) during the current session.\",\n  \"system_status\": \"Current operational status of the verification database (e.g., 'online', 'maintenance').\"\n}}\n{action_set_definitions}: {\n  \"get_system_status\": {\n    \"description\": \"Check the current operational status of the pharmacy verification system and database.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"status\": \"online\"\n    }\n  },\n  \"list_pending_orders\": {\n    \"description\": \"Retrieve the full list of medication orders currently awaiting verification in the queue.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"prescriptions\": [\n        {\n          \"prescription_id\": \"RX-123\",\n          \"patient_id\": \"PAT-777\",\n          \"drug_name\": \"Warfarin\",\n          \"dosage\": \"5mg\",\n          \"scheduled_time\": \"08:00\"\n        }\n      ]\n    }\n  },\n  \"get_patient_clinical_data\": {\n    \"description\": \"Retrieve the comprehensive health record for a specific patient, including active medications, allergies, and lab results like INR.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"patient_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier of the patient (e.g., PAT-777).\"\n        }\n      },\n      \"required\": [\n        \"patient_id\"\n      ]\n    },\n    \"example_output\": {\n      \"active_medications\": [\n        \"Aspirin\"\n      ],\n      \"allergies\": [\n        \"Sulfa\"\n      ],\n      \"lab_results\": [\n        {\n          \"test\": \"INR\",\n          \"value\": 2.2,\n          \"date\": \"2023-11-01\"\n        }\n      ]\n    }\n  },\n  \"check_inventory\": {\n    \"description\": \"Query the pharmacy inventory to check the available stock quantity for a specific drug.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"drug_name\": {\n          \"type\": \"string\",\n          \"description\": \"The name of the medication to check.\"\n        }\n      },\n      \"required\": [\n        \"drug_name\"\n      ]\n    },\n    \"example_output\": {\n      \"drug_name\": \"Warfarin\",\n      \"stock_level\": 100\n    }\n  },\n  \"submit_prescription_action\": {\n    \"description\": \"Execute the final decision (Approve, Reject, or Flag) for a specific prescription ID.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"prescription_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique ID of the prescription being processed.\"\n        },\n        \"decision\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"APPROVED\",\n            \"REJECTED\",\n            \"FLAGGED\"\n          ],\n          \"description\": \"The clinical action taken.\"\n        },\n        \"notes\": {\n          \"type\": \"string\",\n          \"description\": \"Reasoning for the decision, mandatory for rejections or flags.\"\n        }\n      },\n      \"required\": [\n        \"prescription_id\",\n        \"decision\",\n        \"notes\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"success\",\n      \"timestamp\": \"2023-11-01T08:05:00Z\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_system_status",
+      "description": "Check the current operational status of the pharmacy verification system and database.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "status": "online"
+      }
+    },
+    {
+      "name": "list_pending_orders",
+      "description": "Retrieve the full list of medication orders currently awaiting verification in the queue.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "prescriptions": [
+          {
+            "prescription_id": "RX-123",
+            "patient_id": "PAT-777",
+            "drug_name": "Warfarin",
+            "dosage": "5mg",
+            "scheduled_time": "08:00"
+          }
+        ]
+      }
+    },
+    {
+      "name": "get_patient_clinical_data",
+      "description": "Retrieve the comprehensive health record for a specific patient, including active medications, allergies, and lab results like INR.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "patient_id": {
+            "type": "string",
+            "description": "The unique identifier of the patient (e.g., PAT-777)."
+          }
+        },
+        "required": [
+          "patient_id"
+        ]
+      },
+      "example_output": {
+        "active_medications": [
+          "Aspirin"
+        ],
+        "allergies": [
+          "Sulfa"
+        ],
+        "lab_results": [
+          {
+            "test": "INR",
+            "value": 2.2,
+            "date": "2023-11-01"
+          }
+        ]
+      }
+    },
+    {
+      "name": "check_inventory",
+      "description": "Query the pharmacy inventory to check the available stock quantity for a specific drug.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "drug_name": {
+            "type": "string",
+            "description": "The name of the medication to check."
+          }
+        },
+        "required": [
+          "drug_name"
+        ]
+      },
+      "example_output": {
+        "drug_name": "Warfarin",
+        "stock_level": 100
+      }
+    },
+    {
+      "name": "submit_prescription_action",
+      "description": "Execute the final decision (Approve, Reject, or Flag) for a specific prescription ID.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "prescription_id": {
+            "type": "string",
+            "description": "The unique ID of the prescription being processed."
+          },
+          "decision": {
+            "type": "string",
+            "enum": [
+              "APPROVED",
+              "REJECTED",
+              "FLAGGED"
+            ],
+            "description": "The clinical action taken."
+          },
+          "notes": {
+            "type": "string",
+            "description": "Reasoning for the decision, mandatory for rejections or flags."
+          }
+        },
+        "required": [
+          "prescription_id",
+          "decision",
+          "notes"
+        ]
+      },
+      "example_output": {
+        "status": "success",
+        "timestamp": "2023-11-01T08:05:00Z"
+      }
+    }
+  ],
+  "state_description": {
+    "pending_prescriptions": "A list of prescription objects currently awaiting verification, including patient_id, drug_name, dosage, and prescriber info.",
+    "inventory": "A mapping of drug names to their current stock quantities in the pharmacy.",
+    "patient_health_records": "Historical data for patients, including allergies and currently active medications for interaction checking.",
+    "verification_log": "A history of actions taken on prescriptions (approved, rejected, flagged) during the current session.",
+    "system_status": "Current operational status of the verification database (e.g., 'online', 'maintenance')."
+  },
+  "task_initial_state": {
+    "pending_prescriptions": [
+      {
+        "prescription_id": "RX-8801",
+        "patient_id": "PAT-777",
+        "drug_name": "Warfarin",
+        "dosage": "5mg Daily at 08:00",
+        "prescriber": "Dr. Miller",
+        "notes": "New start for AFib"
+      },
+      {
+        "prescription_id": "RX-8802",
+        "patient_id": "PAT-778",
+        "drug_name": "Warfarin",
+        "dosage": "2mg Daily at 08:00",
+        "prescriber": "Dr. Miller",
+        "notes": "Dose adjustment"
+      },
+      {
+        "prescription_id": "RX-8803",
+        "patient_id": "PAT-779",
+        "drug_name": "Warfarin",
+        "dosage": "5mg Daily at 08:00",
+        "prescriber": "Dr. Smith",
+        "notes": "Refill"
+      },
+      {
+        "prescription_id": "RX-8804",
+        "patient_id": "PAT-777",
+        "drug_name": "Lisinopril",
+        "dosage": "10mg Daily at 08:00",
+        "prescriber": "Dr. Miller",
+        "notes": "Duplicate entry - check history"
+      },
+      {
+        "prescription_id": "RX-8805",
+        "patient_id": "PAT-787",
+        "drug_name": "Warfarin",
+        "dosage": "5mg Daily at 08:00",
+        "prescriber": "Dr. Miller",
+        "notes": "Hold if INR > 3.0"
+      }
+    ],
+    "inventory": {
+      "Warfarin 1mg Tab": 1000,
+      "Warfarin 2mg Tab": 1000,
+      "Warfarin 5mg Tab": 500,
+      "Warfarin 5mg Cap (Compounded)": 50,
+      "Lisinopril 10mg Tab": 2000,
+      "Amiodarone 200mg Tab": 400
+    },
+    "patient_health_records": {
+      "PAT-777": {
+        "name": "George B.",
+        "age": 79,
+        "diagnoses": [
+          "AFib",
+          "Hypertension"
+        ],
+        "active_medications": [
+          "Amiodarone 200mg QD",
+          "Lisinopril 10mg QD"
+        ],
+        "labs": {
+          "INR": 4.2,
+          "collection_date": "2023-11-15"
+        }
+      },
+      "PAT-778": {
+        "name": "George B.",
+        "age": 82,
+        "diagnoses": [
+          "DVT Prophylaxis"
+        ],
+        "active_medications": [
+          "Furosemide 20mg QD"
+        ],
+        "labs": {
+          "INR": 2.1,
+          "collection_date": "2023-11-14"
+        }
+      },
+      "PAT-779": {
+        "name": "Georgette B.",
+        "age": 75,
+        "diagnoses": [
+          "AFib"
+        ],
+        "active_medications": [],
+        "labs": {
+          "INR": 2.5,
+          "collection_date": "2023-11-12"
+        }
+      }
+    },
+    "verification_log": [],
+    "system_status": "online"
+  }
+}

@@ -1,0 +1,109 @@
+{
+  "environment_name": "env_1dcc906331e4",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM) for Wastewater Treatment Optimization.\n- **Core Objective**: Based on the current internal state $s_t$ of the treatment plant and the action $a_t$ executed by the Agent, simulate the physical, chemical, and biological evolution of the environment and predict the resulting observation $o_{{t+1}}$ obtained by the Agent. \n- **Emphasis**: You are a simulator. You do not execute real-world industrial operations; you perform internal state transitions and generate the resulting sensor data/observations.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions between the World Model and the Agent must maintain rigorous context consistency. Chemical concentrations, bacterial populations (MLSS), and flow dynamics must evolve logically over time based on previous actions and states.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent submits action requests via a structured JSON object. This JSON contains the following fields:\n- `\"name\"`: Specifies the name of the action function to execute (e.g., \"adjust_aeration\", \"set_chemical_dosage\").\n- The remaining fields are the parameter names and corresponding values required by that action function.\n\nExample:\n```json\n{{\n \"name\": \"adjust_aeration_rate\",\n \"arguments\": {{\n    \"blower_speed_rpm\": 1500,\n    \"zone\": \"aeration_tank_1\"\n  }}\n}}\n```\n\nYou must parse these JSON inputs and simulate the resulting change in the treatment plant's metrics.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nFor invalid parameters (e.g., flow rates exceeding pump capacity), undefined actions, or state conflicts, return structured error information (e.g., `{{\"error\": \"Flow rate exceeds maximum safety threshold\"}}`), and do not fabricate states or fictitious responses.\n\n##### Output Assembly\nFor every action function call, return a structured JSON object containing **ONLY** the return fields declared in that action function's definition. \n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, `new_state`, or any hidden variables. You must maintain the state internally. The Agent must only see the specific return values (Observations) defined in the action.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to specified JSON and text formats.\n- **Factuality**: Do not fabricate non-existent functions or physical reactions; simulated oxygen transfer and nutrient removal must follow wastewater engineering logic.\n- **Consistency**: State evolution must be self-consistent (e.g., increasing aeration should generally increase Dissolved Oxygen and energy consumption).\n- **Realism**: Simulated behaviors must align with wastewater treatment dynamics (e.g., hydraulic retention time, sludge age).\n- **Quality**: Language must be clear and structurally complete.\n- **Encapsulation**: Strictly hide the internal state structure. Only expose information explicitly returned by the action function.\n{{initial_state}}: {{\n  \"influent_flow_rate\": 680.0,\n  \"dissolved_oxygen_mg_L\": 0.4,\n  \"mlss_mg_L\": 4950.0,\n  \"effluent_cod_mg_L\": 142.0,\n  \"internal_recycle_flow\": 1050.0,\n  \"sludge_wastage_rate\": 20.0,\n  \"energy_consumption_kwh\": 55.0\n}}\n{{state_descriptions}}: {{\n  \"influent_flow_rate\": \"The rate of raw wastewater entering the system (m³/h).\",\n  \"dissolved_oxygen_mg_L\": \"Concentration of oxygen dissolved in the aeration tank (mg/L).\",\n  \"mlss_mg_L\": \"Mixed Liquor Suspended Solids, representing the concentration of biomass (mg/L).\",\n  \"effluent_cod_mg_L\": \"Chemical Oxygen Demand in the treated water (mg/L).\",\n  \"internal_recycle_flow\": \"Rate of nitrate-rich liquor recycled from aerobic to anoxic zones (m³/h).\",\n  \"sludge_wastage_rate\": \"Rate at which excess sludge is removed from the system (m³/d).\",\n  \"energy_consumption_kwh\": \"Cumulative energy used by blowers and pumps in the current cycle.\"\n}}\n{action_set_definitions}: {\n  \"get_sensor_data\": {\n    \"description\": \"Retrieves the current real-time metrics from the wastewater treatment plant sensors.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"influent_flow_rate\": 1250.5,\n      \"dissolved_oxygen_mg_L\": 1.2,\n      \"mlss_mg_L\": 4500.0,\n      \"effluent_cod_mg_L\": 180.0,\n      \"internal_recycle_flow\": 2500.0,\n      \"sludge_wastage_rate\": 50.0,\n      \"energy_consumption_kwh\": 12450.0\n    }\n  },\n  \"get_lab_analysis\": {\n    \"description\": \"Retrieves the latest biological diagnostic report to identify specific filamentous bacteria or microbial health issues.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"filament_type\": \"Microthrix parvicella\",\n      \"dominance_index\": 4,\n      \"observation_notes\": \"Significant foaming and bridge formation observed in secondary clarifiers.\"\n    }\n  },\n  \"get_operation_sop\": {\n    \"description\": \"Queries the facility's Standard Operating Procedures (SOP) database for specific scenario requirements and legal discharge limits.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"scenario_id\": {\n          \"type\": \"string\",\n          \"description\": \"The name or ID of the scenario (e.g., 'Condition B').\"\n        }\n      },\n      \"required\": [\n        \"scenario_id\"\n      ]\n    },\n    \"example_output\": {\n      \"required_do_mg_L\": 2.5,\n      \"max_legal_cod_mg_L\": 125.0,\n      \"max_hydraulic_wastage_multiplier\": 2.0\n    }\n  },\n  \"update_control_setpoints\": {\n    \"description\": \"Updates the plant control systems with new operational parameters to adjust the biological process.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"target_do_mg_L\": {\n          \"type\": \"number\",\n          \"description\": \"The target dissolved oxygen concentration.\"\n        },\n        \"target_wastage_rate_m3_d\": {\n          \"type\": \"number\",\n          \"description\": \"The new rate for excess sludge removal.\"\n        },\n        \"internal_recycle_m3_h\": {\n          \"type\": \"number\",\n          \"description\": \"Optional: Update internal recycle rate to manage organic load.\"\n        }\n      },\n      \"required\": [\n        \"target_do_mg_L\",\n        \"target_wastage_rate_m3_d\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"success\",\n      \"applied_values\": {\n        \"do\": 2.5,\n        \"wastage\": 100.0\n      }\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_sensor_data",
+      "description": "Retrieves the current real-time metrics from the wastewater treatment plant sensors.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "influent_flow_rate": 1250.5,
+        "dissolved_oxygen_mg_L": 1.2,
+        "mlss_mg_L": 4500.0,
+        "effluent_cod_mg_L": 180.0,
+        "internal_recycle_flow": 2500.0,
+        "sludge_wastage_rate": 50.0,
+        "energy_consumption_kwh": 12450.0
+      }
+    },
+    {
+      "name": "get_lab_analysis",
+      "description": "Retrieves the latest biological diagnostic report to identify specific filamentous bacteria or microbial health issues.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "filament_type": "Microthrix parvicella",
+        "dominance_index": 4,
+        "observation_notes": "Significant foaming and bridge formation observed in secondary clarifiers."
+      }
+    },
+    {
+      "name": "get_operation_sop",
+      "description": "Queries the facility's Standard Operating Procedures (SOP) database for specific scenario requirements and legal discharge limits.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "scenario_id": {
+            "type": "string",
+            "description": "The name or ID of the scenario (e.g., 'Condition B')."
+          }
+        },
+        "required": [
+          "scenario_id"
+        ]
+      },
+      "example_output": {
+        "required_do_mg_L": 2.5,
+        "max_legal_cod_mg_L": 125.0,
+        "max_hydraulic_wastage_multiplier": 2.0
+      }
+    },
+    {
+      "name": "update_control_setpoints",
+      "description": "Updates the plant control systems with new operational parameters to adjust the biological process.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "target_do_mg_L": {
+            "type": "number",
+            "description": "The target dissolved oxygen concentration."
+          },
+          "target_wastage_rate_m3_d": {
+            "type": "number",
+            "description": "The new rate for excess sludge removal."
+          },
+          "internal_recycle_m3_h": {
+            "type": "number",
+            "description": "Optional: Update internal recycle rate to manage organic load."
+          }
+        },
+        "required": [
+          "target_do_mg_L",
+          "target_wastage_rate_m3_d"
+        ]
+      },
+      "example_output": {
+        "status": "success",
+        "applied_values": {
+          "do": 2.5,
+          "wastage": 100.0
+        }
+      }
+    }
+  ],
+  "state_description": {
+    "influent_flow_rate": "The rate of raw wastewater entering the system (m³/h).",
+    "dissolved_oxygen_mg_L": "Concentration of oxygen dissolved in the aeration tank (mg/L).",
+    "mlss_mg_L": "Mixed Liquor Suspended Solids, representing the concentration of biomass (mg/L).",
+    "effluent_cod_mg_L": "Chemical Oxygen Demand in the treated water (mg/L).",
+    "internal_recycle_flow": "Rate of nitrate-rich liquor recycled from aerobic to anoxic zones (m³/h).",
+    "sludge_wastage_rate": "Rate at which excess sludge is removed from the system (m³/d).",
+    "energy_consumption_kwh": "Cumulative energy used by blowers and pumps in the current cycle."
+  },
+  "task_initial_state": {
+    "influent_flow_rate": 680.0,
+    "dissolved_oxygen_mg_L": 0.4,
+    "mlss_mg_L": 4950.0,
+    "effluent_cod_mg_L": 142.0,
+    "internal_recycle_flow": 1050.0,
+    "sludge_wastage_rate": 20.0,
+    "energy_consumption_kwh": 55.0
+  }
+}

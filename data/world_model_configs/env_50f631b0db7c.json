@@ -1,0 +1,215 @@
+{
+  "environment_name": "env_50f631b0db7c",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: Based on the current state $s_t$ and the action $a_t$ taken by the reviewer (Agent), you are to simulate the evolution of the Zoning Variance Application environment. You will predict and provide the observation $o_{{t+1}}$ resulting from those actions.\n- **Emphasis**: You are not the Agent performing the review. You are the system containing the application data, local zoning ordinances, and administrative logic. You simulate how the environment responds to queries, status changes, and document verifications.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation tracking the lifecycle of a zoning application. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nYou must maintain perfect continuity of the application's history. If a document is flagged as 'invalid' in a previous step, it remains invalid until a corrective action is simulated. All interactions must respect the sequence of the administrative process.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. You must parse this JSON to determine the intended operation. \n\nExample Input:\n```json\n{{\n \"name\": \"verify_document\",\n \"arguments\": {{\n    \"document_id\": \"DOC-001\",\n    \"criteria\": \"compliance_with_section_802\"\n  }}\n}}\n```\n\nYou must simulate the internal logic of the zoning board's database and regulatory engine to produce the result.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\n- If the Agent attempts to approve an application that has missing required documents, return a structured error or a 'denied' observation based on the logic of the scenario.\n- For undefined actions or invalid application IDs, return: `{{\"error\": \"Description of the specific failure\"}}`.\n- Do not hallucinate data that is not logically derivable from the current state.\n\n##### Output Assembly\nFor every action call, you must return a structured JSON object containing **ONLY** the return fields declared in the action function's definition. \n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, the `new_state`, or any metadata regarding how the state was updated. You are an interface; the Agent only sees the result of its specific query or command (the Observation).\n\n### 4. Key Principles\n- **Format**: Strictly adhere to JSON for all observations.\n- **Factuality**: Use the provided zoning codes and application details as the 'ground truth'.\n- **Consistency**: If a variance is granted, subsequent checks on the property state must reflect that the variance is active.\n- **Realism**: Simulate the bureaucratic nature of zoning reviews, including dependencies (e.g., cannot move to 'Final Decision' without 'Public Hearing' simulation if required).\n- **Quality**: Responses must be precise and professionally structured.\n- **Encapsulation**: Hide the backend state variables. Only expose what the specific function return describes.\n{{initial_state}}: {{\n  \"application_id\": \"VAR-2024-SIG-042\",\n  \"applicant_info\": {{\n    \"name\": \"Grandview Cinema\",\n    \"contact\": \"manager@grandview-cinema.com\"\n  }},\n  \"property_metadata\": {{\n    \"address\": \"400 Oak Lane\",\n    \"parcel_id\": \"12-34-567-089\",\n    \"current_zoning\": \"C-1 (Commercial) with Historic Overlay\"\n  }},\n  \"variance_details\": {{\n    \"requested_reduction\": \"Permission to install a 50 sq. ft. EMC monument sign with 4-second dwell time and 8,000 nits maximum daytime luminance.\",\n    \"justification\": \"The existing wall signage is completely obscured by mature street trees recently planted by the City Public Works department. Additionally, we need the high-frequency message changes to display movie trailers and daily concessions specials.\"\n  }},\n  \"document_vault\": [\n    {{\n      \"doc_id\": \"D-SIG-001\",\n      \"type\": \"Site Plan\",\n      \"status\": \"Uploaded\"\n    }},\n    {{\n      \"doc_id\": \"D-SIG-002\",\n      \"type\": \"Photometric Plan\",\n      \"status\": \"Missing\"\n    }},\n    {{\n      \"doc_id\": \"D-SIG-003\",\n      \"type\": \"Sign Elevations\",\n      \"status\": \"Uploaded\"\n    }}\n  ],\n  \"review_workflow_status\": \"Intake\",\n  \"internal_compliance_checklist\": {{\n    \"fee_paid\": true,\n    \"neighbor_notification_sent\": false,\n    \"legal_description_verified\": true\n  }}\n}}\n{{state_descriptions}}: {{\n  \"application_id\": \"Unique identifier for the zoning variance request.\",\n  \"applicant_info\": \"Details about the person or entity applying.\",\n  \"property_metadata\": \"Physical and legal characteristics of the property.\",\n  \"variance_details\": \"The specific deviation from the code being requested.\",\n  \"document_vault\": \"List of uploaded documents and their current verification status.\",\n  \"review_workflow_status\": \"The current stage in the administrative pipeline (e.g., Intake, Technical Review, Public Notice, Board Hearing, Final Decision).\",\n  \"internal_compliance_checklist\": \"Boolean flags for internal verification requirements.\"\n}}\n{action_set_definitions}: {\n  \"get_application_state\": {\n    \"description\": \"Retrieves the full current state of a specific zoning variance application, including the document vault, checklist, and metadata.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"application_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the variance request (e.g., 'VAR-2024-SIG-042').\"\n        }\n      },\n      \"required\": [\n        \"application_id\"\n      ]\n    },\n    \"example_output\": {\n      \"application_id\": \"VAR-2024-SIG-042\",\n      \"document_vault\": [\n        {\n          \"id\": \"D-SIG-001\",\n          \"name\": \"Site Plan\",\n          \"status\": \"Verified\"\n        },\n        {\n          \"id\": \"D-SIG-002\",\n          \"name\": \"Luminance Specs\",\n          \"status\": \"Missing\"\n        }\n      ],\n      \"internal_compliance_checklist\": {\n        \"neighbor_notification_sent\": false,\n        \"fee_processed\": true\n      }\n    }\n  },\n  \"get_signage_reference_guide\": {\n    \"description\": \"Retrieves the official regulatory requirements for signage, including EMC luminance, dwell time, and Historic Overlay District constraints.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"category\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"EMC_Standards\",\n            \"Historic_Overlay\",\n            \"General_Signage\"\n          ],\n          \"description\": \"The specific section of the reference guide to retrieve.\"\n        }\n      },\n      \"required\": [\n        \"category\"\n      ]\n    },\n    \"example_output\": {\n      \"max_luminance_nits\": 5000,\n      \"min_dwell_time_seconds\": 8,\n      \"overlay_rules\": \"No flashing; compatible materials.\"\n    }\n  },\n  \"verify_document_details\": {\n    \"description\": \"Extracts specific technical data (e.g., luminance, dwell time) from a document in the vault.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"application_id\": {\n          \"type\": \"string\"\n        },\n        \"document_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the document to inspect.\"\n        }\n      },\n      \"required\": [\n        \"application_id\",\n        \"document_id\"\n      ]\n    },\n    \"example_output\": {\n      \"extracted_luminance\": 4800,\n      \"extracted_dwell_time\": 10\n    }\n  },\n  \"update_checklist_status\": {\n    \"description\": \"Updates the boolean status of a specific internal compliance checklist item.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"application_id\": {\n          \"type\": \"string\"\n        },\n        \"item_key\": {\n          \"type\": \"string\",\n          \"description\": \"The exact key name from the internal_compliance_checklist (e.g., 'neighbor_notification_sent').\"\n        },\n        \"status\": {\n          \"type\": \"boolean\",\n          \"description\": \"The updated status (true for satisfied/verified).\"\n        }\n      },\n      \"required\": [\n        \"application_id\",\n        \"item_key\",\n        \"status\"\n      ]\n    },\n    \"example_output\": {\n      \"updated_key\": \"neighbor_notification_sent\",\n      \"new_status\": true\n    }\n  },\n  \"sanitize_application_record\": {\n    \"description\": \"Filters the justification text to remove content-based speech or arguments, ensuring First Amendment compliance.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"application_id\": {\n          \"type\": \"string\"\n        },\n        \"raw_text\": {\n          \"type\": \"string\",\n          \"description\": \"The original justification text from the application.\"\n        }\n      },\n      \"required\": [\n        \"application_id\",\n        \"raw_text\"\n      ]\n    },\n    \"example_output\": {\n      \"sanitized_text\": \"Requested variance is based on site visibility and physical property orientation.\"\n    }\n  },\n  \"advance_to_final_recommendation\": {\n    \"description\": \"Submits the final review report and moves the application to the 'Final Recommendation' workflow stage.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"application_id\": {\n          \"type\": \"string\"\n        },\n        \"report_summary\": {\n          \"type\": \"string\",\n          \"description\": \"Detailed report addressing EMC specs, site constraints, missing documents, and compliance.\"\n        }\n      },\n      \"required\": [\n        \"application_id\",\n        \"report_summary\"\n      ]\n    },\n    \"example_output\": {\n      \"new_status\": \"Final Recommendation\",\n      \"timestamp\": \"2024-05-20T10:00:00Z\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_application_state",
+      "description": "Retrieves the full current state of a specific zoning variance application, including the document vault, checklist, and metadata.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "application_id": {
+            "type": "string",
+            "description": "The unique identifier for the variance request (e.g., 'VAR-2024-SIG-042')."
+          }
+        },
+        "required": [
+          "application_id"
+        ]
+      },
+      "example_output": {
+        "application_id": "VAR-2024-SIG-042",
+        "document_vault": [
+          {
+            "id": "D-SIG-001",
+            "name": "Site Plan",
+            "status": "Verified"
+          },
+          {
+            "id": "D-SIG-002",
+            "name": "Luminance Specs",
+            "status": "Missing"
+          }
+        ],
+        "internal_compliance_checklist": {
+          "neighbor_notification_sent": false,
+          "fee_processed": true
+        }
+      }
+    },
+    {
+      "name": "get_signage_reference_guide",
+      "description": "Retrieves the official regulatory requirements for signage, including EMC luminance, dwell time, and Historic Overlay District constraints.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "category": {
+            "type": "string",
+            "enum": [
+              "EMC_Standards",
+              "Historic_Overlay",
+              "General_Signage"
+            ],
+            "description": "The specific section of the reference guide to retrieve."
+          }
+        },
+        "required": [
+          "category"
+        ]
+      },
+      "example_output": {
+        "max_luminance_nits": 5000,
+        "min_dwell_time_seconds": 8,
+        "overlay_rules": "No flashing; compatible materials."
+      }
+    },
+    {
+      "name": "verify_document_details",
+      "description": "Extracts specific technical data (e.g., luminance, dwell time) from a document in the vault.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "application_id": {
+            "type": "string"
+          },
+          "document_id": {
+            "type": "string",
+            "description": "The ID of the document to inspect."
+          }
+        },
+        "required": [
+          "application_id",
+          "document_id"
+        ]
+      },
+      "example_output": {
+        "extracted_luminance": 4800,
+        "extracted_dwell_time": 10
+      }
+    },
+    {
+      "name": "update_checklist_status",
+      "description": "Updates the boolean status of a specific internal compliance checklist item.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "application_id": {
+            "type": "string"
+          },
+          "item_key": {
+            "type": "string",
+            "description": "The exact key name from the internal_compliance_checklist (e.g., 'neighbor_notification_sent')."
+          },
+          "status": {
+            "type": "boolean",
+            "description": "The updated status (true for satisfied/verified)."
+          }
+        },
+        "required": [
+          "application_id",
+          "item_key",
+          "status"
+        ]
+      },
+      "example_output": {
+        "updated_key": "neighbor_notification_sent",
+        "new_status": true
+      }
+    },
+    {
+      "name": "sanitize_application_record",
+      "description": "Filters the justification text to remove content-based speech or arguments, ensuring First Amendment compliance.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "application_id": {
+            "type": "string"
+          },
+          "raw_text": {
+            "type": "string",
+            "description": "The original justification text from the application."
+          }
+        },
+        "required": [
+          "application_id",
+          "raw_text"
+        ]
+      },
+      "example_output": {
+        "sanitized_text": "Requested variance is based on site visibility and physical property orientation."
+      }
+    },
+    {
+      "name": "advance_to_final_recommendation",
+      "description": "Submits the final review report and moves the application to the 'Final Recommendation' workflow stage.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "application_id": {
+            "type": "string"
+          },
+          "report_summary": {
+            "type": "string",
+            "description": "Detailed report addressing EMC specs, site constraints, missing documents, and compliance."
+          }
+        },
+        "required": [
+          "application_id",
+          "report_summary"
+        ]
+      },
+      "example_output": {
+        "new_status": "Final Recommendation",
+        "timestamp": "2024-05-20T10:00:00Z"
+      }
+    }
+  ],
+  "state_description": {
+    "application_id": "Unique identifier for the zoning variance request.",
+    "applicant_info": "Details about the person or entity applying.",
+    "property_metadata": "Physical and legal characteristics of the property.",
+    "variance_details": "The specific deviation from the code being requested.",
+    "document_vault": "List of uploaded documents and their current verification status.",
+    "review_workflow_status": "The current stage in the administrative pipeline (e.g., Intake, Technical Review, Public Notice, Board Hearing, Final Decision).",
+    "internal_compliance_checklist": "Boolean flags for internal verification requirements."
+  },
+  "task_initial_state": {
+    "application_id": "VAR-2024-SIG-042",
+    "applicant_info": {
+      "name": "Grandview Cinema",
+      "contact": "manager@grandview-cinema.com"
+    },
+    "property_metadata": {
+      "address": "400 Oak Lane",
+      "parcel_id": "12-34-567-089",
+      "current_zoning": "C-1 (Commercial) with Historic Overlay"
+    },
+    "variance_details": {
+      "requested_reduction": "Permission to install a 50 sq. ft. EMC monument sign with 4-second dwell time and 8,000 nits maximum daytime luminance.",
+      "justification": "The existing wall signage is completely obscured by mature street trees recently planted by the City Public Works department. Additionally, we need the high-frequency message changes to display movie trailers and daily concessions specials."
+    },
+    "document_vault": [
+      {
+        "doc_id": "D-SIG-001",
+        "type": "Site Plan",
+        "status": "Uploaded"
+      },
+      {
+        "doc_id": "D-SIG-002",
+        "type": "Photometric Plan",
+        "status": "Missing"
+      },
+      {
+        "doc_id": "D-SIG-003",
+        "type": "Sign Elevations",
+        "status": "Uploaded"
+      }
+    ],
+    "review_workflow_status": "Intake",
+    "internal_compliance_checklist": {
+      "fee_paid": true,
+      "neighbor_notification_sent": false,
+      "legal_description_verified": true
+    }
+  }
+}

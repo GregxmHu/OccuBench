@@ -1,0 +1,176 @@
+{
+  "environment_name": "env_586bdd022601",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM) for Train Dispatch Conflict Resolution.\n- **Core Objective**: Based on the current internal state of the railway network $s_t$ and the dispatching action $a_t$ provided by the Agent, simulate the temporal and physical evolution of the environment. Predict and return the observation $o_{{t+1}}$ resulting from the action.\n- **Emphasis**: You are the engine of the world. You do not suggest dispatching strategies; you calculate the physical consequences of actions (e.g., changes in train positions, signal statuses, or conflict resolutions) and maintain the internal logic of the railway system.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation tracking train movements, track occupancy, and schedules. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions must maintain strict temporal and spatial consistency. If a train is at Station A at $t$, it cannot be at Station C at $t+1$ without passing through the intermediary segments based on its speed and track constraints.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions (e.g., modifying speeds, rerouting trains, or setting wait times). The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. This JSON must contain the following fields:\n- `\"name\"`: Specifies the name of the dispatch action function to execute.\n- Parameters required by that specific function.\n\nExample:\n```json\n{{\n \"name\": \"adjust_speed\",\n \"arguments\": {{\n    \"train_id\": \"G123\",\n    \"target_speed\": 250\n  }}\n}}\n```\n\nYou must parse these inputs and simulate the resulting state transition within the railway network.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\n- If an action results in a safety violation (e.g., movement into an occupied block without authority), return a structured error/warning in the observation.\n- For invalid parameters or undefined actions, return: `{{\"error\": \"Action 'xyz' not found\"}}` or `{{\"error\": \"Invalid parameter value\"}}`.\n- Do not fabricate data; if an action is impossible given the current state, reflect that in the observation.\n\n##### Output Assembly\nFor every action call, you must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition.\n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, `new_state`, or hidden variables like the entire network map. The Agent must only see the specific observation/return values defined in the action. State maintenance is handled internally by your simulation logic.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to JSON for all data exchanges.\n- **Factuality**: Model train physics and signaling logic accurately according to the provided state and action parameters.\n- **Consistency**: Ensure that if a track is blocked, subsequent actions by any train reflect that blockage until cleared.\n- **Realism**: Simulate realistic delays, acceleration curves, and safety margins inherent in railway operations.\n- **Encapsulation**: Never expose the full system state in the output. Only return the specific observation data requested/triggered by the action.\n{{initial_state}}: {{\n  \"simulation_time\": \"14:15:00\",\n  \"trains\": [\n    {{\n      \"train_id\": \"T-4401\",\n      \"current_segment\": \"SEG-Z-MAIN-02\",\n      \"position_km\": 240.0,\n      \"current_speed\": 150.0,\n      \"status\": \"delayed\",\n      \"delay_minutes\": 8.0\n    }},\n    {{\n      \"train_id\": \"T-7709\",\n      \"current_segment\": \"SEG-Z-MAIN-01\",\n      \"position_km\": 222.0,\n      \"current_speed\": 310.0,\n      \"status\": \"running\",\n      \"delay_minutes\": 0.0\n    }},\n    {{\n      \"train_id\": \"L-0052\",\n      \"current_segment\": \"SEG-X-NORTH\",\n      \"position_km\": 15.0,\n      \"current_speed\": 100.0,\n      \"status\": \"running\",\n      \"delay_minutes\": 0.0\n    }}\n  ],\n  \"track_segments\": [\n    {{\n      \"segment_id\": \"SEG-Z-MAIN-01\",\n      \"is_occupied\": true,\n      \"speed_limit\": 320,\n      \"signal_aspect\": \"Green\"\n    }},\n    {{\n      \"segment_id\": \"SEG-Z-MAIN-02\",\n      \"is_occupied\": true,\n      \"speed_limit\": 320,\n      \"signal_aspect\": \"Yellow\"\n    }},\n    {{\n      \"segment_id\": \"SEG-Z-LOOP\",\n      \"is_occupied\": false,\n      \"speed_limit\": 80,\n      \"signal_aspect\": \"Red\"\n    }},\n    {{\n      \"segment_id\": \"SEG-Z-MERGE\",\n      \"is_occupied\": false,\n      \"speed_limit\": 320,\n      \"signal_aspect\": \"Red\"\n    }}\n  ],\n  \"conflicts\": [\n    {{\n      \"conflict_id\": \"CF-4477-Z\",\n      \"involved_trains\": [\n        \"T-4401\",\n        \"T-7709\"\n      ],\n      \"type\": \"Headway Compression Risk\"\n    }}\n  ]\n}}\n{{state_descriptions}}: {{\n  \"simulation_time\": \"Current system time in HH:MM:SS format\",\n  \"trains\": \"List of active trains in the sector and their physical status\",\n  \"track_segments\": \"Status of physical infrastructure blocks\",\n  \"conflicts\": \"List of detected scheduling or safety conflicts (e.g., head-on, headway violation)\"\n}}\n{action_set_definitions}: {\n  \"get_system_state\": {\n    \"description\": \"Retrieves the comprehensive current state of the sector, including train telemetry, track occupancy, and active conflicts.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"simulation_time\": \"10:15:00\",\n      \"trains\": [\n        {\n          \"train_id\": \"T-4401\",\n          \"type\": \"freight_hindered\",\n          \"speed\": 180,\n          \"position\": \"SEG-Z-05\"\n        }\n      ],\n      \"conflicts\": [\n        {\n          \"id\": \"CF-102\",\n          \"type\": \"headway_violation\",\n          \"trains\": [\n            \"T-4401\",\n            \"T-EXP-09\"\n          ]\n        }\n      ]\n    }\n  },\n  \"set_train_dispatch_config\": {\n    \"description\": \"Configures target speed and scheduling priority for a specific train unit.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"train_id\": {\n          \"type\": \"string\",\n          \"description\": \"Identifier of the train.\"\n        },\n        \"target_speed\": {\n          \"type\": \"number\",\n          \"description\": \"Target speed in km/h.\"\n        },\n        \"priority\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"low\",\n            \"standard\",\n            \"high\",\n            \"emergency\"\n          ],\n          \"description\": \"Dispatch priority level.\"\n        }\n      },\n      \"required\": [\n        \"train_id\",\n        \"target_speed\",\n        \"priority\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"applied\",\n      \"train_id\": \"T-4401\"\n    }\n  },\n  \"modify_movement_authority\": {\n    \"description\": \"Defines the physical path and signaling profile for a train. Used to route trains and enable 'Green Wave' (non-restrictive) movement.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"train_id\": {\n          \"type\": \"string\",\n          \"description\": \"Identifier of the train.\"\n        },\n        \"allowed_segments\": {\n          \"type\": \"array\",\n          \"items\": {\n            \"type\": \"string\"\n          },\n          \"description\": \"List of track segment IDs authorized for travel. Must exclude restricted segments.\"\n        },\n        \"request_green_wave\": {\n          \"type\": \"boolean\",\n          \"description\": \"If true, the system ensures no restrictive signals/braking occur for the duration of the authority.\"\n        }\n      },\n      \"required\": [\n        \"train_id\",\n        \"allowed_segments\",\n        \"request_green_wave\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"authorized\",\n      \"ma_id\": \"MA-772\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_system_state",
+      "description": "Retrieves the comprehensive current state of the sector, including train telemetry, track occupancy, and active conflicts.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "simulation_time": "10:15:00",
+        "trains": [
+          {
+            "train_id": "T-4401",
+            "type": "freight_hindered",
+            "speed": 180,
+            "position": "SEG-Z-05"
+          }
+        ],
+        "conflicts": [
+          {
+            "id": "CF-102",
+            "type": "headway_violation",
+            "trains": [
+              "T-4401",
+              "T-EXP-09"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "set_train_dispatch_config",
+      "description": "Configures target speed and scheduling priority for a specific train unit.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "train_id": {
+            "type": "string",
+            "description": "Identifier of the train."
+          },
+          "target_speed": {
+            "type": "number",
+            "description": "Target speed in km/h."
+          },
+          "priority": {
+            "type": "string",
+            "enum": [
+              "low",
+              "standard",
+              "high",
+              "emergency"
+            ],
+            "description": "Dispatch priority level."
+          }
+        },
+        "required": [
+          "train_id",
+          "target_speed",
+          "priority"
+        ]
+      },
+      "example_output": {
+        "status": "applied",
+        "train_id": "T-4401"
+      }
+    },
+    {
+      "name": "modify_movement_authority",
+      "description": "Defines the physical path and signaling profile for a train. Used to route trains and enable 'Green Wave' (non-restrictive) movement.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "train_id": {
+            "type": "string",
+            "description": "Identifier of the train."
+          },
+          "allowed_segments": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "List of track segment IDs authorized for travel. Must exclude restricted segments."
+          },
+          "request_green_wave": {
+            "type": "boolean",
+            "description": "If true, the system ensures no restrictive signals/braking occur for the duration of the authority."
+          }
+        },
+        "required": [
+          "train_id",
+          "allowed_segments",
+          "request_green_wave"
+        ]
+      },
+      "example_output": {
+        "status": "authorized",
+        "ma_id": "MA-772"
+      }
+    }
+  ],
+  "state_description": {
+    "simulation_time": "Current system time in HH:MM:SS format",
+    "trains": "List of active trains in the sector and their physical status",
+    "track_segments": "Status of physical infrastructure blocks",
+    "conflicts": "List of detected scheduling or safety conflicts (e.g., head-on, headway violation)"
+  },
+  "task_initial_state": {
+    "simulation_time": "14:15:00",
+    "trains": [
+      {
+        "train_id": "T-4401",
+        "current_segment": "SEG-Z-MAIN-02",
+        "position_km": 240.0,
+        "current_speed": 150.0,
+        "status": "delayed",
+        "delay_minutes": 8.0
+      },
+      {
+        "train_id": "T-7709",
+        "current_segment": "SEG-Z-MAIN-01",
+        "position_km": 222.0,
+        "current_speed": 310.0,
+        "status": "running",
+        "delay_minutes": 0.0
+      },
+      {
+        "train_id": "L-0052",
+        "current_segment": "SEG-X-NORTH",
+        "position_km": 15.0,
+        "current_speed": 100.0,
+        "status": "running",
+        "delay_minutes": 0.0
+      }
+    ],
+    "track_segments": [
+      {
+        "segment_id": "SEG-Z-MAIN-01",
+        "is_occupied": true,
+        "speed_limit": 320,
+        "signal_aspect": "Green"
+      },
+      {
+        "segment_id": "SEG-Z-MAIN-02",
+        "is_occupied": true,
+        "speed_limit": 320,
+        "signal_aspect": "Yellow"
+      },
+      {
+        "segment_id": "SEG-Z-LOOP",
+        "is_occupied": false,
+        "speed_limit": 80,
+        "signal_aspect": "Red"
+      },
+      {
+        "segment_id": "SEG-Z-MERGE",
+        "is_occupied": false,
+        "speed_limit": 320,
+        "signal_aspect": "Red"
+      }
+    ],
+    "conflicts": [
+      {
+        "conflict_id": "CF-4477-Z",
+        "involved_trains": [
+          "T-4401",
+          "T-7709"
+        ],
+        "type": "Headway Compression Risk"
+      }
+    ]
+  }
+}

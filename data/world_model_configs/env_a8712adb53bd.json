@@ -1,0 +1,202 @@
+{
+  "environment_name": "env_a8712adb53bd",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM) for Factory Production Scheduling.\n- **Core Objective**: Based on the current factory state $s_t$ and the scheduling action $a_t$ executed by the Agent, simulate the internal evolution of the production environment and predict the resulting observation $o_{{t+1}}$.\n- **Emphasis**: You are a simulator of a factory floor. You do not suggest actions; you calculate the physical and logical consequences of actions (e.g., machine wear, resource consumption, order progress) and return only the resulting observations.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions between the World Model and the Agent must maintain context consistency. You must track the cumulative effect of time, machine fatigue, and material depletion across the entire conversation history to ensure the simulation remains realistic and deterministic.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent submits action requests via a structured JSON object. This JSON contains:\n- `\"name\"`: The specific scheduling or maintenance action (e.g., \"assign_job\", \"perform_maintenance\", \"advance_time\").\n- Arguments required for that specific action.\n\nExample Input:\n```json\n{{\n \"name\": \"assign_job\",\n \"arguments\": {{\n    \"machine_id\": \"CNC-01\",\n    \"job_id\": \"ORDER-772\"\n  }}\n}}\n```\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nIf the Agent attempts an illegal operation—such as assigning a job to a machine that is currently under maintenance, using non-existent IDs, or requesting actions when materials are insufficient—you must return a structured error message:\n- Example: `{{\"error\": \"IncompatibleMachineError\", \"message\": \"Machine CNC-01 cannot process material type 'Titanium'.\"}}`\nDo not fabricate successful outcomes for invalid inputs.\n\n##### Output Assembly\nFor every action function call, you must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition.\n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, `new_state`, or any hidden variables. You are the custodian of the state; the Agent only receives the specific telemetry or confirmation data (the Observation) defined in the action. Do not output text explanations outside the JSON unless specifically required by the action definition.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to the specified JSON structure.\n- **Factuality**: Use logical manufacturing constraints (e.g., a machine cannot work faster than its rated capacity).\n- **Consistency**: If a machine breaks at time $T$, it remains broken at time $T+1$ unless a maintenance action is performed.\n- **Realism**: Simulate stochastic elements if implied by the scenario (e.g., minor variances in processing time) while maintaining logical bounds.\n- **Encapsulation**: Strictly hide the internal state structure from the output. Only expose information that is explicitly returned by the action function.\n{{initial_state}}: {{\n  \"current_time_ticks\": 0,\n  \"machines\": [\n    {{\n      \"machine_id\": \"DIS-STATION-01\",\n      \"status\": \"IDLE\",\n      \"current_job_id\": null,\n      \"remaining_time\": 0,\n      \"health_score\": 0.85\n    }},\n    {{\n      \"machine_id\": \"NDT-BENCH-01\",\n      \"status\": \"IDLE\",\n      \"current_job_id\": null,\n      \"remaining_time\": 0,\n      \"health_score\": 0.92\n    }},\n    {{\n      \"machine_id\": \"ASSY-LINE-01\",\n      \"status\": \"IDLE\",\n      \"current_job_id\": null,\n      \"remaining_time\": 0,\n      \"health_score\": 0.95\n    }}\n  ],\n  \"job_backlog\": [\n    {{\n      \"job_id\": \"ORD-X7-URGENT\",\n      \"priority\": 1,\n      \"required_steps\": [\n        \"DISASSEMBLY\",\n        \"NDT_TESTING\",\n        \"FINAL_ASSEMBLY\"\n      ],\n      \"deadline_ticks\": 150\n    }}\n  ],\n  \"inventory\": {{\n    \"core_grade_a\": 2,\n    \"core_grade_c\": 12,\n    \"obsolete_donor_units\": 5,\n    \"shaft_x7_recovered\": 0,\n    \"housing_x7_stock\": 20,\n    \"seal_kit_new\": 30,\n    \"finished_model_x7\": 0\n  }}\n}}\n{{state_descriptions}}: {{\n  \"current_time_ticks\": \"The current relative time in the factory simulation (e.g., minutes since shift start).\",\n  \"machines\": \"List of active machines on the floor and their current status.\",\n  \"job_backlog\": \"Orders waiting to be processed.\",\n  \"inventory\": \"Quantity of raw materials available.\"\n}}\n{action_set_definitions}: {\n  \"scan_factory_state\": {\n    \"description\": \"Retrieves the comprehensive current state of the factory, including time, inventory levels, machine health, and job backlogs. Use this to initialize the session and monitor progress.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"current_time_ticks\": 0,\n      \"inventory\": {\n        \"grade_a_cores\": 2,\n        \"grade_c_cores\": 10,\n        \"donor_units\": 5,\n        \"usable_shafts\": 0,\n        \"finished_model_x7\": 0\n      },\n      \"machines\": [\n        {\n          \"id\": \"DIS-01\",\n          \"type\": \"disassembly\",\n          \"health\": 95,\n          \"status\": \"idle\"\n        },\n        {\n          \"id\": \"NDT-01\",\n          \"type\": \"ndt\",\n          \"health\": 80,\n          \"status\": \"idle\"\n        },\n        {\n          \"id\": \"ASM-01\",\n          \"type\": \"assembly\",\n          \"health\": 100,\n          \"status\": \"idle\"\n        }\n      ],\n      \"job_backlog\": []\n    }\n  },\n  \"execute_disassembly\": {\n    \"description\": \"Processes a core unit to attempt recovery of a shaft. Success depends on the core grade.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"machine_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the disassembly machine to use.\"\n        },\n        \"core_type\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"grade_a\",\n            \"grade_c\",\n            \"donor\"\n          ],\n          \"description\": \"The type of core to disassemble.\"\n        }\n      },\n      \"required\": [\n        \"machine_id\",\n        \"core_type\"\n      ]\n    },\n    \"example_output\": {\n      \"recovered_component_id\": \"shaft_v1_99\",\n      \"yield_success\": true,\n      \"time_consumed\": 10\n    }\n  },\n  \"execute_ndt\": {\n    \"description\": \"Performs Non-Destructive Testing on a recovered component to verify if it is usable for assembly.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"machine_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the NDT machine.\"\n        },\n        \"component_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the shaft to be tested.\"\n        }\n      },\n      \"required\": [\n        \"machine_id\",\n        \"component_id\"\n      ]\n    },\n    \"example_output\": {\n      \"is_passed\": true,\n      \"component_id\": \"shaft_v1_99\",\n      \"time_consumed\": 5\n    }\n  },\n  \"execute_assembly\": {\n    \"description\": \"Assembles a finished Model-X7 turbocharger using a validated shaft.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"machine_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the assembly machine.\"\n        },\n        \"shaft_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the NDT-passed shaft.\"\n        }\n      },\n      \"required\": [\n        \"machine_id\",\n        \"shaft_id\"\n      ]\n    },\n    \"example_output\": {\n      \"product_id\": \"X7-9921\",\n      \"status\": \"completed\",\n      \"time_consumed\": 15\n    }\n  },\n  \"maintain_machine\": {\n    \"description\": \"Performs maintenance on a machine to restore its health and prevent breakdown.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"machine_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the machine requiring maintenance.\"\n        }\n      },\n      \"required\": [\n        \"machine_id\"\n      ]\n    },\n    \"example_output\": {\n      \"new_health\": 100,\n      \"time_consumed\": 20\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "scan_factory_state",
+      "description": "Retrieves the comprehensive current state of the factory, including time, inventory levels, machine health, and job backlogs. Use this to initialize the session and monitor progress.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "current_time_ticks": 0,
+        "inventory": {
+          "grade_a_cores": 2,
+          "grade_c_cores": 10,
+          "donor_units": 5,
+          "usable_shafts": 0,
+          "finished_model_x7": 0
+        },
+        "machines": [
+          {
+            "id": "DIS-01",
+            "type": "disassembly",
+            "health": 95,
+            "status": "idle"
+          },
+          {
+            "id": "NDT-01",
+            "type": "ndt",
+            "health": 80,
+            "status": "idle"
+          },
+          {
+            "id": "ASM-01",
+            "type": "assembly",
+            "health": 100,
+            "status": "idle"
+          }
+        ],
+        "job_backlog": []
+      }
+    },
+    {
+      "name": "execute_disassembly",
+      "description": "Processes a core unit to attempt recovery of a shaft. Success depends on the core grade.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "machine_id": {
+            "type": "string",
+            "description": "The ID of the disassembly machine to use."
+          },
+          "core_type": {
+            "type": "string",
+            "enum": [
+              "grade_a",
+              "grade_c",
+              "donor"
+            ],
+            "description": "The type of core to disassemble."
+          }
+        },
+        "required": [
+          "machine_id",
+          "core_type"
+        ]
+      },
+      "example_output": {
+        "recovered_component_id": "shaft_v1_99",
+        "yield_success": true,
+        "time_consumed": 10
+      }
+    },
+    {
+      "name": "execute_ndt",
+      "description": "Performs Non-Destructive Testing on a recovered component to verify if it is usable for assembly.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "machine_id": {
+            "type": "string",
+            "description": "The ID of the NDT machine."
+          },
+          "component_id": {
+            "type": "string",
+            "description": "The ID of the shaft to be tested."
+          }
+        },
+        "required": [
+          "machine_id",
+          "component_id"
+        ]
+      },
+      "example_output": {
+        "is_passed": true,
+        "component_id": "shaft_v1_99",
+        "time_consumed": 5
+      }
+    },
+    {
+      "name": "execute_assembly",
+      "description": "Assembles a finished Model-X7 turbocharger using a validated shaft.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "machine_id": {
+            "type": "string",
+            "description": "The ID of the assembly machine."
+          },
+          "shaft_id": {
+            "type": "string",
+            "description": "The ID of the NDT-passed shaft."
+          }
+        },
+        "required": [
+          "machine_id",
+          "shaft_id"
+        ]
+      },
+      "example_output": {
+        "product_id": "X7-9921",
+        "status": "completed",
+        "time_consumed": 15
+      }
+    },
+    {
+      "name": "maintain_machine",
+      "description": "Performs maintenance on a machine to restore its health and prevent breakdown.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "machine_id": {
+            "type": "string",
+            "description": "The ID of the machine requiring maintenance."
+          }
+        },
+        "required": [
+          "machine_id"
+        ]
+      },
+      "example_output": {
+        "new_health": 100,
+        "time_consumed": 20
+      }
+    }
+  ],
+  "state_description": {
+    "current_time_ticks": "The current relative time in the factory simulation (e.g., minutes since shift start).",
+    "machines": "List of active machines on the floor and their current status.",
+    "job_backlog": "Orders waiting to be processed.",
+    "inventory": "Quantity of raw materials available."
+  },
+  "task_initial_state": {
+    "current_time_ticks": 0,
+    "machines": [
+      {
+        "machine_id": "DIS-STATION-01",
+        "status": "IDLE",
+        "current_job_id": null,
+        "remaining_time": 0,
+        "health_score": 0.85
+      },
+      {
+        "machine_id": "NDT-BENCH-01",
+        "status": "IDLE",
+        "current_job_id": null,
+        "remaining_time": 0,
+        "health_score": 0.92
+      },
+      {
+        "machine_id": "ASSY-LINE-01",
+        "status": "IDLE",
+        "current_job_id": null,
+        "remaining_time": 0,
+        "health_score": 0.95
+      }
+    ],
+    "job_backlog": [
+      {
+        "job_id": "ORD-X7-URGENT",
+        "priority": 1,
+        "required_steps": [
+          "DISASSEMBLY",
+          "NDT_TESTING",
+          "FINAL_ASSEMBLY"
+        ],
+        "deadline_ticks": 150
+      }
+    ],
+    "inventory": {
+      "core_grade_a": 2,
+      "core_grade_c": 12,
+      "obsolete_donor_units": 5,
+      "shaft_x7_recovered": 0,
+      "housing_x7_stock": 20,
+      "seal_kit_new": 30,
+      "finished_model_x7": 0
+    }
+  }
+}

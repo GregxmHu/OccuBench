@@ -1,0 +1,151 @@
+{
+  "environment_name": "env_a3a1e30ecae8",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: Based on the current internal state $s_t$ and the action $a_t$ performed by the Agent, simulate the internal evolution of the Candidate Resume Screening environment and predict the resulting observation $o_{{t+1}}$ obtained by the Agent.\n- **Emphasis**: You are a simulator. You do not perform real-world hiring; you simulate the logic of a recruitment system, tracking which candidate is being viewed, the status of the screening queue, and the outcomes of evaluations.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation to track the progress of the recruitment pipeline. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nYou must maintain strict temporal and logical consistency. For example, if a candidate is rejected in step $t$, they should not reappear in the active screening queue at step $t+1$ unless a specific 'reset' or 'reconsider' action is validly executed.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the screening environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. You must parse this JSON to determine the transition:\n- `\"name\"`: The specific screening action (e.g., `view_next_candidate`, `rate_candidate`, `shortlist`).\n- `\"arguments\"`: Parameters required for the action.\n\nExample Input:\n```json\n{{\n \"name\": \"rate_candidate\",\n \"arguments\": {{\n    \"candidate_id\": \"RESUME_001\",\n    \"score\": 85,\n    \"comments\": \"Strong technical background in Python.\"\n  }}\n}}\n```\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\n- If an action refers to a `candidate_id` not in the current state/queue, return: `{{\"error\": \"Candidate ID not found in active queue\"}}`.\n- If an Agent tries to shortlist a candidate before viewing their profile, return an appropriate logic error.\n- Do not fabricate resumes or data; only use the logic dictated by the state evolution.\n\n##### Output Assembly\nFor every action function call, you must return a structured JSON object containing **ONLY** the return fields declared in the action function's definition. \n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state $s_t$, the updated state, or any hidden variables like the full candidate database. The Agent must only see the specific return values (Observations) defined in the action (e.g., the text of the next resume, or a success confirmation).\n\n### 4. Key Principles\n- **Format**: Strictly adhere to JSON output for observations.\n- **Factuality**: Simulate the environment based on the provided state; do not hallucinate external hiring platforms.\n- **Consistency**: If a candidate is moved to 'Shortlisted', the internal state counter for 'Shortlisted' must increment accordingly in your internal tracking.\n- **Realism**: Responses (e.g., resume content or screening feedback) should reflect professional recruitment standards.\n- **Quality**: Ensure the simulated observations provide sufficient information for the Agent to make the next decision.\n- **Encapsulation**: Strictly hide the internal state structure from the output. Do not output \"State Updated\" messages.\n{{initial_state}}: {{\n  \"current_candidate_id\": \"null\",\n  \"screening_queue\": [\n    \"CAND_ARK_401\",\n    \"CAND_ARK_402\",\n    \"CAND_ARK_403\"\n  ],\n  \"shortlisted_candidates\": [],\n  \"rejected_candidates\": [],\n  \"total_processed\": 0,\n  \"hiring_manager_notes\": {{}}\n}}\n{{state_descriptions}}: {{\n  \"current_candidate_id\": \"The unique identifier of the resume currently being reviewed by the Agent.\",\n  \"screening_queue\": \"A list of candidate IDs currently waiting to be reviewed.\",\n  \"shortlisted_candidates\": \"List of IDs for candidates who have passed the initial screening.\",\n  \"rejected_candidates\": \"List of IDs for candidates who have been disqualified.\",\n  \"total_processed\": \"The total number of resumes handled in the current session.\",\n  \"hiring_manager_notes\": \"A mapping of candidate IDs to internal evaluation notes generated during the process.\"\n}}\n{action_set_definitions}: {\n  \"get_candidate_queue\": {\n    \"description\": \"Retrieves the current list of candidate IDs pending review for the 'Senior Cloud Architect' position.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"candidate_ids\": [\n        \"ID_9821\",\n        \"ID_4432\",\n        \"ID_0098\"\n      ]\n    }\n  },\n  \"get_candidate_profile\": {\n    \"description\": \"Retrieves detailed profile data for a specific candidate, including employment history types, career gap details, and flags for sensitive disclosures.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"candidate_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the candidate.\"\n        }\n      },\n      \"required\": [\n        \"candidate_id\"\n      ]\n    },\n    \"example_output\": {\n      \"candidate_id\": \"ID_9821\",\n      \"has_gig_trajectory\": true,\n      \"has_employment_gaps\": false,\n      \"has_sensitive_disclosures\": true,\n      \"is_spiky_profile\": true,\n      \"skills_data\": \"Lead Architect at 5 startups (total 6 years)...\",\n      \"bridge_activities\": null\n    }\n  },\n  \"redact_sensitive_information\": {\n    \"description\": \"Applies standard Sensitive Information and PII Redaction protocols to remove medical or neurodiversity disclosures to ensure data privacy and bias prevention.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"candidate_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the candidate.\"\n        }\n      },\n      \"required\": [\n        \"candidate_id\"\n      ]\n    },\n    \"example_output\": {\n      \"redaction_status\": \"complete\",\n      \"compliance_reference\": \"REF-PII-2024\"\n    }\n  },\n  \"add_hiring_manager_evaluation\": {\n    \"description\": \"Documents professional evaluations in the hiring manager notes, specifically for skill reconciliation or career gap justifications.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"candidate_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the candidate.\"\n        },\n        \"evaluation_type\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"skill_reconciliation\",\n            \"gap_justification\",\n            \"general_merit\"\n          ]\n        },\n        \"comments\": {\n          \"type\": \"string\",\n          \"description\": \"Professional documentation of the findings.\"\n        }\n      },\n      \"required\": [\n        \"candidate_id\",\n        \"evaluation_type\",\n        \"comments\"\n      ]\n    },\n    \"example_output\": {\n      \"entry_status\": \"saved\"\n    }\n  },\n  \"finalize_candidate_status\": {\n    \"description\": \"Updates the candidate's status in the environment to either shortlisted or rejected based on the screening results.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"candidate_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the candidate.\"\n        },\n        \"decision\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"shortlist\",\n            \"reject\"\n          ]\n        },\n        \"summary\": {\n          \"type\": \"string\",\n          \"description\": \"Final summary of the decision.\"\n        }\n      },\n      \"required\": [\n        \"candidate_id\",\n        \"decision\"\n      ]\n    },\n    \"example_output\": {\n      \"final_state\": \"shortlisted\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_candidate_queue",
+      "description": "Retrieves the current list of candidate IDs pending review for the 'Senior Cloud Architect' position.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "candidate_ids": [
+          "ID_9821",
+          "ID_4432",
+          "ID_0098"
+        ]
+      }
+    },
+    {
+      "name": "get_candidate_profile",
+      "description": "Retrieves detailed profile data for a specific candidate, including employment history types, career gap details, and flags for sensitive disclosures.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "candidate_id": {
+            "type": "string",
+            "description": "The unique identifier for the candidate."
+          }
+        },
+        "required": [
+          "candidate_id"
+        ]
+      },
+      "example_output": {
+        "candidate_id": "ID_9821",
+        "has_gig_trajectory": true,
+        "has_employment_gaps": false,
+        "has_sensitive_disclosures": true,
+        "is_spiky_profile": true,
+        "skills_data": "Lead Architect at 5 startups (total 6 years)...",
+        "bridge_activities": null
+      }
+    },
+    {
+      "name": "redact_sensitive_information",
+      "description": "Applies standard Sensitive Information and PII Redaction protocols to remove medical or neurodiversity disclosures to ensure data privacy and bias prevention.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "candidate_id": {
+            "type": "string",
+            "description": "The unique identifier for the candidate."
+          }
+        },
+        "required": [
+          "candidate_id"
+        ]
+      },
+      "example_output": {
+        "redaction_status": "complete",
+        "compliance_reference": "REF-PII-2024"
+      }
+    },
+    {
+      "name": "add_hiring_manager_evaluation",
+      "description": "Documents professional evaluations in the hiring manager notes, specifically for skill reconciliation or career gap justifications.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "candidate_id": {
+            "type": "string",
+            "description": "The unique identifier for the candidate."
+          },
+          "evaluation_type": {
+            "type": "string",
+            "enum": [
+              "skill_reconciliation",
+              "gap_justification",
+              "general_merit"
+            ]
+          },
+          "comments": {
+            "type": "string",
+            "description": "Professional documentation of the findings."
+          }
+        },
+        "required": [
+          "candidate_id",
+          "evaluation_type",
+          "comments"
+        ]
+      },
+      "example_output": {
+        "entry_status": "saved"
+      }
+    },
+    {
+      "name": "finalize_candidate_status",
+      "description": "Updates the candidate's status in the environment to either shortlisted or rejected based on the screening results.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "candidate_id": {
+            "type": "string",
+            "description": "The unique identifier for the candidate."
+          },
+          "decision": {
+            "type": "string",
+            "enum": [
+              "shortlist",
+              "reject"
+            ]
+          },
+          "summary": {
+            "type": "string",
+            "description": "Final summary of the decision."
+          }
+        },
+        "required": [
+          "candidate_id",
+          "decision"
+        ]
+      },
+      "example_output": {
+        "final_state": "shortlisted"
+      }
+    }
+  ],
+  "state_description": {
+    "current_candidate_id": "The unique identifier of the resume currently being reviewed by the Agent.",
+    "screening_queue": "A list of candidate IDs currently waiting to be reviewed.",
+    "shortlisted_candidates": "List of IDs for candidates who have passed the initial screening.",
+    "rejected_candidates": "List of IDs for candidates who have been disqualified.",
+    "total_processed": "The total number of resumes handled in the current session.",
+    "hiring_manager_notes": "A mapping of candidate IDs to internal evaluation notes generated during the process."
+  },
+  "task_initial_state": {
+    "current_candidate_id": "null",
+    "screening_queue": [
+      "CAND_ARK_401",
+      "CAND_ARK_402",
+      "CAND_ARK_403"
+    ],
+    "shortlisted_candidates": [],
+    "rejected_candidates": [],
+    "total_processed": 0,
+    "hiring_manager_notes": {}
+  }
+}

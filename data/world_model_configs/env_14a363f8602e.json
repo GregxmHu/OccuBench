@@ -1,0 +1,151 @@
+{
+  "environment_name": "env_14a363f8602e",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: Based on the current state $s_t$ and action $a_t$, simulate the internal chemical and physical dynamics of a Batch Reactor and predict the observation $o_{{t+1}}$ obtained by the Agent. \n- **Emphasis**: The LWM does not control the hardware; it performs internal state evolution (modeling temperature, pressure, and chemical kinetics) and generates realistic sensor observations.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nEmphasis: All interactions between the World Model and the Agent must maintain context consistency. The model must track the cumulative effects of heating, cooling, and chemical reactions over time steps.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. This JSON must contain the following fields:\n- `\"name\"`: Specifies the name of the action function to execute.\n- The remaining fields are parameters required by that action function.\n\nExample:\n```json\n{{\n \"name\": \"adjust_temperature\",\n \"arguments\": {{\n    \"target_temp\": 85.5,\n    \"heating_rate\": 2.0\n  }}\n}}\n```\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nFor invalid parameters (e.g., negative pressure, temperatures exceeding physical limits), undefined actions, or state conflicts (e.g., trying to discharge while the reactor is still pressurized), return structured error information (e.g., `{{\"error\": \"Pressure threshold exceeded for discharge\"}}`), and **do not fabricate states or fictitious responses**.\n\n##### Output Assembly\nFor every action function call, the model must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition.\n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, `new_state`, or any hidden variables like internal reactant coefficients. The Agent must only see the specific return values (Observations) defined in the action.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to specified JSON and text formats.\n- **Factuality**: Model the Batch Reactor based on standard chemical engineering principles (e.g., exothermic reaction heat, pressure-temperature correlation).\n- **Consistency**: If a heater is turned on, the temperature must logically increase in subsequent steps until a limit or equilibrium is reached.\n- **Realism**: Observations should reflect realistic sensor noise or lag if applicable to the scenario logic.\n- **Quality**: Language must be clear, unambiguous, and structurally complete.\n- **Encapsulation**: Strictly hide the internal state structure from the output. Only expose information that is explicitly returned by the action function. Do not output the state update.\n{{initial_state}}: {{\n  \"internal_temperature\": 20.0,\n  \"internal_pressure\": 1.01,\n  \"reactant_mass\": 0.0,\n  \"product_mass\": 0.0,\n  \"liquid_level\": 0.0,\n  \"is_agitator_active\": false,\n  \"jacket_temperature\": 20.0,\n  \"process_status\": \"idle\"\n}}\n{{state_descriptions}}: {{\n  \"internal_temperature\": \"The current temperature inside the reactor in degrees Celsius.\",\n  \"internal_pressure\": \"The current pressure inside the reactor in Bar.\",\n  \"reactant_mass\": \"The mass of the primary reactant currently in the tank (kg).\",\n  \"product_mass\": \"The mass of the converted product currently in the tank (kg).\",\n  \"liquid_level\": \"The fill percentage of the reactor tank (0-100%).\",\n  \"is_agitator_active\": \"Whether the mixing agitator is currently powered on.\",\n  \"jacket_temperature\": \"The temperature of the heating/cooling jacket surrounding the reactor.\",\n  \"process_status\": \"The current phase of the batch process (e.g., idle, charging, reacting, discharging).\"\n}}\n{action_set_definitions}: {\n  \"get_reactor_state\": {\n    \"description\": \"Retrieves the current telemetry data and operational status for a specific reactor unit. Essential for identifying initial conditions before performing operations.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"reactor_id\": {\n          \"type\": \"string\",\n          \"description\": \"The identification code of the reactor (e.g., '304').\"\n        }\n      },\n      \"required\": [\n        \"reactor_id\"\n      ]\n    },\n    \"example_output\": {\n      \"internal_temperature\": 22.5,\n      \"internal_pressure\": 1.01,\n      \"reactant_mass\": 0.0,\n      \"product_mass\": 0.0,\n      \"liquid_level\": 15.0,\n      \"is_agitator_active\": false,\n      \"jacket_temperature\": 20.0,\n      \"process_status\": \"idle\"\n    }\n  },\n  \"set_liquid_level\": {\n    \"description\": \"Controls the inlet valves to fill the reactor with water to a specific target percentage.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"reactor_id\": {\n          \"type\": \"string\",\n          \"description\": \"The identifier for the reactor unit.\"\n        },\n        \"target_level\": {\n          \"type\": \"number\",\n          \"description\": \"The desired fill level percentage (0-100).\"\n        }\n      },\n      \"required\": [\n        \"reactor_id\",\n        \"target_level\"\n      ]\n    },\n    \"example_output\": {\n      \"current_level\": 60.0,\n      \"status\": \"filling_complete\"\n    }\n  },\n  \"set_agitator_power\": {\n    \"description\": \"Turns the reactor's internal mixing agitator on or off. Required for thermal uniformity.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"reactor_id\": {\n          \"type\": \"string\",\n          \"description\": \"The identifier for the reactor unit.\"\n        },\n        \"status\": {\n          \"type\": \"boolean\",\n          \"description\": \"True to power on, False to power off.\"\n        }\n      },\n      \"required\": [\n        \"reactor_id\",\n        \"status\"\n      ]\n    },\n    \"example_output\": {\n      \"is_agitator_active\": true\n    }\n  },\n  \"update_jacket_setpoint\": {\n    \"description\": \"Sets the temperature of the external heating/cooling jacket. Note: Adjustments must not exceed 10°C from current value per step.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"reactor_id\": {\n          \"type\": \"string\",\n          \"description\": \"The identifier for the reactor unit.\"\n        },\n        \"target_temp\": {\n          \"type\": \"number\",\n          \"description\": \"The new temperature setpoint for the jacket in degrees Celsius.\"\n        }\n      },\n      \"required\": [\n        \"reactor_id\",\n        \"target_temp\"\n      ]\n    },\n    \"example_output\": {\n      \"new_jacket_temperature\": 30.0\n    }\n  },\n  \"trigger_safety_interlock\": {\n    \"description\": \"Executes a test of the safety interlock systems to ensure the reactor shuts down or stabilizes during a high-temperature event.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"reactor_id\": {\n          \"type\": \"string\",\n          \"description\": \"The identifier for the reactor unit.\"\n        },\n        \"interlock_type\": {\n          \"type\": \"string\",\n          \"description\": \"The specific safety system to trigger (e.g., 'high_temperature').\"\n        }\n      },\n      \"required\": [\n        \"reactor_id\",\n        \"interlock_type\"\n      ]\n    },\n    \"example_output\": {\n      \"interlock_triggered\": true,\n      \"response_time_ms\": 150,\n      \"status\": \"success\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_reactor_state",
+      "description": "Retrieves the current telemetry data and operational status for a specific reactor unit. Essential for identifying initial conditions before performing operations.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "reactor_id": {
+            "type": "string",
+            "description": "The identification code of the reactor (e.g., '304')."
+          }
+        },
+        "required": [
+          "reactor_id"
+        ]
+      },
+      "example_output": {
+        "internal_temperature": 22.5,
+        "internal_pressure": 1.01,
+        "reactant_mass": 0.0,
+        "product_mass": 0.0,
+        "liquid_level": 15.0,
+        "is_agitator_active": false,
+        "jacket_temperature": 20.0,
+        "process_status": "idle"
+      }
+    },
+    {
+      "name": "set_liquid_level",
+      "description": "Controls the inlet valves to fill the reactor with water to a specific target percentage.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "reactor_id": {
+            "type": "string",
+            "description": "The identifier for the reactor unit."
+          },
+          "target_level": {
+            "type": "number",
+            "description": "The desired fill level percentage (0-100)."
+          }
+        },
+        "required": [
+          "reactor_id",
+          "target_level"
+        ]
+      },
+      "example_output": {
+        "current_level": 60.0,
+        "status": "filling_complete"
+      }
+    },
+    {
+      "name": "set_agitator_power",
+      "description": "Turns the reactor's internal mixing agitator on or off. Required for thermal uniformity.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "reactor_id": {
+            "type": "string",
+            "description": "The identifier for the reactor unit."
+          },
+          "status": {
+            "type": "boolean",
+            "description": "True to power on, False to power off."
+          }
+        },
+        "required": [
+          "reactor_id",
+          "status"
+        ]
+      },
+      "example_output": {
+        "is_agitator_active": true
+      }
+    },
+    {
+      "name": "update_jacket_setpoint",
+      "description": "Sets the temperature of the external heating/cooling jacket. Note: Adjustments must not exceed 10°C from current value per step.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "reactor_id": {
+            "type": "string",
+            "description": "The identifier for the reactor unit."
+          },
+          "target_temp": {
+            "type": "number",
+            "description": "The new temperature setpoint for the jacket in degrees Celsius."
+          }
+        },
+        "required": [
+          "reactor_id",
+          "target_temp"
+        ]
+      },
+      "example_output": {
+        "new_jacket_temperature": 30.0
+      }
+    },
+    {
+      "name": "trigger_safety_interlock",
+      "description": "Executes a test of the safety interlock systems to ensure the reactor shuts down or stabilizes during a high-temperature event.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "reactor_id": {
+            "type": "string",
+            "description": "The identifier for the reactor unit."
+          },
+          "interlock_type": {
+            "type": "string",
+            "description": "The specific safety system to trigger (e.g., 'high_temperature')."
+          }
+        },
+        "required": [
+          "reactor_id",
+          "interlock_type"
+        ]
+      },
+      "example_output": {
+        "interlock_triggered": true,
+        "response_time_ms": 150,
+        "status": "success"
+      }
+    }
+  ],
+  "state_description": {
+    "internal_temperature": "The current temperature inside the reactor in degrees Celsius.",
+    "internal_pressure": "The current pressure inside the reactor in Bar.",
+    "reactant_mass": "The mass of the primary reactant currently in the tank (kg).",
+    "product_mass": "The mass of the converted product currently in the tank (kg).",
+    "liquid_level": "The fill percentage of the reactor tank (0-100%).",
+    "is_agitator_active": "Whether the mixing agitator is currently powered on.",
+    "jacket_temperature": "The temperature of the heating/cooling jacket surrounding the reactor.",
+    "process_status": "The current phase of the batch process (e.g., idle, charging, reacting, discharging)."
+  },
+  "task_initial_state": {
+    "internal_temperature": 20.0,
+    "internal_pressure": 1.01,
+    "reactant_mass": 0.0,
+    "product_mass": 0.0,
+    "liquid_level": 0.0,
+    "is_agitator_active": false,
+    "jacket_temperature": 20.0,
+    "process_status": "idle"
+  }
+}

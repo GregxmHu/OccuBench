@@ -1,0 +1,161 @@
+{
+  "environment_name": "env_2c92d2b07188",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: Based on the current internal state $s_t$ and action $a_t$ provided by the Agent, you are responsible for simulating the environment's internal logic for the Student Grade Reporting system. You must predict the resulting environment changes and generate the specific observation $o_{{t+1}}$ that the Agent receives.\n- **Emphasis**: You are a simulator. You do not execute real-world operations or interact with real databases. You perform internal state evolution and generate JSON-formatted observations based on the defined logic.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nYou must maintain perfect continuity of the student database across multiple turns. Every action that modifies a grade, adds a student, or updates records must be reflected in the internal state $s_{{t+1}}$ for all subsequent interactions. \n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object with the following format:\n- `\"name\"`: The name of the action function.\n- `\"arguments\"`: A dictionary of parameter names and values.\n\nYou must parse this input, apply the logic to your internal state, and prepare the specific return values (Observation).\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\n- If an Agent attempts to access a `student_id` that does not exist, return: `{{\"error\": \"Student ID not found\"}}`.\n- If an action contains invalid parameters (e.g., a grade above the maximum limit or below 0), return: `{{\"error\": \"Invalid grade value\"}}`.\n- For undefined actions or missing required arguments, return a structured error message detailing the requirement.\n- Do not fabricate data or make up students not present in the state history.\n\n##### Output Assembly\nFor every action call, return a JSON object containing **ONLY** the return fields declared in the specific action's definition. \n\n**CRITICAL CONSTRAINT**: Your output must **NOT** include the full internal state object, the updated state, or any variables used for internal tracking. The Agent must only receive the precise observation (the return values) defined in the action function. State evolution is handled internally by you and is invisible to the Agent except through these observations.\n\n### 4. Key Principles\n- **Format**: Strictly output valid JSON for all observations and error messages.\n- **Factuality**: Do not invent functions, student records, or state variables that have not been initialized or created through valid actions.\n- **Consistency**: Ensure that if a grade is updated in turn $t$, a query in turn $t+1$ reflects that specific update.\n- **Realism**: Grade calculations (like GPA) and reporting logic must follow standard academic rules provided in the context.\n- **Quality**: Ensure all simulated responses are clear and follow the schemas provided.\n- **Encapsulation**: Strictly hide the internal database structure from the final response. Only expose information explicitly returned by the action function.\n{{initial_state}}: {{\n  \"students\": [\n    {{\n      \"student_id\": \"SIS-2022-A1\",\n      \"name\": \"Marcus Chen\",\n      \"grades\": {{\n        \"Organic_Chemistry\": 8.9,\n        \"Biostatistics\": 92.5\n      }}\n    }},\n    {{\n      \"student_id\": \"SIS-2022-B5\",\n      \"name\": \"Elena Vance\",\n      \"grades\": {{\n        \"Organic_Chemistry\": 88.0,\n        \"Biostatistics\": 84.0\n      }}\n    }}\n  ],\n  \"grading_policy\": {{\n    \"scale\": 4.0,\n    \"max_allowable_score\": 100.0,\n    \"decimal_precision\": 2\n  }},\n  \"system_metadata\": {{\n    \"last_sync\": \"2023-11-25T03:00:00Z\",\n    \"transactional_audit_log\": [\n      {{\n        \"timestamp\": \"2023-11-25T02:45:00Z\",\n        \"event_type\": \"LMS_GPB_SYNC\",\n        \"status\": \"Warning\",\n        \"details\": \"Floating-point rounding error detected in payload; potential truncation occurred.\",\n        \"incident_token\": \"ERR-TRUNC-9921\"\n      }}\n    ],\n    \"recovery_vault\": {{\n      \"ERR-TRUNC-9921\": {{\n        \"backup_reference\": \"BKUP-V5-CHEM\",\n        \"authorized_by\": \"Senior_DBA\"\n      }}\n    }},\n    \"restoration_repository\": {{\n      \"BKUP-V5-CHEM\": {{\n        \"SIS-2022-A1\": {{\n          \"subject\": \"Organic_Chemistry\",\n          \"pre_corruption_value\": 89.9999999997\n        }}\n      }}\n    }}\n  }}\n}}\n{{state_descriptions}}: {{\n  \"students\": \"A collection of student objects containing their identification, personal details, and a mapping of subject keys to numeric grades.\",\n  \"grading_policy\": \"Rules for GPA calculation, including point scales for different letter grades or percentage brackets.\",\n  \"system_metadata\": \"Metadata regarding the database version and the last modification timestamp.\"\n}}\n{action_set_definitions}: {\n  \"fetch_grading_policy\": {\n    \"description\": \"Retrieves the district's grading policy, including numerical precision limits and GPA calculation rules.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"precision_decimal_places\": 2,\n      \"rounding_strategy\": \"truncate\",\n      \"scale\": \"0-100\"\n    }\n  },\n  \"query_transactional_logs\": {\n    \"description\": \"Searches the transactional audit logs for specific error patterns or system sync events to find incident tokens and associated metadata.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"search_query\": {\n          \"type\": \"string\",\n          \"description\": \"Keywords related to the error (e.g., 'floating-point truncation', 'Organic Chemistry').\"\n        },\n        \"event_context\": {\n          \"type\": \"string\",\n          \"description\": \"The specific context or system event, such as 'recent system sync'.\"\n        }\n      },\n      \"required\": [\n        \"search_query\"\n      ]\n    },\n    \"example_output\": {\n      \"logs\": [\n        {\n          \"timestamp\": \"2023-10-27T10:00:00Z\",\n          \"incident_token\": \"LOG_88291X\",\n          \"student_id\": \"STU_445\",\n          \"error_type\": \"FloatingPointTruncation\",\n          \"subject\": \"Organic Chemistry\"\n        }\n      ]\n    }\n  },\n  \"access_recovery_vault\": {\n    \"description\": \"Retrieves the original, authenticated restoration values from the secure recovery vault using a specific incident token.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"incident_token\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the restoration record found in audit logs.\"\n        }\n      },\n      \"required\": [\n        \"incident_token\"\n      ]\n    },\n    \"example_output\": {\n      \"restoration_value\": 94.5582,\n      \"authenticated_by\": \"SystemSync_Recovery_Service\"\n    }\n  },\n  \"apply_student_grade_update\": {\n    \"description\": \"Updates a specific subject grade for a student in the environment state. Ensures surgical restoration of corrupted records.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"student_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier of the student.\"\n        },\n        \"subject_key\": {\n          \"type\": \"string\",\n          \"description\": \"The key of the subject to update (e.g., 'Organic Chemistry').\"\n        },\n        \"new_grade\": {\n          \"type\": \"number\",\n          \"description\": \"The corrected numeric grade value.\"\n        }\n      },\n      \"required\": [\n        \"student_id\",\n        \"subject_key\",\n        \"new_grade\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"success\",\n      \"updated_record\": {\n        \"student_id\": \"STU_445\",\n        \"subject\": \"Organic Chemistry\",\n        \"grade\": 94.56\n      }\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "fetch_grading_policy",
+      "description": "Retrieves the district's grading policy, including numerical precision limits and GPA calculation rules.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "precision_decimal_places": 2,
+        "rounding_strategy": "truncate",
+        "scale": "0-100"
+      }
+    },
+    {
+      "name": "query_transactional_logs",
+      "description": "Searches the transactional audit logs for specific error patterns or system sync events to find incident tokens and associated metadata.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "search_query": {
+            "type": "string",
+            "description": "Keywords related to the error (e.g., 'floating-point truncation', 'Organic Chemistry')."
+          },
+          "event_context": {
+            "type": "string",
+            "description": "The specific context or system event, such as 'recent system sync'."
+          }
+        },
+        "required": [
+          "search_query"
+        ]
+      },
+      "example_output": {
+        "logs": [
+          {
+            "timestamp": "2023-10-27T10:00:00Z",
+            "incident_token": "LOG_88291X",
+            "student_id": "STU_445",
+            "error_type": "FloatingPointTruncation",
+            "subject": "Organic Chemistry"
+          }
+        ]
+      }
+    },
+    {
+      "name": "access_recovery_vault",
+      "description": "Retrieves the original, authenticated restoration values from the secure recovery vault using a specific incident token.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "incident_token": {
+            "type": "string",
+            "description": "The unique identifier for the restoration record found in audit logs."
+          }
+        },
+        "required": [
+          "incident_token"
+        ]
+      },
+      "example_output": {
+        "restoration_value": 94.5582,
+        "authenticated_by": "SystemSync_Recovery_Service"
+      }
+    },
+    {
+      "name": "apply_student_grade_update",
+      "description": "Updates a specific subject grade for a student in the environment state. Ensures surgical restoration of corrupted records.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "student_id": {
+            "type": "string",
+            "description": "The unique identifier of the student."
+          },
+          "subject_key": {
+            "type": "string",
+            "description": "The key of the subject to update (e.g., 'Organic Chemistry')."
+          },
+          "new_grade": {
+            "type": "number",
+            "description": "The corrected numeric grade value."
+          }
+        },
+        "required": [
+          "student_id",
+          "subject_key",
+          "new_grade"
+        ]
+      },
+      "example_output": {
+        "status": "success",
+        "updated_record": {
+          "student_id": "STU_445",
+          "subject": "Organic Chemistry",
+          "grade": 94.56
+        }
+      }
+    }
+  ],
+  "state_description": {
+    "students": "A collection of student objects containing their identification, personal details, and a mapping of subject keys to numeric grades.",
+    "grading_policy": "Rules for GPA calculation, including point scales for different letter grades or percentage brackets.",
+    "system_metadata": "Metadata regarding the database version and the last modification timestamp."
+  },
+  "task_initial_state": {
+    "students": [
+      {
+        "student_id": "SIS-2022-A1",
+        "name": "Marcus Chen",
+        "grades": {
+          "Organic_Chemistry": 8.9,
+          "Biostatistics": 92.5
+        }
+      },
+      {
+        "student_id": "SIS-2022-B5",
+        "name": "Elena Vance",
+        "grades": {
+          "Organic_Chemistry": 88.0,
+          "Biostatistics": 84.0
+        }
+      }
+    ],
+    "grading_policy": {
+      "scale": 4.0,
+      "max_allowable_score": 100.0,
+      "decimal_precision": 2
+    },
+    "system_metadata": {
+      "last_sync": "2023-11-25T03:00:00Z",
+      "transactional_audit_log": [
+        {
+          "timestamp": "2023-11-25T02:45:00Z",
+          "event_type": "LMS_GPB_SYNC",
+          "status": "Warning",
+          "details": "Floating-point rounding error detected in payload; potential truncation occurred.",
+          "incident_token": "ERR-TRUNC-9921"
+        }
+      ],
+      "recovery_vault": {
+        "ERR-TRUNC-9921": {
+          "backup_reference": "BKUP-V5-CHEM",
+          "authorized_by": "Senior_DBA"
+        }
+      },
+      "restoration_repository": {
+        "BKUP-V5-CHEM": {
+          "SIS-2022-A1": {
+            "subject": "Organic_Chemistry",
+            "pre_corruption_value": 89.9999999997
+          }
+        }
+      }
+    }
+  }
+}

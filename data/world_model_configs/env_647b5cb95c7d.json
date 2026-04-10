@@ -1,0 +1,141 @@
+{
+  "environment_name": "env_647b5cb95c7d",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM) for Last-Mile Delivery Routing.\n- **Core Objective**: Based on the current internal state $s_t$ and the action $a_t$ taken by the delivery Agent, simulate the environment's evolution to determine the next state $s_{{t+1}}$ and generate the resulting observation $o_{{t+1}}$ for the Agent.\n- **Emphasis**: You are the engine of the environment. You do not suggest actions; you calculate the physical and logical consequences of the Agent's choices (e.g., travel time, battery depletion, delivery success) and provide the sensory feedback defined by the action's return values.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nYou must maintain a consistent timeline and spatial logic throughout the session. Every action must update the internal state (e.g., changing coordinates, deducting fuel, updating delivery status) and ensure that subsequent observations reflect these updates accurately.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object containing:\n- `\"name\"`: The name of the action function.\n- `\"arguments\"`: Key-value pairs of parameters required by the function.\n\nExample:\n```json\n{{\n \"name\": \"move_to\",\n \"arguments\": {{\n    \"destination_node\": \"Zone_B\",\n    \"speed_mode\": \"eco\"\n  }}\n}}\n```\nYou must parse this JSON, simulate the transition (e.g., calculate distance and time between current_location and destination_node), and generate the output.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nIf an action is impossible (e.g., moving to a destination with zero battery, delivering a package not on board, or providing an invalid node ID), you must return a structured error message:\n- `{{\"error\": \"Description of the specific failure\"}}`\nDo not proceed with state updates if the action is invalid.\n\n##### Output Assembly\nFor every action call, you must return a JSON object containing **ONLY** the return fields declared in the action function's definition. \n\n**CRITICAL CONSTRAINT**: The output must **NOT** contain the internal state fields (e.g., the entire `carried_packages` list or `battery_percentage`) unless the action specifically returns them as part of its observation. The Agent should only know what is observable through the action's execution result.\n\n### 4. Key Principles\n- **Format**: Strictly JSON-only output for the execution result.\n- **Factuality**: Use realistic estimations for travel times, traffic delays, and energy consumption based on the scenario logic.\n- **Consistency**: If the vehicle moves from Point A to Point B, its location must remain at Point B until the next movement action.\n- **Realism**: Account for constraints such as vehicle capacity limits and delivery time windows.\n- **Encapsulation**: The internal state update is private to the World Model. Only the specified 'Observation' is public to the Agent.\n{{initial_state}}: {{\n  \"current_location_id\": \"depot_ohare_cargo\",\n  \"battery_level\": 28.0,\n  \"current_payload_weight\": 42.5,\n  \"loaded_package_ids\": [\n    \"MED-602\",\n    \"MED-615\",\n    \"MED-609\",\n    \"GEN-550\"\n  ],\n  \"delivery_status_log\": {{\n    \"MED-602\": \"pending\",\n    \"MED-615\": \"pending\",\n    \"MED-609\": \"pending\",\n    \"GEN-550\": \"pending\"\n  }},\n  \"elapsed_time_seconds\": 0\n}}\n{{state_descriptions}}: {{\n  \"current_location_id\": \"The unique identifier of the node or coordinate where the vehicle is currently positioned.\",\n  \"battery_level\": \"The remaining energy of the vehicle as a percentage (0.0 to 100.0).\",\n  \"current_payload_weight\": \"The total weight of packages currently loaded in the vehicle.\",\n  \"loaded_package_ids\": \"A list of IDs for packages currently inside the vehicle's cargo hold.\",\n  \"delivery_status_log\": \"A mapping of package IDs to their current status (e.g., 'pending', 'in_transit', 'delivered').\",\n  \"elapsed_time_seconds\": \"The total cumulative time passed in the simulation since start.\"\n}}\n{action_set_definitions}: {\n  \"get_vehicle_telemetry\": {\n    \"description\": \"Retrieves the current status of the vehicle, including battery level and current location ID.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"battery_level\": 72.5,\n      \"current_location_id\": \"NODE_BASE_01\"\n    }\n  },\n  \"query_inventory\": {\n    \"description\": \"Scans the cargo hold to return a list of all packages and their metadata.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"packages\": [\n        {\n          \"package_id\": \"MED-V-99\",\n          \"type\": \"medical-grade\",\n          \"weight\": 5.0\n        },\n        {\n          \"package_id\": \"STD-G-10\",\n          \"type\": \"standard\",\n          \"weight\": 2.0\n        }\n      ]\n    }\n  },\n  \"geocode_delivery_node\": {\n    \"description\": \"Resolves a text-based address or access instruction to a specific, historically corrected navigable node ID to avoid congestion.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"location_string\": {\n          \"type\": \"string\",\n          \"description\": \"The full address and access details (e.g., '900 N Michigan Ave (ACCESS VIA WALTON ST)').\"\n        }\n      },\n      \"required\": [\n        \"location_string\"\n      ]\n    },\n    \"example_output\": {\n      \"node_id\": \"NODE_WALTON_ST_900_NAV\",\n      \"description\": \"Corrected entry point for navigation.\"\n    }\n  },\n  \"execute_recharge\": {\n    \"description\": \"Commands the vehicle to recharge its battery to 100% capacity at the nearest available station.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"battery_level\": 100.0,\n      \"status\": \"charged\"\n    }\n  },\n  \"move_to_node\": {\n    \"description\": \"Navigates the vehicle to a target node identifier.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"target_node_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the destination node.\"\n        }\n      },\n      \"required\": [\n        \"target_node_id\"\n      ]\n    },\n    \"example_output\": {\n      \"arrival_status\": \"success\",\n      \"new_battery_level\": 85.0\n    }\n  },\n  \"complete_delivery\": {\n    \"description\": \"Finalizes the hand-off of a package at the current location.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"package_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the package to be delivered.\"\n        }\n      },\n      \"required\": [\n        \"package_id\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"delivered\",\n      \"timestamp\": \"2023-10-27T10:00:00Z\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_vehicle_telemetry",
+      "description": "Retrieves the current status of the vehicle, including battery level and current location ID.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "battery_level": 72.5,
+        "current_location_id": "NODE_BASE_01"
+      }
+    },
+    {
+      "name": "query_inventory",
+      "description": "Scans the cargo hold to return a list of all packages and their metadata.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "packages": [
+          {
+            "package_id": "MED-V-99",
+            "type": "medical-grade",
+            "weight": 5.0
+          },
+          {
+            "package_id": "STD-G-10",
+            "type": "standard",
+            "weight": 2.0
+          }
+        ]
+      }
+    },
+    {
+      "name": "geocode_delivery_node",
+      "description": "Resolves a text-based address or access instruction to a specific, historically corrected navigable node ID to avoid congestion.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "location_string": {
+            "type": "string",
+            "description": "The full address and access details (e.g., '900 N Michigan Ave (ACCESS VIA WALTON ST)')."
+          }
+        },
+        "required": [
+          "location_string"
+        ]
+      },
+      "example_output": {
+        "node_id": "NODE_WALTON_ST_900_NAV",
+        "description": "Corrected entry point for navigation."
+      }
+    },
+    {
+      "name": "execute_recharge",
+      "description": "Commands the vehicle to recharge its battery to 100% capacity at the nearest available station.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "battery_level": 100.0,
+        "status": "charged"
+      }
+    },
+    {
+      "name": "move_to_node",
+      "description": "Navigates the vehicle to a target node identifier.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "target_node_id": {
+            "type": "string",
+            "description": "The ID of the destination node."
+          }
+        },
+        "required": [
+          "target_node_id"
+        ]
+      },
+      "example_output": {
+        "arrival_status": "success",
+        "new_battery_level": 85.0
+      }
+    },
+    {
+      "name": "complete_delivery",
+      "description": "Finalizes the hand-off of a package at the current location.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "package_id": {
+            "type": "string",
+            "description": "The ID of the package to be delivered."
+          }
+        },
+        "required": [
+          "package_id"
+        ]
+      },
+      "example_output": {
+        "status": "delivered",
+        "timestamp": "2023-10-27T10:00:00Z"
+      }
+    }
+  ],
+  "state_description": {
+    "current_location_id": "The unique identifier of the node or coordinate where the vehicle is currently positioned.",
+    "battery_level": "The remaining energy of the vehicle as a percentage (0.0 to 100.0).",
+    "current_payload_weight": "The total weight of packages currently loaded in the vehicle.",
+    "loaded_package_ids": "A list of IDs for packages currently inside the vehicle's cargo hold.",
+    "delivery_status_log": "A mapping of package IDs to their current status (e.g., 'pending', 'in_transit', 'delivered').",
+    "elapsed_time_seconds": "The total cumulative time passed in the simulation since start."
+  },
+  "task_initial_state": {
+    "current_location_id": "depot_ohare_cargo",
+    "battery_level": 28.0,
+    "current_payload_weight": 42.5,
+    "loaded_package_ids": [
+      "MED-602",
+      "MED-615",
+      "MED-609",
+      "GEN-550"
+    ],
+    "delivery_status_log": {
+      "MED-602": "pending",
+      "MED-615": "pending",
+      "MED-609": "pending",
+      "GEN-550": "pending"
+    },
+    "elapsed_time_seconds": 0
+  }
+}

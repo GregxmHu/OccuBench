@@ -1,0 +1,237 @@
+{
+  "environment_name": "env_12e0c67fe7e8",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM) for Public Transit Schedule Recovery.\n- **Core Objective**: Based on the current transit environment state $s_t$ and the recovery action $a_t$ taken by the dispatcher (Agent), simulate the evolution of the transit network and predict the observation $o_{{t+1}}$ received by the Agent.\n- **Emphasis**: You are a simulator. You do not perform real-world dispatching; you update the internal logistics of vehicles, routes, and schedules to generate realistic feedback and observations.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions between the World Model and the Agent must maintain rigorous context consistency. Changes to vehicle positions, passenger loads, and schedule delays must persist across time steps unless modified by actions or environmental dynamics (e.g., passage of time).\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. This JSON will contain:\n- `\"name\"`: Specifies the name of the recovery action (e.g., 'reroute_bus', 'dispatch_extra_service').\n- The remaining fields are parameters required by that specific action function.\n\nExample:\n```json\n{{\n \"name\": \"adjust_headway\",\n \"arguments\": {{\n    \"route_id\": \"B41\",\n    \"adjustment_minutes\": 5\n  }}\n}}\n```\nYou must parse this JSON and simulate the logical outcome within the transit system.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nIf the Agent attempts an invalid operation—such as dispatching a vehicle that is already in service, assigning a non-existent crew member, or providing out-of-range parameters—return a structured error: `{{\"error\": \"Reason for failure\"}}`. Do not fabricate successful outcomes for impossible actions.\n\n##### Output Assembly\nFor every action function call, you must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition (the Observation). \n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state $s_t$, the `new_state`, or any hidden variables used for your internal simulation. The Agent must only see the specific return values (Observations) defined in the action. Do not output the state update process.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to specified JSON and text formats.\n- **Factuality**: Do not fabricate transit lines, stop IDs, or vehicle statuses not present in the state.\n- **Consistency**: Maintain a logical flow of time and movement. A bus cannot arrive at Stop C without passing Stop B if they are sequential.\n- **Realism**: Simulate realistic transit dynamics, including the impact of traffic, boarding times, and resource constraints.\n- **Quality**: Ensure all simulated observations are clear and structurally complete.\n- **Encapsulation**: Strictly hide the internal state structure from the output. Only expose information that is explicitly returned by the action function.\n{{initial_state}}: {{\n  \"current_sim_time\": \"09:04:30\",\n  \"active_vehicles\": [\n    {{\n      \"vehicle_id\": \"V-402-9\",\n      \"nearest_stop\": \"12th Street Station\",\n      \"passenger_load_pct\": 0.82,\n      \"delay_seconds\": 1020,\n      \"next_trip_start\": \"09:30:00\"\n    }},\n    {{\n      \"vehicle_id\": \"V-402-09\",\n      \"nearest_stop\": \"4th Street\",\n      \"passenger_load_pct\": 0.15,\n      \"delay_seconds\": 45,\n      \"next_trip_start\": \"09:45:00\"\n    }},\n    {{\n      \"vehicle_id\": \"V-402-X\",\n      \"nearest_stop\": \"14th Street\",\n      \"passenger_load_pct\": 0.38,\n      \"delay_seconds\": 1150,\n      \"next_trip_start\": \"09:25:00\"\n    }},\n    {{\n      \"vehicle_id\": \"V-402-9A\",\n      \"nearest_stop\": \"8th Street\",\n      \"passenger_load_pct\": 0.22,\n      \"delay_seconds\": 210,\n      \"next_trip_start\": \"09:55:00\"\n    }},\n    {{\n      \"vehicle_id\": \"V-402-9-S\",\n      \"nearest_stop\": \"2nd Street\",\n      \"passenger_load_pct\": 0.08,\n      \"delay_seconds\": 30,\n      \"next_trip_start\": \"10:15:00\"\n    }},\n    {{\n      \"vehicle_id\": \"V-405-9\",\n      \"nearest_stop\": \"10th Street\",\n      \"passenger_load_pct\": 0.12,\n      \"delay_seconds\": 180,\n      \"next_trip_start\": \"09:50:00\"\n    }}\n  ],\n  \"disruptions\": [\n    {{\n      \"incident_id\": \"DISP-201\",\n      \"type\": \"Sensor Calibration\",\n      \"target\": \"V-402-9-S\",\n      \"status\": \"In-Progress\"\n    }},\n    {{\n      \"incident_id\": \"DISP-202\",\n      \"type\": \"Minor Signal Delay\",\n      \"location\": \"12th Street Corridor\",\n      \"status\": \"Active\"\n    }},\n    {{\n      \"incident_id\": \"DISP-203\",\n      \"type\": \"Cleanliness Report\",\n      \"target\": \"V-402-X\",\n      \"status\": \"Pending\"\n    }}\n  ],\n  \"crew_availability\": {{\n    \"standby_drivers\": 1,\n    \"depot_locations\": [\n      \"South Side Depot\",\n      \"Harbor Station\"\n    ]\n  }},\n  \"network_status\": {{\n    \"congestion_index\": 1.35\n  }}\n}}\n{{state_descriptions}}: {{\n  \"current_sim_time\": \"The current clock time in the simulation (ISO 8601 format or HH:MM:SS).\",\n  \"active_vehicles\": \"List of vehicles currently in service, including their ID, current coordinates or nearest stop, passenger load, and current delay relative to schedule.\",\n  \"disruptions\": \"List of active incidents affecting the network (e.g., accidents, roadwork, vehicle breakdowns).\",\n  \"crew_availability\": \"Status of standby drivers and operators at various depots.\",\n  \"network_status\": \"Overall health of the transit network, including congestion levels on major corridors.\"\n}}\n{action_set_definitions}: {\n  \"get_system_state\": {\n    \"description\": \"Retrieves the current simulation time and a list of all active vehicle units in the network to identify specific service variants.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"current_sim_time\": \"08:45:10\",\n      \"active_vehicles\": [\n        \"V-402-9\",\n        \"V-402-09\",\n        \"V-402-9A\",\n        \"V-402-X\"\n      ]\n    }\n  },\n  \"get_vehicle_telemetry\": {\n    \"description\": \"Provides real-time data for a specific vehicle, including its delay in seconds (positive for late, negative for early) and current stop information.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"vehicle_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the vehicle (e.g., 'V-402-9').\"\n        }\n      },\n      \"required\": [\n        \"vehicle_id\"\n      ]\n    },\n    \"example_output\": {\n      \"delay_seconds\": 145,\n      \"current_location\": \"7th Street\",\n      \"next_stop\": \"North End Plaza\"\n    }\n  },\n  \"check_geospatial_boundary\": {\n    \"description\": \"Determines if a vehicle is positioned north or south of a specific landmark to ensure compliance with operational restrictions.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"vehicle_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the vehicle to check.\"\n        },\n        \"landmark\": {\n          \"type\": \"string\",\n          \"description\": \"The street or landmark used as a boundary (e.g., '10th Street').\"\n        }\n      },\n      \"required\": [\n        \"vehicle_id\",\n        \"landmark\"\n      ]\n    },\n    \"example_output\": {\n      \"is_north_of\": false,\n      \"is_south_of\": true\n    }\n  },\n  \"get_depot_standby_status\": {\n    \"description\": \"Queries a specific depot for the list of available standby operators.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"depot_name\": {\n          \"type\": \"string\",\n          \"description\": \"The name of the depot (e.g., 'South Side Depot').\"\n        }\n      },\n      \"required\": [\n        \"depot_name\"\n      ]\n    },\n    \"example_output\": {\n      \"available_operators\": [\n        \"OP-A1\",\n        \"OP-B2\"\n      ]\n    }\n  },\n  \"apply_recovery_directive\": {\n    \"description\": \"Issues operational directives to adjust the schedule of a vehicle. This action updates the 'delay_seconds' attribute in the environment state to reflect the impact of the directive.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"vehicle_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the vehicle.\"\n        },\n        \"strategy\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"skip_stops\",\n            \"express_to_terminal\",\n            \"deadhead\",\n            \"hold_at_stop\",\n            \"increase_dwell_time\"\n          ],\n          \"description\": \"The strategy to mitigate delay or early arrival. Use 'hold_at_stop' or 'increase_dwell_time' for early arrivals.\"\n        },\n        \"target_value\": {\n          \"type\": \"string\",\n          \"description\": \"The target arrival time or the duration for the hold (e.g., '09:30:00' or '120s').\"\n        }\n      },\n      \"required\": [\n        \"vehicle_id\",\n        \"strategy\",\n        \"target_value\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"directive_executed\",\n      \"updated_delay_seconds\": 15\n    }\n  },\n  \"assign_crew_to_vehicle\": {\n    \"description\": \"Dispatches a standby operator to a vehicle for service reinforcement.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"operator_id\": {\n          \"type\": \"string\",\n          \"description\": \"The identifier of the operator.\"\n        },\n        \"vehicle_id\": {\n          \"type\": \"string\",\n          \"description\": \"The identifier of the vehicle.\"\n        }\n      },\n      \"required\": [\n        \"operator_id\",\n        \"vehicle_id\"\n      ]\n    },\n    \"example_output\": {\n      \"assignment_confirmed\": true\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_system_state",
+      "description": "Retrieves the current simulation time and a list of all active vehicle units in the network to identify specific service variants.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "current_sim_time": "08:45:10",
+        "active_vehicles": [
+          "V-402-9",
+          "V-402-09",
+          "V-402-9A",
+          "V-402-X"
+        ]
+      }
+    },
+    {
+      "name": "get_vehicle_telemetry",
+      "description": "Provides real-time data for a specific vehicle, including its delay in seconds (positive for late, negative for early) and current stop information.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "vehicle_id": {
+            "type": "string",
+            "description": "The unique identifier for the vehicle (e.g., 'V-402-9')."
+          }
+        },
+        "required": [
+          "vehicle_id"
+        ]
+      },
+      "example_output": {
+        "delay_seconds": 145,
+        "current_location": "7th Street",
+        "next_stop": "North End Plaza"
+      }
+    },
+    {
+      "name": "check_geospatial_boundary",
+      "description": "Determines if a vehicle is positioned north or south of a specific landmark to ensure compliance with operational restrictions.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "vehicle_id": {
+            "type": "string",
+            "description": "The ID of the vehicle to check."
+          },
+          "landmark": {
+            "type": "string",
+            "description": "The street or landmark used as a boundary (e.g., '10th Street')."
+          }
+        },
+        "required": [
+          "vehicle_id",
+          "landmark"
+        ]
+      },
+      "example_output": {
+        "is_north_of": false,
+        "is_south_of": true
+      }
+    },
+    {
+      "name": "get_depot_standby_status",
+      "description": "Queries a specific depot for the list of available standby operators.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "depot_name": {
+            "type": "string",
+            "description": "The name of the depot (e.g., 'South Side Depot')."
+          }
+        },
+        "required": [
+          "depot_name"
+        ]
+      },
+      "example_output": {
+        "available_operators": [
+          "OP-A1",
+          "OP-B2"
+        ]
+      }
+    },
+    {
+      "name": "apply_recovery_directive",
+      "description": "Issues operational directives to adjust the schedule of a vehicle. This action updates the 'delay_seconds' attribute in the environment state to reflect the impact of the directive.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "vehicle_id": {
+            "type": "string",
+            "description": "The ID of the vehicle."
+          },
+          "strategy": {
+            "type": "string",
+            "enum": [
+              "skip_stops",
+              "express_to_terminal",
+              "deadhead",
+              "hold_at_stop",
+              "increase_dwell_time"
+            ],
+            "description": "The strategy to mitigate delay or early arrival. Use 'hold_at_stop' or 'increase_dwell_time' for early arrivals."
+          },
+          "target_value": {
+            "type": "string",
+            "description": "The target arrival time or the duration for the hold (e.g., '09:30:00' or '120s')."
+          }
+        },
+        "required": [
+          "vehicle_id",
+          "strategy",
+          "target_value"
+        ]
+      },
+      "example_output": {
+        "status": "directive_executed",
+        "updated_delay_seconds": 15
+      }
+    },
+    {
+      "name": "assign_crew_to_vehicle",
+      "description": "Dispatches a standby operator to a vehicle for service reinforcement.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "operator_id": {
+            "type": "string",
+            "description": "The identifier of the operator."
+          },
+          "vehicle_id": {
+            "type": "string",
+            "description": "The identifier of the vehicle."
+          }
+        },
+        "required": [
+          "operator_id",
+          "vehicle_id"
+        ]
+      },
+      "example_output": {
+        "assignment_confirmed": true
+      }
+    }
+  ],
+  "state_description": {
+    "current_sim_time": "The current clock time in the simulation (ISO 8601 format or HH:MM:SS).",
+    "active_vehicles": "List of vehicles currently in service, including their ID, current coordinates or nearest stop, passenger load, and current delay relative to schedule.",
+    "disruptions": "List of active incidents affecting the network (e.g., accidents, roadwork, vehicle breakdowns).",
+    "crew_availability": "Status of standby drivers and operators at various depots.",
+    "network_status": "Overall health of the transit network, including congestion levels on major corridors."
+  },
+  "task_initial_state": {
+    "current_sim_time": "09:04:30",
+    "active_vehicles": [
+      {
+        "vehicle_id": "V-402-9",
+        "nearest_stop": "12th Street Station",
+        "passenger_load_pct": 0.82,
+        "delay_seconds": 1020,
+        "next_trip_start": "09:30:00"
+      },
+      {
+        "vehicle_id": "V-402-09",
+        "nearest_stop": "4th Street",
+        "passenger_load_pct": 0.15,
+        "delay_seconds": 45,
+        "next_trip_start": "09:45:00"
+      },
+      {
+        "vehicle_id": "V-402-X",
+        "nearest_stop": "14th Street",
+        "passenger_load_pct": 0.38,
+        "delay_seconds": 1150,
+        "next_trip_start": "09:25:00"
+      },
+      {
+        "vehicle_id": "V-402-9A",
+        "nearest_stop": "8th Street",
+        "passenger_load_pct": 0.22,
+        "delay_seconds": 210,
+        "next_trip_start": "09:55:00"
+      },
+      {
+        "vehicle_id": "V-402-9-S",
+        "nearest_stop": "2nd Street",
+        "passenger_load_pct": 0.08,
+        "delay_seconds": 30,
+        "next_trip_start": "10:15:00"
+      },
+      {
+        "vehicle_id": "V-405-9",
+        "nearest_stop": "10th Street",
+        "passenger_load_pct": 0.12,
+        "delay_seconds": 180,
+        "next_trip_start": "09:50:00"
+      }
+    ],
+    "disruptions": [
+      {
+        "incident_id": "DISP-201",
+        "type": "Sensor Calibration",
+        "target": "V-402-9-S",
+        "status": "In-Progress"
+      },
+      {
+        "incident_id": "DISP-202",
+        "type": "Minor Signal Delay",
+        "location": "12th Street Corridor",
+        "status": "Active"
+      },
+      {
+        "incident_id": "DISP-203",
+        "type": "Cleanliness Report",
+        "target": "V-402-X",
+        "status": "Pending"
+      }
+    ],
+    "crew_availability": {
+      "standby_drivers": 1,
+      "depot_locations": [
+        "South Side Depot",
+        "Harbor Station"
+      ]
+    },
+    "network_status": {
+      "congestion_index": 1.35
+    }
+  }
+}

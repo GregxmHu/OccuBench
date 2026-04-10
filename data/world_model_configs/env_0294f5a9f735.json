@@ -1,0 +1,206 @@
+{
+  "environment_name": "env_0294f5a9f735",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: You are a simulator for a Project Resource Allocation environment. Based on the current internal state $s_t$ and the action $a_t$ performed by the Agent, your task is to simulate the internal environment evolution and predict the specific observation $o_{{t+1}}$ resulting from that action.\n- **Emphasis**: You do not execute real-world operations or provide advice. Your sole purpose is to maintain environment logic, update internal project variables, and generate realistic observations.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation tracking project progress, financial resources, and personnel availability. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nYou must maintain strict context consistency throughout the interaction. Every state transition must be logically derived from the previous state and the agent's action. The consequences of resource depletion, missed deadlines, or staff over-allocation must persist in the environment's internal logic.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. You must parse this JSON to determine the intended transition. The input format is:\n- `\"name\"`: The name of the action function.\n- Remaining fields: Parameter names and values.\n\nExample input:\n```json\n{{\n \"name\": \"assign_staff_to_task\",\n \"arguments\": {{\n    \"project_id\": \"PROJ-001\",\n    \"staff_member\": \"Alice\",\n    \"hours\": 40\n  }}\n}}\n```\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nIf the Agent attempts an invalid operation (e.g., allocating more budget than available, assigning non-existent staff, or submitting malformed JSON), you must return a structured error observation. Example: `{{\"error\": \"Insufficient budget for this allocation\"}}`. Do not fabricate successful outcomes for failed logic.\n\n##### Output Assembly\nFor every action call, return a structured JSON object containing **ONLY** the return fields declared in that action's definition. \n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t` or the updated state `s_{{t+1}}`. You must strictly encapsulate the environment's internal mechanics. Only expose the observation (the return values) specified in the action definition.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to JSON for all observations.\n- **Factuality**: Only use the projects, staff, and resources defined in the current state.\n- **Consistency**: If time passes or resources are used, ensure future observations reflect these changes (e.g., project percentage increases only if staff were assigned).\n- **Realism**: Simulate realistic project dynamics, such as diminishing returns, staff burnout, or unforeseen delays if the logic dictates.\n- **Quality**: Ensure all output is clear and structurally valid JSON.\n- **Encapsulation**: Do not output the state update process. The Agent only sees the direct result of their action.\n{{initial_state}}: {{\n  \"total_budget\": 150000000,\n  \"active_projects\": [\n    {{\n      \"project_id\": \"GCS-202\",\n      \"project_name\": \"Gas Compressor Station Expansion\",\n      \"completion_rate\": 0.126,\n      \"deadline_days\": 240,\n      \"required_man_hours\": 45000,\n      \"bcws_planned_value\": 22500000,\n      \"bcwp_earned_value\": 19000000,\n      \"acwp_actual_cost\": 21000000,\n      \"nwcg_liquidity_gap\": -4500000,\n      \"credit_facility_remaining\": 10000000,\n      \"retainage_rate\": 0.05,\n      \"payment_terms\": \"Net 60\",\n      \"integration_status\": \"Out-of-Sync\",\n      \"erp_reconciliation_flag\": false,\n      \"unmapped_cbs_codes\": [\n        \"LABOR-TIG-202\",\n        \"MAT-VALVE-A1\"\n      ],\n      \"last_sov_update\": \"Day 90\"\n    }}\n  ],\n  \"personnel\": [\n    {{\n      \"staff_id\": \"CTRL-LEAD-01\",\n      \"skills\": [\n        \"EcoSys Integration\",\n        \"Cost Engineering\",\n        \"SAP Reconciliation\"\n      ],\n      \"is_busy\": false\n    }},\n    {{\n      \"staff_id\": \"SCHED-01\",\n      \"skills\": [\n        \"Primavera P6\",\n        \"Rules of Credit Application\"\n      ],\n      \"is_busy\": false\n    }}\n  ],\n  \"current_day\": 120\n}}\n{{state_descriptions}}: {{\n  \"total_budget\": \"Total remaining financial resources for all projects.\",\n  \"active_projects\": \"A list of projects currently in progress, including their IDs, completion percentages, and deadlines.\",\n  \"personnel\": \"The pool of available staff, their skill sets, and their current utilization/availability status.\",\n  \"current_day\": \"The current simulation day since the start of the fiscal period.\"\n}}\n{action_set_definitions}: {\n  \"get_fiscal_summary\": {\n    \"description\": \"Retrieves high-level corporate financial metrics including Net Working Capital gap and current corporate credit usage.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"net_working_capital_gap\": 4500000,\n      \"corporate_credit_usage\": 7500000,\n      \"credit_threshold\": 10000000\n    }\n  },\n  \"search_project\": {\n    \"description\": \"Searches for a project by name to retrieve its unique project_id and general status.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"project_name\": {\n          \"type\": \"string\",\n          \"description\": \"The name of the project to search for.\"\n        }\n      },\n      \"required\": [\n        \"project_name\"\n      ]\n    },\n    \"example_output\": {\n      \"project_id\": \"GCS-202-EXP\",\n      \"status\": \"Active\"\n    }\n  },\n  \"get_physical_progress\": {\n    \"description\": \"Retrieves the physical percentage of completion for a project based on the formal Rules of Credit.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"project_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the project.\"\n        }\n      },\n      \"required\": [\n        \"project_id\"\n      ]\n    },\n    \"example_output\": {\n      \"physical_percent_complete\": 0.42\n    }\n  },\n  \"get_contract_ledger\": {\n    \"description\": \"Retrieves the total contract value and the cumulative amount billed to date for a project.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"project_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the project.\"\n        }\n      },\n      \"required\": [\n        \"project_id\"\n      ]\n    },\n    \"example_output\": {\n      \"total_contract_value\": 25000000,\n      \"billed_to_date\": 6000000\n    }\n  },\n  \"map_project_cbs_codes\": {\n    \"description\": \"Maps the internal Cost Breakdown Structure (CBS) codes to the client's billing codes to ensure line-item reconciliation.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"project_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the project.\"\n        }\n      },\n      \"required\": [\n        \"project_id\"\n      ]\n    },\n    \"example_output\": {\n      \"mapping_status\": \"Successful\",\n      \"mapped_items_count\": 145\n    }\n  },\n  \"reconcile_erp_integration\": {\n    \"description\": \"Synchronizes the project management data with the Enterprise Resource Planning (ERP) system to ensure cost-loading data is consistent.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"project_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the project.\"\n        }\n      },\n      \"required\": [\n        \"project_id\"\n      ]\n    },\n    \"example_output\": {\n      \"sync_status\": \"Synchronized\",\n      \"last_sync_timestamp\": \"2023-10-27T10:00:00Z\"\n    }\n  },\n  \"submit_payment_application\": {\n    \"description\": \"Submits the Month 4 Application for Payment. Retainage is automatically calculated based on the provided rate.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"project_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the project.\"\n        },\n        \"month\": {\n          \"type\": \"integer\",\n          \"description\": \"The billing month (e.g., 4).\"\n        },\n        \"gross_incremental_amount\": {\n          \"type\": \"number\",\n          \"description\": \"The incremental value earned this period before retainage.\"\n        },\n        \"retainage_rate\": {\n          \"type\": \"number\",\n          \"description\": \"The contractual retainage percentage (e.g., 0.05 for 5%).\"\n        }\n      },\n      \"required\": [\n        \"project_id\",\n        \"month\",\n        \"gross_incremental_amount\",\n        \"retainage_rate\"\n      ]\n    },\n    \"example_output\": {\n      \"application_status\": \"Submitted\",\n      \"net_billed_amount\": 3800000\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_fiscal_summary",
+      "description": "Retrieves high-level corporate financial metrics including Net Working Capital gap and current corporate credit usage.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "net_working_capital_gap": 4500000,
+        "corporate_credit_usage": 7500000,
+        "credit_threshold": 10000000
+      }
+    },
+    {
+      "name": "search_project",
+      "description": "Searches for a project by name to retrieve its unique project_id and general status.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "project_name": {
+            "type": "string",
+            "description": "The name of the project to search for."
+          }
+        },
+        "required": [
+          "project_name"
+        ]
+      },
+      "example_output": {
+        "project_id": "GCS-202-EXP",
+        "status": "Active"
+      }
+    },
+    {
+      "name": "get_physical_progress",
+      "description": "Retrieves the physical percentage of completion for a project based on the formal Rules of Credit.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "project_id": {
+            "type": "string",
+            "description": "The unique identifier for the project."
+          }
+        },
+        "required": [
+          "project_id"
+        ]
+      },
+      "example_output": {
+        "physical_percent_complete": 0.42
+      }
+    },
+    {
+      "name": "get_contract_ledger",
+      "description": "Retrieves the total contract value and the cumulative amount billed to date for a project.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "project_id": {
+            "type": "string",
+            "description": "The unique identifier for the project."
+          }
+        },
+        "required": [
+          "project_id"
+        ]
+      },
+      "example_output": {
+        "total_contract_value": 25000000,
+        "billed_to_date": 6000000
+      }
+    },
+    {
+      "name": "map_project_cbs_codes",
+      "description": "Maps the internal Cost Breakdown Structure (CBS) codes to the client's billing codes to ensure line-item reconciliation.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "project_id": {
+            "type": "string",
+            "description": "The unique identifier for the project."
+          }
+        },
+        "required": [
+          "project_id"
+        ]
+      },
+      "example_output": {
+        "mapping_status": "Successful",
+        "mapped_items_count": 145
+      }
+    },
+    {
+      "name": "reconcile_erp_integration",
+      "description": "Synchronizes the project management data with the Enterprise Resource Planning (ERP) system to ensure cost-loading data is consistent.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "project_id": {
+            "type": "string",
+            "description": "The unique identifier for the project."
+          }
+        },
+        "required": [
+          "project_id"
+        ]
+      },
+      "example_output": {
+        "sync_status": "Synchronized",
+        "last_sync_timestamp": "2023-10-27T10:00:00Z"
+      }
+    },
+    {
+      "name": "submit_payment_application",
+      "description": "Submits the Month 4 Application for Payment. Retainage is automatically calculated based on the provided rate.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "project_id": {
+            "type": "string",
+            "description": "The unique identifier for the project."
+          },
+          "month": {
+            "type": "integer",
+            "description": "The billing month (e.g., 4)."
+          },
+          "gross_incremental_amount": {
+            "type": "number",
+            "description": "The incremental value earned this period before retainage."
+          },
+          "retainage_rate": {
+            "type": "number",
+            "description": "The contractual retainage percentage (e.g., 0.05 for 5%)."
+          }
+        },
+        "required": [
+          "project_id",
+          "month",
+          "gross_incremental_amount",
+          "retainage_rate"
+        ]
+      },
+      "example_output": {
+        "application_status": "Submitted",
+        "net_billed_amount": 3800000
+      }
+    }
+  ],
+  "state_description": {
+    "total_budget": "Total remaining financial resources for all projects.",
+    "active_projects": "A list of projects currently in progress, including their IDs, completion percentages, and deadlines.",
+    "personnel": "The pool of available staff, their skill sets, and their current utilization/availability status.",
+    "current_day": "The current simulation day since the start of the fiscal period."
+  },
+  "task_initial_state": {
+    "total_budget": 150000000,
+    "active_projects": [
+      {
+        "project_id": "GCS-202",
+        "project_name": "Gas Compressor Station Expansion",
+        "completion_rate": 0.126,
+        "deadline_days": 240,
+        "required_man_hours": 45000,
+        "bcws_planned_value": 22500000,
+        "bcwp_earned_value": 19000000,
+        "acwp_actual_cost": 21000000,
+        "nwcg_liquidity_gap": -4500000,
+        "credit_facility_remaining": 10000000,
+        "retainage_rate": 0.05,
+        "payment_terms": "Net 60",
+        "integration_status": "Out-of-Sync",
+        "erp_reconciliation_flag": false,
+        "unmapped_cbs_codes": [
+          "LABOR-TIG-202",
+          "MAT-VALVE-A1"
+        ],
+        "last_sov_update": "Day 90"
+      }
+    ],
+    "personnel": [
+      {
+        "staff_id": "CTRL-LEAD-01",
+        "skills": [
+          "EcoSys Integration",
+          "Cost Engineering",
+          "SAP Reconciliation"
+        ],
+        "is_busy": false
+      },
+      {
+        "staff_id": "SCHED-01",
+        "skills": [
+          "Primavera P6",
+          "Rules of Credit Application"
+        ],
+        "is_busy": false
+      }
+    ],
+    "current_day": 120
+  }
+}

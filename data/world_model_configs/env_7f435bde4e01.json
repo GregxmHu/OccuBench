@@ -1,0 +1,287 @@
+{
+  "environment_name": "env_7f435bde4e01",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM) for Wildfire Evacuation Coordination.\n- **Core Objective**: Based on the current internal state $s_t$ and the coordination action $a_t$ taken by the Agent, simulate the evolution of the wildfire disaster environment and predict the resulting observation $o_{{t+1}}$.\n- **Emphasis**: You are the engine of the simulation. You do not suggest actions or provide advice to the Agent. You manage the internal dynamics of the fire spread, resource availability, and infrastructure status, providing only the specific feedback (observations) requested by the actions.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions must maintain rigorous context consistency. The evolution of the fire, the movement of evacuation teams, and the depletion of shelter capacity must follow a logical temporal progression. If an action takes time, the state must reflect the passage of time and the resulting environmental changes (e.g., fire spreading further).\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. You must parse this JSON to determine the environment's response.\nExample input:\n```json\n{{\n \"name\": \"dispatch_team\",\n \"arguments\": {{\n    \"team_id\": \"EMS_01\",\n    \"destination\": \"Zone_B\"\n  }}\n}}\n```\n\n#### Environment Behavior Modeling\n\n##### Fire Dynamics & Resource Logic\n- **Fire Spread**: Simulate fire progression based on current wind vectors, fuel levels (vegetation), and existing containment lines.\n- **Resource Constraints**: Evacuation teams have limited speed and capacity. Shelters cannot exceed their maximum occupancy.\n- **Infrastructure**: Actions such as \"close_road\" must immediately affect pathfinding logic for simulated resources.\n\n##### Error Handling & Edge Cases\nIf the Agent attempts an invalid action (e.g., dispatching a destroyed resource, navigating a blocked road, or using an undefined function), return a structured error response:\n`{{\"error\": \"Description of why the action failed\"}}`\nDo not fabricate successful outcomes for impossible actions.\n\n##### Output Assembly\nFor every action, return a structured JSON object containing **ONLY** the return fields declared in the action function's definition.\n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, the updated `new_state`, or hidden variables like fire spread coefficients. Only expose the specific return values (Observations) defined in the action. State maintenance is handled internally and remains hidden from the Agent.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to JSON and text formats.\n- **Factuality**: Do not simulate resources, zones, or weather conditions that have not been initialized or logically derived.\n- **Consistency**: If a road is marked as 'blocked' in $s_t$, any action involving that road in $s_{{t+1}}$ must reflect that blockage until an action or event clears it.\n- **Realism**: Modeling should reflect the urgency and unpredictability of a wildfire (e.g., sudden wind shifts, communication lags).\n- **Quality**: Ensure all observations are precise, technical, and structurally complete.\n- **Encapsulation**: Never reveal the JSON structure of the internal state. The Agent only receives the outcome of their specific query or command.\n{{initial_state}}: {{\n  \"active_fires\": [\n    {{\n      \"zone\": \"Zone_6\",\n      \"intensity\": 4,\n      \"spread_rate\": \"0.8 km/h\",\n      \"distance_to_facility\": \"2.4 km\"\n    }}\n  ],\n  \"evacuation_teams\": [\n    {{\n      \"team_id\": \"BLS_AMB_01\",\n      \"status\": \"Available\",\n      \"location\": \"Zone_7_Staging\",\n      \"type\": \"BLS\"\n    }},\n    {{\n      \"team_id\": \"BLS_AMB_02\",\n      \"status\": \"Available\",\n      \"location\": \"Zone_7_Staging\",\n      \"type\": \"BLS\"\n    }},\n    {{\n      \"team_id\": \"METRO_BUS_X\",\n      \"status\": \"En_Route\",\n      \"location\": \"Zone_12\",\n      \"type\": \"Green_Transport\"\n    }}\n  ],\n  \"shelter_status\": {{\n    \"Ridgeview_Medical\": {{\n      \"capacity\": 100,\n      \"occupancy\": 98,\n      \"acuity_types\": [\n        \"Red\",\n        \"Yellow\",\n        \"Green\"\n      ],\n      \"status\": \"Diversion\"\n    }},\n    \"County_Fairgrounds_CCP\": {{\n      \"capacity\": 500,\n      \"occupancy\": 10,\n      \"acuity_types\": [\n        \"Yellow\",\n        \"Green\"\n      ],\n      \"status\": \"Open\"\n    }},\n    \"St_Jude_Regional\": {{\n      \"capacity\": 50,\n      \"occupancy\": 45,\n      \"acuity_types\": [\n        \"Red\"\n      ],\n      \"status\": \"Open\"\n    }}\n  }},\n  \"road_network_integrity\": {{\n    \"Hwy_10_Main_Access\": \"Congested\",\n    \"Foothill_Blvd\": \"Open\",\n    \"Facility_Elevators\": \"Offline_Fire_Recall\",\n    \"Loading_Dock_Ramp\": \"Open\"\n  }},\n  \"weather_conditions\": {{\n    \"wind_direction\": \"SW\",\n    \"wind_speed\": 28,\n    \"humidity\": 12\n  }},\n  \"simulation_time\": \"T00:00:00\"\n}}\n{{state_descriptions}}: {{\n  \"active_fires\": \"A list of zones currently affected by fire, including intensity levels (1-5) and spread rates.\",\n  \"evacuation_teams\": \"Status and GPS coordinates of all available emergency response units.\",\n  \"shelter_status\": \"Mapping of shelter IDs to their current capacity, occupancy, and resource levels (food/water).\",\n  \"road_network_integrity\": \"Status of primary and secondary evacuation routes (Open, Blocked, Congested).\",\n  \"weather_conditions\": \"Current environmental factors including wind_direction, wind_speed, and humidity.\",\n  \"simulation_time\": \"The current elapsed time in the simulation (ISO 8601 or relative minutes).\"\n}}\n{action_set_definitions}: {\n  \"get_simulation_time\": {\n    \"description\": \"Retrieves the current elapsed time in the simulation to monitor the 180-minute operational limit.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"elapsed_minutes\": 10,\n      \"remaining_minutes\": 170\n    }\n  },\n  \"advance_simulation_time\": {\n    \"description\": \"Advances the simulation clock by a specific number of minutes. This is used to wait for requested mutual aid to arrive or for patients to complete transit.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"minutes\": {\n          \"type\": \"integer\",\n          \"description\": \"The number of minutes to advance the simulation clock.\"\n        }\n      },\n      \"required\": [\n        \"minutes\"\n      ]\n    },\n    \"example_output\": {\n      \"new_simulation_time\": 25\n    }\n  },\n  \"get_hospital_census\": {\n    \"description\": \"Returns the current number of patients remaining at Oak Creek Healthcare categorized by acuity level (Red, Yellow, Green) and the current Bed_Match_Rate.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"red_patients\": 10,\n      \"yellow_patients\": 40,\n      \"green_patients\": 30,\n      \"total_census\": 80,\n      \"bed_match_rate\": 0\n    }\n  },\n  \"get_environmental_risks\": {\n    \"description\": \"Retrieves the status of active fire zones and road network integrity to determine safe evacuation paths.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"active_fires\": [\n        \"Zone_6\"\n      ],\n      \"road_status\": {\n        \"Route_A\": \"Open\",\n        \"Route_B\": \"Blocked\"\n      }\n    }\n  },\n  \"get_bed_inventory\": {\n    \"description\": \"Queries the current available bed capacity at safe receiving facilities for a specific medical acuity level.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"acuity_level\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"Red\",\n            \"Yellow\",\n            \"Green\"\n          ],\n          \"description\": \"The medical priority level to check capacity for.\"\n        }\n      },\n      \"required\": [\n        \"acuity_level\"\n      ]\n    },\n    \"example_output\": {\n      \"available_beds\": 15,\n      \"facilities\": [\n        {\n          \"facility_id\": \"ST_JUDE_01\",\n          \"count\": 10\n        }\n      ]\n    }\n  },\n  \"request_bed_mutual_aid\": {\n    \"description\": \"Formally requests additional receiving bed capacity from the regional healthcare coalition if the current inventory is insufficient for the census.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"acuity_level\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"Red\",\n            \"Yellow\",\n            \"Green\"\n          ]\n        },\n        \"required_quantity\": {\n          \"type\": \"integer\",\n          \"description\": \"The number of additional beds needed.\"\n        }\n      },\n      \"required\": [\n        \"acuity_level\",\n        \"required_quantity\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"Approved\",\n      \"new_facility_id\": \"RECOVERY_CENTER_X\",\n      \"allocated_beds\": 20\n    }\n  },\n  \"get_transport_fleet\": {\n    \"description\": \"Provides the status and count of available transport assets currently on-site or dispatched.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"cct_units_on_site\": 2,\n      \"standard_ambulances\": 15,\n      \"buses\": 5\n    }\n  },\n  \"request_cct_mutual_aid\": {\n    \"description\": \"Submits a Patient Movement Request (PMR) for additional Critical Care Transport (CCT) units to handle ventilator-dependent patients.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"quantity\": {\n          \"type\": \"integer\",\n          \"description\": \"Number of CCT units requested.\"\n        }\n      },\n      \"required\": [\n        \"quantity\"\n      ]\n    },\n    \"example_output\": {\n      \"request_id\": \"PMR-55\",\n      \"units_dispatched\": 8,\n      \"eta_minutes\": 20\n    }\n  },\n  \"dispatch_evacuation\": {\n    \"description\": \"Executes the movement of a group of patients to a specific destination using chosen transport assets.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"acuity_level\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"Red\",\n            \"Yellow\",\n            \"Green\"\n          ]\n        },\n        \"patient_count\": {\n          \"type\": \"integer\"\n        },\n        \"destination_facility_id\": {\n          \"type\": \"string\"\n        },\n        \"transport_type\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"CCT\",\n            \"Standard\",\n            \"Bus\"\n          ]\n        }\n      },\n      \"required\": [\n        \"acuity_level\",\n        \"patient_count\",\n        \"destination_facility_id\",\n        \"transport_type\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"In_Transit\",\n      \"estimated_travel_time\": 30\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_simulation_time",
+      "description": "Retrieves the current elapsed time in the simulation to monitor the 180-minute operational limit.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "elapsed_minutes": 10,
+        "remaining_minutes": 170
+      }
+    },
+    {
+      "name": "advance_simulation_time",
+      "description": "Advances the simulation clock by a specific number of minutes. This is used to wait for requested mutual aid to arrive or for patients to complete transit.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "minutes": {
+            "type": "integer",
+            "description": "The number of minutes to advance the simulation clock."
+          }
+        },
+        "required": [
+          "minutes"
+        ]
+      },
+      "example_output": {
+        "new_simulation_time": 25
+      }
+    },
+    {
+      "name": "get_hospital_census",
+      "description": "Returns the current number of patients remaining at Oak Creek Healthcare categorized by acuity level (Red, Yellow, Green) and the current Bed_Match_Rate.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "red_patients": 10,
+        "yellow_patients": 40,
+        "green_patients": 30,
+        "total_census": 80,
+        "bed_match_rate": 0
+      }
+    },
+    {
+      "name": "get_environmental_risks",
+      "description": "Retrieves the status of active fire zones and road network integrity to determine safe evacuation paths.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "active_fires": [
+          "Zone_6"
+        ],
+        "road_status": {
+          "Route_A": "Open",
+          "Route_B": "Blocked"
+        }
+      }
+    },
+    {
+      "name": "get_bed_inventory",
+      "description": "Queries the current available bed capacity at safe receiving facilities for a specific medical acuity level.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "acuity_level": {
+            "type": "string",
+            "enum": [
+              "Red",
+              "Yellow",
+              "Green"
+            ],
+            "description": "The medical priority level to check capacity for."
+          }
+        },
+        "required": [
+          "acuity_level"
+        ]
+      },
+      "example_output": {
+        "available_beds": 15,
+        "facilities": [
+          {
+            "facility_id": "ST_JUDE_01",
+            "count": 10
+          }
+        ]
+      }
+    },
+    {
+      "name": "request_bed_mutual_aid",
+      "description": "Formally requests additional receiving bed capacity from the regional healthcare coalition if the current inventory is insufficient for the census.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "acuity_level": {
+            "type": "string",
+            "enum": [
+              "Red",
+              "Yellow",
+              "Green"
+            ]
+          },
+          "required_quantity": {
+            "type": "integer",
+            "description": "The number of additional beds needed."
+          }
+        },
+        "required": [
+          "acuity_level",
+          "required_quantity"
+        ]
+      },
+      "example_output": {
+        "status": "Approved",
+        "new_facility_id": "RECOVERY_CENTER_X",
+        "allocated_beds": 20
+      }
+    },
+    {
+      "name": "get_transport_fleet",
+      "description": "Provides the status and count of available transport assets currently on-site or dispatched.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "cct_units_on_site": 2,
+        "standard_ambulances": 15,
+        "buses": 5
+      }
+    },
+    {
+      "name": "request_cct_mutual_aid",
+      "description": "Submits a Patient Movement Request (PMR) for additional Critical Care Transport (CCT) units to handle ventilator-dependent patients.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "quantity": {
+            "type": "integer",
+            "description": "Number of CCT units requested."
+          }
+        },
+        "required": [
+          "quantity"
+        ]
+      },
+      "example_output": {
+        "request_id": "PMR-55",
+        "units_dispatched": 8,
+        "eta_minutes": 20
+      }
+    },
+    {
+      "name": "dispatch_evacuation",
+      "description": "Executes the movement of a group of patients to a specific destination using chosen transport assets.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "acuity_level": {
+            "type": "string",
+            "enum": [
+              "Red",
+              "Yellow",
+              "Green"
+            ]
+          },
+          "patient_count": {
+            "type": "integer"
+          },
+          "destination_facility_id": {
+            "type": "string"
+          },
+          "transport_type": {
+            "type": "string",
+            "enum": [
+              "CCT",
+              "Standard",
+              "Bus"
+            ]
+          }
+        },
+        "required": [
+          "acuity_level",
+          "patient_count",
+          "destination_facility_id",
+          "transport_type"
+        ]
+      },
+      "example_output": {
+        "status": "In_Transit",
+        "estimated_travel_time": 30
+      }
+    }
+  ],
+  "state_description": {
+    "active_fires": "A list of zones currently affected by fire, including intensity levels (1-5) and spread rates.",
+    "evacuation_teams": "Status and GPS coordinates of all available emergency response units.",
+    "shelter_status": "Mapping of shelter IDs to their current capacity, occupancy, and resource levels (food/water).",
+    "road_network_integrity": "Status of primary and secondary evacuation routes (Open, Blocked, Congested).",
+    "weather_conditions": "Current environmental factors including wind_direction, wind_speed, and humidity.",
+    "simulation_time": "The current elapsed time in the simulation (ISO 8601 or relative minutes)."
+  },
+  "task_initial_state": {
+    "active_fires": [
+      {
+        "zone": "Zone_6",
+        "intensity": 4,
+        "spread_rate": "0.8 km/h",
+        "distance_to_facility": "2.4 km"
+      }
+    ],
+    "evacuation_teams": [
+      {
+        "team_id": "BLS_AMB_01",
+        "status": "Available",
+        "location": "Zone_7_Staging",
+        "type": "BLS"
+      },
+      {
+        "team_id": "BLS_AMB_02",
+        "status": "Available",
+        "location": "Zone_7_Staging",
+        "type": "BLS"
+      },
+      {
+        "team_id": "METRO_BUS_X",
+        "status": "En_Route",
+        "location": "Zone_12",
+        "type": "Green_Transport"
+      }
+    ],
+    "shelter_status": {
+      "Ridgeview_Medical": {
+        "capacity": 100,
+        "occupancy": 98,
+        "acuity_types": [
+          "Red",
+          "Yellow",
+          "Green"
+        ],
+        "status": "Diversion"
+      },
+      "County_Fairgrounds_CCP": {
+        "capacity": 500,
+        "occupancy": 10,
+        "acuity_types": [
+          "Yellow",
+          "Green"
+        ],
+        "status": "Open"
+      },
+      "St_Jude_Regional": {
+        "capacity": 50,
+        "occupancy": 45,
+        "acuity_types": [
+          "Red"
+        ],
+        "status": "Open"
+      }
+    },
+    "road_network_integrity": {
+      "Hwy_10_Main_Access": "Congested",
+      "Foothill_Blvd": "Open",
+      "Facility_Elevators": "Offline_Fire_Recall",
+      "Loading_Dock_Ramp": "Open"
+    },
+    "weather_conditions": {
+      "wind_direction": "SW",
+      "wind_speed": 28,
+      "humidity": 12
+    },
+    "simulation_time": "T00:00:00"
+  }
+}

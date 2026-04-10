@@ -1,0 +1,215 @@
+{
+  "environment_name": "env_634d1cb1ce41",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM) for Quality Defect Root Cause Analysis.\n- **Core Objective**: Based on the current environment state $s_t$ and the action $a_t$ executed by the Agent, simulate the evolution of the manufacturing environment and predict the resulting observation $o_{{t+1}}$.\n- **Emphasis**: You are a simulator of an industrial environment. You do not solve the problem yourself; you update the internal state and provide sensor data, log entries, or test results as observations. \n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation tracking the production line variables, material properties, and hidden failure modes. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions must maintain absolute continuity. If a machine parameter is changed or a defect is mitigated in one step, that change must persist and influence all subsequent observations and state transitions until further actions are taken.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. You must parse this JSON to determine the intended action and parameters.\nExample input:\n```json\n{{\n \"name\": \"query_sensor_data\",\n \"arguments\": {{\n    \"sensor_id\": \"TEMP_01\",\n    \"time_range\": \"last_5_minutes\"\n  }}\n}}\n```\nYou must simulate the execution of this action against the current internal state and generate the appropriate observation.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\n- If an action refers to a non-existent machine ID, sensor, or batch, return: `{{\"error\": \"Resource not found\"}}`.\n- If parameters are out of physical bounds (e.g., negative pressure), return: `{{\"error\": \"Invalid parameter range\"}}`.\n- Do not fabricate data that contradicts the internal state logic.\n\n##### Output Assembly\nFor every action function call, you must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition.\n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the internal state `s_t`, the updated state, or hidden fields like the 'true root cause'. The Agent must only receive the specific 'Observation' (e.g., sensor readings, inspection reports). State maintenance is your internal responsibility and must remain hidden.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to JSON for all outputs.\n- **Factuality**: Use the provided state and action definitions as the sole source of truth.\n- **Consistency**: If a root cause is defined in the state (e.g., 'Contaminated Raw Material'), all observations (e.g., chemical analysis, product purity tests) must logically align with that cause.\n- **Realism**: Simulated sensor noise or environmental fluctuations should follow reasonable industrial dynamics.\n- **Quality**: Ensure technical terms are used correctly within the industrial context.\n- **Encapsulation**: Never reveal the internal state structure or the transition logic directly to the Agent.\n{{initial_state}}: {{\n  \"production_line_id\": \"LINE_B42\",\n  \"current_batch_metadata\": {{\n    \"batch_id\": \"ECU_PROD_2023_009\",\n    \"material_supplier\": \"InterconnectSolutions\",\n    \"input_purity\": 0.99\n  }},\n  \"machine_states\": {{\n    \"spi_pad_vol_asymmetry_R102\": 4.5,\n    \"pnp_placement_offset_xy_R102\": 8.0,\n    \"reflow_ramp_rate_zone3\": 2.9,\n    \"tal_seconds\": 65,\n    \"conveyor_speed\": 0.8\n  }},\n  \"detected_defects\": [\n    {{\n      \"type\": \"tombstoning\",\n      \"component\": \"R102\",\n      \"frequency\": \"3.8%\",\n      \"severity\": \"high\"\n    }}\n  ],\n  \"hidden_root_cause\": \"Reflow Zone 3 ramp rate exceeds the 2.5 C/sec threshold, leading to violent flux outgassing and unbalanced wetting forces on R102, as SPI and PnP metrics remain within nominal bounds.\",\n  \"maintenance_logs\": [\n    {{\n      \"date\": \"2023-10-25\",\n      \"action\": \"Heater element replacement in Zone 3\",\n      \"technician\": \"Maint-Alpha\"\n    }}\n  ]\n}}\n{{state_descriptions}}: {{\n  \"production_line_id\": \"Identifier for the specific assembly or processing line.\",\n  \"current_batch_metadata\": \"Information regarding the batch currently being processed, including material source and start time.\",\n  \"machine_states\": \"Real-time operating parameters of the machinery (e.g., temperature, pressure, vibration levels).\",\n  \"detected_defects\": \"List of quality anomalies detected by automated inspection systems.\",\n  \"hidden_root_cause\": \"The ground truth cause of the quality defect, used by the model to maintain consistency in observations but never revealed to the Agent.\",\n  \"maintenance_logs\": \"Historical records of repairs and inspections performed on this line.\"\n}}\n{action_set_definitions}: {\n  \"get_batch_context\": {\n    \"description\": \"Retrieves metadata for the current production batch on a specific line, including batch ID, material sources, and start times.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"line_id\": {\n          \"type\": \"string\",\n          \"description\": \"The identifier of the production line (e.g., 'LINE_B42').\"\n        }\n      },\n      \"required\": [\n        \"line_id\"\n      ]\n    },\n    \"example_output\": {\n      \"batch_id\": \"ECU-2023-VOLT-009\",\n      \"material_lot\": \"Solder-Alpha-99X\",\n      \"start_time\": \"2023-10-27T08:00:00Z\"\n    }\n  },\n  \"get_defect_logs\": {\n    \"description\": \"Retrieves detailed inspection records for quality anomalies detected on a specific component for a given batch.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"line_id\": {\n          \"type\": \"string\",\n          \"description\": \"The production line identifier.\"\n        },\n        \"batch_id\": {\n          \"type\": \"string\",\n          \"description\": \"The batch identifier retrieved from batch context.\"\n        },\n        \"component_id\": {\n          \"type\": \"string\",\n          \"description\": \"The specific component reference (e.g., 'R102').\"\n        }\n      },\n      \"required\": [\n        \"line_id\",\n        \"batch_id\",\n        \"component_id\"\n      ]\n    },\n    \"example_output\": {\n      \"defect_type\": \"Tombstoning\",\n      \"defect_count\": 42,\n      \"inspection_timestamp\": \"2023-10-27T10:15:00Z\",\n      \"failure_rate\": \"5.4%\"\n    }\n  },\n  \"get_process_telemetry\": {\n    \"description\": \"Retrieves high-resolution sensor data and operating parameters from specific machines (SPI, PnP, or Reflow) for a given time window.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"line_id\": {\n          \"type\": \"string\",\n          \"description\": \"The production line identifier.\"\n        },\n        \"system_type\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"SPI\",\n            \"PnP\",\n            \"Reflow\"\n          ],\n          \"description\": \"The specific system to query: Solder Paste Inspection (SPI), Pick-and-Place (PnP), or Reflow Oven.\"\n        },\n        \"start_time\": {\n          \"type\": \"string\",\n          \"description\": \"ISO timestamp to start data retrieval.\"\n        },\n        \"component_id\": {\n          \"type\": \"string\",\n          \"description\": \"Optionally filter telemetry for a specific component location.\"\n        }\n      },\n      \"required\": [\n        \"line_id\",\n        \"system_type\",\n        \"start_time\"\n      ]\n    },\n    \"example_output\": {\n      \"telemetry_data\": [\n        {\n          \"metric\": \"pad_a_volume_pct\",\n          \"value\": 110\n        },\n        {\n          \"metric\": \"pad_b_volume_pct\",\n          \"value\": 85\n        },\n        {\n          \"metric\": \"zone_4_temp\",\n          \"value\": 245.5\n        }\n      ]\n    }\n  },\n  \"get_maintenance_records\": {\n    \"description\": \"Queries historical maintenance and repair logs for a specific production line to identify recent interventions or equipment wear.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"line_id\": {\n          \"type\": \"string\",\n          \"description\": \"The production line identifier.\"\n        },\n        \"lookback_days\": {\n          \"type\": \"number\",\n          \"description\": \"Number of days to look back in history.\"\n        }\n      },\n      \"required\": [\n        \"line_id\"\n      ]\n    },\n    \"example_output\": {\n      \"logs\": [\n        {\n          \"date\": \"2023-10-25\",\n          \"action\": \"Nozzle replacement on PnP head 2\",\n          \"technician\": \"USR-99\"\n        }\n      ]\n    }\n  },\n  \"submit_root_cause_analysis\": {\n    \"description\": \"Submits the final technical root cause report including the specific metric out of tolerance and the recommended process adjustment.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"root_cause_category\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"Printing\",\n            \"Placement\",\n            \"Metallurgical/Thermal\"\n          ],\n          \"description\": \"The identified category of the defect.\"\n        },\n        \"out_of_tolerance_metric\": {\n          \"type\": \"string\",\n          \"description\": \"The specific process parameter that deviated from the SOP.\"\n        },\n        \"physical_mechanism\": {\n          \"type\": \"string\",\n          \"description\": \"Description of how the out-of-tolerance metric led to tombstoning (e.g., unbalanced wetting torque).\"\n        },\n        \"recommendation\": {\n          \"type\": \"string\",\n          \"description\": \"The data-backed adjustment required to resolve the issue.\"\n        }\n      },\n      \"required\": [\n        \"root_cause_category\",\n        \"out_of_tolerance_metric\",\n        \"physical_mechanism\",\n        \"recommendation\"\n      ]\n    },\n    \"example_output\": null\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_batch_context",
+      "description": "Retrieves metadata for the current production batch on a specific line, including batch ID, material sources, and start times.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "line_id": {
+            "type": "string",
+            "description": "The identifier of the production line (e.g., 'LINE_B42')."
+          }
+        },
+        "required": [
+          "line_id"
+        ]
+      },
+      "example_output": {
+        "batch_id": "ECU-2023-VOLT-009",
+        "material_lot": "Solder-Alpha-99X",
+        "start_time": "2023-10-27T08:00:00Z"
+      }
+    },
+    {
+      "name": "get_defect_logs",
+      "description": "Retrieves detailed inspection records for quality anomalies detected on a specific component for a given batch.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "line_id": {
+            "type": "string",
+            "description": "The production line identifier."
+          },
+          "batch_id": {
+            "type": "string",
+            "description": "The batch identifier retrieved from batch context."
+          },
+          "component_id": {
+            "type": "string",
+            "description": "The specific component reference (e.g., 'R102')."
+          }
+        },
+        "required": [
+          "line_id",
+          "batch_id",
+          "component_id"
+        ]
+      },
+      "example_output": {
+        "defect_type": "Tombstoning",
+        "defect_count": 42,
+        "inspection_timestamp": "2023-10-27T10:15:00Z",
+        "failure_rate": "5.4%"
+      }
+    },
+    {
+      "name": "get_process_telemetry",
+      "description": "Retrieves high-resolution sensor data and operating parameters from specific machines (SPI, PnP, or Reflow) for a given time window.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "line_id": {
+            "type": "string",
+            "description": "The production line identifier."
+          },
+          "system_type": {
+            "type": "string",
+            "enum": [
+              "SPI",
+              "PnP",
+              "Reflow"
+            ],
+            "description": "The specific system to query: Solder Paste Inspection (SPI), Pick-and-Place (PnP), or Reflow Oven."
+          },
+          "start_time": {
+            "type": "string",
+            "description": "ISO timestamp to start data retrieval."
+          },
+          "component_id": {
+            "type": "string",
+            "description": "Optionally filter telemetry for a specific component location."
+          }
+        },
+        "required": [
+          "line_id",
+          "system_type",
+          "start_time"
+        ]
+      },
+      "example_output": {
+        "telemetry_data": [
+          {
+            "metric": "pad_a_volume_pct",
+            "value": 110
+          },
+          {
+            "metric": "pad_b_volume_pct",
+            "value": 85
+          },
+          {
+            "metric": "zone_4_temp",
+            "value": 245.5
+          }
+        ]
+      }
+    },
+    {
+      "name": "get_maintenance_records",
+      "description": "Queries historical maintenance and repair logs for a specific production line to identify recent interventions or equipment wear.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "line_id": {
+            "type": "string",
+            "description": "The production line identifier."
+          },
+          "lookback_days": {
+            "type": "number",
+            "description": "Number of days to look back in history."
+          }
+        },
+        "required": [
+          "line_id"
+        ]
+      },
+      "example_output": {
+        "logs": [
+          {
+            "date": "2023-10-25",
+            "action": "Nozzle replacement on PnP head 2",
+            "technician": "USR-99"
+          }
+        ]
+      }
+    },
+    {
+      "name": "submit_root_cause_analysis",
+      "description": "Submits the final technical root cause report including the specific metric out of tolerance and the recommended process adjustment.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "root_cause_category": {
+            "type": "string",
+            "enum": [
+              "Printing",
+              "Placement",
+              "Metallurgical/Thermal"
+            ],
+            "description": "The identified category of the defect."
+          },
+          "out_of_tolerance_metric": {
+            "type": "string",
+            "description": "The specific process parameter that deviated from the SOP."
+          },
+          "physical_mechanism": {
+            "type": "string",
+            "description": "Description of how the out-of-tolerance metric led to tombstoning (e.g., unbalanced wetting torque)."
+          },
+          "recommendation": {
+            "type": "string",
+            "description": "The data-backed adjustment required to resolve the issue."
+          }
+        },
+        "required": [
+          "root_cause_category",
+          "out_of_tolerance_metric",
+          "physical_mechanism",
+          "recommendation"
+        ]
+      },
+      "example_output": null
+    }
+  ],
+  "state_description": {
+    "production_line_id": "Identifier for the specific assembly or processing line.",
+    "current_batch_metadata": "Information regarding the batch currently being processed, including material source and start time.",
+    "machine_states": "Real-time operating parameters of the machinery (e.g., temperature, pressure, vibration levels).",
+    "detected_defects": "List of quality anomalies detected by automated inspection systems.",
+    "hidden_root_cause": "The ground truth cause of the quality defect, used by the model to maintain consistency in observations but never revealed to the Agent.",
+    "maintenance_logs": "Historical records of repairs and inspections performed on this line."
+  },
+  "task_initial_state": {
+    "production_line_id": "LINE_B42",
+    "current_batch_metadata": {
+      "batch_id": "ECU_PROD_2023_009",
+      "material_supplier": "InterconnectSolutions",
+      "input_purity": 0.99
+    },
+    "machine_states": {
+      "spi_pad_vol_asymmetry_R102": 4.5,
+      "pnp_placement_offset_xy_R102": 8.0,
+      "reflow_ramp_rate_zone3": 2.9,
+      "tal_seconds": 65,
+      "conveyor_speed": 0.8
+    },
+    "detected_defects": [
+      {
+        "type": "tombstoning",
+        "component": "R102",
+        "frequency": "3.8%",
+        "severity": "high"
+      }
+    ],
+    "hidden_root_cause": "Reflow Zone 3 ramp rate exceeds the 2.5 C/sec threshold, leading to violent flux outgassing and unbalanced wetting forces on R102, as SPI and PnP metrics remain within nominal bounds.",
+    "maintenance_logs": [
+      {
+        "date": "2023-10-25",
+        "action": "Heater element replacement in Zone 3",
+        "technician": "Maint-Alpha"
+      }
+    ]
+  }
+}

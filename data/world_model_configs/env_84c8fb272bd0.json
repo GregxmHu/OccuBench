@@ -1,0 +1,94 @@
+{
+  "environment_name": "env_84c8fb272bd0",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: Act as the environment for a Dynamic Portfolio Rebalancing task. Based on the current internal portfolio state $s_t$ and the Agent's trading action $a_t$, simulate the financial environment's evolution, calculate transaction impacts, and predict the resulting observation $o_{{t+1}}$.\n- **Emphasis**: You are a simulator, not an executor. You perform internal state evolution (updating balances, holdings, and market variables) and generate observations. You do not provide financial advice.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions between the World Model and the Agent must maintain context consistency. Every trade must correctly decrement/increment the internal cash and asset balances and account for transaction fees. Market price shifts must be reflected consistently across subsequent turns.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. This JSON must contain the following fields:\n- `\"name\"`: Specifies the name of the action function to execute (e.g., \"buy\", \"sell\", \"get_quote\").\n- The remaining fields are the parameter names and corresponding values required by that action function.\n\nExample Input:\n```json\n{{\n \"name\": \"execute_trade\",\n \"arguments\": {{\n    \"ticker\": \"AAPL\",\n    \"quantity\": 10,\n    \"side\": \"buy\"\n  }}\n}}\n```\n\nThe Language World Model must correctly parse such JSON inputs, validate the logic against current liquidity/holdings, and simulate the execution results.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\n- **Insufficient Funds**: If a 'buy' action exceeds available `cash_balance` (including fees), return an error observation.\n- **Insufficient Assets**: If a 'sell' action exceeds current `portfolio` holdings, return an error observation.\n- **Invalid Actions**: For undefined actions or malformed JSON, return `{{\"error\": \"Invalid action or parameters\"}}`.\n- **Constraint**: Do not fabricate market data or ignore transaction costs defined in the state.\n\n##### Output Assembly\nFor every action function call, the model must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition (the Observation).\n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state $s_t$, the `new_state`, or hidden variables like the total remaining cash or private counters unless specifically requested by an observation-generating function. The Agent only sees the Observation. Do not output the internal state update process.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to specified JSON formats for both input parsing and output generation.\n- **Factuality**: Use the provided market data and state; do not hallucinate tickers or prices not present in the environment logic.\n- **Consistency**: Ensure that `Total Value = Cash + sum(Assets * Prices)`. If an action changes one side, the others must reflect that change in the next step.\n- **Realism**: Simulate realistic market feedback, such as price slippage or transaction fee deductions as defined in the scenario.\n- **Encapsulation**: Strictly hide the internal state structure from the output. Only expose information that is explicitly returned by the action function.\n{{initial_state}}: {{\n  \"cash_balance\": 40000.0,\n  \"portfolio_holdings\": {{\n    \"ID_A_SPOT\": 500,\n    \"ID_A_FUT\": -500,\n    \"ID_B_SPOT\": 10000,\n    \"ID_B_FUT\": -10000\n  }},\n  \"market_prices\": {{\n    \"ID_A_SPOT\": 95.0,\n    \"ID_A_FUT\": 90.0,\n    \"ID_B_SPOT\": 2.5,\n    \"ID_B_FUT\": 3.0\n  }},\n  \"transaction_fee_rate\": 0.003,\n  \"current_step\": 0\n}}\n{{state_descriptions}}: {{\n  \"cash_balance\": \"The amount of liquid currency available for purchasing assets.\",\n  \"portfolio_holdings\": \"A mapping of asset tickers to the quantity currently held in the portfolio.\",\n  \"market_prices\": \"The current market price for each trackable ticker symbol.\",\n  \"transaction_fee_rate\": \"The percentage cost applied to the total value of each trade (e.g., 0.001 for 0.1%).\",\n  \"current_step\": \"The current discrete time step in the simulation.\"\n}}\n{action_set_definitions}: {\n  \"observe_market\": {\n    \"description\": \"Retrieves the current market prices and metadata for all available energy commodity tickers, including their classification as spot or futures instruments.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"market_data\": [\n        {\n          \"commodity_name\": \"Crude Oil\",\n          \"spot_ticker\": \"OIL_SPOT\",\n          \"futures_ticker\": \"OIL_FUT\",\n          \"spot_price\": 75.5,\n          \"futures_price\": 72.0\n        }\n      ]\n    }\n  },\n  \"observe_portfolio\": {\n    \"description\": \"Retrieves the current state of the agent's portfolio, including liquid cash balance and the quantities of all assets held.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"cash_balance\": 50000.0,\n      \"holdings\": {\n        \"OIL_SPOT\": 100,\n        \"OIL_FUT\": -100\n      },\n      \"transaction_fee_rate\": 0.003\n    }\n  },\n  \"execute_trade\": {\n    \"description\": \"Executes a buy or sell order for a specific ticker symbol. The transaction is subject to the current market fee rate.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"ticker\": {\n          \"type\": \"string\",\n          \"description\": \"The ticker symbol of the commodity/instrument to trade.\"\n        },\n        \"quantity\": {\n          \"type\": \"number\",\n          \"description\": \"The amount to trade. Use positive values for buying (long) and negative values for selling (short/liquidating).\"\n        }\n      },\n      \"required\": [\n        \"ticker\",\n        \"quantity\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"success\",\n      \"executed_price\": 75.5,\n      \"total_cost\": 7572.65,\n      \"remaining_cash\": 42427.35\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "observe_market",
+      "description": "Retrieves the current market prices and metadata for all available energy commodity tickers, including their classification as spot or futures instruments.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "market_data": [
+          {
+            "commodity_name": "Crude Oil",
+            "spot_ticker": "OIL_SPOT",
+            "futures_ticker": "OIL_FUT",
+            "spot_price": 75.5,
+            "futures_price": 72.0
+          }
+        ]
+      }
+    },
+    {
+      "name": "observe_portfolio",
+      "description": "Retrieves the current state of the agent's portfolio, including liquid cash balance and the quantities of all assets held.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "cash_balance": 50000.0,
+        "holdings": {
+          "OIL_SPOT": 100,
+          "OIL_FUT": -100
+        },
+        "transaction_fee_rate": 0.003
+      }
+    },
+    {
+      "name": "execute_trade",
+      "description": "Executes a buy or sell order for a specific ticker symbol. The transaction is subject to the current market fee rate.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "ticker": {
+            "type": "string",
+            "description": "The ticker symbol of the commodity/instrument to trade."
+          },
+          "quantity": {
+            "type": "number",
+            "description": "The amount to trade. Use positive values for buying (long) and negative values for selling (short/liquidating)."
+          }
+        },
+        "required": [
+          "ticker",
+          "quantity"
+        ]
+      },
+      "example_output": {
+        "status": "success",
+        "executed_price": 75.5,
+        "total_cost": 7572.65,
+        "remaining_cash": 42427.35
+      }
+    }
+  ],
+  "state_description": {
+    "cash_balance": "The amount of liquid currency available for purchasing assets.",
+    "portfolio_holdings": "A mapping of asset tickers to the quantity currently held in the portfolio.",
+    "market_prices": "The current market price for each trackable ticker symbol.",
+    "transaction_fee_rate": "The percentage cost applied to the total value of each trade (e.g., 0.001 for 0.1%).",
+    "current_step": "The current discrete time step in the simulation."
+  },
+  "task_initial_state": {
+    "cash_balance": 40000.0,
+    "portfolio_holdings": {
+      "ID_A_SPOT": 500,
+      "ID_A_FUT": -500,
+      "ID_B_SPOT": 10000,
+      "ID_B_FUT": -10000
+    },
+    "market_prices": {
+      "ID_A_SPOT": 95.0,
+      "ID_A_FUT": 90.0,
+      "ID_B_SPOT": 2.5,
+      "ID_B_FUT": 3.0
+    },
+    "transaction_fee_rate": 0.003,
+    "current_step": 0
+  }
+}

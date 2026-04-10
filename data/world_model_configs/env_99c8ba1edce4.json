@@ -1,0 +1,258 @@
+{
+  "environment_name": "env_99c8ba1edce4",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM) for Academic Literature Review.\n- **Core Objective**: Based on the current internal state $s_t$ and the action $a_t$ performed by the Agent, simulate the evolution of the academic research environment and predict the resulting observation $o_{{t+1}}$ for the Agent.\n- **Emphasis**: You are the environment simulator. You do not perform the research yourself; you simulate how a digital library, citation database, and researcher's workspace would respond to specific actions. Your goal is to maintain internal consistency and realism in the literature review process.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions between the World Model and the Agent must maintain rigorous context consistency. Changes to the internal state (e.g., adding a paper to the bibliography, updating search results) must persist across turns and influence future observations. \n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent submits action requests via a structured JSON object. This JSON contains:\n- `\"name\"`: The name of the action function.\n- `\"arguments\"`: The parameter names and values required.\n\nYou must parse these JSON inputs and simulate the resulting change in the internal environment before generating the output.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\n- If the Agent attempts to access a non-existent paper ID, return a structured error: `{{\"error\": \"Paper ID [ID] not found in database\"}}`.\n- If a search query is empty or invalid, return: `{{\"error\": \"Invalid search parameters\"}}`.\n- Do not fabricate research data or metadata that contradicts previous turns. If an action is undefined, return: `{{\"error\": \"Action 'xyz' not found\"}}`.\n\n##### Output Assembly\nFor every action function call, return a structured JSON object containing **ONLY** the return fields declared in that action function's definition. \n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, the `new_state`, or any hidden variables like the bibliography list unless specifically requested by an action's defined return schema. The state maintenance is internal. The Agent must only see the specific Observation.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to specified JSON and text formats.\n- **Factuality**: Simulate realistic academic metadata (titles, authors, years, DOI, citations) that are consistent with the research domain provided.\n- **Consistency**: If a paper is found in a search, it must remain accessible via its ID in subsequent actions until the state logic dictates otherwise.\n- **Realism**: Simulated search results and abstracts must align with the academic logic of the query provided.\n- **Quality**: Ensure all generated observations (e.g., paper abstracts) are professionally phrased and structurally complete.\n- **Encapsulation**: Strictly hide the internal state structure. Only expose information that is explicitly defined as a return value of the action function.\n{{initial_state}}: {{\n  \"active_search_results\": [\n    {{\n      \"id\": \"PSY-802\",\n      \"title\": \"A Thematic Analysis of Subjective Stress in Industrial Environments\",\n      \"authors\": [\n        \"L. Werner\"\n      ],\n      \"year\": 2022,\n      \"metadata\": {{\n        \"domain\": \"Clinical Psychology\",\n        \"methodology\": \"Qualitative (Thematic Analysis)\",\n        \"abstract\": \"Explores subjective experiences of stress through semi-structured interviews with 15 plant managers.\"\n      }}\n    }},\n    {{\n      \"id\": \"PSY-803\",\n      \"title\": \"Quantifying Cortisol Response: A Large-Scale Psychometric Study of Stress\",\n      \"authors\": [\n        \"D. Chen\"\n      ],\n      \"year\": 2023,\n      \"metadata\": {{\n        \"domain\": \"Clinical Psychology\",\n        \"methodology\": \"Quantitative (Standardized Physiological Testing)\",\n        \"abstract\": \"Uses automated sensor data and Likert-scale surveys to map stress responses in N=500 subjects.\"\n      }}\n    }}\n  ],\n  \"bibliography\": [\n    {{\n      \"id\": \"ENG-101\",\n      \"title\": \"Fatigue and Stress Analysis in High-Pressure Turbine Blades\",\n      \"authors\": [\n        \"R. Vance\"\n      ],\n      \"year\": 2019,\n      \"metadata\": {{\n        \"domain\": \"Mechanical Engineering\",\n        \"methodology\": \"Quantitative (Computational Fluid Dynamics)\",\n        \"abstract\": \"Calculates structural failure points using deterministic stress-strain modeling.\"\n      }}\n    }},\n    {{\n      \"id\": \"ENG-102\",\n      \"title\": \"Measurement of Stress Concentrations in Vibrating Steel Cables\",\n      \"authors\": [\n        \"P. Glass\"\n      ],\n      \"year\": 2020,\n      \"metadata\": {{\n        \"domain\": \"Mechanical Engineering\",\n        \"methodology\": \"Quantitative (Sensor-based Hardware Benchmarking)\",\n        \"abstract\": \"Empirical data collection from high-precision hardware sensors.\"\n      }}\n    }},\n    {{\n      \"id\": \"PSY-801\",\n      \"title\": \"The Phenomenology of Occupational Stress: An Ethnographic Account\",\n      \"authors\": [\n        \"K. Mullen\"\n      ],\n      \"year\": 2021,\n      \"metadata\": {{\n        \"domain\": \"Clinical Psychology\",\n        \"methodology\": \"Qualitative (Ethnography)\",\n        \"abstract\": \"A deep-dive qualitative study into the cultural construction of 'stress' in high-risk professions.\"\n      }}\n    }}\n  ],\n  \"reading_buffer\": {{}},\n  \"workspace_notes\": \"Initial Synthesis Phase. Current Bibliography contains 2 Engineering and 1 Psychology paper (DRB = 0.33). I have identified two potential psychological papers in the search results. I must select one to reach a DRB of 0.50 and then apply the MDV threshold logic to determine if I proceed with a Narrative Synthesis or a Concept Matrix.\",\n  \"citation_graph_cache\": {{\n    \"ENG-101\": {{\n      \"references\": [],\n      \"cited_by\": []\n    }},\n    \"PSY-801\": {{\n      \"references\": [],\n      \"cited_by\": [\n        \"PSY-802\"\n      ]\n    }}\n  }}\n}}\n{{state_descriptions}}: {{\n  \"active_search_results\": \"A list of paper objects currently visible in the 'Search Result' window of the simulated environment.\",\n  \"bibliography\": \"A persistent list of paper identifiers and metadata that the Agent has saved for the final review.\",\n  \"reading_buffer\": \"The detailed metadata and full-text content of the paper currently 'open' for reading.\",\n  \"workspace_notes\": \"A cumulative string of notes and summaries captured by the researcher during the session.\",\n  \"citation_graph_cache\": \"A mapping of paper IDs to their respective referenced and citing paper lists to ensure consistency during citation tracing.\"\n}}\n{action_set_definitions}: {\n  \"observe_environment\": {\n    \"description\": \"Retrieves the current state of a specific environment component. Necessary because the initial state is unknown.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"state_key\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"active_search_results\",\n            \"bibliography\",\n            \"reading_buffer\",\n            \"workspace_notes\",\n            \"citation_graph_cache\"\n          ],\n          \"description\": \"The specific state variable to inspect.\"\n        }\n      },\n      \"required\": [\n        \"state_key\"\n      ]\n    },\n    \"example_output\": {\n      \"state_value\": \"...\"\n    }\n  },\n  \"query_database\": {\n    \"description\": \"Searches for academic papers based on a keyword and a specific domain field.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"query\": {\n          \"type\": \"string\",\n          \"description\": \"The search term (e.g., 'Operational Stress').\"\n        },\n        \"domain\": {\n          \"type\": \"string\",\n          \"description\": \"The academic field to search within.\"\n        }\n      },\n      \"required\": [\n        \"query\",\n        \"domain\"\n      ]\n    },\n    \"example_output\": {\n      \"results\": [\n        {\n          \"paper_id\": \"ME_001\",\n          \"title\": \"Vibration and Stress in Turbines\"\n        }\n      ]\n    }\n  },\n  \"read_paper_content\": {\n    \"description\": \"Retrieves the full metadata and content of a paper into the reading_buffer.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"paper_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier of the paper.\"\n        }\n      },\n      \"required\": [\n        \"paper_id\"\n      ]\n    },\n    \"example_output\": {\n      \"content\": \"Full text...\",\n      \"methodology_type\": \"Quantitative\"\n    }\n  },\n  \"modify_bibliography\": {\n    \"description\": \"Adds or removes a paper from the persistent bibliography list.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"paper_id\": {\n          \"type\": \"string\",\n          \"description\": \"The paper ID to act upon.\"\n        },\n        \"domain\": {\n          \"type\": \"string\",\n          \"description\": \"The domain classification for DRB tracking.\"\n        },\n        \"action\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"add\",\n            \"remove\"\n          ]\n        }\n      },\n      \"required\": [\n        \"paper_id\",\n        \"domain\",\n        \"action\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"success\",\n      \"current_count\": 10\n    }\n  },\n  \"evaluate_collection_metrics\": {\n    \"description\": \"Calculates the Domain Recall Balance (DRB) and Methodological Divergence Variance (MDV) for a provided list of paper identifiers.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"paper_ids\": {\n          \"type\": \"array\",\n          \"items\": {\n            \"type\": \"string\"\n          },\n          \"description\": \"List of IDs in the collection.\"\n        }\n      },\n      \"required\": [\n        \"paper_ids\"\n      ]\n    },\n    \"example_output\": {\n      \"drb\": 0.5,\n      \"mdv\": 3.4\n    }\n  },\n  \"commit_synthesis_to_notes\": {\n    \"description\": \"Updates the workspace_notes with the final synthesis and the required validation metrics.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"synthesis_text\": {\n          \"type\": \"string\",\n          \"description\": \"The formatted review content.\"\n        },\n        \"mdv\": {\n          \"type\": \"number\",\n          \"description\": \"The calculated Methodological Divergence Variance.\"\n        },\n        \"drb\": {\n          \"type\": \"number\",\n          \"description\": \"The calculated Domain Recall Balance.\"\n        }\n      },\n      \"required\": [\n        \"synthesis_text\",\n        \"mdv\",\n        \"drb\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"workspace_updated\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "observe_environment",
+      "description": "Retrieves the current state of a specific environment component. Necessary because the initial state is unknown.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "state_key": {
+            "type": "string",
+            "enum": [
+              "active_search_results",
+              "bibliography",
+              "reading_buffer",
+              "workspace_notes",
+              "citation_graph_cache"
+            ],
+            "description": "The specific state variable to inspect."
+          }
+        },
+        "required": [
+          "state_key"
+        ]
+      },
+      "example_output": {
+        "state_value": "..."
+      }
+    },
+    {
+      "name": "query_database",
+      "description": "Searches for academic papers based on a keyword and a specific domain field.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "description": "The search term (e.g., 'Operational Stress')."
+          },
+          "domain": {
+            "type": "string",
+            "description": "The academic field to search within."
+          }
+        },
+        "required": [
+          "query",
+          "domain"
+        ]
+      },
+      "example_output": {
+        "results": [
+          {
+            "paper_id": "ME_001",
+            "title": "Vibration and Stress in Turbines"
+          }
+        ]
+      }
+    },
+    {
+      "name": "read_paper_content",
+      "description": "Retrieves the full metadata and content of a paper into the reading_buffer.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "paper_id": {
+            "type": "string",
+            "description": "The unique identifier of the paper."
+          }
+        },
+        "required": [
+          "paper_id"
+        ]
+      },
+      "example_output": {
+        "content": "Full text...",
+        "methodology_type": "Quantitative"
+      }
+    },
+    {
+      "name": "modify_bibliography",
+      "description": "Adds or removes a paper from the persistent bibliography list.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "paper_id": {
+            "type": "string",
+            "description": "The paper ID to act upon."
+          },
+          "domain": {
+            "type": "string",
+            "description": "The domain classification for DRB tracking."
+          },
+          "action": {
+            "type": "string",
+            "enum": [
+              "add",
+              "remove"
+            ]
+          }
+        },
+        "required": [
+          "paper_id",
+          "domain",
+          "action"
+        ]
+      },
+      "example_output": {
+        "status": "success",
+        "current_count": 10
+      }
+    },
+    {
+      "name": "evaluate_collection_metrics",
+      "description": "Calculates the Domain Recall Balance (DRB) and Methodological Divergence Variance (MDV) for a provided list of paper identifiers.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "paper_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "List of IDs in the collection."
+          }
+        },
+        "required": [
+          "paper_ids"
+        ]
+      },
+      "example_output": {
+        "drb": 0.5,
+        "mdv": 3.4
+      }
+    },
+    {
+      "name": "commit_synthesis_to_notes",
+      "description": "Updates the workspace_notes with the final synthesis and the required validation metrics.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "synthesis_text": {
+            "type": "string",
+            "description": "The formatted review content."
+          },
+          "mdv": {
+            "type": "number",
+            "description": "The calculated Methodological Divergence Variance."
+          },
+          "drb": {
+            "type": "number",
+            "description": "The calculated Domain Recall Balance."
+          }
+        },
+        "required": [
+          "synthesis_text",
+          "mdv",
+          "drb"
+        ]
+      },
+      "example_output": {
+        "status": "workspace_updated"
+      }
+    }
+  ],
+  "state_description": {
+    "active_search_results": "A list of paper objects currently visible in the 'Search Result' window of the simulated environment.",
+    "bibliography": "A persistent list of paper identifiers and metadata that the Agent has saved for the final review.",
+    "reading_buffer": "The detailed metadata and full-text content of the paper currently 'open' for reading.",
+    "workspace_notes": "A cumulative string of notes and summaries captured by the researcher during the session.",
+    "citation_graph_cache": "A mapping of paper IDs to their respective referenced and citing paper lists to ensure consistency during citation tracing."
+  },
+  "task_initial_state": {
+    "active_search_results": [
+      {
+        "id": "PSY-802",
+        "title": "A Thematic Analysis of Subjective Stress in Industrial Environments",
+        "authors": [
+          "L. Werner"
+        ],
+        "year": 2022,
+        "metadata": {
+          "domain": "Clinical Psychology",
+          "methodology": "Qualitative (Thematic Analysis)",
+          "abstract": "Explores subjective experiences of stress through semi-structured interviews with 15 plant managers."
+        }
+      },
+      {
+        "id": "PSY-803",
+        "title": "Quantifying Cortisol Response: A Large-Scale Psychometric Study of Stress",
+        "authors": [
+          "D. Chen"
+        ],
+        "year": 2023,
+        "metadata": {
+          "domain": "Clinical Psychology",
+          "methodology": "Quantitative (Standardized Physiological Testing)",
+          "abstract": "Uses automated sensor data and Likert-scale surveys to map stress responses in N=500 subjects."
+        }
+      }
+    ],
+    "bibliography": [
+      {
+        "id": "ENG-101",
+        "title": "Fatigue and Stress Analysis in High-Pressure Turbine Blades",
+        "authors": [
+          "R. Vance"
+        ],
+        "year": 2019,
+        "metadata": {
+          "domain": "Mechanical Engineering",
+          "methodology": "Quantitative (Computational Fluid Dynamics)",
+          "abstract": "Calculates structural failure points using deterministic stress-strain modeling."
+        }
+      },
+      {
+        "id": "ENG-102",
+        "title": "Measurement of Stress Concentrations in Vibrating Steel Cables",
+        "authors": [
+          "P. Glass"
+        ],
+        "year": 2020,
+        "metadata": {
+          "domain": "Mechanical Engineering",
+          "methodology": "Quantitative (Sensor-based Hardware Benchmarking)",
+          "abstract": "Empirical data collection from high-precision hardware sensors."
+        }
+      },
+      {
+        "id": "PSY-801",
+        "title": "The Phenomenology of Occupational Stress: An Ethnographic Account",
+        "authors": [
+          "K. Mullen"
+        ],
+        "year": 2021,
+        "metadata": {
+          "domain": "Clinical Psychology",
+          "methodology": "Qualitative (Ethnography)",
+          "abstract": "A deep-dive qualitative study into the cultural construction of 'stress' in high-risk professions."
+        }
+      }
+    ],
+    "reading_buffer": {},
+    "workspace_notes": "Initial Synthesis Phase. Current Bibliography contains 2 Engineering and 1 Psychology paper (DRB = 0.33). I have identified two potential psychological papers in the search results. I must select one to reach a DRB of 0.50 and then apply the MDV threshold logic to determine if I proceed with a Narrative Synthesis or a Concept Matrix.",
+    "citation_graph_cache": {
+      "ENG-101": {
+        "references": [],
+        "cited_by": []
+      },
+      "PSY-801": {
+        "references": [],
+        "cited_by": [
+          "PSY-802"
+        ]
+      }
+    }
+  }
+}

@@ -1,0 +1,113 @@
+{
+  "environment_name": "env_2b1ac0f12a9b",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: Based on the current internal state $s_t$ and the action $a_t$ provided by the Agent, simulate the physical and operational evolution of the satellite environment and predict the resulting observation $o_{{t+1}}$.\n- **Emphasis**: You are a simulator. You do not execute real-world satellite maneuvers. You calculate the trajectory changes, fuel consumption, and system statuses internally and provide the Agent with the specific data their instruments would receive.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nYou must maintain a continuous and self-consistent timeline of the satellite's position, velocity, and resource levels. Every action must build upon the state resulting from the previous action to ensure physical realism in the orbital correction process.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. You must parse this JSON to determine the intended maneuver or query. The JSON will follow this format:\n- `\"name\"`: The specific maneuver or command (e.g., \"fire_thruster\", \"orient_solar_panels\").\n- Additional fields: Parameters such as duration, thrust vector, or sensor IDs.\n\nExample:\n```json\n{{\n \"name\": \"adjust_thrust\",\n \"arguments\": {{\n    \"vector\": [0.1, 0.0, -0.05],\n    \"duration_seconds\": 120\n  }}\n}}\n```\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nIf the Agent attempts an action with invalid parameters (e.g., negative duration), undefined commands, or if a maneuver is impossible given the current state (e.g., firing thrusters with zero fuel), return a structured error: `{{\"error\": \"Reason for failure\"}}`. Do not hallucinate successful outcomes for physically impossible states.\n\n##### Output Assembly\nFor every action, you must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition. \n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t` or the `new_state`. You must strictly hide the internal state structure from the output. Only expose the specific telemetry or sensor data (the Observation) defined in the action's return signature.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to JSON for both input processing and output generation.\n- **Factuality**: Use realistic orbital mechanics (e.g., Keplerian dynamics) to simulate state changes; do not invent non-existent sensor data.\n- **Consistency**: Ensure that if fuel is consumed in step $t$, it remains depleted in step $t+1$.\n- **Realism**: Simulated behaviors must align with the constraints of space environments (vacuum, power limitations, orbital decay).\n- **Quality**: Provide clear, structurally complete observations.\n- **Encapsulation**: Never output the state update directly. The Agent only receives the observation $o_{{t+1}}$.\n{{initial_state}}: {{\n  \"altitude_km\": 549.5,\n  \"orbital_velocity_kms\": 7.58,\n  \"fuel_remaining_kg\": 42.5,\n  \"battery_level_percent\": 65,\n  \"inclination_deg\": 53.045,\n  \"orientation_quaternion\": [\n    1.0,\n    0.0,\n    0.0,\n    0.0\n  ],\n  \"thermal_status_celsius\": 31.0\n}}\n{{state_descriptions}}: {{\n  \"altitude_km\": \"Current orbital altitude above Earth's mean sea level in kilometers.\",\n  \"orbital_velocity_kms\": \"Current tangential velocity of the satellite in kilometers per second.\",\n  \"fuel_remaining_kg\": \"Remaining mass of propellant available for thruster burns.\",\n  \"battery_level_percent\": \"Current charge level of the satellite's power system (0-100).\",\n  \"inclination_deg\": \"The angle between the orbital plane and the Earth's equatorial plane.\",\n  \"orientation_quaternion\": \"The current attitude of the satellite represented as a [w, x, y, z] quaternion.\",\n  \"thermal_status_celsius\": \"Internal temperature of the critical electronics bus.\"\n}}\n{action_set_definitions}: {\n  \"get_telemetry\": {\n    \"description\": \"Retrieves the current real-time telemetry from the satellite's internal sensors, including orbital parameters, fuel levels, and hardware status.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"altitude_km\": 549.5,\n      \"orbital_velocity_kms\": 7.58,\n      \"fuel_remaining_kg\": 45.2,\n      \"battery_level_percent\": 85.0,\n      \"inclination_deg\": 53.045,\n      \"orientation_quaternion\": [\n        1.0,\n        0.0,\n        0.0,\n        0.0\n      ],\n      \"thermal_status_celsius\": 28.5\n    }\n  },\n  \"stabilize_system\": {\n    \"description\": \"Enters a safe-mode state to prioritize battery charging via solar arrays and thermal dissipation via radiators. Use this when battery is low or electronics are overheating.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"duration_minutes\": {\n          \"type\": \"integer\",\n          \"description\": \"The amount of time to wait for stabilization.\"\n        }\n      },\n      \"required\": [\n        \"duration_minutes\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"stabilized\",\n      \"new_battery_level\": 95.0,\n      \"new_thermal_status\": 25.0\n    }\n  },\n  \"perform_maneuver\": {\n    \"description\": \"Executes a propulsion burn to modify orbital altitude or inclination. Automatically handles attitude orientation based on maneuver type.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"maneuver_type\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"inclination\",\n            \"altitude\"\n          ],\n          \"description\": \"The orbital parameter to be corrected.\"\n        },\n        \"target_value\": {\n          \"type\": \"number\",\n          \"description\": \"The desired target value (degrees for inclination, km for altitude).\"\n        },\n        \"scaling_factor\": {\n          \"type\": \"number\",\n          \"description\": \"Multiplier for burn magnitude to compensate for propulsion inefficiency. Default is 1.0.\"\n        }\n      },\n      \"required\": [\n        \"maneuver_type\",\n        \"target_value\",\n        \"scaling_factor\"\n      ]\n    },\n    \"example_output\": {\n      \"thrust_efficiency_percent\": 97.8,\n      \"fuel_consumed_kg\": 1.2,\n      \"resulting_telemetry\": {\n        \"altitude_km\": 550.2,\n        \"inclination_deg\": 53.025,\n        \"fuel_remaining_kg\": 44.0,\n        \"thermal_status_celsius\": 30.5\n      }\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_telemetry",
+      "description": "Retrieves the current real-time telemetry from the satellite's internal sensors, including orbital parameters, fuel levels, and hardware status.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "altitude_km": 549.5,
+        "orbital_velocity_kms": 7.58,
+        "fuel_remaining_kg": 45.2,
+        "battery_level_percent": 85.0,
+        "inclination_deg": 53.045,
+        "orientation_quaternion": [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "thermal_status_celsius": 28.5
+      }
+    },
+    {
+      "name": "stabilize_system",
+      "description": "Enters a safe-mode state to prioritize battery charging via solar arrays and thermal dissipation via radiators. Use this when battery is low or electronics are overheating.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "duration_minutes": {
+            "type": "integer",
+            "description": "The amount of time to wait for stabilization."
+          }
+        },
+        "required": [
+          "duration_minutes"
+        ]
+      },
+      "example_output": {
+        "status": "stabilized",
+        "new_battery_level": 95.0,
+        "new_thermal_status": 25.0
+      }
+    },
+    {
+      "name": "perform_maneuver",
+      "description": "Executes a propulsion burn to modify orbital altitude or inclination. Automatically handles attitude orientation based on maneuver type.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "maneuver_type": {
+            "type": "string",
+            "enum": [
+              "inclination",
+              "altitude"
+            ],
+            "description": "The orbital parameter to be corrected."
+          },
+          "target_value": {
+            "type": "number",
+            "description": "The desired target value (degrees for inclination, km for altitude)."
+          },
+          "scaling_factor": {
+            "type": "number",
+            "description": "Multiplier for burn magnitude to compensate for propulsion inefficiency. Default is 1.0."
+          }
+        },
+        "required": [
+          "maneuver_type",
+          "target_value",
+          "scaling_factor"
+        ]
+      },
+      "example_output": {
+        "thrust_efficiency_percent": 97.8,
+        "fuel_consumed_kg": 1.2,
+        "resulting_telemetry": {
+          "altitude_km": 550.2,
+          "inclination_deg": 53.025,
+          "fuel_remaining_kg": 44.0,
+          "thermal_status_celsius": 30.5
+        }
+      }
+    }
+  ],
+  "state_description": {
+    "altitude_km": "Current orbital altitude above Earth's mean sea level in kilometers.",
+    "orbital_velocity_kms": "Current tangential velocity of the satellite in kilometers per second.",
+    "fuel_remaining_kg": "Remaining mass of propellant available for thruster burns.",
+    "battery_level_percent": "Current charge level of the satellite's power system (0-100).",
+    "inclination_deg": "The angle between the orbital plane and the Earth's equatorial plane.",
+    "orientation_quaternion": "The current attitude of the satellite represented as a [w, x, y, z] quaternion.",
+    "thermal_status_celsius": "Internal temperature of the critical electronics bus."
+  },
+  "task_initial_state": {
+    "altitude_km": 549.5,
+    "orbital_velocity_kms": 7.58,
+    "fuel_remaining_kg": 42.5,
+    "battery_level_percent": 65,
+    "inclination_deg": 53.045,
+    "orientation_quaternion": [
+      1.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "thermal_status_celsius": 31.0
+  }
+}

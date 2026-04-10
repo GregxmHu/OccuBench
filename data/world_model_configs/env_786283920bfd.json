@@ -1,0 +1,168 @@
+{
+  "environment_name": "env_786283920bfd",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM) for Urban Traffic Signal Control.\n- **Core Objective**: Based on the current internal state $s_t$ and the signal control action $a_t$ submitted by the Agent, simulate the traffic flow dynamics (e.g., vehicle arrivals, queue dissipation, phase transitions) and predict the resulting observation $o_{{t+1}}$ and reward-related metrics. \n- **Emphasis**: You are a simulator, not a controller. Your goal is to provide realistic, self-consistent feedback on how the intersection environment evolves after an action is taken.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions must maintain temporal and physical consistency. If a queue is long at time $t$, it should only decrease at time $t+1$ if the corresponding signal phase is green, accounting for discharge rates and new arrivals.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. This JSON contains:\n- `\"name\"`: The name of the traffic control action (e.g., switching a phase or extending a duration).\n- Parameters required by that specific action.\n\nExample:\n```json\n{{\n \"name\": \"set_signal_phase\",\n \"arguments\": {{\n    \"phase_id\": \"NS_GREEN\",\n    \"duration\": 30\n  }}\n}}\n```\nYou must parse this JSON, update the internal traffic environment (decrementing queues for green lights, incrementing for red lights based on arrival flow), and generate the next observation.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\n- If an agent attempts to set an invalid phase or a negative duration, return: `{{\"error\": \"Invalid phase_id or duration value\"}}`.\n- If the action JSON is malformed, return a structured error message.\n- Do not fabricate traffic data if the input is invalid.\n\n##### Output Assembly\nFor every action call, return a structured JSON object containing **ONLY** the return fields defined in the action function (the Observation).\n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, the `new_state`, or hidden variables like exact arrival probabilities. The Agent only sees the sensors (e.g., camera-detected queue lengths, current phase). Do not output the internal state update process.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to JSON for observations.\n- **Factuality**: Use realistic traffic flow logic (e.g., vehicles cannot move if the light is red).\n- **Consistency**: The number of vehicles at $t+1$ must logically follow from $t$ minus those that passed the green light plus those that arrived.\n- **Realism**: Simulate stochasticity in vehicle arrivals to mimic real-world urban variability.\n- **Quality**: Provide clear, unambiguous observation data.\n- **Encapsulation**: Strictly hide the internal state structure. Only expose the specific fields defined in the action's return signature.\n{{initial_state}}: {{\n  \"step_count\": 0,\n  \"current_phase_id\": \"NS_GREEN\",\n  \"lane_queues\": {{\n    \"northbound\": 18,\n    \"southbound\": 15,\n    \"eastbound\": 10,\n    \"westbound\": 12\n  }},\n  \"arrival_rates\": {{\n    \"north_south\": 2.5,\n    \"east_west\": 1.2\n  }},\n  \"elapsed_phase_time\": 15,\n  \"ups_metrics\": {{\n    \"upsLineVolts\": 0,\n    \"upsOutputLoad\": 82,\n    \"upsBatVoltage\": 46.8,\n    \"upsAmbTemp\": 35,\n    \"upsOpMode\": \"BACKUP\",\n    \"estRuntime\": 35\n  }},\n  \"technician_eta_steps\": 55,\n  \"maintenance_status\": \"TECHNICIAN_EN_ROUTE\",\n  \"bypass_switch_position\": \"LINE_GEN\",\n  \"generator_connected\": false\n}}\n{{state_descriptions}}: {{\n  \"step_count\": \"Total number of simulation steps elapsed.\",\n  \"current_phase_id\": \"The ID of the currently active traffic light phase (e.g., 'NS_GREEN', 'EW_GREEN').\",\n  \"lane_queues\": \"Current number of vehicles waiting in each lane (North, South, East, West).\",\n  \"arrival_rates\": \"Average number of vehicles arriving per step for each direction.\",\n  \"elapsed_phase_time\": \"Seconds elapsed since the current phase started.\"\n}}\n{action_set_definitions}: {\n  \"get_power_system_status\": {\n    \"description\": \"Retrieves the current status of the Battery Backup System (BBS) and technician status.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"battery_voltage\": 48.2,\n      \"discharge_rate_amps\": 5.4,\n      \"is_technician_on_site\": false,\n      \"current_power_source\": \"BBS\",\n      \"load_shedding_active\": false\n    }\n  },\n  \"get_technician_eta\": {\n    \"description\": \"Retrieves the estimated time of arrival (ETA) for the repair technician in seconds.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"eta_seconds\": 1200\n    }\n  },\n  \"get_traffic_data\": {\n    \"description\": \"Retrieves the current traffic state including lane queues and phase info.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"lane_queues\": {\n        \"North\": 5,\n        \"South\": 8,\n        \"East\": 2,\n        \"West\": 3\n      },\n      \"current_phase_id\": \"NS_GREEN\",\n      \"arrival_rates\": {\n        \"North\": 0.1,\n        \"South\": 0.1,\n        \"East\": 0.05,\n        \"West\": 0.05\n      }\n    }\n  },\n  \"set_load_shedding_level\": {\n    \"description\": \"Adjusts the power consumption of the intersection to extend battery life.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"level\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"NONE\",\n            \"FLASHING_YELLOW\",\n            \"FLASHING_RED\",\n            \"MINIMAL\"\n          ],\n          \"description\": \"NONE: Full operation; FLASHING: Reduced power; MINIMAL: Only critical sensors active.\"\n        }\n      },\n      \"required\": [\n        \"level\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"success\",\n      \"estimated_autonomy_extension_minutes\": 45\n    }\n  },\n  \"manage_power_hardware\": {\n    \"description\": \"Executes hardware-level switches for bypass and generator connection.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"command\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"ENABLE_BYPASS\",\n            \"CONNECT_GENERATOR\",\n            \"RESTORE_MAINS\"\n          ],\n          \"description\": \"The specific hardware interaction to perform.\"\n        }\n      },\n      \"required\": [\n        \"command\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"hardware_confirmed\",\n      \"active_source\": \"GENERATOR\"\n    }\n  },\n  \"set_traffic_control_mode\": {\n    \"description\": \"Sets the operational mode of the traffic controller (e.g., standard cycling or emergency mode).\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"mode\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"STANDARD_CYCLING\",\n            \"FIXED_TIME\",\n            \"DARK_MODE\"\n          ],\n          \"description\": \"Operational mode for the signal phases.\"\n        }\n      },\n      \"required\": [\n        \"mode\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"mode_updated\",\n      \"next_phase\": \"NS_GREEN\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_power_system_status",
+      "description": "Retrieves the current status of the Battery Backup System (BBS) and technician status.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "battery_voltage": 48.2,
+        "discharge_rate_amps": 5.4,
+        "is_technician_on_site": false,
+        "current_power_source": "BBS",
+        "load_shedding_active": false
+      }
+    },
+    {
+      "name": "get_technician_eta",
+      "description": "Retrieves the estimated time of arrival (ETA) for the repair technician in seconds.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "eta_seconds": 1200
+      }
+    },
+    {
+      "name": "get_traffic_data",
+      "description": "Retrieves the current traffic state including lane queues and phase info.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "lane_queues": {
+          "North": 5,
+          "South": 8,
+          "East": 2,
+          "West": 3
+        },
+        "current_phase_id": "NS_GREEN",
+        "arrival_rates": {
+          "North": 0.1,
+          "South": 0.1,
+          "East": 0.05,
+          "West": 0.05
+        }
+      }
+    },
+    {
+      "name": "set_load_shedding_level",
+      "description": "Adjusts the power consumption of the intersection to extend battery life.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "level": {
+            "type": "string",
+            "enum": [
+              "NONE",
+              "FLASHING_YELLOW",
+              "FLASHING_RED",
+              "MINIMAL"
+            ],
+            "description": "NONE: Full operation; FLASHING: Reduced power; MINIMAL: Only critical sensors active."
+          }
+        },
+        "required": [
+          "level"
+        ]
+      },
+      "example_output": {
+        "status": "success",
+        "estimated_autonomy_extension_minutes": 45
+      }
+    },
+    {
+      "name": "manage_power_hardware",
+      "description": "Executes hardware-level switches for bypass and generator connection.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "command": {
+            "type": "string",
+            "enum": [
+              "ENABLE_BYPASS",
+              "CONNECT_GENERATOR",
+              "RESTORE_MAINS"
+            ],
+            "description": "The specific hardware interaction to perform."
+          }
+        },
+        "required": [
+          "command"
+        ]
+      },
+      "example_output": {
+        "status": "hardware_confirmed",
+        "active_source": "GENERATOR"
+      }
+    },
+    {
+      "name": "set_traffic_control_mode",
+      "description": "Sets the operational mode of the traffic controller (e.g., standard cycling or emergency mode).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "mode": {
+            "type": "string",
+            "enum": [
+              "STANDARD_CYCLING",
+              "FIXED_TIME",
+              "DARK_MODE"
+            ],
+            "description": "Operational mode for the signal phases."
+          }
+        },
+        "required": [
+          "mode"
+        ]
+      },
+      "example_output": {
+        "status": "mode_updated",
+        "next_phase": "NS_GREEN"
+      }
+    }
+  ],
+  "state_description": {
+    "step_count": "Total number of simulation steps elapsed.",
+    "current_phase_id": "The ID of the currently active traffic light phase (e.g., 'NS_GREEN', 'EW_GREEN').",
+    "lane_queues": "Current number of vehicles waiting in each lane (North, South, East, West).",
+    "arrival_rates": "Average number of vehicles arriving per step for each direction.",
+    "elapsed_phase_time": "Seconds elapsed since the current phase started."
+  },
+  "task_initial_state": {
+    "step_count": 0,
+    "current_phase_id": "NS_GREEN",
+    "lane_queues": {
+      "northbound": 18,
+      "southbound": 15,
+      "eastbound": 10,
+      "westbound": 12
+    },
+    "arrival_rates": {
+      "north_south": 2.5,
+      "east_west": 1.2
+    },
+    "elapsed_phase_time": 15,
+    "ups_metrics": {
+      "upsLineVolts": 0,
+      "upsOutputLoad": 82,
+      "upsBatVoltage": 46.8,
+      "upsAmbTemp": 35,
+      "upsOpMode": "BACKUP",
+      "estRuntime": 35
+    },
+    "technician_eta_steps": 55,
+    "maintenance_status": "TECHNICIAN_EN_ROUTE",
+    "bypass_switch_position": "LINE_GEN",
+    "generator_connected": false
+  }
+}

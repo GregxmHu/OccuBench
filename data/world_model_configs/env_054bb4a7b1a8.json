@@ -1,0 +1,182 @@
+{
+  "environment_name": "env_054bb4a7b1a8",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: Based on the current building state $s_t$ and the inspector's action $a_t$, simulate the internal environment changes of the Building Inspection Compliance scenario and predict the observation $o_{{t+1}}$ obtained by the Agent.\n- **Emphasis**: You act as the ground truth of the building's condition. You do not perform inspections; you simulate the building's response to an inspection, updating the internal compliance status and providing sensor/visual feedback.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions between the World Model and the Agent must maintain rigorous context consistency. If a violation is recorded in Room A, that violation must remain in the state until a remediation action is simulated. The inspector's location and the progress of the checklist must be tracked across the dialogue history.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. You must parse the following fields:\n- `\"name\"`: Specifies the name of the action function (e.g., `move_to_area`, `inspect_fire_hazard`, `log_compliance_issue`).\n- Remaining fields: Parameter names and values (e.g., `room_id`, `equipment_type`).\n\nExample Input:\n```json\n{{\n \"name\": \"inspect_component\",\n \"arguments\": {{\n    \"component_id\": \"EL-004\",\n    \"test_type\": \"voltage_check\"\n  }}\n}}\n```\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\n- If an Agent attempts to inspect a room they are not currently in, return an error: `{{\"error\": \"Location mismatch: Agent is in Room X, cannot inspect Room Y\"}}`.\n- If an action refers to a non-existent building component, return: `{{\"error\": \"Component ID not found\"}}`.\n- For invalid parameters or undefined actions, return a structured error and do not evolve the state.\n\n##### Output Assembly\nFor every action function call, return a structured JSON object containing **ONLY** the return fields declared in that action's definition.\n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, the updated state, or hidden variables. Only expose the `observation` (the specific return values). The updated state is maintained internally in your memory/context.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to JSON for both input parsing and output generation.\n- **Factuality**: Do not fabricate building features or compliance codes not implied by the state or action definitions.\n- **Consistency**: Ensure that if a structural defect is found, subsequent inspections in adjacent areas reflect that context.\n- **Realism**: Simulate realistic physical constraints (e.g., a locked door prevents inspection until an 'unlock' action is performed).\n- **Quality**: Observations should be technical and descriptive, mimicking a professional inspection log.\n- **Encapsulation**: Never reveal the raw state JSON to the Agent. Only show the results of their specific actions.\n{{initial_state}}: {{\n  \"building_metadata\": {{\n    \"id\": \"CORP-TOWER-99\",\n    \"type\": \"Commercial High-Rise\",\n    \"total_floors\": 40,\n    \"elevator_data\": {{\n      \"unit_id\": \"EL-04\",\n      \"rated_capacity\": 3500,\n      \"contract_speed\": 1000,\n      \"governor_rope_diameter\": \"0.375in\"\n    }}\n  }},\n  \"current_location\": \"Lobby\",\n  \"inspection_progress\": {{\n    \"fire_safety\": \"completed\",\n    \"electrical\": \"pending\",\n    \"structural\": \"pending\",\n    \"plumbing\": \"completed\"\n  }},\n  \"active_violations\": [],\n  \"environmental_conditions\": {{\n    \"main_power\": \"on\",\n    \"emergency_lighting\": \"functional\",\n    \"visibility\": \"clear\"\n  }},\n  \"access_log\": [\n    \"Lobby\"\n  ]\n}}\n{{state_descriptions}}: {{\n  \"building_metadata\": \"General information about the building being inspected.\",\n  \"current_location\": \"The current room or area where the inspector is located.\",\n  \"inspection_progress\": \"A map of inspection categories to their current completion status.\",\n  \"active_violations\": \"A list of identified non-compliant items found during the current session.\",\n  \"environmental_conditions\": \"Physical conditions of the site that might affect inspection (e.g., power status, lighting).\",\n  \"access_log\": \"List of areas the inspector has already cleared or entered.\"\n}}\n{action_set_definitions}: {\n  \"fetch_environment_state\": {\n    \"description\": \"Retrieves the current state of the environment, including location, metadata, and progress.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"building_metadata\": \"Bldg-ID-101\",\n      \"current_location\": \"Lobby\",\n      \"environmental_conditions\": \"Power: On, Lighting: Sufficient\"\n    }\n  },\n  \"navigate_to\": {\n    \"description\": \"Moves the agent to a specific area or room within the building.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"location_name\": {\n          \"type\": \"string\",\n          \"description\": \"The target room or area name.\"\n        }\n      },\n      \"required\": [\n        \"location_name\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"success\",\n      \"new_location\": \"North Service Core\"\n    }\n  },\n  \"conduct_brake_test\": {\n    \"description\": \"Evaluates the integrity of the mechanical braking system using a specific load.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"elevator_id\": {\n          \"type\": \"string\",\n          \"description\": \"Identifier for the elevator.\"\n        },\n        \"test_load_lbs\": {\n          \"type\": \"number\",\n          \"description\": \"The weight load applied for the test in pounds.\"\n        }\n      },\n      \"required\": [\n        \"elevator_id\",\n        \"test_load_lbs\"\n      ]\n    },\n    \"example_output\": {\n      \"result\": \"passed\",\n      \"slide_distance_inches\": 4.5\n    }\n  },\n  \"conduct_governor_test\": {\n    \"description\": \"Tests the overspeed governor engagement of Type B safeties at contract speed.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"elevator_id\": {\n          \"type\": \"string\",\n          \"description\": \"Identifier for the elevator.\"\n        },\n        \"contract_speed_fpm\": {\n          \"type\": \"number\",\n          \"description\": \"The rated contract speed in feet per minute.\"\n        }\n      },\n      \"required\": [\n        \"elevator_id\",\n        \"contract_speed_fpm\"\n      ]\n    },\n    \"example_output\": {\n      \"result\": \"passed\",\n      \"safety_engagement_status\": \"engaged\"\n    }\n  },\n  \"conduct_buffer_test\": {\n    \"description\": \"Tests hydraulic oil buffer performance to verify return timings and impact absorption.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"elevator_id\": {\n          \"type\": \"string\",\n          \"description\": \"Identifier for the elevator.\"\n        },\n        \"test_load_lbs\": {\n          \"type\": \"number\",\n          \"description\": \"The weight load applied for the test in pounds.\"\n        }\n      },\n      \"required\": [\n        \"elevator_id\",\n        \"test_load_lbs\"\n      ]\n    },\n    \"example_output\": {\n      \"result\": \"passed\",\n      \"return_timing_seconds\": 55\n    }\n  },\n  \"update_compliance_log\": {\n    \"description\": \"Updates the official building compliance log with a new inspection status.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"building_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the building to be updated.\"\n        },\n        \"status\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"passed\",\n            \"failed\",\n            \"pending\"\n          ],\n          \"description\": \"The final structural inspection status.\"\n        }\n      },\n      \"required\": [\n        \"building_id\",\n        \"status\"\n      ]\n    },\n    \"example_output\": {\n      \"log_updated\": true,\n      \"timestamp\": \"2023-10-27T10:00:00Z\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "fetch_environment_state",
+      "description": "Retrieves the current state of the environment, including location, metadata, and progress.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "building_metadata": "Bldg-ID-101",
+        "current_location": "Lobby",
+        "environmental_conditions": "Power: On, Lighting: Sufficient"
+      }
+    },
+    {
+      "name": "navigate_to",
+      "description": "Moves the agent to a specific area or room within the building.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "location_name": {
+            "type": "string",
+            "description": "The target room or area name."
+          }
+        },
+        "required": [
+          "location_name"
+        ]
+      },
+      "example_output": {
+        "status": "success",
+        "new_location": "North Service Core"
+      }
+    },
+    {
+      "name": "conduct_brake_test",
+      "description": "Evaluates the integrity of the mechanical braking system using a specific load.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "elevator_id": {
+            "type": "string",
+            "description": "Identifier for the elevator."
+          },
+          "test_load_lbs": {
+            "type": "number",
+            "description": "The weight load applied for the test in pounds."
+          }
+        },
+        "required": [
+          "elevator_id",
+          "test_load_lbs"
+        ]
+      },
+      "example_output": {
+        "result": "passed",
+        "slide_distance_inches": 4.5
+      }
+    },
+    {
+      "name": "conduct_governor_test",
+      "description": "Tests the overspeed governor engagement of Type B safeties at contract speed.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "elevator_id": {
+            "type": "string",
+            "description": "Identifier for the elevator."
+          },
+          "contract_speed_fpm": {
+            "type": "number",
+            "description": "The rated contract speed in feet per minute."
+          }
+        },
+        "required": [
+          "elevator_id",
+          "contract_speed_fpm"
+        ]
+      },
+      "example_output": {
+        "result": "passed",
+        "safety_engagement_status": "engaged"
+      }
+    },
+    {
+      "name": "conduct_buffer_test",
+      "description": "Tests hydraulic oil buffer performance to verify return timings and impact absorption.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "elevator_id": {
+            "type": "string",
+            "description": "Identifier for the elevator."
+          },
+          "test_load_lbs": {
+            "type": "number",
+            "description": "The weight load applied for the test in pounds."
+          }
+        },
+        "required": [
+          "elevator_id",
+          "test_load_lbs"
+        ]
+      },
+      "example_output": {
+        "result": "passed",
+        "return_timing_seconds": 55
+      }
+    },
+    {
+      "name": "update_compliance_log",
+      "description": "Updates the official building compliance log with a new inspection status.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "building_id": {
+            "type": "string",
+            "description": "The ID of the building to be updated."
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "passed",
+              "failed",
+              "pending"
+            ],
+            "description": "The final structural inspection status."
+          }
+        },
+        "required": [
+          "building_id",
+          "status"
+        ]
+      },
+      "example_output": {
+        "log_updated": true,
+        "timestamp": "2023-10-27T10:00:00Z"
+      }
+    }
+  ],
+  "state_description": {
+    "building_metadata": "General information about the building being inspected.",
+    "current_location": "The current room or area where the inspector is located.",
+    "inspection_progress": "A map of inspection categories to their current completion status.",
+    "active_violations": "A list of identified non-compliant items found during the current session.",
+    "environmental_conditions": "Physical conditions of the site that might affect inspection (e.g., power status, lighting).",
+    "access_log": "List of areas the inspector has already cleared or entered."
+  },
+  "task_initial_state": {
+    "building_metadata": {
+      "id": "CORP-TOWER-99",
+      "type": "Commercial High-Rise",
+      "total_floors": 40,
+      "elevator_data": {
+        "unit_id": "EL-04",
+        "rated_capacity": 3500,
+        "contract_speed": 1000,
+        "governor_rope_diameter": "0.375in"
+      }
+    },
+    "current_location": "Lobby",
+    "inspection_progress": {
+      "fire_safety": "completed",
+      "electrical": "pending",
+      "structural": "pending",
+      "plumbing": "completed"
+    },
+    "active_violations": [],
+    "environmental_conditions": {
+      "main_power": "on",
+      "emergency_lighting": "functional",
+      "visibility": "clear"
+    },
+    "access_log": [
+      "Lobby"
+    ]
+  }
+}

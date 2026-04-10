@@ -1,0 +1,255 @@
+{
+  "environment_name": "env_9896295404f5",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM) for Factory Production Scheduling.\n- **Core Objective**: Based on the current factory state $s_t$ and the scheduling action $a_t$ taken by the Agent, simulate the progression of time, machine operations, and resource consumption to predict the observation $o_{{t+1}}$ and update the internal factory state.\n- **Emphasis**: You are the environment simulator. You do not suggest actions; you calculate the deterministic or stochastic results of production decisions, ensuring the factory logic (e.g., resource constraints, machine availability) remains consistent.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nYou must maintain the continuity of the factory's timeline, machine statuses, and inventory levels across all interactions. Every action consumes time or resources, which must be reflected in your internal state evolution.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the factory by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. You must parse the following fields:\n- `\"name\"`: The name of the scheduling or management action (e.g., \"assign_task\", \"maintenance\", \"check_inventory\").\n- The remaining fields are the specific parameters (e.g., `machine_id`, `job_id`, `duration`).\n\nExample Input:\n```json\n{{\n \"name\": \"start_production_line\",\n \"arguments\": {{\n    \"line_id\": \"A1\",\n    \"batch_size\": 500\n  }}\n}}\n```\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nIf an action is impossible (e.g., assigning a task to a broken machine, insufficient raw materials, or invalid job IDs), return a structured error response:\n`{{\"error\": \"Reason for failure\"}}`.\nDo not hallucinate successful completions for invalid requests.\n\n##### Output Assembly\nFor every action, you must return a structured JSON object containing **ONLY** the return fields defined in the action's specification. \n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, the updated state, or hidden factory variables. The Agent only receives the specific Observation (e.g., completion time, sensor reading, or success confirmation) as defined in the function's return schema.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to JSON for both input parsing and output generation.\n- **Factuality**: Simulate realistic factory dynamics (e.g., production cannot finish before it starts; machines have finite capacity).\n- **Consistency**: Ensure that if a machine is marked as 'Busy' in $s_t$, it remains busy until the calculated time has elapsed.\n- **Realism**: Resource depletion and production output should align with the defined efficiency and material requirements of the factory.\n- **Quality**: Provide clear error messages if the Agent's action violates factory constraints.\n- **Encapsulation**: Strictly hide the internal state structure from the output. Only expose information that is explicitly returned by the action function.\n{{initial_state}}: {{\n  \"current_time\": 600,\n  \"machines\": {{\n    \"CNC-X1\": {{\n      \"status\": \"idle\",\n      \"required_skill_code\": \"W-17\",\n      \"required_tooling\": \"Precision_Bit_Set_A\",\n      \"cycle_time_per_unit_standard\": 5,\n      \"energy_consumption_rate\": 2.5\n    }},\n    \"M5_Lathe\": {{\n      \"status\": \"busy\",\n      \"assigned_operator\": \"Sarah_Vance\",\n      \"current_tooling\": \"Precision_Bit_Set_A\",\n      \"time_remaining\": 90,\n      \"required_skill_code\": \"L-02\",\n      \"energy_consumption_rate\": 1.2\n    }}\n  }},\n  \"inventory\": {{\n    \"Raw_Material_Gamma\": 60,\n    \"Staff_Roster\": {{\n      \"Mike_Ross\": {{\n        \"skill_W17\": \"L\",\n        \"weekly_hours_accumulated\": 62.0,\n        \"last_shift_end\": 480,\n        \"cert_expiry_time\": 2000\n      }},\n      \"David_Choi\": {{\n        \"skill_W17\": \"U\",\n        \"weekly_hours_accumulated\": 35.0,\n        \"last_shift_end\": 500,\n        \"cert_expiry_time\": 950\n      }},\n      \"Alice_Mendez\": {{\n        \"skill_W17\": \"U\",\n        \"weekly_hours_accumulated\": 20.0,\n        \"last_shift_end\": 120,\n        \"cert_expiry_time\": 3000\n      }},\n      \"Sarah_Vance\": {{\n        \"skill_W17\": \"I\",\n        \"skill_L02\": \"L\",\n        \"weekly_hours_accumulated\": 40.0,\n        \"last_shift_end\": 540,\n        \"cert_expiry_time\": 1500\n      }}\n    }}\n  }},\n  \"production_buffer\": {{\n    \"Gamma_X_Finished\": 0,\n    \"active_constraints\": [\n      \"WTD_60_HOUR_LIMIT\",\n      \"MIN_REST_11_HOURS\",\n      \"SUPERVISION_REQUIRED_FOR_U_LEVEL\"\n    ]\n  }},\n  \"pending_orders\": [\n    {{\n      \"order_id\": \"Gamma-X\",\n      \"quantity\": 50,\n      \"target_machine\": \"CNC-X1\",\n      \"priority\": \"Urgent\"\n    }}\n  ],\n  \"energy_usage_total\": 850.0\n}}\n{{state_descriptions}}: {{\n  \"current_time\": \"The current simulation clock in minutes from the start of the shift.\",\n  \"machines\": \"A map of machine IDs to their current status (idle, busy, maintenance, broken) and time remaining for current task.\",\n  \"inventory\": \"Current stock levels for raw materials and components.\",\n  \"production_buffer\": \"Items currently waiting between stages or finished goods ready for shipment.\",\n  \"pending_orders\": \"List of orders that need to be scheduled and completed.\",\n  \"energy_usage_total\": \"Cumulative energy consumption of the factory in kWh.\"\n}}\n{action_set_definitions}: {\n  \"get_factory_metrics\": {\n    \"description\": \"Retrieves the current global factory state including simulation time and cumulative energy usage.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"current_time_minutes\": 500,\n      \"energy_usage_total_kwh\": 1400.0\n    }\n  },\n  \"get_machine_specs\": {\n    \"description\": \"Retrieves the operational requirements and current status for a specific machine ID.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"machine_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the machine (e.g., 'CNC-X1').\"\n        }\n      },\n      \"required\": [\n        \"machine_id\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"idle\",\n      \"time_remaining_minutes\": 0,\n      \"required_tooling_id\": \"HT-W17-X\",\n      \"required_skill_code\": \"W-17\",\n      \"energy_per_unit_kwh\": 5.0,\n      \"minutes_per_unit\": 10\n    }\n  },\n  \"get_tooling_status\": {\n    \"description\": \"Locates a specific piece of hardware/tooling and identifies if it is currently in use or in storage.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"tooling_id\": {\n          \"type\": \"string\"\n        }\n      },\n      \"required\": [\n        \"tooling_id\"\n      ]\n    },\n    \"example_output\": {\n      \"current_location_id\": \"CNC-B2\",\n      \"is_in_storage\": false\n    }\n  },\n  \"get_staff_roster\": {\n    \"description\": \"Retrieves the full internal workforce database including skill sets, labor law metrics, and certification dates.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": [\n      {\n        \"staff_id\": \"OP-42\",\n        \"name\": \"Alex Rivers\",\n        \"skills\": [\n          \"W-17\",\n          \"W-01\"\n        ],\n        \"last_shift_end_time_minutes\": 400,\n        \"weekly_hours_cumulative\": 38.5,\n        \"cert_expiry_minutes\": 2500\n      }\n    ]\n  },\n  \"transfer_hardware\": {\n    \"description\": \"Moves required tooling from its current location to the target workstation.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"tooling_id\": {\n          \"type\": \"string\"\n        },\n        \"target_machine_id\": {\n          \"type\": \"string\"\n        }\n      },\n      \"required\": [\n        \"tooling_id\",\n        \"target_machine_id\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"success\"\n    }\n  },\n  \"start_production_run\": {\n    \"description\": \"Initiates the production task on a machine with the assigned crew.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"order_id\": {\n          \"type\": \"string\"\n        },\n        \"machine_id\": {\n          \"type\": \"string\"\n        },\n        \"operator_id\": {\n          \"type\": \"string\"\n        },\n        \"supervisor_id\": {\n          \"type\": \"string\"\n        },\n        \"quantity\": {\n          \"type\": \"integer\"\n        }\n      },\n      \"required\": [\n        \"order_id\",\n        \"machine_id\",\n        \"operator_id\",\n        \"supervisor_id\",\n        \"quantity\"\n      ]\n    },\n    \"example_output\": {\n      \"job_id\": \"X1-778\",\n      \"status\": \"completed\"\n    }\n  },\n  \"move_to_buffer\": {\n    \"description\": \"Moves the completed batch to the production buffer.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"order_id\": {\n          \"type\": \"string\"\n        },\n        \"quantity\": {\n          \"type\": \"integer\"\n        }\n      },\n      \"required\": [\n        \"order_id\",\n        \"quantity\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"success\"\n    }\n  },\n  \"abort_with_reason\": {\n    \"description\": \"Terminates the plan and provides a detailed analytical report of the constraints that prevented execution.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"error_summary\": {\n          \"type\": \"string\",\n          \"description\": \"A detailed breakdown of which staff failed which specific constraints (rest period, cert, skill, weekly hours).\"\n        }\n      },\n      \"required\": [\n        \"error_summary\"\n      ]\n    },\n    \"example_output\": null\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_factory_metrics",
+      "description": "Retrieves the current global factory state including simulation time and cumulative energy usage.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "current_time_minutes": 500,
+        "energy_usage_total_kwh": 1400.0
+      }
+    },
+    {
+      "name": "get_machine_specs",
+      "description": "Retrieves the operational requirements and current status for a specific machine ID.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "machine_id": {
+            "type": "string",
+            "description": "The ID of the machine (e.g., 'CNC-X1')."
+          }
+        },
+        "required": [
+          "machine_id"
+        ]
+      },
+      "example_output": {
+        "status": "idle",
+        "time_remaining_minutes": 0,
+        "required_tooling_id": "HT-W17-X",
+        "required_skill_code": "W-17",
+        "energy_per_unit_kwh": 5.0,
+        "minutes_per_unit": 10
+      }
+    },
+    {
+      "name": "get_tooling_status",
+      "description": "Locates a specific piece of hardware/tooling and identifies if it is currently in use or in storage.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "tooling_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "tooling_id"
+        ]
+      },
+      "example_output": {
+        "current_location_id": "CNC-B2",
+        "is_in_storage": false
+      }
+    },
+    {
+      "name": "get_staff_roster",
+      "description": "Retrieves the full internal workforce database including skill sets, labor law metrics, and certification dates.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": [
+        {
+          "staff_id": "OP-42",
+          "name": "Alex Rivers",
+          "skills": [
+            "W-17",
+            "W-01"
+          ],
+          "last_shift_end_time_minutes": 400,
+          "weekly_hours_cumulative": 38.5,
+          "cert_expiry_minutes": 2500
+        }
+      ]
+    },
+    {
+      "name": "transfer_hardware",
+      "description": "Moves required tooling from its current location to the target workstation.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "tooling_id": {
+            "type": "string"
+          },
+          "target_machine_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "tooling_id",
+          "target_machine_id"
+        ]
+      },
+      "example_output": {
+        "status": "success"
+      }
+    },
+    {
+      "name": "start_production_run",
+      "description": "Initiates the production task on a machine with the assigned crew.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "order_id": {
+            "type": "string"
+          },
+          "machine_id": {
+            "type": "string"
+          },
+          "operator_id": {
+            "type": "string"
+          },
+          "supervisor_id": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "order_id",
+          "machine_id",
+          "operator_id",
+          "supervisor_id",
+          "quantity"
+        ]
+      },
+      "example_output": {
+        "job_id": "X1-778",
+        "status": "completed"
+      }
+    },
+    {
+      "name": "move_to_buffer",
+      "description": "Moves the completed batch to the production buffer.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "order_id": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "order_id",
+          "quantity"
+        ]
+      },
+      "example_output": {
+        "status": "success"
+      }
+    },
+    {
+      "name": "abort_with_reason",
+      "description": "Terminates the plan and provides a detailed analytical report of the constraints that prevented execution.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "error_summary": {
+            "type": "string",
+            "description": "A detailed breakdown of which staff failed which specific constraints (rest period, cert, skill, weekly hours)."
+          }
+        },
+        "required": [
+          "error_summary"
+        ]
+      },
+      "example_output": null
+    }
+  ],
+  "state_description": {
+    "current_time": "The current simulation clock in minutes from the start of the shift.",
+    "machines": "A map of machine IDs to their current status (idle, busy, maintenance, broken) and time remaining for current task.",
+    "inventory": "Current stock levels for raw materials and components.",
+    "production_buffer": "Items currently waiting between stages or finished goods ready for shipment.",
+    "pending_orders": "List of orders that need to be scheduled and completed.",
+    "energy_usage_total": "Cumulative energy consumption of the factory in kWh."
+  },
+  "task_initial_state": {
+    "current_time": 600,
+    "machines": {
+      "CNC-X1": {
+        "status": "idle",
+        "required_skill_code": "W-17",
+        "required_tooling": "Precision_Bit_Set_A",
+        "cycle_time_per_unit_standard": 5,
+        "energy_consumption_rate": 2.5
+      },
+      "M5_Lathe": {
+        "status": "busy",
+        "assigned_operator": "Sarah_Vance",
+        "current_tooling": "Precision_Bit_Set_A",
+        "time_remaining": 90,
+        "required_skill_code": "L-02",
+        "energy_consumption_rate": 1.2
+      }
+    },
+    "inventory": {
+      "Raw_Material_Gamma": 60,
+      "Staff_Roster": {
+        "Mike_Ross": {
+          "skill_W17": "L",
+          "weekly_hours_accumulated": 62.0,
+          "last_shift_end": 480,
+          "cert_expiry_time": 2000
+        },
+        "David_Choi": {
+          "skill_W17": "U",
+          "weekly_hours_accumulated": 35.0,
+          "last_shift_end": 500,
+          "cert_expiry_time": 950
+        },
+        "Alice_Mendez": {
+          "skill_W17": "U",
+          "weekly_hours_accumulated": 20.0,
+          "last_shift_end": 120,
+          "cert_expiry_time": 3000
+        },
+        "Sarah_Vance": {
+          "skill_W17": "I",
+          "skill_L02": "L",
+          "weekly_hours_accumulated": 40.0,
+          "last_shift_end": 540,
+          "cert_expiry_time": 1500
+        }
+      }
+    },
+    "production_buffer": {
+      "Gamma_X_Finished": 0,
+      "active_constraints": [
+        "WTD_60_HOUR_LIMIT",
+        "MIN_REST_11_HOURS",
+        "SUPERVISION_REQUIRED_FOR_U_LEVEL"
+      ]
+    },
+    "pending_orders": [
+      {
+        "order_id": "Gamma-X",
+        "quantity": 50,
+        "target_machine": "CNC-X1",
+        "priority": "Urgent"
+      }
+    ],
+    "energy_usage_total": 850.0
+  }
+}

@@ -1,0 +1,214 @@
+{
+  "environment_name": "env_6775566ada10",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM) for Academic Literature Review.\n- **Core Objective**: Based on the current environment state $s_t$ and the Agent's action $a_t$, simulate the evolution of the research environment and predict the resulting observation $o_{{t+1}}$.\n- **Emphasis**: You are the engine of the simulation. You do not perform the literature review yourself; you simulate the behavior of academic databases, PDF readers, and reference management systems. You maintain the continuity of the research workspace.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions must maintain strict logical consistency. If a paper is added to the 'library' in state $t$, it must remain available for retrieval in state $t+1$ unless explicitly removed. The evolution of research notes and search results must follow a coherent narrative based on the history of interactions.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. You must parse this JSON to determine the intended state transition. \nFormat:\n- `\"name\"`: The action function name.\n- `\"arguments\"`: Key-value pairs of parameters.\n\nExample Input:\n```json\n{{\n \"name\": \"search_papers\",\n \"arguments\": {{\n    \"query\": \"Self-supervised learning in robotics\",\n    \"limit\": 5\n  }}\n}}\n```\nYou must simulate the search engine's response and update internal state (e.g., search history) accordingly.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\n- If an Agent attempts to `read_paper` for an ID that does not exist in the search results or library, return: `{{\"error\": \"Paper ID [ID] not found in current context\"}}`.\n- If required parameters are missing, return: `{{\"error\": \"Missing required argument: [param_name]\"}}`.\n- Do not fabricate content for papers that have not been \"indexed\" in the simulation's current state logic.\n\n##### Output Assembly\nFor every action, return a structured JSON object containing **ONLY** the return fields declared in the action function's definition. \n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, `new_state`, or any hidden variables. You are the environment; the Agent only sees the screen (the Observation). Do not explain the state update process.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to JSON for all observations.\n- **Factuality**: Simulate realistic academic metadata (titles, authors, publication years, citations) that are consistent with the provided query.\n- **Consistency**: If the Agent reads the same paper twice, the content (abstract/text) must remain identical.\n- **Realism**: Simulate the latency or limitations of a research environment (e.g., search results should be relevant to the query; notes should persist).\n- **Quality**: Ensure summaries or paper snippets generated as observations are professional and academically grounded.\n- **Encapsulation**: Strictly hide the internal state structure from the output. Only expose information that is explicitly returned by the action function.\n{{initial_state}}: {{\n  \"library\": [\n    {{\n      \"id\": \"PRE_2023_MILLER\",\n      \"title\": \"Observational Study of Nirmatrelvir in Long COVID Patients\",\n      \"type\": \"preprint\",\n      \"version\": 1,\n      \"author\": \"Miller et al.\"\n    }},\n    {{\n      \"id\": \"GL_2024_NGO_REPORT\",\n      \"title\": \"Global Health Initiative: Antiviral Interventions for PASC\",\n      \"type\": \"policy brief\",\n      \"author\": \"GHI Research Group\"\n    }}\n  ],\n  \"search_history\": [\n    \"Nirmatrelvir Long COVID\",\n    \"PASC antiviral treatment 2024\"\n  ],\n  \"current_open_paper\": null,\n  \"workspace_annotations\": {{\n    \"Nirmatrelvir_PASC_Synthesis_Matrix\": [\n      {{\n        \"source_id\": \"PRE_2023_MILLER\",\n        \"sample_size\": 450,\n        \"status\": \"Included\",\n        \"AACODS_Score\": 5\n      }},\n      {{\n        \"source_id\": \"GL_2024_NGO_REPORT\",\n        \"sample_size\": 450,\n        \"status\": \"Included\",\n        \"AACODS_Score\": 5\n      }}\n    ],\n    \"Grey_Yield_Ratio\": 1.0\n  }},\n  \"citation_graph_cache\": {{\n    \"PRE_2023_MILLER\": {{\n      \"has_published_version\": true,\n      \"vor_id\": \"JAMA_2024_VOR_MILLER\",\n      \"vor_title\": \"Effectiveness of Nirmatrelvir for Post-Acute Sequelae of SARS-CoV-2: A Peer-Reviewed Analysis\"\n    }},\n    \"GL_2024_NGO_REPORT\": {{\n      \"is_derivative\": true,\n      \"primary_source\": \"PRE_2023_MILLER\",\n      \"funding_disclosure_missing\": true\n    }}\n  }}\n}}\n{{state_descriptions}}: {{\n  \"library\": \"A list of paper objects currently saved in the user's reference manager.\",\n  \"search_history\": \"A log of strings representing the search queries executed in the current session.\",\n  \"current_open_paper\": \"The unique ID or title of the paper currently being viewed or analyzed.\",\n  \"workspace_annotations\": \"A mapping of paper IDs to specific notes, highlights, or summaries created by the agent.\",\n  \"citation_graph_cache\": \"Internal cache of related papers found through citation trailing to ensure consistency when navigating references.\"\n}}\n{action_set_definitions}: {\n  \"get_workspace_data\": {\n    \"description\": \"Retrieves the content of specific annotations or matrices within the workspace, including the current list of paper IDs and metrics.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"matrix_name\": {\n          \"type\": \"string\",\n          \"description\": \"The key or name of the synthesis matrix to retrieve.\"\n        }\n      },\n      \"required\": [\n        \"matrix_name\"\n      ]\n    },\n    \"example_output\": {\n      \"matrix_entries\": [\n        \"ID_001\",\n        \"ID_002\"\n      ],\n      \"metadata\": {\n        \"Grey_Yield_Ratio\": 0.45\n      }\n    }\n  },\n  \"get_paper_metadata\": {\n    \"description\": \"Fetches detailed metadata for a paper, including DOI, publication status (e.g., Preprint vs Version of Record), and source type.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"paper_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier of the paper.\"\n        }\n      },\n      \"required\": [\n        \"paper_id\"\n      ]\n    },\n    \"example_output\": {\n      \"title\": \"Clinical Efficacy of Nirmatrelvir\",\n      \"doi\": \"10.1038/s41586-021-0000-x\",\n      \"publication_status\": \"Preprint\",\n      \"source_type\": \"Grey Literature\"\n    }\n  },\n  \"get_paper_relationships\": {\n    \"description\": \"Queries the citation graph and internal cache to identify connections between papers, such as identifying if a paper is a derivative, a newer version, or shares a dataset with another paper.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"paper_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier of the paper to check for relationships.\"\n        }\n      },\n      \"required\": [\n        \"paper_id\"\n      ]\n    },\n    \"example_output\": {\n      \"relationships\": [\n        {\n          \"target_id\": \"ID_099\",\n          \"type\": \"version_of_record\",\n          \"confidence\": 0.99\n        },\n        {\n          \"target_id\": \"ID_105\",\n          \"type\": \"shared_dataset\",\n          \"relation\": \"derivative\"\n        }\n      ]\n    }\n  },\n  \"search_official_records\": {\n    \"description\": \"Searches external databases to verify the current status of a paper and locate the most authoritative version (Version of Record).\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"title\": {\n          \"type\": \"string\"\n        },\n        \"current_doi\": {\n          \"type\": \"string\"\n        }\n      },\n      \"required\": [\n        \"title\"\n      ]\n    },\n    \"example_output\": {\n      \"official_doi\": \"10.1056/NEJMoa2118542\",\n      \"status\": \"Published\",\n      \"is_version_of_record\": true\n    }\n  },\n  \"evaluate_aacods_score\": {\n    \"description\": \"Performs a quality appraisal of a source based on AACODS standards (Authority, Accuracy, Coverage, Objectivity, Date, Significance).\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"paper_id\": {\n          \"type\": \"string\"\n        }\n      },\n      \"required\": [\n        \"paper_id\"\n      ]\n    },\n    \"example_output\": {\n      \"score\": 5,\n      \"passed_threshold\": true\n    }\n  },\n  \"update_workspace_matrix\": {\n    \"description\": \"Finalizes the synthesis matrix by updating the evidence list and the Grey_Yield_Ratio metric.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"matrix_name\": {\n          \"type\": \"string\"\n        },\n        \"final_evidence_list\": {\n          \"type\": \"array\",\n          \"items\": {\n            \"type\": \"string\"\n          }\n        },\n        \"updated_metrics\": {\n          \"type\": \"object\",\n          \"properties\": {\n            \"Grey_Yield_Ratio\": {\n              \"type\": \"number\"\n            }\n          }\n        }\n      },\n      \"required\": [\n        \"matrix_name\",\n        \"final_evidence_list\",\n        \"updated_metrics\"\n      ]\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_workspace_data",
+      "description": "Retrieves the content of specific annotations or matrices within the workspace, including the current list of paper IDs and metrics.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "matrix_name": {
+            "type": "string",
+            "description": "The key or name of the synthesis matrix to retrieve."
+          }
+        },
+        "required": [
+          "matrix_name"
+        ]
+      },
+      "example_output": {
+        "matrix_entries": [
+          "ID_001",
+          "ID_002"
+        ],
+        "metadata": {
+          "Grey_Yield_Ratio": 0.45
+        }
+      }
+    },
+    {
+      "name": "get_paper_metadata",
+      "description": "Fetches detailed metadata for a paper, including DOI, publication status (e.g., Preprint vs Version of Record), and source type.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "paper_id": {
+            "type": "string",
+            "description": "The unique identifier of the paper."
+          }
+        },
+        "required": [
+          "paper_id"
+        ]
+      },
+      "example_output": {
+        "title": "Clinical Efficacy of Nirmatrelvir",
+        "doi": "10.1038/s41586-021-0000-x",
+        "publication_status": "Preprint",
+        "source_type": "Grey Literature"
+      }
+    },
+    {
+      "name": "get_paper_relationships",
+      "description": "Queries the citation graph and internal cache to identify connections between papers, such as identifying if a paper is a derivative, a newer version, or shares a dataset with another paper.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "paper_id": {
+            "type": "string",
+            "description": "The unique identifier of the paper to check for relationships."
+          }
+        },
+        "required": [
+          "paper_id"
+        ]
+      },
+      "example_output": {
+        "relationships": [
+          {
+            "target_id": "ID_099",
+            "type": "version_of_record",
+            "confidence": 0.99
+          },
+          {
+            "target_id": "ID_105",
+            "type": "shared_dataset",
+            "relation": "derivative"
+          }
+        ]
+      }
+    },
+    {
+      "name": "search_official_records",
+      "description": "Searches external databases to verify the current status of a paper and locate the most authoritative version (Version of Record).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "current_doi": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "title"
+        ]
+      },
+      "example_output": {
+        "official_doi": "10.1056/NEJMoa2118542",
+        "status": "Published",
+        "is_version_of_record": true
+      }
+    },
+    {
+      "name": "evaluate_aacods_score",
+      "description": "Performs a quality appraisal of a source based on AACODS standards (Authority, Accuracy, Coverage, Objectivity, Date, Significance).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "paper_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "paper_id"
+        ]
+      },
+      "example_output": {
+        "score": 5,
+        "passed_threshold": true
+      }
+    },
+    {
+      "name": "update_workspace_matrix",
+      "description": "Finalizes the synthesis matrix by updating the evidence list and the Grey_Yield_Ratio metric.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "matrix_name": {
+            "type": "string"
+          },
+          "final_evidence_list": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "updated_metrics": {
+            "type": "object",
+            "properties": {
+              "Grey_Yield_Ratio": {
+                "type": "number"
+              }
+            }
+          }
+        },
+        "required": [
+          "matrix_name",
+          "final_evidence_list",
+          "updated_metrics"
+        ]
+      }
+    }
+  ],
+  "state_description": {
+    "library": "A list of paper objects currently saved in the user's reference manager.",
+    "search_history": "A log of strings representing the search queries executed in the current session.",
+    "current_open_paper": "The unique ID or title of the paper currently being viewed or analyzed.",
+    "workspace_annotations": "A mapping of paper IDs to specific notes, highlights, or summaries created by the agent.",
+    "citation_graph_cache": "Internal cache of related papers found through citation trailing to ensure consistency when navigating references."
+  },
+  "task_initial_state": {
+    "library": [
+      {
+        "id": "PRE_2023_MILLER",
+        "title": "Observational Study of Nirmatrelvir in Long COVID Patients",
+        "type": "preprint",
+        "version": 1,
+        "author": "Miller et al."
+      },
+      {
+        "id": "GL_2024_NGO_REPORT",
+        "title": "Global Health Initiative: Antiviral Interventions for PASC",
+        "type": "policy brief",
+        "author": "GHI Research Group"
+      }
+    ],
+    "search_history": [
+      "Nirmatrelvir Long COVID",
+      "PASC antiviral treatment 2024"
+    ],
+    "current_open_paper": null,
+    "workspace_annotations": {
+      "Nirmatrelvir_PASC_Synthesis_Matrix": [
+        {
+          "source_id": "PRE_2023_MILLER",
+          "sample_size": 450,
+          "status": "Included",
+          "AACODS_Score": 5
+        },
+        {
+          "source_id": "GL_2024_NGO_REPORT",
+          "sample_size": 450,
+          "status": "Included",
+          "AACODS_Score": 5
+        }
+      ],
+      "Grey_Yield_Ratio": 1.0
+    },
+    "citation_graph_cache": {
+      "PRE_2023_MILLER": {
+        "has_published_version": true,
+        "vor_id": "JAMA_2024_VOR_MILLER",
+        "vor_title": "Effectiveness of Nirmatrelvir for Post-Acute Sequelae of SARS-CoV-2: A Peer-Reviewed Analysis"
+      },
+      "GL_2024_NGO_REPORT": {
+        "is_derivative": true,
+        "primary_source": "PRE_2023_MILLER",
+        "funding_disclosure_missing": true
+      }
+    }
+  }
+}

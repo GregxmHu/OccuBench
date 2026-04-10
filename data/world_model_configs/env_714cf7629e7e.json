@@ -1,0 +1,259 @@
+{
+  "environment_name": "env_714cf7629e7e",
+  "world_model_system_prompt": "### 1. Role and Objective\n**Role**: Language World Model (LWM)\n**Core Objective**: You act as a high-fidelity SQL Query Optimization environment. Based on the current database state $s_t$ (schema, indexes, statistics) and the Agent's action $a_t$ (query modifications, index creation, etc.), you simulate the database's internal state evolution and provide the resulting observation $o_{{t+1}}$ (execution plans, costs, and performance metrics). \n**Emphasis**: You do not execute real SQL on a physical machine. You simulate the behavior of a query optimizer and execution engine. Your goal is to provide realistic, self-consistent feedback to the Agent.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nYou must maintain the continuity of the database environment. If an index is created in step $t$, it must persist in the state for step $t+1$ and influence the execution plans of subsequent queries until it is explicitly dropped. All interactions must be consistent with the history of schema changes and optimization attempts.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. You must parse this JSON to determine the intended operation. \n\nExample format:\n```json\n{{\n \"name\": \"create_index\",\n \"arguments\": {{\n    \"table_name\": \"orders\",\n    \"column_name\": \"customer_id\",\n    \"index_name\": \"idx_cust_id\"\n  }}\n}}\n```\nYou must simulate the logical result of this action on the internal state and generate the corresponding observation.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nIf the Agent provides invalid parameters (e.g., referencing a non-existent table, syntax errors in SQL, creating a duplicate index name), you must return a structured error message:\n- `{{\"error\": \"Detailed description of the SQL or logical error\"}}`\nDo not attempt to guess the Agent's intent or fabricate a successful response for failed operations.\n\n##### Output Assembly\nFor every action, return a structured JSON object containing **ONLY** the return fields declared in the action function's definition. \n\n**CRITICAL CONSTRAINT**: You must **NOT** include the internal state $s_t$, the updated state, or any hidden system variables in your response. The Agent must only receive the specific observation (e.g., the `execution_plan`, `estimated_cost`, or `runtime_improvement`). State updates are managed internally by you and are reflected only through subsequent observations.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to JSON output format.\n- **Factuality**: Simulate realistic database behavior. If a query uses a non-indexed column in a JOIN, the execution plan should reflect a Sequential Scan/Hash Join rather than an Index Scan.\n- **Consistency**: If the cost of a query decreases after an index is added, that improvement must be logically justified by the simulated execution plan.\n- **Realism**: Execution costs and plans should align with standard relational database logic (e.g., PostgreSQL or MySQL optimizer behavior).\n- **Encapsulation**: Never reveal the full internal state JSON to the Agent. Only output the defined observation fields.\n{{initial_state}}: {{\n  \"database_schema\": \"CREATE TABLE tenant_transactions (id BIGINT PRIMARY KEY, tenant_id INT, amount DECIMAL, status TEXT, created_at TIMESTAMP); CREATE INDEX idx_tenant_status ON tenant_transactions(tenant_id, status);\",\n  \"current_indexes\": [\n    {{\n      \"name\": \"idx_tenant_status\",\n      \"table\": \"tenant_transactions\",\n      \"columns\": [\n        \"tenant_id\",\n        \"status\"\n      ]\n    }}\n  ],\n  \"table_statistics\": {{\n    \"tenant_transactions\": {{\n      \"row_count\": 5000000000,\n      \"size_kb\": 450000000,\n      \"n_mod_since_analyze\": 150000000,\n      \"columns\": {{\n        \"tenant_id\": {{\n          \"distinct_values\": 10000,\n          \"most_common_vals\": [\n            1,\n            2,\n            3,\n            4,\n            5\n          ],\n          \"most_common_freqs\": [\n            0.001,\n            0.001,\n            0.001,\n            0.001,\n            0.001\n          ],\n          \"note\": \"Tenant 500 is missing from the top frequency list due to stale default sampling.\"\n        }}\n      }}\n    }}\n  }},\n  \"active_query\": \"SELECT * FROM tenant_transactions WHERE tenant_id = 500 AND status = 'PROCESSED';\",\n  \"optimizer_config\": {{\n    \"enable_seqscan\": \"on\",\n    \"enable_indexscan\": \"on\",\n    \"default_statistics_target\": 100,\n    \"maintenance_work_mem\": \"64MB\"\n  }}\n}}\n{{state_descriptions}}: {{\n  \"database_schema\": \"The DDL (Data Definition Language) representing the tables, columns, and constraints in the environment.\",\n  \"current_indexes\": \"A list of currently active indexes on the database tables.\",\n  \"table_statistics\": \"Metadata regarding table sizes, row counts, and column cardinality to inform cost estimation.\",\n  \"active_query\": \"The specific SQL query currently being targeted for optimization.\",\n  \"optimizer_config\": \"Settings for the simulated optimizer, such as enabling/disabling scan types.\"\n}}\n{action_set_definitions}: {\n  \"get_environment_info\": {\n    \"description\": \"Retrieves the initial environment state, including the active SQL query, database schema (DDL), and existing table constraints.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"active_query\": \"SELECT * FROM tenant_transactions WHERE tenant_id = 500 AND status = 'processed';\",\n      \"database_schema\": \"CREATE TABLE tenant_transactions (tenant_id INT, status TEXT, ...);\"\n    }\n  },\n  \"get_execution_plan\": {\n    \"description\": \"Obtains the EXPLAIN plan for a query to determine estimated costs and row counts.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"query\": {\n          \"type\": \"string\",\n          \"description\": \"The SQL query to analyze.\"\n        }\n      },\n      \"required\": [\n        \"query\"\n      ]\n    },\n    \"example_output\": {\n      \"estimated_total_cost\": 15000000.0,\n      \"estimated_rows\": 1000,\n      \"plan_nodes\": [\n        {\n          \"node_type\": \"Seq Scan\",\n          \"relation_name\": \"tenant_transactions\"\n        }\n      ]\n    }\n  },\n  \"inspect_table_stats\": {\n    \"description\": \"Queries metadata to find row counts and the selectivity of specific columns (e.g., Most Common Values and histogram data).\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"table_name\": {\n          \"type\": \"string\",\n          \"description\": \"Name of the table.\"\n        },\n        \"column_name\": {\n          \"type\": \"string\",\n          \"description\": \"The specific column to check for statistics.\"\n        }\n      },\n      \"required\": [\n        \"table_name\",\n        \"column_name\"\n      ]\n    },\n    \"example_output\": {\n      \"table_row_count\": 5000000000,\n      \"column_stats\": {\n        \"value_500_selectivity\": 0.0001,\n        \"distinct_values\": 1000,\n        \"mcv_list_size\": 100\n      }\n    }\n  },\n  \"set_column_statistics_target\": {\n    \"description\": \"Increases the statistics collection target (granularity) for a specific column, allowing for more detailed MCV (Most Common Values) lists without changing global settings.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"table_name\": {\n          \"type\": \"string\",\n          \"description\": \"Target table.\"\n        },\n        \"column_name\": {\n          \"type\": \"string\",\n          \"description\": \"The column to adjust.\"\n        },\n        \"target_value\": {\n          \"type\": \"number\",\n          \"description\": \"The statistics target (e.g., 1000 or 5000) to increase histogram and MCV resolution.\"\n        }\n      },\n      \"required\": [\n        \"table_name\",\n        \"column_name\",\n        \"target_value\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"success\",\n      \"message\": \"Statistics target for tenant_id set to 1000.\"\n    }\n  },\n  \"create_extended_statistics\": {\n    \"description\": \"Creates multivariate statistics for a set of columns to capture correlations and dependencies.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"stats_name\": {\n          \"type\": \"string\",\n          \"description\": \"Identifier for the statistics object.\"\n        },\n        \"table_name\": {\n          \"type\": \"string\",\n          \"description\": \"Target table.\"\n        },\n        \"columns\": {\n          \"type\": \"array\",\n          \"items\": {\n            \"type\": \"string\"\n          },\n          \"description\": \"Columns to analyze together (e.g., ['tenant_id', 'status']).\"\n        }\n      },\n      \"required\": [\n        \"stats_name\",\n        \"table_name\",\n        \"columns\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"created\"\n    }\n  },\n  \"update_statistics_sampled\": {\n    \"description\": \"Updates statistics using a sampled approach (ANALYZE) to stay within production I/O limits.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"table_name\": {\n          \"type\": \"string\",\n          \"description\": \"Table to analyze.\"\n        },\n        \"column_names\": {\n          \"type\": \"array\",\n          \"items\": {\n            \"type\": \"string\"\n          },\n          \"description\": \"List of columns to analyze.\"\n        },\n        \"sample_rate\": {\n          \"type\": \"number\",\n          \"description\": \"Percentage of rows to sample (0.0 to 1.0).\"\n        }\n      },\n      \"required\": [\n        \"table_name\",\n        \"column_names\",\n        \"sample_rate\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"success\",\n      \"sampled_rows\": 100000000\n    }\n  },\n  \"create_partial_index\": {\n    \"description\": \"Creates a filtered (partial) index for a specific predicate to optimize access and improve local row estimation for skewed data.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"index_name\": {\n          \"type\": \"string\",\n          \"description\": \"Index name.\"\n        },\n        \"table_name\": {\n          \"type\": \"string\",\n          \"description\": \"Table name.\"\n        },\n        \"columns\": {\n          \"type\": \"array\",\n          \"items\": {\n            \"type\": \"string\"\n          }\n        },\n        \"where_clause\": {\n          \"type\": \"string\",\n          \"description\": \"Predicate condition (e.g., 'tenant_id = 500').\"\n        }\n      },\n      \"required\": [\n        \"index_name\",\n        \"table_name\",\n        \"columns\",\n        \"where_clause\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"created\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_environment_info",
+      "description": "Retrieves the initial environment state, including the active SQL query, database schema (DDL), and existing table constraints.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "active_query": "SELECT * FROM tenant_transactions WHERE tenant_id = 500 AND status = 'processed';",
+        "database_schema": "CREATE TABLE tenant_transactions (tenant_id INT, status TEXT, ...);"
+      }
+    },
+    {
+      "name": "get_execution_plan",
+      "description": "Obtains the EXPLAIN plan for a query to determine estimated costs and row counts.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "description": "The SQL query to analyze."
+          }
+        },
+        "required": [
+          "query"
+        ]
+      },
+      "example_output": {
+        "estimated_total_cost": 15000000.0,
+        "estimated_rows": 1000,
+        "plan_nodes": [
+          {
+            "node_type": "Seq Scan",
+            "relation_name": "tenant_transactions"
+          }
+        ]
+      }
+    },
+    {
+      "name": "inspect_table_stats",
+      "description": "Queries metadata to find row counts and the selectivity of specific columns (e.g., Most Common Values and histogram data).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "table_name": {
+            "type": "string",
+            "description": "Name of the table."
+          },
+          "column_name": {
+            "type": "string",
+            "description": "The specific column to check for statistics."
+          }
+        },
+        "required": [
+          "table_name",
+          "column_name"
+        ]
+      },
+      "example_output": {
+        "table_row_count": 5000000000,
+        "column_stats": {
+          "value_500_selectivity": 0.0001,
+          "distinct_values": 1000,
+          "mcv_list_size": 100
+        }
+      }
+    },
+    {
+      "name": "set_column_statistics_target",
+      "description": "Increases the statistics collection target (granularity) for a specific column, allowing for more detailed MCV (Most Common Values) lists without changing global settings.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "table_name": {
+            "type": "string",
+            "description": "Target table."
+          },
+          "column_name": {
+            "type": "string",
+            "description": "The column to adjust."
+          },
+          "target_value": {
+            "type": "number",
+            "description": "The statistics target (e.g., 1000 or 5000) to increase histogram and MCV resolution."
+          }
+        },
+        "required": [
+          "table_name",
+          "column_name",
+          "target_value"
+        ]
+      },
+      "example_output": {
+        "status": "success",
+        "message": "Statistics target for tenant_id set to 1000."
+      }
+    },
+    {
+      "name": "create_extended_statistics",
+      "description": "Creates multivariate statistics for a set of columns to capture correlations and dependencies.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "stats_name": {
+            "type": "string",
+            "description": "Identifier for the statistics object."
+          },
+          "table_name": {
+            "type": "string",
+            "description": "Target table."
+          },
+          "columns": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Columns to analyze together (e.g., ['tenant_id', 'status'])."
+          }
+        },
+        "required": [
+          "stats_name",
+          "table_name",
+          "columns"
+        ]
+      },
+      "example_output": {
+        "status": "created"
+      }
+    },
+    {
+      "name": "update_statistics_sampled",
+      "description": "Updates statistics using a sampled approach (ANALYZE) to stay within production I/O limits.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "table_name": {
+            "type": "string",
+            "description": "Table to analyze."
+          },
+          "column_names": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "List of columns to analyze."
+          },
+          "sample_rate": {
+            "type": "number",
+            "description": "Percentage of rows to sample (0.0 to 1.0)."
+          }
+        },
+        "required": [
+          "table_name",
+          "column_names",
+          "sample_rate"
+        ]
+      },
+      "example_output": {
+        "status": "success",
+        "sampled_rows": 100000000
+      }
+    },
+    {
+      "name": "create_partial_index",
+      "description": "Creates a filtered (partial) index for a specific predicate to optimize access and improve local row estimation for skewed data.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "index_name": {
+            "type": "string",
+            "description": "Index name."
+          },
+          "table_name": {
+            "type": "string",
+            "description": "Table name."
+          },
+          "columns": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "where_clause": {
+            "type": "string",
+            "description": "Predicate condition (e.g., 'tenant_id = 500')."
+          }
+        },
+        "required": [
+          "index_name",
+          "table_name",
+          "columns",
+          "where_clause"
+        ]
+      },
+      "example_output": {
+        "status": "created"
+      }
+    }
+  ],
+  "state_description": {
+    "database_schema": "The DDL (Data Definition Language) representing the tables, columns, and constraints in the environment.",
+    "current_indexes": "A list of currently active indexes on the database tables.",
+    "table_statistics": "Metadata regarding table sizes, row counts, and column cardinality to inform cost estimation.",
+    "active_query": "The specific SQL query currently being targeted for optimization.",
+    "optimizer_config": "Settings for the simulated optimizer, such as enabling/disabling scan types."
+  },
+  "task_initial_state": {
+    "database_schema": "CREATE TABLE tenant_transactions (id BIGINT PRIMARY KEY, tenant_id INT, amount DECIMAL, status TEXT, created_at TIMESTAMP); CREATE INDEX idx_tenant_status ON tenant_transactions(tenant_id, status);",
+    "current_indexes": [
+      {
+        "name": "idx_tenant_status",
+        "table": "tenant_transactions",
+        "columns": [
+          "tenant_id",
+          "status"
+        ]
+      }
+    ],
+    "table_statistics": {
+      "tenant_transactions": {
+        "row_count": 5000000000,
+        "size_kb": 450000000,
+        "n_mod_since_analyze": 150000000,
+        "columns": {
+          "tenant_id": {
+            "distinct_values": 10000,
+            "most_common_vals": [
+              1,
+              2,
+              3,
+              4,
+              5
+            ],
+            "most_common_freqs": [
+              0.001,
+              0.001,
+              0.001,
+              0.001,
+              0.001
+            ],
+            "note": "Tenant 500 is missing from the top frequency list due to stale default sampling."
+          }
+        }
+      }
+    },
+    "active_query": "SELECT * FROM tenant_transactions WHERE tenant_id = 500 AND status = 'PROCESSED';",
+    "optimizer_config": {
+      "enable_seqscan": "on",
+      "enable_indexscan": "on",
+      "default_statistics_target": 100,
+      "maintenance_work_mem": "64MB"
+    }
+  }
+}

@@ -1,0 +1,247 @@
+{
+  "environment_name": "env_4bd4d8281fa3",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: Based on the current environment state $s_t$ and the action $a_t$ taken by the Agent (Sequencing Controller), simulate the evolution of the airspace and runway environment and predict the observation $o_{{t+1}}$.\n- **Emphasis**: The LWM does not make sequencing decisions. It maintains the internal logic of aircraft physics, separation rules, and runway constraints, generating realistic feedback based on controller commands.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions between the World Model and the Agent must maintain strict context consistency. The model must track the movement of aircraft, decreasing fuel levels, and changing distances from the runway over time based on the actions taken and the passage of time inherent in those actions.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. This JSON must contain the following fields:\n- `\"name\"`: Specifies the name of the action function to execute (e.g., \"assign_runway\", \"adjust_speed\").\n- The remaining fields are the parameter names and corresponding values required by that action function.\n\nExample:\n```json\n{{\n \"name\": \"adjust_speed\",\n \"arguments\": {{\n    \"aircraft_id\": \"CX841\",\n    \"target_speed\": 180\n  }}\n}}\n```\n\nThe Language World Model must correctly parse such JSON inputs, update the internal state (e.g., updating aircraft velocity or position), and simulate the execution results.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nFor invalid parameters (e.g., speed out of bounds), undefined actions, state conflicts (e.g., assigning two planes to the same runway at the same time), or empty inputs, return structured error information (e.g., `{{\"error\": \"Minimum separation violation\"}}`), and do not fabricate states or fictitious responses.\n\n##### Output Assembly\nFor every action function call, the model must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition. \n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, `new_state`, or any hidden variables. The state maintenance is implicit in the conversation history. The Agent must only see the specific return values (Observations) defined in the action.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to specified JSON and text formats.\n- **Factuality**: Adhere to aviation logic; do not simulate impossible flight maneuvers or ignore fuel depletion.\n- **Consistency**: Ensure aircraft ID consistency and logical progression of distance-to-threshold.\n- **Realism**: Simulated behaviors must align with realistic air traffic dynamics (e.g., wake turbulence separation requirements).\n- **Quality**: Language must be clear, unambiguous, and structurally complete.\n- **Encapsulation**: Strictly hide the internal state structure from the output. Only expose information that is explicitly returned by the action function. Do not output the state update.\n{{initial_state}}: {{\n  \"current_time_step\": 0,\n  \"active_runways\": [\n    {{\n      \"id\": \"07R\",\n      \"occupied_until\": 4\n    }},\n    {{\n      \"id\": \"07L\",\n      \"occupied_until\": 2\n    }},\n    {{\n      \"id\": \"08\",\n      \"occupied_until\": 999\n    }}\n  ],\n  \"aircraft_in_sector\": [\n    {{\n      \"aircraft_id\": \"HVY88\",\n      \"distance_to_threshold\": 6.8,\n      \"current_speed\": 165,\n      \"altitude\": 2200,\n      \"fuel_remaining_min\": 45,\n      \"wake_category\": \"Heavy\"\n    }},\n    {{\n      \"aircraft_id\": \"HVY8\",\n      \"distance_to_threshold\": 19.5,\n      \"current_speed\": 240,\n      \"altitude\": 6000,\n      \"fuel_remaining_min\": 55,\n      \"wake_category\": \"Heavy\"\n    }},\n    {{\n      \"aircraft_id\": \"DAL422\",\n      \"distance_to_threshold\": 11.2,\n      \"current_speed\": 210,\n      \"altitude\": 3500,\n      \"fuel_remaining_min\": 40,\n      \"wake_category\": \"Large\"\n    }},\n    {{\n      \"aircraft_id\": \"DAL4222\",\n      \"distance_to_threshold\": 15.5,\n      \"current_speed\": 230,\n      \"altitude\": 5000,\n      \"fuel_remaining_min\": 50,\n      \"wake_category\": \"Large\"\n    }},\n    {{\n      \"aircraft_id\": \"DAL42\",\n      \"distance_to_threshold\": 22.1,\n      \"current_speed\": 250,\n      \"altitude\": 7000,\n      \"fuel_remaining_min\": 60,\n      \"wake_category\": \"Large\"\n    }},\n    {{\n      \"aircraft_id\": \"SKW331\",\n      \"distance_to_threshold\": 9.0,\n      \"current_speed\": 180,\n      \"altitude\": 3000,\n      \"fuel_remaining_min\": 45,\n      \"wake_category\": \"Small\"\n    }},\n    {{\n      \"aircraft_id\": \"SKW3311\",\n      \"distance_to_threshold\": 14.2,\n      \"current_speed\": 190,\n      \"altitude\": 4500,\n      \"fuel_remaining_min\": 50,\n      \"wake_category\": \"Small\"\n    }}\n  ],\n  \"weather_conditions\": {{\n    \"visibility_km\": 15,\n    \"wind_speed_kts\": 12,\n    \"wind_direction\": 60,\n    \"ceiling_ft\": 5500\n  }}\n}}\n{{state_descriptions}}: {{\n  \"current_time_step\": \"The current simulation clock in minutes from start.\",\n  \"active_runways\": \"List of available runways and their current occupancy status.\",\n  \"aircraft_in_sector\": \"List of aircraft currently under control with their flight parameters.\",\n  \"weather_conditions\": \"Current environmental factors affecting landing.\"\n}}\n{action_set_definitions}: {\n  \"query_environment_status\": {\n    \"description\": \"Retrieves the global status of the environment, including current time, active runways, and weather conditions.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"current_time_step\": 15,\n      \"active_runways\": [\n        \"07R\",\n        \"07L\"\n      ],\n      \"weather_conditions\": \"VFR, Visibility 10SM, Clear\"\n    }\n  },\n  \"scan_radar_targets\": {\n    \"description\": \"Returns a list of all aircraft currently within the sector's radar coverage.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"aircraft_list\": [\n        {\n          \"callsign\": \"DAL422\",\n          \"id\": \"uuid-1\"\n        },\n        {\n          \"callsign\": \"HVY88\",\n          \"id\": \"uuid-2\"\n        }\n      ]\n    }\n  },\n  \"get_aircraft_telemetry\": {\n    \"description\": \"Retrieves detailed flight parameters for a specific aircraft using its callsign.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"callsign\": {\n          \"type\": \"string\",\n          \"description\": \"The unique callsign of the aircraft.\"\n        }\n      },\n      \"required\": [\n        \"callsign\"\n      ]\n    },\n    \"example_output\": {\n      \"position\": {\n        \"x\": 12.5,\n        \"y\": -4.2\n      },\n      \"altitude\": 4000,\n      \"heading\": 250,\n      \"speed\": 180,\n      \"aircraft_type\": \"B738\",\n      \"assigned_runway\": \"07R\"\n    }\n  },\n  \"calculate_separation\": {\n    \"description\": \"Calculates the distance and relative bearing between two specific aircraft to ensure legal separation.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"primary_callsign\": {\n          \"type\": \"string\",\n          \"description\": \"The callsign of the trailing aircraft.\"\n        },\n        \"target_callsign\": {\n          \"type\": \"string\",\n          \"description\": \"The callsign of the lead aircraft.\"\n        }\n      },\n      \"required\": [\n        \"primary_callsign\",\n        \"target_callsign\"\n      ]\n    },\n    \"example_output\": {\n      \"distance_nm\": 4.5,\n      \"bearing_diff\": 5,\n      \"is_behind\": true\n    }\n  },\n  \"issue_vector_command\": {\n    \"description\": \"Issues a flight instruction to change heading, altitude, or speed for an aircraft.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"callsign\": {\n          \"type\": \"string\"\n        },\n        \"heading\": {\n          \"type\": \"number\"\n        },\n        \"altitude\": {\n          \"type\": \"number\"\n        },\n        \"speed\": {\n          \"type\": \"number\"\n        }\n      },\n      \"required\": [\n        \"callsign\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"Instruction Transmitted\",\n      \"acknowledged\": true\n    }\n  },\n  \"authorize_visual_approach\": {\n    \"description\": \"Clears an aircraft for a visual approach behind a specific lead aircraft on a specific runway.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"callsign\": {\n          \"type\": \"string\",\n          \"description\": \"Aircraft to receive clearance.\"\n        },\n        \"lead_callsign\": {\n          \"type\": \"string\",\n          \"description\": \"The lead aircraft to follow.\"\n        },\n        \"runway\": {\n          \"type\": \"string\",\n          \"description\": \"Target runway (e.g., '07R').\"\n        },\n        \"wake_cautionary\": {\n          \"type\": \"boolean\",\n          \"description\": \"Whether to issue a wake turbulence warning.\"\n        }\n      },\n      \"required\": [\n        \"callsign\",\n        \"lead_callsign\",\n        \"runway\",\n        \"wake_cautionary\"\n      ]\n    },\n    \"example_output\": {\n      \"clearance_status\": \"Approved\",\n      \"readback_confirmed\": true\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "query_environment_status",
+      "description": "Retrieves the global status of the environment, including current time, active runways, and weather conditions.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "current_time_step": 15,
+        "active_runways": [
+          "07R",
+          "07L"
+        ],
+        "weather_conditions": "VFR, Visibility 10SM, Clear"
+      }
+    },
+    {
+      "name": "scan_radar_targets",
+      "description": "Returns a list of all aircraft currently within the sector's radar coverage.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "aircraft_list": [
+          {
+            "callsign": "DAL422",
+            "id": "uuid-1"
+          },
+          {
+            "callsign": "HVY88",
+            "id": "uuid-2"
+          }
+        ]
+      }
+    },
+    {
+      "name": "get_aircraft_telemetry",
+      "description": "Retrieves detailed flight parameters for a specific aircraft using its callsign.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "callsign": {
+            "type": "string",
+            "description": "The unique callsign of the aircraft."
+          }
+        },
+        "required": [
+          "callsign"
+        ]
+      },
+      "example_output": {
+        "position": {
+          "x": 12.5,
+          "y": -4.2
+        },
+        "altitude": 4000,
+        "heading": 250,
+        "speed": 180,
+        "aircraft_type": "B738",
+        "assigned_runway": "07R"
+      }
+    },
+    {
+      "name": "calculate_separation",
+      "description": "Calculates the distance and relative bearing between two specific aircraft to ensure legal separation.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "primary_callsign": {
+            "type": "string",
+            "description": "The callsign of the trailing aircraft."
+          },
+          "target_callsign": {
+            "type": "string",
+            "description": "The callsign of the lead aircraft."
+          }
+        },
+        "required": [
+          "primary_callsign",
+          "target_callsign"
+        ]
+      },
+      "example_output": {
+        "distance_nm": 4.5,
+        "bearing_diff": 5,
+        "is_behind": true
+      }
+    },
+    {
+      "name": "issue_vector_command",
+      "description": "Issues a flight instruction to change heading, altitude, or speed for an aircraft.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "callsign": {
+            "type": "string"
+          },
+          "heading": {
+            "type": "number"
+          },
+          "altitude": {
+            "type": "number"
+          },
+          "speed": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "callsign"
+        ]
+      },
+      "example_output": {
+        "status": "Instruction Transmitted",
+        "acknowledged": true
+      }
+    },
+    {
+      "name": "authorize_visual_approach",
+      "description": "Clears an aircraft for a visual approach behind a specific lead aircraft on a specific runway.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "callsign": {
+            "type": "string",
+            "description": "Aircraft to receive clearance."
+          },
+          "lead_callsign": {
+            "type": "string",
+            "description": "The lead aircraft to follow."
+          },
+          "runway": {
+            "type": "string",
+            "description": "Target runway (e.g., '07R')."
+          },
+          "wake_cautionary": {
+            "type": "boolean",
+            "description": "Whether to issue a wake turbulence warning."
+          }
+        },
+        "required": [
+          "callsign",
+          "lead_callsign",
+          "runway",
+          "wake_cautionary"
+        ]
+      },
+      "example_output": {
+        "clearance_status": "Approved",
+        "readback_confirmed": true
+      }
+    }
+  ],
+  "state_description": {
+    "current_time_step": "The current simulation clock in minutes from start.",
+    "active_runways": "List of available runways and their current occupancy status.",
+    "aircraft_in_sector": "List of aircraft currently under control with their flight parameters.",
+    "weather_conditions": "Current environmental factors affecting landing."
+  },
+  "task_initial_state": {
+    "current_time_step": 0,
+    "active_runways": [
+      {
+        "id": "07R",
+        "occupied_until": 4
+      },
+      {
+        "id": "07L",
+        "occupied_until": 2
+      },
+      {
+        "id": "08",
+        "occupied_until": 999
+      }
+    ],
+    "aircraft_in_sector": [
+      {
+        "aircraft_id": "HVY88",
+        "distance_to_threshold": 6.8,
+        "current_speed": 165,
+        "altitude": 2200,
+        "fuel_remaining_min": 45,
+        "wake_category": "Heavy"
+      },
+      {
+        "aircraft_id": "HVY8",
+        "distance_to_threshold": 19.5,
+        "current_speed": 240,
+        "altitude": 6000,
+        "fuel_remaining_min": 55,
+        "wake_category": "Heavy"
+      },
+      {
+        "aircraft_id": "DAL422",
+        "distance_to_threshold": 11.2,
+        "current_speed": 210,
+        "altitude": 3500,
+        "fuel_remaining_min": 40,
+        "wake_category": "Large"
+      },
+      {
+        "aircraft_id": "DAL4222",
+        "distance_to_threshold": 15.5,
+        "current_speed": 230,
+        "altitude": 5000,
+        "fuel_remaining_min": 50,
+        "wake_category": "Large"
+      },
+      {
+        "aircraft_id": "DAL42",
+        "distance_to_threshold": 22.1,
+        "current_speed": 250,
+        "altitude": 7000,
+        "fuel_remaining_min": 60,
+        "wake_category": "Large"
+      },
+      {
+        "aircraft_id": "SKW331",
+        "distance_to_threshold": 9.0,
+        "current_speed": 180,
+        "altitude": 3000,
+        "fuel_remaining_min": 45,
+        "wake_category": "Small"
+      },
+      {
+        "aircraft_id": "SKW3311",
+        "distance_to_threshold": 14.2,
+        "current_speed": 190,
+        "altitude": 4500,
+        "fuel_remaining_min": 50,
+        "wake_category": "Small"
+      }
+    ],
+    "weather_conditions": {
+      "visibility_km": 15,
+      "wind_speed_kts": 12,
+      "wind_direction": 60,
+      "ceiling_ft": 5500
+    }
+  }
+}

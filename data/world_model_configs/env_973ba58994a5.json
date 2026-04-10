@@ -1,0 +1,89 @@
+{
+  "environment_name": "env_973ba58994a5",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM) for Kubernetes Pod Autoscaling.\n- **Core Objective**: Based on the current cluster state $s_t$ and the scaling or configuration action $a_t$ provided by the Agent, simulate the internal Kubernetes environment logic (e.g., pod provisioning, load distribution, resource metric updates) and predict the observation $o_{{t+1}}$ (metrics and status) obtained by the Agent.\n- **Emphasis**: This model does not interact with a real Kubernetes API. It performs internal state evolution and generates realistic observations based on container orchestration dynamics.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions between the World Model and the Agent must maintain context consistency. The model must track changes to replica counts, resource consumption trends, and the impact of traffic load over time to ensure that subsequent observations reflect previous actions.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. This JSON must contain the following fields:\n- `\"name\"`: Specifies the name of the action function to execute (e.g., `patch_replica_count`, `get_cluster_metrics`).\n- Parameters required by that action function as defined in the action space.\n\nExample:\n```json\n{{\n \"name\": \"scale_deployment\",\n \"arguments\": {{\n    \"deployment_name\": \"api-server\",\n    \"replicas\": 5\n  }}\n}}\n```\n\nThe Language World Model must parse these inputs and simulate the resulting environment transition.\n\n#### Environment Behavior Modeling\n- **Resource Dynamics**: If the number of replicas increases, the `cpu_utilization_per_pod` should generally decrease assuming constant traffic. If traffic (`incoming_qps`) increases, resource utilization should increase proportionally.\n- **Scaling Latency**: Simulate realistic behaviors where scaling up takes a brief \"transition period\" (e.g., pods in 'Pending' state) if reflected in the state logic.\n- **Error Handling & Edge Cases**: For invalid parameters (e.g., setting replicas to a negative number), undefined actions, or exceeding resource quotas, return structured error information: `{{\"error\": \"Invalid replica count\"}}`. Do not fabricate fictitious successful responses for failed logic.\n- **Output Assembly**: For every action, return a structured JSON object containing **ONLY** the return fields declared in that action's definition. \n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state or hidden variables. The Agent must only see the specific Observation (e.g., current metrics or success status) defined in the action set.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to specified JSON formats.\n- **Factuality**: Do not simulate resources or metrics that are not logically derived from the state and actions.\n- **Consistency**: Maintain a stable relationship between pod count, CPU/Memory metrics, and traffic load.\n- **Realism**: Metrics should exhibit minor stochastic noise if appropriate for a production environment, but must follow the deterministic logic of the scaling actions.\n- **Encapsulation**: Strictly hide the internal state structure from the output. Only expose information explicitly returned by the action function.\n{{initial_state}}: {{\n  \"replicas\": 4,\n  \"cpu_usage_percentage\": 98.0,\n  \"memory_usage_mb\": 512.0,\n  \"incoming_qps\": 5500.0,\n  \"max_replicas_limit\": 5,\n  \"min_replicas_limit\": 1\n}}\n{{state_descriptions}}: {{\n  \"replicas\": \"The current number of running pod instances in the deployment.\",\n  \"cpu_usage_percentage\": \"The average CPU utilization percentage across all active pods.\",\n  \"memory_usage_mb\": \"The average memory consumption per pod in Megabytes.\",\n  \"incoming_qps\": \"Current incoming requests per second targeting the service.\",\n  \"max_replicas_limit\": \"The maximum number of pods allowed by cluster quota.\",\n  \"min_replicas_limit\": \"The minimum number of pods required for high availability.\"\n}}\n{action_set_definitions}: {\n  \"get_deployment_metrics\": {\n    \"description\": \"Retrieves the current operational metrics for a specific Kubernetes deployment, including current replica count, CPU usage, and incoming traffic load.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"deployment_name\": {\n          \"type\": \"string\",\n          \"description\": \"The name of the deployment to query (e.g., 'optical-inspection').\"\n        }\n      },\n      \"required\": [\n        \"deployment_name\"\n      ]\n    },\n    \"example_output\": {\n      \"replicas\": 2,\n      \"cpu_usage_percentage\": 95.5,\n      \"memory_usage_mb\": 450,\n      \"incoming_qps\": 5500\n    }\n  },\n  \"get_cluster_constraints\": {\n    \"description\": \"Fetches the hard limits for scaling, such as maximum and minimum replicas allowed by the cluster quota for the given deployment.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"deployment_name\": {\n          \"type\": \"string\",\n          \"description\": \"The name of the deployment.\"\n        }\n      },\n      \"required\": [\n        \"deployment_name\"\n      ]\n    },\n    \"example_output\": {\n      \"max_replicas_limit\": 5,\n      \"min_replicas_limit\": 1\n    }\n  },\n  \"update_replica_count\": {\n    \"description\": \"Executes a scaling action to set the number of pods for a deployment to a specific value.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"deployment_name\": {\n          \"type\": \"string\",\n          \"description\": \"The name of the deployment to scale.\"\n        },\n        \"replica_count\": {\n          \"type\": \"integer\",\n          \"description\": \"The target number of pods to run.\"\n        }\n      },\n      \"required\": [\n        \"deployment_name\",\n        \"replica_count\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"success\",\n      \"new_replica_count\": 4\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_deployment_metrics",
+      "description": "Retrieves the current operational metrics for a specific Kubernetes deployment, including current replica count, CPU usage, and incoming traffic load.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "deployment_name": {
+            "type": "string",
+            "description": "The name of the deployment to query (e.g., 'optical-inspection')."
+          }
+        },
+        "required": [
+          "deployment_name"
+        ]
+      },
+      "example_output": {
+        "replicas": 2,
+        "cpu_usage_percentage": 95.5,
+        "memory_usage_mb": 450,
+        "incoming_qps": 5500
+      }
+    },
+    {
+      "name": "get_cluster_constraints",
+      "description": "Fetches the hard limits for scaling, such as maximum and minimum replicas allowed by the cluster quota for the given deployment.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "deployment_name": {
+            "type": "string",
+            "description": "The name of the deployment."
+          }
+        },
+        "required": [
+          "deployment_name"
+        ]
+      },
+      "example_output": {
+        "max_replicas_limit": 5,
+        "min_replicas_limit": 1
+      }
+    },
+    {
+      "name": "update_replica_count",
+      "description": "Executes a scaling action to set the number of pods for a deployment to a specific value.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "deployment_name": {
+            "type": "string",
+            "description": "The name of the deployment to scale."
+          },
+          "replica_count": {
+            "type": "integer",
+            "description": "The target number of pods to run."
+          }
+        },
+        "required": [
+          "deployment_name",
+          "replica_count"
+        ]
+      },
+      "example_output": {
+        "status": "success",
+        "new_replica_count": 4
+      }
+    }
+  ],
+  "state_description": {
+    "replicas": "The current number of running pod instances in the deployment.",
+    "cpu_usage_percentage": "The average CPU utilization percentage across all active pods.",
+    "memory_usage_mb": "The average memory consumption per pod in Megabytes.",
+    "incoming_qps": "Current incoming requests per second targeting the service.",
+    "max_replicas_limit": "The maximum number of pods allowed by cluster quota.",
+    "min_replicas_limit": "The minimum number of pods required for high availability."
+  },
+  "task_initial_state": {
+    "replicas": 4,
+    "cpu_usage_percentage": 98.0,
+    "memory_usage_mb": 512.0,
+    "incoming_qps": 5500.0,
+    "max_replicas_limit": 5,
+    "min_replicas_limit": 1
+  }
+}

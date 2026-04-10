@@ -1,0 +1,272 @@
+{
+  "environment_name": "env_320c6c1dee59",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM) for Audio Mixing Session Management.\n- **Core Objective**: Based on the current internal state $s_t$ and the Agent's action $a_t$, simulate the evolution of the audio session and predict the observation $o_{{t+1}}$ obtained by the Agent. \n- **Emphasis**: The LWM functions as a virtual Digital Audio Workstation (DAW) backend. It does not process actual audio signals or execute real file operations; it performs internal state evolution (e.g., updating fader positions, toggling mute states) and generates structured observations.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions must maintain absolute context consistency. Changes made to track levels, plugin parameters, or playback states must persist across the interaction history unless modified by a subsequent action.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. This JSON must contain the following fields:\n- `\"name\"`: Specifies the name of the action function to execute.\n- The remaining fields are the parameter names and corresponding values required by that action function.\n\nExample:\n```json\n{{\n \"name\": \"set_track_volume\",\n \"arguments\": {{\n    \"track_id\": 2,\n    \"volume_db\": -6.5\n  }}\n}}\n```\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nIf an action targets a non-existent `track_id`, provides out-of-range values (e.g., volume exceeding maximum gain limits), or uses undefined functions, return structured error information: `{{\"error\": \"Description of the issue\"}}`. Do not fabricate states or allow the simulation to crash.\n\n##### Output Assembly\nFor every action function call, the model must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition (the Observation).\n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, `new_state`, or any hidden variables. The state maintenance is implicit in the simulation logic. The Agent must only see the specific return values (Observations) defined in the action.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to JSON for both input parsing and output generation.\n- **Factuality**: Do not simulate audio outcomes that contradict the state (e.g., if a track is muted, its meter observation should reflect silence).\n- **Consistency**: State evolution logic must be self-consistent (e.g., changing the Master Fader affects the overall session output observation).\n- **Realism**: Simulated behaviors must align with standard DAW dynamics (logarithmic volume scales, panning laws, etc.).\n- **Quality**: Language must be clear, unambiguous, and structurally complete.\n- **Encapsulation**: Strictly hide the internal state structure from the output. Only expose information that is explicitly returned by the action function.\n{{initial_state}}: {{\n  \"session_metadata\": {{\n    \"bpm\": 124,\n    \"sample_rate\": 96000,\n    \"is_playing\": false\n  }},\n  \"master_bus\": {{\n    \"volume_db\": 4.5,\n    \"peak_level\": 3.2\n  }},\n  \"tracks\": [\n    {{\n      \"track_id\": 10,\n      \"name\": \"Kick & Sub Bed\",\n      \"volume_db\": -2.0,\n      \"pan\": 0.0,\n      \"mute\": false,\n      \"solo\": false,\n      \"plugins\": [\n        \"Limiter\",\n        \"LFE_Send\"\n      ]\n    }},\n    {{\n      \"track_id\": 20,\n      \"name\": \"Lead Vocal\",\n      \"volume_db\": -1.5,\n      \"pan\": 0.0,\n      \"mute\": false,\n      \"solo\": false,\n      \"plugins\": [\n        \"De-Esser\",\n        \"Atmos_Object_Panner\",\n        \"Binaural_Mode_Far\"\n      ]\n    }},\n    {{\n      \"track_id\": 30,\n      \"name\": \"Main Drum Bus\",\n      \"volume_db\": -3.0,\n      \"pan\": 0.0,\n      \"mute\": true,\n      \"solo\": false,\n      \"plugins\": [\n        \"Bus_Compressor\"\n      ]\n    }},\n    {{\n      \"track_id\": 40,\n      \"name\": \"Synth Textures\",\n      \"volume_db\": -12.0,\n      \"pan\": 0.8,\n      \"mute\": false,\n      \"solo\": false,\n      \"plugins\": [\n        \"Phaser\",\n        \"Atmos_Object_Panner\",\n        \"Binaural_Mode_Mid\"\n      ]\n    }}\n  ]\n}}\n{{state_descriptions}}: {{\n  \"session_metadata\": \"Global settings for the mixing session.\",\n  \"master_bus\": \"The main output channel configuration.\",\n  \"tracks\": \"List of individual audio tracks in the session.\"\n}}\n{action_set_definitions}: {\n  \"get_session_details\": {\n    \"description\": \"Retrieves global session metadata, including sample rate, bit depth, and current Dolby Atmos renderer status.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"session_name\": \"Neon Horizons\",\n      \"sample_rate\": 48000,\n      \"bit_depth\": 24,\n      \"renderer_status\": \"active\"\n    }\n  },\n  \"get_master_settings\": {\n    \"description\": \"Returns the current configuration of the master output bus, including the current peak level, limiter ceiling, master gain, and binaural render modes.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"current_peak_level\": 3.2,\n      \"true_peak_limiter_ceiling\": -0.3,\n      \"master_gain_db\": 0.0,\n      \"limiter_engaged\": true,\n      \"binaural_render_mode\": \"Standard\"\n    }\n  },\n  \"update_master_gain\": {\n    \"description\": \"Adjusts the master bus gain level to manage overall signal level and headroom.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"gain_db\": {\n          \"type\": \"number\",\n          \"description\": \"The target gain in decibels (e.g., -3.5).\"\n        }\n      },\n      \"required\": [\n        \"gain_db\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"success\",\n      \"new_gain_db\": -3.5\n    }\n  },\n  \"get_track_layout\": {\n    \"description\": \"Lists all tracks in the session with their IDs, names, current routing, volume levels, mute/solo status, and binaural metadata assignments.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"tracks\": [\n        {\n          \"track_id\": \"T-20\",\n          \"track_name\": \"Lead Vocal\",\n          \"type\": \"Object\",\n          \"routing\": \"Atmos_Bus\",\n          \"binaural_mode\": \"Far\",\n          \"mute\": false,\n          \"volume_db\": -5.0\n        }\n      ]\n    }\n  },\n  \"update_track_status\": {\n    \"description\": \"Updates the mute or solo status of a specific track to ensure correct balance.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"track_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier of the audio track.\"\n        },\n        \"mute\": {\n          \"type\": \"boolean\",\n          \"description\": \"Set to true to mute the track, false to unmute.\"\n        },\n        \"solo\": {\n          \"type\": \"boolean\",\n          \"description\": \"Set to true to solo the track, false to unsolo.\"\n        }\n      },\n      \"required\": [\n        \"track_id\"\n      ]\n    },\n    \"example_output\": {\n      \"track_id\": \"T-01\",\n      \"mute\": false,\n      \"solo\": false\n    }\n  },\n  \"configure_master_limiter\": {\n    \"description\": \"Sets the True Peak ceiling for the Dolby Atmos master bus to ensure technical compliance.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"true_peak_ceiling\": {\n          \"type\": \"number\",\n          \"description\": \"The maximum allowed true peak level in dBTP (e.g., -1.0).\"\n        }\n      },\n      \"required\": [\n        \"true_peak_ceiling\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"success\",\n      \"updated_ceiling\": -1.0\n    }\n  },\n  \"update_track_binaural_mode\": {\n    \"description\": \"Updates the binaural distance metadata (Near, Mid, Far, or Off) for a specific track.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"track_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier of the audio track.\"\n        },\n        \"mode\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"Near\",\n            \"Mid\",\n            \"Far\",\n            \"Off\"\n          ],\n          \"description\": \"The binaural distance setting.\"\n        }\n      },\n      \"required\": [\n        \"track_id\",\n        \"mode\"\n      ]\n    },\n    \"example_output\": {\n      \"track_id\": \"T-20\",\n      \"updated_mode\": \"Near\"\n    }\n  },\n  \"fix_routing_issue\": {\n    \"description\": \"Re-routes a track to the correct Atmos Bed or Object path.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"track_id\": {\n          \"type\": \"string\",\n          \"description\": \"The track to be updated.\"\n        },\n        \"new_target\": {\n          \"type\": \"string\",\n          \"description\": \"The destination bus or object index.\"\n        }\n      },\n      \"required\": [\n        \"track_id\",\n        \"new_target\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"routed\",\n      \"track_id\": \"T-05\",\n      \"target\": \"Bed_7.1.2\"\n    }\n  },\n  \"trigger_adm_export\": {\n    \"description\": \"Generates the final ADM BWF master file for delivery.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"filename\": {\n          \"type\": \"string\",\n          \"description\": \"The name of the exported file.\"\n        }\n      },\n      \"required\": [\n        \"filename\"\n      ]\n    },\n    \"example_output\": {\n      \"export_path\": \"/exports/Neon_Horizons_Final_ADM.wav\",\n      \"status\": \"completed\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_session_details",
+      "description": "Retrieves global session metadata, including sample rate, bit depth, and current Dolby Atmos renderer status.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "session_name": "Neon Horizons",
+        "sample_rate": 48000,
+        "bit_depth": 24,
+        "renderer_status": "active"
+      }
+    },
+    {
+      "name": "get_master_settings",
+      "description": "Returns the current configuration of the master output bus, including the current peak level, limiter ceiling, master gain, and binaural render modes.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "current_peak_level": 3.2,
+        "true_peak_limiter_ceiling": -0.3,
+        "master_gain_db": 0.0,
+        "limiter_engaged": true,
+        "binaural_render_mode": "Standard"
+      }
+    },
+    {
+      "name": "update_master_gain",
+      "description": "Adjusts the master bus gain level to manage overall signal level and headroom.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "gain_db": {
+            "type": "number",
+            "description": "The target gain in decibels (e.g., -3.5)."
+          }
+        },
+        "required": [
+          "gain_db"
+        ]
+      },
+      "example_output": {
+        "status": "success",
+        "new_gain_db": -3.5
+      }
+    },
+    {
+      "name": "get_track_layout",
+      "description": "Lists all tracks in the session with their IDs, names, current routing, volume levels, mute/solo status, and binaural metadata assignments.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "tracks": [
+          {
+            "track_id": "T-20",
+            "track_name": "Lead Vocal",
+            "type": "Object",
+            "routing": "Atmos_Bus",
+            "binaural_mode": "Far",
+            "mute": false,
+            "volume_db": -5.0
+          }
+        ]
+      }
+    },
+    {
+      "name": "update_track_status",
+      "description": "Updates the mute or solo status of a specific track to ensure correct balance.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "track_id": {
+            "type": "string",
+            "description": "The unique identifier of the audio track."
+          },
+          "mute": {
+            "type": "boolean",
+            "description": "Set to true to mute the track, false to unmute."
+          },
+          "solo": {
+            "type": "boolean",
+            "description": "Set to true to solo the track, false to unsolo."
+          }
+        },
+        "required": [
+          "track_id"
+        ]
+      },
+      "example_output": {
+        "track_id": "T-01",
+        "mute": false,
+        "solo": false
+      }
+    },
+    {
+      "name": "configure_master_limiter",
+      "description": "Sets the True Peak ceiling for the Dolby Atmos master bus to ensure technical compliance.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "true_peak_ceiling": {
+            "type": "number",
+            "description": "The maximum allowed true peak level in dBTP (e.g., -1.0)."
+          }
+        },
+        "required": [
+          "true_peak_ceiling"
+        ]
+      },
+      "example_output": {
+        "status": "success",
+        "updated_ceiling": -1.0
+      }
+    },
+    {
+      "name": "update_track_binaural_mode",
+      "description": "Updates the binaural distance metadata (Near, Mid, Far, or Off) for a specific track.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "track_id": {
+            "type": "string",
+            "description": "The unique identifier of the audio track."
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "Near",
+              "Mid",
+              "Far",
+              "Off"
+            ],
+            "description": "The binaural distance setting."
+          }
+        },
+        "required": [
+          "track_id",
+          "mode"
+        ]
+      },
+      "example_output": {
+        "track_id": "T-20",
+        "updated_mode": "Near"
+      }
+    },
+    {
+      "name": "fix_routing_issue",
+      "description": "Re-routes a track to the correct Atmos Bed or Object path.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "track_id": {
+            "type": "string",
+            "description": "The track to be updated."
+          },
+          "new_target": {
+            "type": "string",
+            "description": "The destination bus or object index."
+          }
+        },
+        "required": [
+          "track_id",
+          "new_target"
+        ]
+      },
+      "example_output": {
+        "status": "routed",
+        "track_id": "T-05",
+        "target": "Bed_7.1.2"
+      }
+    },
+    {
+      "name": "trigger_adm_export",
+      "description": "Generates the final ADM BWF master file for delivery.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "filename": {
+            "type": "string",
+            "description": "The name of the exported file."
+          }
+        },
+        "required": [
+          "filename"
+        ]
+      },
+      "example_output": {
+        "export_path": "/exports/Neon_Horizons_Final_ADM.wav",
+        "status": "completed"
+      }
+    }
+  ],
+  "state_description": {
+    "session_metadata": "Global settings for the mixing session.",
+    "master_bus": "The main output channel configuration.",
+    "tracks": "List of individual audio tracks in the session."
+  },
+  "task_initial_state": {
+    "session_metadata": {
+      "bpm": 124,
+      "sample_rate": 96000,
+      "is_playing": false
+    },
+    "master_bus": {
+      "volume_db": 4.5,
+      "peak_level": 3.2
+    },
+    "tracks": [
+      {
+        "track_id": 10,
+        "name": "Kick & Sub Bed",
+        "volume_db": -2.0,
+        "pan": 0.0,
+        "mute": false,
+        "solo": false,
+        "plugins": [
+          "Limiter",
+          "LFE_Send"
+        ]
+      },
+      {
+        "track_id": 20,
+        "name": "Lead Vocal",
+        "volume_db": -1.5,
+        "pan": 0.0,
+        "mute": false,
+        "solo": false,
+        "plugins": [
+          "De-Esser",
+          "Atmos_Object_Panner",
+          "Binaural_Mode_Far"
+        ]
+      },
+      {
+        "track_id": 30,
+        "name": "Main Drum Bus",
+        "volume_db": -3.0,
+        "pan": 0.0,
+        "mute": true,
+        "solo": false,
+        "plugins": [
+          "Bus_Compressor"
+        ]
+      },
+      {
+        "track_id": 40,
+        "name": "Synth Textures",
+        "volume_db": -12.0,
+        "pan": 0.8,
+        "mute": false,
+        "solo": false,
+        "plugins": [
+          "Phaser",
+          "Atmos_Object_Panner",
+          "Binaural_Mode_Mid"
+        ]
+      }
+    ]
+  }
+}

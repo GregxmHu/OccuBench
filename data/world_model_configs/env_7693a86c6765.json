@@ -1,0 +1,325 @@
+{
+  "environment_name": "env_7693a86c6765",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM) for Search and Rescue Mission Coordination.\n- **Core Objective**: Based on the current internal state $s_t$ and the action $a_t$ executed by the Agent, simulate the evolution of the mission environment and predict the observation $o_{{t+1}}$.\n- **Emphasis**: You are the environment simulator. You do not provide advice or execute real-world rescue operations; you calculate the consequences of actions (e.g., fuel consumption, movement, victim status changes) and generate the resulting sensor data or reports for the Agent.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation tracking mission progress, unit locations, and victim conditions. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions between the World Model and the Agent must maintain rigorous context consistency. You must track the cumulative effects of all previous actions (e.g., if a drone moved in step 1, its position in step 2 must reflect that movement) to ensure the mission timeline remains logical.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. This JSON will contain:\n- `\"name\"`: The name of the action function (e.g., \"move_unit\", \"scan_area\").\n- The remaining fields: Parameters required by that action function.\n\nExample Input:\n```json\n{{\n \"name\": \"deploy_uav\",\n \"arguments\": {{\n    \"unit_id\": \"Drone-01\",\n    \"target_coordinates\": [12.5, 43.2]\n  }}\n}}\n```\nYou must parse this JSON, update the internal environment state accordingly, and generate the corresponding observation.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\n- If an action refers to a non-existent unit, an out-of-bounds coordinate, or insufficient resources (e.g., low battery), return an error JSON: `{{\"error\": \"Description of the specific failure\"}}`.\n- Do not fabricate successes; if a rescue fails due to environmental hazards, the observation must reflect that failure.\n\n##### Output Assembly\nFor every action function call, you must return a structured JSON object containing **ONLY** the return fields declared in the action function's definition (the Observation).\n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, `new_state`, or any hidden state variables. You manage the state internally; the Agent only receives the specific result of their action.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to JSON output. No conversational filler.\n- **Factuality**: Do not invent new capabilities for the rescue teams or change the map layout arbitrarily.\n- **Consistency**: Ensure that if a victim is marked as 'rescued', they remain 'rescued' in future steps unless a state-changing event occurs.\n- **Realism**: Simulate realistic constraints like travel time, battery depletion, and weather interference.\n- **Encapsulation**: Never expose the internal state dictionary directly to the Agent. Only provide the defined observation fields.\n{{initial_state}}: {{\n  \"mission_time_elapsed\": 0,\n  \"weather\": \"Sunny, 93°F, Wind: NW 5kts\",\n  \"units\": [\n    {{\n      \"unit_id\": \"K9-Echo-1\",\n      \"type\": \"Trailing\",\n      \"status\": \"ready\",\n      \"coordinates\": [\n        1.0,\n        1.0\n      ],\n      \"battery_level\": 100,\n      \"k9_core_temp\": 101.4,\n      \"last_calibration\": \"certified\"\n    }},\n    {{\n      \"unit_id\": \"K9-Echo-2\",\n      \"type\": \"Trailing\",\n      \"status\": \"ready\",\n      \"coordinates\": [\n        1.0,\n        1.0\n      ],\n      \"battery_level\": 95,\n      \"k9_core_temp\": 103.9,\n      \"last_calibration\": \"certified\"\n    }},\n    {{\n      \"unit_id\": \"K9-Sierra-Alpha\",\n      \"type\": \"Air-Scent\",\n      \"status\": \"ready\",\n      \"coordinates\": [\n        1.0,\n        1.0\n      ],\n      \"battery_level\": 100,\n      \"k9_core_temp\": 101.1,\n      \"last_calibration\": \"certified\"\n    }},\n    {{\n      \"unit_id\": \"K9-Sierra-Beta\",\n      \"type\": \"Air-Scent\",\n      \"status\": \"standby\",\n      \"coordinates\": [\n        1.0,\n        1.0\n      ],\n      \"battery_level\": 40,\n      \"k9_core_temp\": 102.2,\n      \"last_calibration\": \"expired\"\n    }}\n  ],\n  \"victims\": [\n    {{\n      \"victim_id\": \"Subject-A1\",\n      \"status\": \"rescued\",\n      \"health\": \"stable\",\n      \"coordinates\": [\n        0.5,\n        0.5\n      ]\n    }},\n    {{\n      \"victim_id\": \"Subject-A7\",\n      \"status\": \"missing\",\n      \"health\": \"unknown\",\n      \"coordinates\": [\n        14.2,\n        -6.8\n      ]\n    }},\n    {{\n      \"victim_id\": \"Subject-B7\",\n      \"status\": \"unconfirmed_sighting\",\n      \"health\": \"unknown\",\n      \"coordinates\": [\n        2.5,\n        30.1\n      ]\n    }}\n  ],\n  \"hazard_zones\": [\n    {{\n      \"zone_id\": \"Camp-A-Contamination\",\n      \"type\": \"scent_noise\",\n      \"coordinates\": [\n        1.0,\n        1.0\n      ],\n      \"items\": [\n        \"worn_hiking_boot_unprotected\",\n        \"sterile_sealed_pillowcase_Subject_A7\",\n        \"discarded_tissue_Subject_A1\",\n        \"pet_blanket\"\n      ]\n    }},\n    {{\n      \"zone_id\": \"Ravine-North-1\",\n      \"type\": \"scent_pooling\",\n      \"coordinates\": [\n        13.5,\n        -6.0\n      ],\n      \"risk\": \"low\"\n    }},\n    {{\n      \"zone_id\": \"Ravine-North-Alpha\",\n      \"type\": \"scent_pooling\",\n      \"coordinates\": [\n        14.0,\n        -7.0\n      ],\n      \"risk\": \"high\"\n    }},\n    {{\n      \"zone_id\": \"Asphalt-Crossing-X\",\n      \"type\": \"thermal_barrier\",\n      \"coordinates\": [\n        5.0,\n        -2.0\n      ],\n      \"temp\": \"118°F\"\n    }}\n  ],\n  \"resources\": {{\n    \"medical_kits\": 2,\n    \"rations\": 10,\n    \"potable_water_gallons\": 15,\n    \"cooling_vests\": 1\n  }}\n}}\n{{state_descriptions}}: {{\n  \"mission_time_elapsed\": \"Total minutes passed since the start of the mission.\",\n  \"weather\": \"Current weather conditions affecting visibility and flight (e.g., 'clear', 'stormy', 'foggy').\",\n  \"units\": \"List of active rescue units, including their coordinates, battery/fuel levels, and current status.\",\n  \"victims\": \"List of known victim locations and their health status (e.g., 'stable', 'critical', 'rescued').\",\n  \"hazard_zones\": \"Geographical areas with active dangers (e.g., 'fire', 'structural_instability') that might damage units.\",\n  \"resources\": \"Available supplies such as medical kits, food, and water.\"\n}}\n{action_set_definitions}: {\n  \"get_mission_manifest\": {\n    \"description\": \"Retrieves general mission parameters including current weather, hazard zones, and elapsed time. Essential for initial orientation.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"weather\": \"93°F, clear\",\n      \"hazard_zones\": [\n        {\n          \"id\": \"ZONE_01\",\n          \"type\": \"ground_contamination\",\n          \"coords\": [\n            12.5,\n            44.2\n          ]\n        }\n      ],\n      \"mission_time_elapsed\": 45\n    }\n  },\n  \"get_unit_diagnostics\": {\n    \"description\": \"Returns a detailed list of all active rescue units, their current coordinates, battery/fuel levels, and specifically the thermal states for K9 assets.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"unit_type\": {\n          \"type\": \"string\",\n          \"description\": \"Filter by unit type, e.g., 'K9', 'drone', 'medic'.\"\n        }\n      },\n      \"required\": []\n    },\n    \"example_output\": {\n      \"units\": [\n        {\n          \"unit_id\": \"K9_BRAVO\",\n          \"thermal_state\": \"98.5F\",\n          \"status\": \"ready\",\n          \"current_location\": \"base_camp\"\n        }\n      ]\n    }\n  },\n  \"scan_resource_inventory\": {\n    \"description\": \"Checks availability and locations of critical supplies such as medical kits, sterile containers, and hydration.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"resources\": [\n        {\n          \"item_id\": \"MED_KIT_04\",\n          \"location\": \"campsite_locker\",\n          \"is_sterile\": true\n        }\n      ]\n    }\n  },\n  \"acquire_sterile_plsa\": {\n    \"description\": \"Executes the retrieval of a Pure Last Seen Article (PLSA) from a specified location using a sterile collection method to avoid contamination.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"unit_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the unit performing the collection.\"\n        },\n        \"location_id\": {\n          \"type\": \"string\",\n          \"description\": \"The identifier for the campsite or specific coordinate.\"\n        }\n      },\n      \"required\": [\n        \"unit_id\",\n        \"location_id\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"success\",\n      \"item_secured\": \"PLSA_SubjectA7\"\n    }\n  },\n  \"dispatch_unit\": {\n    \"description\": \"Moves a rescue unit to a specific destination coordinate or named landmark.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"unit_id\": {\n          \"type\": \"string\",\n          \"description\": \"ID of the unit to move.\"\n        },\n        \"destination\": {\n          \"type\": \"string\",\n          \"description\": \"Target landmark or coordinate string.\"\n        }\n      },\n      \"required\": [\n        \"unit_id\",\n        \"destination\"\n      ]\n    },\n    \"example_output\": {\n      \"travel_time_est\": 12,\n      \"current_status\": \"en_route\"\n    }\n  },\n  \"conduct_scent_search\": {\n    \"description\": \"Commands a K9 unit to begin tracking a specific scent article within a designated sector.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"unit_id\": {\n          \"type\": \"string\",\n          \"description\": \"The K9 unit ID.\"\n        },\n        \"scent_article_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the PLSA secured earlier.\"\n        },\n        \"target_sector\": {\n          \"type\": \"string\",\n          \"description\": \"The area to search (e.g., 'northern_ravines').\"\n        }\n      },\n      \"required\": [\n        \"unit_id\",\n        \"scent_article_id\",\n        \"target_sector\"\n      ]\n    },\n    \"example_output\": {\n      \"subject_found\": true,\n      \"coordinates\": [\n        14.2,\n        45.1\n      ],\n      \"subject_id\": \"Subject-A7\"\n    }\n  },\n  \"stabilize_subject\": {\n    \"description\": \"Deploys medical resources to treat and stabilize a victim's health status.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"unit_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unit performing the treatment.\"\n        },\n        \"subject_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the victim (e.g., 'Subject-A7').\"\n        },\n        \"item_id\": {\n          \"type\": \"string\",\n          \"description\": \"The medical supply ID to be used.\"\n        }\n      },\n      \"required\": [\n        \"unit_id\",\n        \"subject_id\",\n        \"item_id\"\n      ]\n    },\n    \"example_output\": {\n      \"new_health_status\": \"stable\",\n      \"extraction_ready\": true\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_mission_manifest",
+      "description": "Retrieves general mission parameters including current weather, hazard zones, and elapsed time. Essential for initial orientation.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "weather": "93°F, clear",
+        "hazard_zones": [
+          {
+            "id": "ZONE_01",
+            "type": "ground_contamination",
+            "coords": [
+              12.5,
+              44.2
+            ]
+          }
+        ],
+        "mission_time_elapsed": 45
+      }
+    },
+    {
+      "name": "get_unit_diagnostics",
+      "description": "Returns a detailed list of all active rescue units, their current coordinates, battery/fuel levels, and specifically the thermal states for K9 assets.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "unit_type": {
+            "type": "string",
+            "description": "Filter by unit type, e.g., 'K9', 'drone', 'medic'."
+          }
+        },
+        "required": []
+      },
+      "example_output": {
+        "units": [
+          {
+            "unit_id": "K9_BRAVO",
+            "thermal_state": "98.5F",
+            "status": "ready",
+            "current_location": "base_camp"
+          }
+        ]
+      }
+    },
+    {
+      "name": "scan_resource_inventory",
+      "description": "Checks availability and locations of critical supplies such as medical kits, sterile containers, and hydration.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "resources": [
+          {
+            "item_id": "MED_KIT_04",
+            "location": "campsite_locker",
+            "is_sterile": true
+          }
+        ]
+      }
+    },
+    {
+      "name": "acquire_sterile_plsa",
+      "description": "Executes the retrieval of a Pure Last Seen Article (PLSA) from a specified location using a sterile collection method to avoid contamination.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "unit_id": {
+            "type": "string",
+            "description": "The ID of the unit performing the collection."
+          },
+          "location_id": {
+            "type": "string",
+            "description": "The identifier for the campsite or specific coordinate."
+          }
+        },
+        "required": [
+          "unit_id",
+          "location_id"
+        ]
+      },
+      "example_output": {
+        "status": "success",
+        "item_secured": "PLSA_SubjectA7"
+      }
+    },
+    {
+      "name": "dispatch_unit",
+      "description": "Moves a rescue unit to a specific destination coordinate or named landmark.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "unit_id": {
+            "type": "string",
+            "description": "ID of the unit to move."
+          },
+          "destination": {
+            "type": "string",
+            "description": "Target landmark or coordinate string."
+          }
+        },
+        "required": [
+          "unit_id",
+          "destination"
+        ]
+      },
+      "example_output": {
+        "travel_time_est": 12,
+        "current_status": "en_route"
+      }
+    },
+    {
+      "name": "conduct_scent_search",
+      "description": "Commands a K9 unit to begin tracking a specific scent article within a designated sector.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "unit_id": {
+            "type": "string",
+            "description": "The K9 unit ID."
+          },
+          "scent_article_id": {
+            "type": "string",
+            "description": "The ID of the PLSA secured earlier."
+          },
+          "target_sector": {
+            "type": "string",
+            "description": "The area to search (e.g., 'northern_ravines')."
+          }
+        },
+        "required": [
+          "unit_id",
+          "scent_article_id",
+          "target_sector"
+        ]
+      },
+      "example_output": {
+        "subject_found": true,
+        "coordinates": [
+          14.2,
+          45.1
+        ],
+        "subject_id": "Subject-A7"
+      }
+    },
+    {
+      "name": "stabilize_subject",
+      "description": "Deploys medical resources to treat and stabilize a victim's health status.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "unit_id": {
+            "type": "string",
+            "description": "The unit performing the treatment."
+          },
+          "subject_id": {
+            "type": "string",
+            "description": "The ID of the victim (e.g., 'Subject-A7')."
+          },
+          "item_id": {
+            "type": "string",
+            "description": "The medical supply ID to be used."
+          }
+        },
+        "required": [
+          "unit_id",
+          "subject_id",
+          "item_id"
+        ]
+      },
+      "example_output": {
+        "new_health_status": "stable",
+        "extraction_ready": true
+      }
+    }
+  ],
+  "state_description": {
+    "mission_time_elapsed": "Total minutes passed since the start of the mission.",
+    "weather": "Current weather conditions affecting visibility and flight (e.g., 'clear', 'stormy', 'foggy').",
+    "units": "List of active rescue units, including their coordinates, battery/fuel levels, and current status.",
+    "victims": "List of known victim locations and their health status (e.g., 'stable', 'critical', 'rescued').",
+    "hazard_zones": "Geographical areas with active dangers (e.g., 'fire', 'structural_instability') that might damage units.",
+    "resources": "Available supplies such as medical kits, food, and water."
+  },
+  "task_initial_state": {
+    "mission_time_elapsed": 0,
+    "weather": "Sunny, 93°F, Wind: NW 5kts",
+    "units": [
+      {
+        "unit_id": "K9-Echo-1",
+        "type": "Trailing",
+        "status": "ready",
+        "coordinates": [
+          1.0,
+          1.0
+        ],
+        "battery_level": 100,
+        "k9_core_temp": 101.4,
+        "last_calibration": "certified"
+      },
+      {
+        "unit_id": "K9-Echo-2",
+        "type": "Trailing",
+        "status": "ready",
+        "coordinates": [
+          1.0,
+          1.0
+        ],
+        "battery_level": 95,
+        "k9_core_temp": 103.9,
+        "last_calibration": "certified"
+      },
+      {
+        "unit_id": "K9-Sierra-Alpha",
+        "type": "Air-Scent",
+        "status": "ready",
+        "coordinates": [
+          1.0,
+          1.0
+        ],
+        "battery_level": 100,
+        "k9_core_temp": 101.1,
+        "last_calibration": "certified"
+      },
+      {
+        "unit_id": "K9-Sierra-Beta",
+        "type": "Air-Scent",
+        "status": "standby",
+        "coordinates": [
+          1.0,
+          1.0
+        ],
+        "battery_level": 40,
+        "k9_core_temp": 102.2,
+        "last_calibration": "expired"
+      }
+    ],
+    "victims": [
+      {
+        "victim_id": "Subject-A1",
+        "status": "rescued",
+        "health": "stable",
+        "coordinates": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "victim_id": "Subject-A7",
+        "status": "missing",
+        "health": "unknown",
+        "coordinates": [
+          14.2,
+          -6.8
+        ]
+      },
+      {
+        "victim_id": "Subject-B7",
+        "status": "unconfirmed_sighting",
+        "health": "unknown",
+        "coordinates": [
+          2.5,
+          30.1
+        ]
+      }
+    ],
+    "hazard_zones": [
+      {
+        "zone_id": "Camp-A-Contamination",
+        "type": "scent_noise",
+        "coordinates": [
+          1.0,
+          1.0
+        ],
+        "items": [
+          "worn_hiking_boot_unprotected",
+          "sterile_sealed_pillowcase_Subject_A7",
+          "discarded_tissue_Subject_A1",
+          "pet_blanket"
+        ]
+      },
+      {
+        "zone_id": "Ravine-North-1",
+        "type": "scent_pooling",
+        "coordinates": [
+          13.5,
+          -6.0
+        ],
+        "risk": "low"
+      },
+      {
+        "zone_id": "Ravine-North-Alpha",
+        "type": "scent_pooling",
+        "coordinates": [
+          14.0,
+          -7.0
+        ],
+        "risk": "high"
+      },
+      {
+        "zone_id": "Asphalt-Crossing-X",
+        "type": "thermal_barrier",
+        "coordinates": [
+          5.0,
+          -2.0
+        ],
+        "temp": "118°F"
+      }
+    ],
+    "resources": {
+      "medical_kits": 2,
+      "rations": 10,
+      "potable_water_gallons": 15,
+      "cooling_vests": 1
+    }
+  }
+}

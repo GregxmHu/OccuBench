@@ -1,0 +1,172 @@
+{
+  "environment_name": "env_756912a8ab22",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM) for Aircraft Component Inspection.\n- **Core Objective**: Based on the current internal state $s_t$ and the action $a_t$ submitted by the Agent, simulate the internal evolution of the aircraft inspection environment and predict the resulting observation $o_{{t+1}}$ obtained by the Agent.\n- **Emphasis**: The LWM does not perform physical inspections or repairs. It maintains the ground-truth status of aircraft components, sensor readings, and drone/robot positions, providing realistic feedback as if the Agent were interacting with a physical aircraft.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions must maintain rigorous context consistency. If a component is marked as 'damaged' in the internal state, subsequent inspection actions must consistently report that damage until a successful repair action is simulated. The LWM must track the history of actions to ensure the logical flow of the maintenance and inspection workflow.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object containing:\n- `\"name\"`: Specifies the name of the action function to execute.\n- The remaining fields are the parameter names and values required by that action function.\n\nExample:\n```json\n{{\n \"name\": \"inspect_turbine_blade\",\n \"arguments\": {{\n    \"blade_id\": \"T-08\",\n    \"sensor_type\": \"ultrasonic\"\n  }}\n}}\n```\nThe LWM must parse this JSON, update the internal state (e.g., reducing battery, updating inspection logs), and generate the specific observation defined for that function.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\n- If an action refers to a non-existent component or uses invalid parameters, return: `{{\"error\": \"Description of the specific failure\"}}`.\n- If an action is attempted that requires a prerequisite (e.g., inspecting a part that is behind a closed panel), return a logical error message.\n- Do not fabricate fictitious successful responses for invalid operations.\n\n##### Output Assembly\nFor every action function call, the model must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition.\n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, `new_state`, or any hidden variables like the global `component_health_map`. Only expose the specific observation fields (e.g., `visual_feed`, `sensor_reading`, `status_code`).\n\n### 4. Key Principles\n- **Format**: Strictly adhere to JSON and text formats.\n- **Factuality**: Use aeronautical logic; do not invent non-existent aircraft systems.\n- **Consistency**: State evolution (e.g., fuel level drop, component wear) must be self-consistent.\n- **Realism**: Observations (e.g., \"hairline fracture detected at 45-degree angle\") should mimic professional inspection reports.\n- **Quality**: Language must be technical, clear, and unambiguous.\n- **Encapsulation**: Strictly hide the internal state structure. The Agent only sees what a physical sensor or visual check would reveal.\n{{initial_state}}: {{\n  \"inspection_progress\": 0,\n  \"component_health_status\": {{\n    \"HPT_Disk_SEL9988\": 1.0\n  }},\n  \"active_anomalies\": [\n    \"unreconciled_cycle_discrepancy_airline_a\"\n  ],\n  \"agent_location\": \"technical_records_office\",\n  \"battery_level\": 100,\n  \"maintenance_access_panels\": {{\n    \"historical_BtB_vault\": \"closed\"\n  }}\n}}\n{{state_descriptions}}: {{\n  \"inspection_progress\": \"Percentage of the total inspection task completed.\",\n  \"component_health_status\": \"A mapping of aircraft components (e.g., 'engine_1', 'left_wing_flaps') to their ground-truth integrity values (0.0 to 1.0).\",\n  \"active_anomalies\": \"A list of currently existing faults or issues discovered or undiscovered.\",\n  \"agent_location\": \"The current zone or coordinate of the inspection agent relative to the aircraft.\",\n  \"battery_level\": \"Remaining energy percentage of the inspection drone or mobile platform.\",\n  \"maintenance_access_panels\": \"Status of panels (open/closed) required to access internal components.\"\n}}\n{action_set_definitions}: {\n  \"get_environment_state\": {\n    \"description\": \"Retrieves the current state of the environment, including inspection progress, battery levels, and active anomalies.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"inspection_progress\": 0.15,\n      \"battery_level\": 85,\n      \"agent_location\": \"Hangar_Zone_A\"\n    }\n  },\n  \"fetch_maintenance_records\": {\n    \"description\": \"Retrieves all digital and digitized 'dirty fingerprint' records for a specific component serial number, including technical logs and release certificates.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"serial_number\": {\n          \"type\": \"string\",\n          \"description\": \"The unique serial number of the aircraft component.\"\n        }\n      },\n      \"required\": [\n        \"serial_number\"\n      ]\n    },\n    \"example_output\": {\n      \"records_found\": 12,\n      \"document_manifest\": [\n        \"Form_8130_3\",\n        \"Logbook_2022\",\n        \"NIS_Statement\"\n      ]\n    }\n  },\n  \"reconcile_cycle_counts\": {\n    \"description\": \"Performs a mathematical audit comparing the cycles recorded in technical logs against those on authorized release certificates (e.g., FAA 8130-3 or EASA Form 1).\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"serial_number\": {\n          \"type\": \"string\",\n          \"description\": \"The component serial number.\"\n        }\n      },\n      \"required\": [\n        \"serial_number\"\n      ]\n    },\n    \"example_output\": {\n      \"total_cycles_consumed\": 14200,\n      \"discrepancy_detected\": false,\n      \"remaining_cycles\": 5800\n    }\n  },\n  \"audit_traceability_chain\": {\n    \"description\": \"Verifies the full back-to-birth chain of ownership and checks for the presence of Non-Incident Statements (NIS) for every transfer of the component.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"serial_number\": {\n          \"type\": \"string\",\n          \"description\": \"The component serial number.\"\n        }\n      },\n      \"required\": [\n        \"serial_number\"\n      ]\n    },\n    \"example_output\": {\n      \"chain_complete\": true,\n      \"missing_documents\": [],\n      \"gap_intervals\": []\n    }\n  },\n  \"execute_regulatory_resolution\": {\n    \"description\": \"Follows regulatory protocols to resolve gaps in documentation or cycle discrepancies. This is used when the audit finds missing information.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"serial_number\": {\n          \"type\": \"string\",\n          \"description\": \"The component serial number.\"\n        },\n        \"gap_type\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"missing_nis\",\n            \"cycle_discrepancy\",\n            \"ownership_gap\"\n          ],\n          \"description\": \"The type of trace gap identified.\"\n        }\n      },\n      \"required\": [\n        \"serial_number\",\n        \"gap_type\"\n      ]\n    },\n    \"example_output\": {\n      \"resolution_status\": \"pending_verification\",\n      \"action_taken\": \"Contacted previous operator for NIS.\"\n    }\n  },\n  \"update_component_status\": {\n    \"description\": \"Finalizes the component status in the maintenance system as either 'CLEARED' for reinstallation or 'REJECTED'.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"serial_number\": {\n          \"type\": \"string\",\n          \"description\": \"The component serial number.\"\n        },\n        \"status\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"CLEARED\",\n            \"REJECTED\"\n          ],\n          \"description\": \"The final airworthiness decision.\"\n        },\n        \"remarks\": {\n          \"type\": \"string\",\n          \"description\": \"Supporting details for the decision.\"\n        }\n      },\n      \"required\": [\n        \"serial_number\",\n        \"status\",\n        \"remarks\"\n      ]\n    },\n    \"example_output\": {\n      \"system_updated\": true,\n      \"transaction_id\": \"TXN_9988_FINAL\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_environment_state",
+      "description": "Retrieves the current state of the environment, including inspection progress, battery levels, and active anomalies.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "inspection_progress": 0.15,
+        "battery_level": 85,
+        "agent_location": "Hangar_Zone_A"
+      }
+    },
+    {
+      "name": "fetch_maintenance_records",
+      "description": "Retrieves all digital and digitized 'dirty fingerprint' records for a specific component serial number, including technical logs and release certificates.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "serial_number": {
+            "type": "string",
+            "description": "The unique serial number of the aircraft component."
+          }
+        },
+        "required": [
+          "serial_number"
+        ]
+      },
+      "example_output": {
+        "records_found": 12,
+        "document_manifest": [
+          "Form_8130_3",
+          "Logbook_2022",
+          "NIS_Statement"
+        ]
+      }
+    },
+    {
+      "name": "reconcile_cycle_counts",
+      "description": "Performs a mathematical audit comparing the cycles recorded in technical logs against those on authorized release certificates (e.g., FAA 8130-3 or EASA Form 1).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "serial_number": {
+            "type": "string",
+            "description": "The component serial number."
+          }
+        },
+        "required": [
+          "serial_number"
+        ]
+      },
+      "example_output": {
+        "total_cycles_consumed": 14200,
+        "discrepancy_detected": false,
+        "remaining_cycles": 5800
+      }
+    },
+    {
+      "name": "audit_traceability_chain",
+      "description": "Verifies the full back-to-birth chain of ownership and checks for the presence of Non-Incident Statements (NIS) for every transfer of the component.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "serial_number": {
+            "type": "string",
+            "description": "The component serial number."
+          }
+        },
+        "required": [
+          "serial_number"
+        ]
+      },
+      "example_output": {
+        "chain_complete": true,
+        "missing_documents": [],
+        "gap_intervals": []
+      }
+    },
+    {
+      "name": "execute_regulatory_resolution",
+      "description": "Follows regulatory protocols to resolve gaps in documentation or cycle discrepancies. This is used when the audit finds missing information.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "serial_number": {
+            "type": "string",
+            "description": "The component serial number."
+          },
+          "gap_type": {
+            "type": "string",
+            "enum": [
+              "missing_nis",
+              "cycle_discrepancy",
+              "ownership_gap"
+            ],
+            "description": "The type of trace gap identified."
+          }
+        },
+        "required": [
+          "serial_number",
+          "gap_type"
+        ]
+      },
+      "example_output": {
+        "resolution_status": "pending_verification",
+        "action_taken": "Contacted previous operator for NIS."
+      }
+    },
+    {
+      "name": "update_component_status",
+      "description": "Finalizes the component status in the maintenance system as either 'CLEARED' for reinstallation or 'REJECTED'.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "serial_number": {
+            "type": "string",
+            "description": "The component serial number."
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "CLEARED",
+              "REJECTED"
+            ],
+            "description": "The final airworthiness decision."
+          },
+          "remarks": {
+            "type": "string",
+            "description": "Supporting details for the decision."
+          }
+        },
+        "required": [
+          "serial_number",
+          "status",
+          "remarks"
+        ]
+      },
+      "example_output": {
+        "system_updated": true,
+        "transaction_id": "TXN_9988_FINAL"
+      }
+    }
+  ],
+  "state_description": {
+    "inspection_progress": "Percentage of the total inspection task completed.",
+    "component_health_status": "A mapping of aircraft components (e.g., 'engine_1', 'left_wing_flaps') to their ground-truth integrity values (0.0 to 1.0).",
+    "active_anomalies": "A list of currently existing faults or issues discovered or undiscovered.",
+    "agent_location": "The current zone or coordinate of the inspection agent relative to the aircraft.",
+    "battery_level": "Remaining energy percentage of the inspection drone or mobile platform.",
+    "maintenance_access_panels": "Status of panels (open/closed) required to access internal components."
+  },
+  "task_initial_state": {
+    "inspection_progress": 0,
+    "component_health_status": {
+      "HPT_Disk_SEL9988": 1.0
+    },
+    "active_anomalies": [
+      "unreconciled_cycle_discrepancy_airline_a"
+    ],
+    "agent_location": "technical_records_office",
+    "battery_level": 100,
+    "maintenance_access_panels": {
+      "historical_BtB_vault": "closed"
+    }
+  }
+}

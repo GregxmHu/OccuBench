@@ -1,0 +1,139 @@
+{
+  "environment_name": "env_5ba4e440e10a",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: You are a specialized simulator for the **NDA Contract Review** environment. Based on the current internal state of the legal document $s_t$ and the action $a_t$ executed by the Agent, your task is to simulate the evolution of the contract's state and generate the resulting observation $o_{{t+1}}$ that the Agent would receive.\n- **Emphasis**: You do not perform actual legal work or provide legal advice. You simulate the environment's response (e.g., document changes, clause metadata updates, or verification results) to maintain a self-consistent world for the Agent to interact with.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nYou must maintain internal consistency throughout the session. If a clause is modified in one step, that modification must persist in the state and be reflected in all subsequent observations until changed again.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. This JSON will contain:\n- `\"name\"`: The name of the action function to execute.\n- `\"arguments\"`: A dictionary of parameters required by that action function.\n\nYou must parse this JSON, update the internal state of the NDA document accordingly, and produce the observation.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\n- If the Agent attempts to modify a non-existent clause ID, return: `{{\"error\": \"Clause ID not found\"}}`.\n- If the Agent attempts to sign a contract that fails mandatory compliance checks defined in the state, return a descriptive error observation.\n- For any undefined actions or invalid parameter types, return: `{{\"status\": \"error\", \"message\": \"[Specific Error Message]\"}}`.\n- Do not fabricate data outside the scope of the provided document state.\n\n##### Output Assembly\nFor every action function call, you must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition.\n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, `new_state`, or any hidden variables. You are the environment; the Agent only sees the \"Observation\" (the return value of the function). Do not explain the state update process in the output.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to JSON output format.\n- **Factuality**: Simulate the contract's behavior based on the provided text and legal logic within the scenario.\n- **Consistency**: Ensure that if the \"disclosing_party\" is changed, all subsequent observations referencing the party reflect this change.\n- **Realism**: Simulate realistic legal document workflow (e.g., versioning increments, status transitions from 'draft' to 'reviewed').\n- **Quality**: Observations should be clear and provide the exact data requested by the action function.\n- **Encapsulation**: Never expose the full JSON state structure in your response; only return the specific observation data requested.\n{{initial_state}}: {{\n  \"contract_metadata\": {{\n    \"version\": 4,\n    \"status\": \"In-Review\",\n    \"parties\": {{\n      \"disclosing_party\": \"NeuroMesh AI\",\n      \"receiving_party\": \"CloudTitan\"\n    }}\n  }},\n  \"clauses\": [\n    {{\n      \"id\": \"DEF-001\",\n      \"title\": \"Confidential Information\",\n      \"content\": \"Proprietary information includes all technical data and latency optimization algorithms.\",\n      \"risk_level\": \"Low\"\n    }},\n    {{\n      \"id\": \"RES-992\",\n      \"title\": \"Usage of General Knowledge\",\n      \"content\": \"The Receiving Party shall be free to use for any purpose any information or ideas resulting from access to the Disclosing Party's Confidential Information and work product.\",\n      \"risk_level\": \"High\"\n    }},\n    {{\n      \"id\": \"TERM-500\",\n      \"title\": \"Termination\",\n      \"content\": \"This agreement terminates five years after the effective date.\",\n      \"risk_level\": \"Low\"\n    }}\n  ],\n  \"compliance_checklist\": {{\n    \"Entity_Verification\": true,\n    \"IP_Protection_Review\": false,\n    \"Conflict_Check\": true\n  }}\n}}\n{{state_descriptions}}: {{\n  \"contract_metadata\": \"General information about the NDA document.\",\n  \"clauses\": \"A list of objects representing each section of the NDA.\",\n  \"compliance_checklist\": \"A mapping of required legal elements to their current fulfillment status (boolean).\"\n}}\n{action_set_definitions}: {\n  \"get_contract_state\": {\n    \"description\": \"Retrieves the full current state of the NDA environment, including all clauses, the compliance checklist, and document metadata. Essential for identifying IDs and current text before modification.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"contract_metadata\": {\n        \"workflow_status\": \"draft\"\n      },\n      \"clauses\": [\n        {\n          \"id\": \"c_001\",\n          \"title\": \"Residuals\",\n          \"content\": \"...\"\n        }\n      ],\n      \"compliance_checklist\": {\n        \"ip_protection_verified\": false\n      }\n    }\n  },\n  \"patch_clause\": {\n    \"description\": \"Updates the content of a specific clause. Use this to modify existing text without deleting the entire section.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"clause_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier of the clause to be updated.\"\n        },\n        \"updated_content\": {\n          \"type\": \"string\",\n          \"description\": \"The new text for the clause, including the required modifications for unaided memory and IP safeguards.\"\n        }\n      },\n      \"required\": [\n        \"clause_id\",\n        \"updated_content\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"success\",\n      \"updated_id\": \"c_001\"\n    }\n  },\n  \"update_compliance_item\": {\n    \"description\": \"Updates the status of a specific item in the compliance checklist.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"item_key\": {\n          \"type\": \"string\",\n          \"description\": \"The key of the checklist item (e.g., 'ip_protection_verified').\"\n        },\n        \"is_fulfilled\": {\n          \"type\": \"boolean\",\n          \"description\": \"The new fulfillment status.\"\n        }\n      },\n      \"required\": [\n        \"item_key\",\n        \"is_fulfilled\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"success\"\n    }\n  },\n  \"set_document_workflow_status\": {\n    \"description\": \"Updates the overall workflow status of the document to a new state.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"new_status\": {\n          \"type\": \"string\",\n          \"description\": \"The target status (e.g., 'finalized').\"\n        }\n      },\n      \"required\": [\n        \"new_status\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"success\",\n      \"current_status\": \"finalized\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_contract_state",
+      "description": "Retrieves the full current state of the NDA environment, including all clauses, the compliance checklist, and document metadata. Essential for identifying IDs and current text before modification.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "contract_metadata": {
+          "workflow_status": "draft"
+        },
+        "clauses": [
+          {
+            "id": "c_001",
+            "title": "Residuals",
+            "content": "..."
+          }
+        ],
+        "compliance_checklist": {
+          "ip_protection_verified": false
+        }
+      }
+    },
+    {
+      "name": "patch_clause",
+      "description": "Updates the content of a specific clause. Use this to modify existing text without deleting the entire section.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "clause_id": {
+            "type": "string",
+            "description": "The unique identifier of the clause to be updated."
+          },
+          "updated_content": {
+            "type": "string",
+            "description": "The new text for the clause, including the required modifications for unaided memory and IP safeguards."
+          }
+        },
+        "required": [
+          "clause_id",
+          "updated_content"
+        ]
+      },
+      "example_output": {
+        "status": "success",
+        "updated_id": "c_001"
+      }
+    },
+    {
+      "name": "update_compliance_item",
+      "description": "Updates the status of a specific item in the compliance checklist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "item_key": {
+            "type": "string",
+            "description": "The key of the checklist item (e.g., 'ip_protection_verified')."
+          },
+          "is_fulfilled": {
+            "type": "boolean",
+            "description": "The new fulfillment status."
+          }
+        },
+        "required": [
+          "item_key",
+          "is_fulfilled"
+        ]
+      },
+      "example_output": {
+        "status": "success"
+      }
+    },
+    {
+      "name": "set_document_workflow_status",
+      "description": "Updates the overall workflow status of the document to a new state.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "new_status": {
+            "type": "string",
+            "description": "The target status (e.g., 'finalized')."
+          }
+        },
+        "required": [
+          "new_status"
+        ]
+      },
+      "example_output": {
+        "status": "success",
+        "current_status": "finalized"
+      }
+    }
+  ],
+  "state_description": {
+    "contract_metadata": "General information about the NDA document.",
+    "clauses": "A list of objects representing each section of the NDA.",
+    "compliance_checklist": "A mapping of required legal elements to their current fulfillment status (boolean)."
+  },
+  "task_initial_state": {
+    "contract_metadata": {
+      "version": 4,
+      "status": "In-Review",
+      "parties": {
+        "disclosing_party": "NeuroMesh AI",
+        "receiving_party": "CloudTitan"
+      }
+    },
+    "clauses": [
+      {
+        "id": "DEF-001",
+        "title": "Confidential Information",
+        "content": "Proprietary information includes all technical data and latency optimization algorithms.",
+        "risk_level": "Low"
+      },
+      {
+        "id": "RES-992",
+        "title": "Usage of General Knowledge",
+        "content": "The Receiving Party shall be free to use for any purpose any information or ideas resulting from access to the Disclosing Party's Confidential Information and work product.",
+        "risk_level": "High"
+      },
+      {
+        "id": "TERM-500",
+        "title": "Termination",
+        "content": "This agreement terminates five years after the effective date.",
+        "risk_level": "Low"
+      }
+    ],
+    "compliance_checklist": {
+      "Entity_Verification": true,
+      "IP_Protection_Review": false,
+      "Conflict_Check": true
+    }
+  }
+}

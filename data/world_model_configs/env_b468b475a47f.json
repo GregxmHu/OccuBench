@@ -1,0 +1,204 @@
+{
+  "environment_name": "env_b468b475a47f",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM) for Network Capacity Planning\n- **Core Objective**: Based on the current network state $s_t$ and the Agent's planning action $a_t$, simulate the evolution of the network environment (e.g., topology changes, traffic redistribution, congestion shifts) and predict the observation $o_{{t+1}}$ (e.g., performance metrics, link status) obtained by the Agent.\n- **Emphasis**: You are a simulator of network dynamics. You do not execute real-world configuration changes; you calculate the mathematical and logical consequences of actions within the simulated environment to generate the next observation.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state of the network infrastructure, including topology, link capacities, and traffic loads, is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions must maintain strict continuity. Every action modifies the underlying network state (e.g., increasing a link's capacity reduces its utilization percentage if traffic remains constant). The LWM must track these cumulative changes over the duration of the session to ensure physical and logical consistency.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the network by calling planning or diagnostic functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. You must parse the `name` and `arguments` fields to determine the network operation to simulate.\n\nExample Input:\n```json\n{{\n \"name\": \"upgrade_link\",\n \"arguments\": {{\n    \"source_node\": \"Router_A\",\n    \"target_node\": \"Router_B\",\n    \"new_capacity_gbps\": 100\n  }}\n}}\n```\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\n- If an action references non-existent nodes or links, return: `{{\"error\": \"Link/Node not found\"}}`.\n- If an action violates physical constraints (e.g., setting negative capacity), return an appropriate error message.\n- Do not fabricate network responses or assume successful execution if constraints are violated.\n\n##### Output Assembly\nFor every action, return a structured JSON object containing **ONLY** the observation fields defined in the specific action's documentation. \n\n**CRITICAL CONSTRAINT**: You must **NOT** output the internal state `s_t`, the updated state `s_{{t+1}}`, or any hidden variables like the full traffic matrix unless the action specifically returns it as an observation. The internal state evolution remains hidden to the Agent.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to JSON output for observations.\n- **Factuality**: Use standard networking logic (e.g., Little's Law, Queuing Theory basics) to estimate latency and packet loss changes when capacity or load changes.\n- **Consistency**: If a link is saturated in state $s_t$, it must remain saturated in $o_{{t+1}}$ unless a capacity increase or rerouting action was performed.\n- **Realism**: Simulate realistic network behaviors such as congestion collapse, propagation delay based on distance, and hardware limits.\n- **Quality**: Ensure all numerical outputs (utilization rates, throughput) are precise and logically derived from the state.\n- **Encapsulation**: Hide the full system state. Only expose the specific return values of the called function.\n{{initial_state}}: {{\n  \"nodes\": [\n    {{\n      \"node_id\": \"N-METRO-AGG-01\",\n      \"type\": \"Aggregation Router\",\n      \"status\": \"operational\"\n    }},\n    {{\n      \"node_id\": \"N-METRO-AGG-02\",\n      \"type\": \"Aggregation Router\",\n      \"status\": \"operational\"\n    }},\n    {{\n      \"node_id\": \"N-CORE-01\",\n      \"type\": \"Core Router\",\n      \"status\": \"operational\"\n    }}\n  ],\n  \"links\": [\n    {{\n      \"source\": \"N-METRO-AGG-01\",\n      \"target\": \"N-CORE-01\",\n      \"current_bandwidth_gbps\": 10,\n      \"current_utilization_percentage\": 84.2,\n      \"interface\": \"TenGigE0/0/1\"\n    }},\n    {{\n      \"source\": \"N-METRO-AGG-02\",\n      \"target\": \"N-CORE-01\",\n      \"current_bandwidth_gbps\": 10,\n      \"current_utilization_percentage\": 32.5,\n      \"interface\": \"TenGigE0/0/2\"\n    }}\n  ],\n  \"traffic_matrix\": {{\n    \"N-METRO-AGG-01_to_N-CORE-01\": 8.42,\n    \"N-METRO-AGG-02_to_N-CORE-01\": 3.25\n  }},\n  \"network_metrics\": {{\n    \"average_latency_ms\": 12.5,\n    \"packet_loss_rate\": 0.0004,\n    \"total_throughput_gbps\": 11.67\n  }}\n}}\n{{state_descriptions}}: {{\n  \"nodes\": \"List of active network nodes (routers/switches) and their operational status.\",\n  \"links\": \"List of physical or logical connections between nodes, including source, target, current_bandwidth_gbps, and current_utilization_percentage.\",\n  \"traffic_matrix\": \"A mapping of source-destination pairs to their current traffic demand in Gbps.\",\n  \"network_metrics\": \"Global performance indicators such as average_latency_ms, total_packet_loss_rate, and network_throughput_gbps.\"\n}}\n{action_set_definitions}: {\n  \"get_sector_telemetry\": {\n    \"description\": \"Retrieves the current network state for a specific sector, including link utilization, traffic matrix, and global performance metrics like packet loss rate.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"sector_id\": {\n          \"type\": \"string\",\n          \"description\": \"The sector identifier (e.g., 'North-Metro').\"\n        }\n      },\n      \"required\": [\n        \"sector_id\"\n      ]\n    },\n    \"example_output\": {\n      \"links\": [\n        {\n          \"link_id\": \"L123\",\n          \"source\": \"Agg-1\",\n          \"target\": \"Core-A\",\n          \"capacity_gbps\": 100,\n          \"utilization_pct\": 82.5\n        }\n      ],\n      \"metrics\": {\n        \"packet_loss_rate\": 5e-05,\n        \"avg_latency\": 15\n      }\n    }\n  },\n  \"get_link_hardware_limits\": {\n    \"description\": \"Queries the physical hardware constraints of specific links to determine the maximum possible bandwidth capacity.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"link_ids\": {\n          \"type\": \"array\",\n          \"items\": {\n            \"type\": \"string\"\n          },\n          \"description\": \"List of link IDs to check.\"\n        }\n      },\n      \"required\": [\n        \"link_ids\"\n      ]\n    },\n    \"example_output\": {\n      \"L123\": {\n        \"max_capacity_gbps\": 200,\n        \"is_at_physical_max\": false\n      }\n    }\n  },\n  \"query_topology_for_alternatives\": {\n    \"description\": \"Scans the network topology to find alternative paths between two nodes that have available headroom. Used to verify path existence before rerouting.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"source_node\": {\n          \"type\": \"string\"\n        },\n        \"target_node\": {\n          \"type\": \"string\"\n        },\n        \"required_headroom_gbps\": {\n          \"type\": \"number\"\n        }\n      },\n      \"required\": [\n        \"source_node\",\n        \"target_node\",\n        \"required_headroom_gbps\"\n      ]\n    },\n    \"example_output\": {\n      \"available_paths\": [\n        [\n          \"Agg-1\",\n          \"Agg-2\",\n          \"Core-A\"\n        ]\n      ],\n      \"path_headroom_gbps\": [\n        45.0\n      ]\n    }\n  },\n  \"apply_capacity_upgrade\": {\n    \"description\": \"Increases the logical or provisioned bandwidth of a link up to its physical hardware limit.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"link_id\": {\n          \"type\": \"string\"\n        },\n        \"target_capacity_gbps\": {\n          \"type\": \"number\"\n        }\n      },\n      \"required\": [\n        \"link_id\",\n        \"target_capacity_gbps\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"success\",\n      \"new_capacity_gbps\": 150\n    }\n  },\n  \"execute_traffic_reroute\": {\n    \"description\": \"Reconfigures routing tables to move a specific traffic volume to a verified alternative path.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"source_node\": {\n          \"type\": \"string\"\n        },\n        \"target_node\": {\n          \"type\": \"string\"\n        },\n        \"volume_gbps\": {\n          \"type\": \"number\"\n        },\n        \"path_nodes\": {\n          \"type\": \"array\",\n          \"items\": {\n            \"type\": \"string\"\n          }\n        }\n      },\n      \"required\": [\n        \"source_node\",\n        \"target_node\",\n        \"volume_gbps\",\n        \"path_nodes\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"rerouted\",\n      \"flow_id\": \"FL-902\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_sector_telemetry",
+      "description": "Retrieves the current network state for a specific sector, including link utilization, traffic matrix, and global performance metrics like packet loss rate.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "sector_id": {
+            "type": "string",
+            "description": "The sector identifier (e.g., 'North-Metro')."
+          }
+        },
+        "required": [
+          "sector_id"
+        ]
+      },
+      "example_output": {
+        "links": [
+          {
+            "link_id": "L123",
+            "source": "Agg-1",
+            "target": "Core-A",
+            "capacity_gbps": 100,
+            "utilization_pct": 82.5
+          }
+        ],
+        "metrics": {
+          "packet_loss_rate": 5e-05,
+          "avg_latency": 15
+        }
+      }
+    },
+    {
+      "name": "get_link_hardware_limits",
+      "description": "Queries the physical hardware constraints of specific links to determine the maximum possible bandwidth capacity.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "link_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "List of link IDs to check."
+          }
+        },
+        "required": [
+          "link_ids"
+        ]
+      },
+      "example_output": {
+        "L123": {
+          "max_capacity_gbps": 200,
+          "is_at_physical_max": false
+        }
+      }
+    },
+    {
+      "name": "query_topology_for_alternatives",
+      "description": "Scans the network topology to find alternative paths between two nodes that have available headroom. Used to verify path existence before rerouting.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "source_node": {
+            "type": "string"
+          },
+          "target_node": {
+            "type": "string"
+          },
+          "required_headroom_gbps": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "source_node",
+          "target_node",
+          "required_headroom_gbps"
+        ]
+      },
+      "example_output": {
+        "available_paths": [
+          [
+            "Agg-1",
+            "Agg-2",
+            "Core-A"
+          ]
+        ],
+        "path_headroom_gbps": [
+          45.0
+        ]
+      }
+    },
+    {
+      "name": "apply_capacity_upgrade",
+      "description": "Increases the logical or provisioned bandwidth of a link up to its physical hardware limit.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "link_id": {
+            "type": "string"
+          },
+          "target_capacity_gbps": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "link_id",
+          "target_capacity_gbps"
+        ]
+      },
+      "example_output": {
+        "status": "success",
+        "new_capacity_gbps": 150
+      }
+    },
+    {
+      "name": "execute_traffic_reroute",
+      "description": "Reconfigures routing tables to move a specific traffic volume to a verified alternative path.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "source_node": {
+            "type": "string"
+          },
+          "target_node": {
+            "type": "string"
+          },
+          "volume_gbps": {
+            "type": "number"
+          },
+          "path_nodes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "source_node",
+          "target_node",
+          "volume_gbps",
+          "path_nodes"
+        ]
+      },
+      "example_output": {
+        "status": "rerouted",
+        "flow_id": "FL-902"
+      }
+    }
+  ],
+  "state_description": {
+    "nodes": "List of active network nodes (routers/switches) and their operational status.",
+    "links": "List of physical or logical connections between nodes, including source, target, current_bandwidth_gbps, and current_utilization_percentage.",
+    "traffic_matrix": "A mapping of source-destination pairs to their current traffic demand in Gbps.",
+    "network_metrics": "Global performance indicators such as average_latency_ms, total_packet_loss_rate, and network_throughput_gbps."
+  },
+  "task_initial_state": {
+    "nodes": [
+      {
+        "node_id": "N-METRO-AGG-01",
+        "type": "Aggregation Router",
+        "status": "operational"
+      },
+      {
+        "node_id": "N-METRO-AGG-02",
+        "type": "Aggregation Router",
+        "status": "operational"
+      },
+      {
+        "node_id": "N-CORE-01",
+        "type": "Core Router",
+        "status": "operational"
+      }
+    ],
+    "links": [
+      {
+        "source": "N-METRO-AGG-01",
+        "target": "N-CORE-01",
+        "current_bandwidth_gbps": 10,
+        "current_utilization_percentage": 84.2,
+        "interface": "TenGigE0/0/1"
+      },
+      {
+        "source": "N-METRO-AGG-02",
+        "target": "N-CORE-01",
+        "current_bandwidth_gbps": 10,
+        "current_utilization_percentage": 32.5,
+        "interface": "TenGigE0/0/2"
+      }
+    ],
+    "traffic_matrix": {
+      "N-METRO-AGG-01_to_N-CORE-01": 8.42,
+      "N-METRO-AGG-02_to_N-CORE-01": 3.25
+    },
+    "network_metrics": {
+      "average_latency_ms": 12.5,
+      "packet_loss_rate": 0.0004,
+      "total_throughput_gbps": 11.67
+    }
+  }
+}

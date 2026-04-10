@@ -1,0 +1,205 @@
+{
+  "environment_name": "env_f789a11e3f1c",
+  "world_model_system_prompt": "## 1. Role and Objective\n\nYou are the **Language World Model (LWM)** for the **Content Recommendation Curation** scenario. Your core objective is to simulate the evolution of a user session and a content ecosystem. Based on the current internal state $s_t$ and the recommendation action $a_t$ executed by the Agent, you will predict the resulting state transition and generate the observation $o_{{t+1}}$ that the Agent receives (e.g., user engagement metrics, feedback, or item metadata). \n\nEmphasis: You do not execute real-world recommendation algorithms or fetch real live data. You perform internal state evolution and generate realistic observations based on the logic of user behavior and content dynamics.\n\n## 2. Environment Management\n\n### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n### Context Awareness\nYou must maintain strict context consistency throughout the interaction. The user's preferences, the history of shown content, and the cumulative engagement metrics must evolve logically. If a user expresses dislike for a specific category, the simulated future observations should reflect a decreased likelihood of positive engagement for that category.\n\n## 3. Environment Execution\n\n### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. You must correctly parse these inputs and simulate the execution results. The input format is:\n- `\"name\"`: The name of the action function.\n- Other fields: Parameters required by the action.\n\nExample Input:\n```json\n{{\n \"name\": \"recommend_batch\",\n \"arguments\": {{\n    \"item_ids\": [\"vid_001\", \"vid_005\"],\n    \"strategy\": \"exploration\"\n  }}\n}}\n```\n\n### Environment Behavior Modeling\n\n#### Error Handling & Edge Cases\n- If an Agent attempts to recommend an item ID that does not exist in the simulated `content_inventory`, return: `{{\"error\": \"Item ID not found\"}}`.\n- If parameters are missing or invalid, return a structured error message.\n- Do not fabricate content or user responses that contradict the internal state history.\n\n#### Output Assembly\nFor every action function call, you must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition. \n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, the `new_state`, or any hidden variables such as the user's exact numerical preference weights. You must strictly hide the internal state structure. Only expose the specific return values (the Observation) defined in the action.\n\n## 4. Key Principles\n- **Format**: Strictly adhere to specified JSON and text formats.\n- **Factuality**: Simulate user responses based on the established user profile; do not fluctuate behavior randomly without cause.\n- **Consistency**: Maintain a coherent session history. If a user \"subscribes\" to a creator in state $t$, they should remain subscribed in state $t+1$.\n- **Realism**: Simulate realistic human-like behaviors, including fatigue (diminishing returns on similar content) and diverse interests.\n- **Quality**: Ensure the observation text (e.g., simulated user comments or reviews) is clear and contextually relevant.\n- **Encapsulation**: Do not output the state update process. The Agent only sees the consequences of its actions.\n{{initial_state}}: {{\n  \"user_profile\": {{\n    \"history\": 0.95,\n    \"technology\": 0.65,\n    \"sociology\": 0.2\n  }},\n  \"session_history\": [],\n  \"engagement_metrics\": {{\n    \"total_dwell_time\": 0,\n    \"total_clicks\": 0,\n    \"bounce_count\": 0\n  }},\n  \"content_inventory\": [\n    {{\n      \"id\": \"node_8821\",\n      \"category\": \"history\",\n      \"tags\": [\n        \"Victorian\",\n        \"Correspondence\",\n        \"Foundational_Study\",\n        \"Centrality_Analysis\"\n      ],\n      \"quality_score\": 0.94,\n      \"metadata\": {{\n        \"title\": \"Victorian Correspondence Networks: A Structural Analysis\",\n        \"citation_overlap\": 0.0\n      }}\n    }},\n    {{\n      \"id\": \"node_4432\",\n      \"category\": \"history\",\n      \"tags\": [\n        \"Victorian\",\n        \"Review_Paper\",\n        \"Redundant\"\n      ],\n      \"quality_score\": 0.82,\n      \"metadata\": {{\n        \"title\": \"A Comprehensive Survey of 19th Century Letter Exchange\",\n        \"citation_overlap\": 0.85\n      }}\n    }},\n    {{\n      \"id\": \"node_9901\",\n      \"category\": \"technology\",\n      \"tags\": [\n        \"GNN\",\n        \"Sparse_Interaction\",\n        \"Interdisciplinary_Bridge\"\n      ],\n      \"quality_score\": 0.97,\n      \"metadata\": {{\n        \"title\": \"Graph Neural Networks for Sparse Interaction Datasets\",\n        \"semantic_similarity_to_history\": 0.89,\n        \"citation_overlap_with_history\": 0.05\n      }}\n    }},\n    {{\n      \"id\": \"node_1105\",\n      \"category\": \"history\",\n      \"tags\": [\n        \"Retracted\",\n        \"Postal_History\"\n      ],\n      \"quality_score\": 0.1,\n      \"metadata\": {{\n        \"title\": \"The Evolution of Global Postal Logistics\",\n        \"retraction_status\": \"Retracted_2023\"\n      }}\n    }},\n    {{\n      \"id\": \"node_7763\",\n      \"category\": \"technology\",\n      \"tags\": [\n        \"NLP\",\n        \"Transformers\"\n      ],\n      \"quality_score\": 0.88,\n      \"metadata\": {{\n        \"title\": \"Attention Mechanisms in Large Language Models\",\n        \"semantic_similarity_to_history\": 0.32\n      }}\n    }}\n  ],\n  \"user_satisfaction\": 0.45\n}}\n{{state_descriptions}}: {{\n  \"user_profile\": \"Mapping of content categories to interest scores (0.0 to 1.0) and latent preference vectors.\",\n  \"session_history\": \"A chronological list of item IDs previously presented to the user in the current session.\",\n  \"engagement_metrics\": \"Cumulative session stats including total_dwell_time, total_clicks, and bounce_count.\",\n  \"content_inventory\": \"A pool of available content items currently available for recommendation, including metadata for each.\",\n  \"user_satisfaction\": \"A hidden numerical value representing the user's current level of satisfaction with the curation.\"\n}}\n{action_set_definitions}: {\n  \"search_inventory\": {\n    \"description\": \"Searches the content inventory for items matching specific keywords or criteria.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"query\": {\n          \"type\": \"string\",\n          \"description\": \"Keywords related to the research topic (e.g., 'Victorian network correspondence').\"\n        },\n        \"filters\": {\n          \"type\": \"object\",\n          \"description\": \"Optional filters such as 'category' or 'year_range'.\"\n        }\n      },\n      \"required\": [\n        \"query\"\n      ]\n    },\n    \"example_output\": {\n      \"results\": [\n        {\n          \"item_id\": \"HIST_001\",\n          \"title\": \"Letters of the 19th Century\",\n          \"relevance_score\": 0.98\n        }\n      ]\n    }\n  },\n  \"get_paper_details\": {\n    \"description\": \"Retrieves comprehensive metadata for a specific content item, including status and classification.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"item_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier of the content item.\"\n        }\n      },\n      \"required\": [\n        \"item_id\"\n      ]\n    },\n    \"example_output\": {\n      \"item_id\": \"HIST_001\",\n      \"is_retracted\": false,\n      \"is_review_article\": false,\n      \"tags\": [\n        \"foundational\",\n        \"Victorian\"\n      ],\n      \"abstract\": \"...\"\n    }\n  },\n  \"analyze_cross_domain_relationship\": {\n    \"description\": \"Calculates semantic similarity, citation overlap, and direct link status between two items from different domains.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"source_item_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the foundational historical paper.\"\n        },\n        \"target_item_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the technological bridge paper.\"\n        }\n      },\n      \"required\": [\n        \"source_item_id\",\n        \"target_item_id\"\n      ]\n    },\n    \"example_output\": {\n      \"semantic_similarity\": 0.85,\n      \"citation_overlap_index\": 0.12,\n      \"has_direct_citation\": false\n    }\n  },\n  \"submit_recommendation_pair\": {\n    \"description\": \"Finalizes the curation by recommending a specific pair of items to the user.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"history_item_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the Victorian network study.\"\n        },\n        \"tech_item_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the GNN sparse data paper.\"\n        }\n      },\n      \"required\": [\n        \"history_item_id\",\n        \"tech_item_id\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"success\",\n      \"new_user_satisfaction\": 0.95\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "search_inventory",
+      "description": "Searches the content inventory for items matching specific keywords or criteria.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "description": "Keywords related to the research topic (e.g., 'Victorian network correspondence')."
+          },
+          "filters": {
+            "type": "object",
+            "description": "Optional filters such as 'category' or 'year_range'."
+          }
+        },
+        "required": [
+          "query"
+        ]
+      },
+      "example_output": {
+        "results": [
+          {
+            "item_id": "HIST_001",
+            "title": "Letters of the 19th Century",
+            "relevance_score": 0.98
+          }
+        ]
+      }
+    },
+    {
+      "name": "get_paper_details",
+      "description": "Retrieves comprehensive metadata for a specific content item, including status and classification.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "item_id": {
+            "type": "string",
+            "description": "The unique identifier of the content item."
+          }
+        },
+        "required": [
+          "item_id"
+        ]
+      },
+      "example_output": {
+        "item_id": "HIST_001",
+        "is_retracted": false,
+        "is_review_article": false,
+        "tags": [
+          "foundational",
+          "Victorian"
+        ],
+        "abstract": "..."
+      }
+    },
+    {
+      "name": "analyze_cross_domain_relationship",
+      "description": "Calculates semantic similarity, citation overlap, and direct link status between two items from different domains.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "source_item_id": {
+            "type": "string",
+            "description": "The ID of the foundational historical paper."
+          },
+          "target_item_id": {
+            "type": "string",
+            "description": "The ID of the technological bridge paper."
+          }
+        },
+        "required": [
+          "source_item_id",
+          "target_item_id"
+        ]
+      },
+      "example_output": {
+        "semantic_similarity": 0.85,
+        "citation_overlap_index": 0.12,
+        "has_direct_citation": false
+      }
+    },
+    {
+      "name": "submit_recommendation_pair",
+      "description": "Finalizes the curation by recommending a specific pair of items to the user.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "history_item_id": {
+            "type": "string",
+            "description": "The ID of the Victorian network study."
+          },
+          "tech_item_id": {
+            "type": "string",
+            "description": "The ID of the GNN sparse data paper."
+          }
+        },
+        "required": [
+          "history_item_id",
+          "tech_item_id"
+        ]
+      },
+      "example_output": {
+        "status": "success",
+        "new_user_satisfaction": 0.95
+      }
+    }
+  ],
+  "state_description": {
+    "user_profile": "Mapping of content categories to interest scores (0.0 to 1.0) and latent preference vectors.",
+    "session_history": "A chronological list of item IDs previously presented to the user in the current session.",
+    "engagement_metrics": "Cumulative session stats including total_dwell_time, total_clicks, and bounce_count.",
+    "content_inventory": "A pool of available content items currently available for recommendation, including metadata for each.",
+    "user_satisfaction": "A hidden numerical value representing the user's current level of satisfaction with the curation."
+  },
+  "task_initial_state": {
+    "user_profile": {
+      "history": 0.95,
+      "technology": 0.65,
+      "sociology": 0.2
+    },
+    "session_history": [],
+    "engagement_metrics": {
+      "total_dwell_time": 0,
+      "total_clicks": 0,
+      "bounce_count": 0
+    },
+    "content_inventory": [
+      {
+        "id": "node_8821",
+        "category": "history",
+        "tags": [
+          "Victorian",
+          "Correspondence",
+          "Foundational_Study",
+          "Centrality_Analysis"
+        ],
+        "quality_score": 0.94,
+        "metadata": {
+          "title": "Victorian Correspondence Networks: A Structural Analysis",
+          "citation_overlap": 0.0
+        }
+      },
+      {
+        "id": "node_4432",
+        "category": "history",
+        "tags": [
+          "Victorian",
+          "Review_Paper",
+          "Redundant"
+        ],
+        "quality_score": 0.82,
+        "metadata": {
+          "title": "A Comprehensive Survey of 19th Century Letter Exchange",
+          "citation_overlap": 0.85
+        }
+      },
+      {
+        "id": "node_9901",
+        "category": "technology",
+        "tags": [
+          "GNN",
+          "Sparse_Interaction",
+          "Interdisciplinary_Bridge"
+        ],
+        "quality_score": 0.97,
+        "metadata": {
+          "title": "Graph Neural Networks for Sparse Interaction Datasets",
+          "semantic_similarity_to_history": 0.89,
+          "citation_overlap_with_history": 0.05
+        }
+      },
+      {
+        "id": "node_1105",
+        "category": "history",
+        "tags": [
+          "Retracted",
+          "Postal_History"
+        ],
+        "quality_score": 0.1,
+        "metadata": {
+          "title": "The Evolution of Global Postal Logistics",
+          "retraction_status": "Retracted_2023"
+        }
+      },
+      {
+        "id": "node_7763",
+        "category": "technology",
+        "tags": [
+          "NLP",
+          "Transformers"
+        ],
+        "quality_score": 0.88,
+        "metadata": {
+          "title": "Attention Mechanisms in Large Language Models",
+          "semantic_similarity_to_history": 0.32
+        }
+      }
+    ],
+    "user_satisfaction": 0.45
+  }
+}

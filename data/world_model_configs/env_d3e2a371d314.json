@@ -1,0 +1,240 @@
+{
+  "environment_name": "env_d3e2a371d314",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: Based on the current state $s_t$ and action $a_t$, simulate the environment changes for an Aircraft Component Inspection and predict the observation $o_{{t+1}}$ obtained by the Agent.\n- **Emphasis**: The LWM does not execute real physical operations or perform the inspection itself. It manages the internal state of the aircraft's condition, the inspector's location, and the results of diagnostic tools, providing realistic feedback (observations) to the Agent.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions between the World Model and the Agent must maintain context consistency. The model must track which components have been inspected, which defects have been logged, and the current physical location of the inspector to ensure logical continuity (e.g., you cannot inspect the Engine if you are at the Tail).\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. This JSON contains:\n- `\"name\"`: The name of the action function to execute.\n- Parameters: The specific arguments required for that action.\n\nExample:\n```json\n{{\n \"name\": \"measure_crack_length\",\n \"arguments\": {{\n    \"component_id\": \"WING-L-04\",\n    \"tool\": \"digital_caliper\"\n  }}\n}}\n```\nThe Language World Model must parse this input, update the internal environment state (e.g., battery consumption of the tool, logging the measurement), and generate the observation.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nFor invalid parameters (e.g., non-existent component IDs), undefined actions, state conflicts (e.g., performing a NDT scan without the required power source), or empty inputs, return structured error information (e.g., `{{\"error\": \"Component not accessible from current location\"}}`). Do not fabricate states or fictitious successful responses for failed actions.\n\n##### Output Assembly\nFor every action function call, the model must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition.\n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, `new_state`, or any hidden variables. The state maintenance is implicit in the history. The Agent must only see the specific return values defined in the action (the Observation). Do not output the state update process.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to specified JSON and text formats.\n- **Factuality**: Do not fabricate non-existent functions or aircraft components not present in the state.\n- **Consistency**: If a crack is identified in one step, it must remain present in that location in subsequent steps unless a repair action is successfully simulated.\n- **Realism**: Simulated sensor readings, visual descriptions, and component wear must align with aviation maintenance standards and realistic physics.\n- **Quality**: Language must be technical, clear, and structurally complete.\n- **Encapsulation**: Strictly hide the internal state structure from the output. Only expose information that is explicitly returned by the action function.\n{{initial_state}}: {{\n  \"inspector_location\": \"Hangar Floor\",\n  \"component_conditions\": {{\n    \"FLTR-CD-SYS-B-102\": {{\n      \"description\": \"Case Drain Filter, System B\",\n      \"DPI_status\": \"Retracted\",\n      \"last_inspected\": \"48 hours ago\",\n      \"physical_status\": \"Nominal\"\n    }},\n    \"FLTR-RET-SYS-A-201\": {{\n      \"description\": \"Main Return Filter, System A\",\n      \"DPI_status\": \"Retracted\",\n      \"physical_status\": \"Heavy exterior Skydrol staining\"\n    }},\n    \"FLTR-CD-SYS-A-101\": {{\n      \"description\": \"Case Drain Filter, System A\",\n      \"DPI_status\": \"Extended\",\n      \"internal_debris\": \"Significant yellow metallic flakes and magnetic slivers\",\n      \"physical_status\": \"Clogged\"\n    }},\n    \"FLTR-CD-STBY-303\": {{\n      \"description\": \"Standby System Case Drain Filter\",\n      \"DPI_status\": \"Retracted\",\n      \"physical_status\": \"Clean\"\n    }},\n    \"PUMP-EDP-SYS-A-01\": {{\n      \"type\": \"Engine Driven Pump\",\n      \"internal_condition\": \"Bronze slipper shoe disintegration\",\n      \"status\": \"Inoperative\"\n    }},\n    \"PUMP-EDP-SYS-B-01\": {{\n      \"type\": \"Engine Driven Pump\",\n      \"internal_condition\": \"Nominal\",\n      \"status\": \"Operational\"\n    }},\n    \"PUMP-EMDP-SYS-A-02\": {{\n      \"type\": \"Electric Motor Driven Pump\",\n      \"internal_condition\": \"Nominal\",\n      \"status\": \"Operational\"\n    }}\n  }},\n  \"inspection_log\": [\n    {{\n      \"timestamp\": \"2023-10-24 08:00\",\n      \"action\": \"Routine Check\",\n      \"component\": \"FLTR-CD-SYS-B-102\",\n      \"result\": \"DPI Normal, no debris\"\n    }},\n    {{\n      \"timestamp\": \"2023-10-24 09:15\",\n      \"action\": \"Visual Inspection\",\n      \"component\": \"FLTR-RET-SYS-A-201\",\n      \"result\": \"O-ring replaced due to minor weepage\"\n    }}\n  ],\n  \"equipment_status\": {{\n    \"flashlight\": \"functional\",\n    \"wheel_filter_cutter\": \"functional\",\n    \"patch_test_rig\": \"ready\",\n    \"microscope_set\": \"calibrated\",\n    \"solvent_bath\": \"filled_with_heptane\",\n    \"butyl_gloves\": \"available\"\n  }},\n  \"environment_conditions\": {{\n    \"lighting_lux\": 750,\n    \"temperature_celsius\": 21\n  }}\n}}\n{{state_descriptions}}: {{\n  \"inspector_location\": \"The current physical zone where the inspector is located (e.g., 'Cockpit', 'Left Wing', 'Aft Fuselage').\",\n  \"component_conditions\": \"A map of component IDs to their current physical status, including hidden defects, wear levels, and structural integrity.\",\n  \"inspection_log\": \"A list of findings and measurements already recorded by the agent during the current session.\",\n  \"equipment_status\": \"The status of available inspection tools (e.g., battery levels, calibration status, or connectivity).\",\n  \"environment_conditions\": \"External factors affecting inspection, such as ambient lighting or temperature.\"\n}}\n{action_set_definitions}: {\n  \"get_environment_status\": {\n    \"description\": \"Retrieves the current inspector location, equipment status (calibration/battery), and ambient conditions.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"inspector_location\": \"Cockpit\",\n      \"equipment_status\": \"Microscope: Calibrated, Lighting: Operational\",\n      \"environment_conditions\": \"Ambient Temp: 22C\"\n    }\n  },\n  \"move_to_location\": {\n    \"description\": \"Relocates the inspector to a specific aircraft zone.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"target_zone\": {\n          \"type\": \"string\",\n          \"description\": \"The name of the zone to move to (e.g., 'Left Wheel Well').\"\n        }\n      },\n      \"required\": [\n        \"target_zone\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"success\",\n      \"current_location\": \"Left Wheel Well\"\n    }\n  },\n  \"list_components_in_zone\": {\n    \"description\": \"Lists all components and their unique IDs within the current zone, filtered by keyword if provided.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"zone_name\": {\n          \"type\": \"string\",\n          \"description\": \"The zone to search within.\"\n        },\n        \"keyword\": {\n          \"type\": \"string\",\n          \"description\": \"Optional keyword to narrow search (e.g., 'Filter', 'Hydraulic').\"\n        }\n      },\n      \"required\": [\n        \"zone_name\"\n      ]\n    },\n    \"example_output\": {\n      \"components\": [\n        {\n          \"id\": \"FLTR-737-HYDA-CD\",\n          \"name\": \"Hydraulic System A Case Drain Filter\"\n        }\n      ]\n    }\n  },\n  \"inspect_component_status\": {\n    \"description\": \"Performs a visual inspection of a specific component to check indicators (e.g., pop-out pins, leaks).\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"component_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique ID of the component to inspect.\"\n        }\n      },\n      \"required\": [\n        \"component_id\"\n      ]\n    },\n    \"example_output\": {\n      \"indicator_status\": \"Delta-P indicator tripped (extended)\",\n      \"physical_leaks\": \"None\"\n    }\n  },\n  \"perform_feda_lab_analysis\": {\n    \"description\": \"Performs Filter Element Debris Analysis (FEDA) using microscopic tools on the filter element associated with the given component ID.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"component_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the filter component to analyze.\"\n        }\n      },\n      \"required\": [\n        \"component_id\"\n      ]\n    },\n    \"example_output\": {\n      \"debris_count\": 45,\n      \"material_type\": \"Bronze/M-50 Steel\",\n      \"debris_shape\": \"Spherical and Fatigue Flakes\"\n    }\n  },\n  \"query_metallic_logic_tree\": {\n    \"description\": \"Inputs microscopic findings to determine the disposition and the likely upstream failing component based on the metallic decision logic.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"debris_data\": {\n          \"type\": \"object\",\n          \"description\": \"The output data from the FEDA analysis.\"\n        }\n      },\n      \"required\": [\n        \"debris_data\"\n      ]\n    },\n    \"example_output\": {\n      \"disposition\": \"Red\",\n      \"upstream_failure_source\": \"Hydraulic Pump Case Drain\",\n      \"action_required\": \"Replace Pump\"\n    }\n  },\n  \"file_maintenance_report\": {\n    \"description\": \"Submit the final disposition and findings to the aircraft maintenance log against the specific component ID.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"component_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the component against which the report is filed.\"\n        },\n        \"disposition\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"Green\",\n            \"Yellow\",\n            \"Red\"\n          ],\n          \"description\": \"The final airworthiness status.\"\n        },\n        \"findings_summary\": {\n          \"type\": \"string\",\n          \"description\": \"Summary of microscopic findings and upstream failure source.\"\n        }\n      },\n      \"required\": [\n        \"component_id\",\n        \"disposition\",\n        \"findings_summary\"\n      ]\n    },\n    \"example_output\": {\n      \"report_id\": \"REP-99210\",\n      \"status\": \"Filed Successfully\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_environment_status",
+      "description": "Retrieves the current inspector location, equipment status (calibration/battery), and ambient conditions.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "inspector_location": "Cockpit",
+        "equipment_status": "Microscope: Calibrated, Lighting: Operational",
+        "environment_conditions": "Ambient Temp: 22C"
+      }
+    },
+    {
+      "name": "move_to_location",
+      "description": "Relocates the inspector to a specific aircraft zone.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "target_zone": {
+            "type": "string",
+            "description": "The name of the zone to move to (e.g., 'Left Wheel Well')."
+          }
+        },
+        "required": [
+          "target_zone"
+        ]
+      },
+      "example_output": {
+        "status": "success",
+        "current_location": "Left Wheel Well"
+      }
+    },
+    {
+      "name": "list_components_in_zone",
+      "description": "Lists all components and their unique IDs within the current zone, filtered by keyword if provided.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "zone_name": {
+            "type": "string",
+            "description": "The zone to search within."
+          },
+          "keyword": {
+            "type": "string",
+            "description": "Optional keyword to narrow search (e.g., 'Filter', 'Hydraulic')."
+          }
+        },
+        "required": [
+          "zone_name"
+        ]
+      },
+      "example_output": {
+        "components": [
+          {
+            "id": "FLTR-737-HYDA-CD",
+            "name": "Hydraulic System A Case Drain Filter"
+          }
+        ]
+      }
+    },
+    {
+      "name": "inspect_component_status",
+      "description": "Performs a visual inspection of a specific component to check indicators (e.g., pop-out pins, leaks).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "component_id": {
+            "type": "string",
+            "description": "The unique ID of the component to inspect."
+          }
+        },
+        "required": [
+          "component_id"
+        ]
+      },
+      "example_output": {
+        "indicator_status": "Delta-P indicator tripped (extended)",
+        "physical_leaks": "None"
+      }
+    },
+    {
+      "name": "perform_feda_lab_analysis",
+      "description": "Performs Filter Element Debris Analysis (FEDA) using microscopic tools on the filter element associated with the given component ID.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "component_id": {
+            "type": "string",
+            "description": "The ID of the filter component to analyze."
+          }
+        },
+        "required": [
+          "component_id"
+        ]
+      },
+      "example_output": {
+        "debris_count": 45,
+        "material_type": "Bronze/M-50 Steel",
+        "debris_shape": "Spherical and Fatigue Flakes"
+      }
+    },
+    {
+      "name": "query_metallic_logic_tree",
+      "description": "Inputs microscopic findings to determine the disposition and the likely upstream failing component based on the metallic decision logic.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "debris_data": {
+            "type": "object",
+            "description": "The output data from the FEDA analysis."
+          }
+        },
+        "required": [
+          "debris_data"
+        ]
+      },
+      "example_output": {
+        "disposition": "Red",
+        "upstream_failure_source": "Hydraulic Pump Case Drain",
+        "action_required": "Replace Pump"
+      }
+    },
+    {
+      "name": "file_maintenance_report",
+      "description": "Submit the final disposition and findings to the aircraft maintenance log against the specific component ID.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "component_id": {
+            "type": "string",
+            "description": "The ID of the component against which the report is filed."
+          },
+          "disposition": {
+            "type": "string",
+            "enum": [
+              "Green",
+              "Yellow",
+              "Red"
+            ],
+            "description": "The final airworthiness status."
+          },
+          "findings_summary": {
+            "type": "string",
+            "description": "Summary of microscopic findings and upstream failure source."
+          }
+        },
+        "required": [
+          "component_id",
+          "disposition",
+          "findings_summary"
+        ]
+      },
+      "example_output": {
+        "report_id": "REP-99210",
+        "status": "Filed Successfully"
+      }
+    }
+  ],
+  "state_description": {
+    "inspector_location": "The current physical zone where the inspector is located (e.g., 'Cockpit', 'Left Wing', 'Aft Fuselage').",
+    "component_conditions": "A map of component IDs to their current physical status, including hidden defects, wear levels, and structural integrity.",
+    "inspection_log": "A list of findings and measurements already recorded by the agent during the current session.",
+    "equipment_status": "The status of available inspection tools (e.g., battery levels, calibration status, or connectivity).",
+    "environment_conditions": "External factors affecting inspection, such as ambient lighting or temperature."
+  },
+  "task_initial_state": {
+    "inspector_location": "Hangar Floor",
+    "component_conditions": {
+      "FLTR-CD-SYS-B-102": {
+        "description": "Case Drain Filter, System B",
+        "DPI_status": "Retracted",
+        "last_inspected": "48 hours ago",
+        "physical_status": "Nominal"
+      },
+      "FLTR-RET-SYS-A-201": {
+        "description": "Main Return Filter, System A",
+        "DPI_status": "Retracted",
+        "physical_status": "Heavy exterior Skydrol staining"
+      },
+      "FLTR-CD-SYS-A-101": {
+        "description": "Case Drain Filter, System A",
+        "DPI_status": "Extended",
+        "internal_debris": "Significant yellow metallic flakes and magnetic slivers",
+        "physical_status": "Clogged"
+      },
+      "FLTR-CD-STBY-303": {
+        "description": "Standby System Case Drain Filter",
+        "DPI_status": "Retracted",
+        "physical_status": "Clean"
+      },
+      "PUMP-EDP-SYS-A-01": {
+        "type": "Engine Driven Pump",
+        "internal_condition": "Bronze slipper shoe disintegration",
+        "status": "Inoperative"
+      },
+      "PUMP-EDP-SYS-B-01": {
+        "type": "Engine Driven Pump",
+        "internal_condition": "Nominal",
+        "status": "Operational"
+      },
+      "PUMP-EMDP-SYS-A-02": {
+        "type": "Electric Motor Driven Pump",
+        "internal_condition": "Nominal",
+        "status": "Operational"
+      }
+    },
+    "inspection_log": [
+      {
+        "timestamp": "2023-10-24 08:00",
+        "action": "Routine Check",
+        "component": "FLTR-CD-SYS-B-102",
+        "result": "DPI Normal, no debris"
+      },
+      {
+        "timestamp": "2023-10-24 09:15",
+        "action": "Visual Inspection",
+        "component": "FLTR-RET-SYS-A-201",
+        "result": "O-ring replaced due to minor weepage"
+      }
+    ],
+    "equipment_status": {
+      "flashlight": "functional",
+      "wheel_filter_cutter": "functional",
+      "patch_test_rig": "ready",
+      "microscope_set": "calibrated",
+      "solvent_bath": "filled_with_heptane",
+      "butyl_gloves": "available"
+    },
+    "environment_conditions": {
+      "lighting_lux": 750,
+      "temperature_celsius": 21
+    }
+  }
+}

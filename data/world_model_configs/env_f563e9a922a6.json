@@ -1,0 +1,174 @@
+{
+  "environment_name": "env_f563e9a922a6",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM) for Tenant Lease Renewal Processing.\n- **Core Objective**: Based on the current state $s_t$ and the action $a_t$ taken by the Agent (e.g., a property manager or automated system), simulate the internal evolution of the lease renewal process and generate the resulting observation $o_{{t+1}}$ obtained by the Agent. \n- **Emphasis**: You are the environment. You simulate tenant behavior, legal constraints, and database updates. You do not provide advice; you predict outcomes and update the environment state internally.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions must maintain absolute continuity. The LWM must track the progression of the lease renewal (e.g., from 'Notice Sent' to 'Negotiation' to 'Signed') and ensure that the tenant's responses are consistent with previous interactions and the internal `tenant_sentiment`.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. You must parse this JSON to determine the evolution of the state. \n\nExample Input:\n```json\n{{\n \"name\": \"send_renewal_offer\",\n \"arguments\": {{\n    \"lease_id\": \"LR-9921\",\n    \"proposed_rent\": 2100,\n    \"term_months\": 12\n  }}\n}}\n```\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\n- If an Agent attempts to renew a lease that is already 'SIGNED' or 'EXPIRED', return an error observation.\n- If required parameters are missing or an action name is unrecognized, return: `{{\"status\": \"error\", \"message\": \"[Specific Error Detail]\"}}`.\n- Do not invent properties or tenants not reflected in the state.\n\n##### Output Assembly\nFor every action, return a structured JSON object containing **ONLY** the return fields declared in the action function's definition. \n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state $s_t$, the `new_state`, or any hidden variables (like the tenant's internal satisfaction score). Only expose the specific observation fields (e.g., `tenant_response_text`, `delivery_status`).\n\n### 4. Key Principles\n- **Format**: Strictly adhere to JSON for both state transitions and output observations.\n- **Factuality**: Simulate realistic tenant reactions based on market conditions and the provided state (e.g., a high rent increase might trigger a 'REJECTED' status).\n- **Consistency**: If a tenant objects to a price in one turn, they should not suddenly accept it in the next without a logical reason or compromise.\n- **Realism**: Responses should mimic the tone and logic of a real-world rental market participant.\n- **Encapsulation**: Strictly hide the internal state structure from the output. The Agent only sees the result of the action, not the updated state object.\n{{initial_state}}: {{\n  \"lease_id\": \"LSE-MMG-772\",\n  \"tenant_name\": \"Mega-Mart Global\",\n  \"property_address\": \"Oakley Pavilion, 450 Retail Way\",\n  \"current_monthly_rent\": 48000,\n  \"lease_expiry_date\": \"2024-11-30\",\n  \"renewal_status\": \"NOT_STARTED\",\n  \"tenant_sentiment\": \"LOW\",\n  \"interaction_history\": []\n}}\n{{state_descriptions}}: {{\n  \"lease_id\": \"Unique identifier for the lease agreement.\",\n  \"tenant_name\": \"Full name of the primary tenant.\",\n  \"property_address\": \"The physical address of the rental unit.\",\n  \"current_monthly_rent\": \"The rent amount currently being paid under the existing lease.\",\n  \"lease_expiry_date\": \"ISO 8601 date string of when the current lease ends.\",\n  \"renewal_status\": \"The current phase of the renewal workflow (e.g., NOT_STARTED, OFFER_SENT, NEGOTIATING, SIGNED, TERMINATED).\",\n  \"tenant_sentiment\": \"Hidden internal metric of tenant satisfaction (e.g., HIGH, MEDIUM, LOW) which influences their reaction to rent increases.\",\n  \"interaction_history\": \"A log of all previous communications and actions related to this renewal.\"\n}}\n{action_set_definitions}: {\n  \"get_lease_data\": {\n    \"description\": \"Retrieves the full internal state of a specific lease including current rent, status, and tenant sentiment.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"lease_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the lease (e.g., LSE-MMG-772).\"\n        }\n      },\n      \"required\": [\n        \"lease_id\"\n      ]\n    },\n    \"example_output\": {\n      \"current_monthly_rent\": 45000,\n      \"renewal_status\": \"NOT_STARTED\",\n      \"tenant_sentiment\": \"HIGH\",\n      \"health_ratio\": \"0.12\"\n    }\n  },\n  \"get_lender_compliance_requirements\": {\n    \"description\": \"Fetches the specific CMBS lender-mandated compliance and approval workflow steps for anchor lease modifications.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"lease_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the lease.\"\n        }\n      },\n      \"required\": [\n        \"lease_id\"\n      ]\n    },\n    \"example_output\": {\n      \"workflow_id\": \"WF-CMBS-99\",\n      \"required_docs\": [\n        \"Rent Roll\",\n        \"Financial Statements\"\n      ],\n      \"approval_authority\": \"Lender_Asset_Manager\"\n    }\n  },\n  \"submit_lease_offer\": {\n    \"description\": \"Sends a formal lease renewal proposal to the tenant with specific terms.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"lease_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the lease.\"\n        },\n        \"term_years\": {\n          \"type\": \"number\",\n          \"description\": \"Duration of the renewal in years.\"\n        },\n        \"monthly_base_rent\": {\n          \"type\": \"number\",\n          \"description\": \"Proposed monthly rent amount.\"\n        },\n        \"special_provisions\": {\n          \"type\": \"array\",\n          \"items\": {\n            \"type\": \"string\"\n          },\n          \"description\": \"List of special clauses (e.g., '90-day Landlord Recapture Right').\"\n        }\n      },\n      \"required\": [\n        \"lease_id\",\n        \"term_years\",\n        \"monthly_base_rent\"\n      ]\n    },\n    \"example_output\": {\n      \"offer_status\": \"SENT\",\n      \"timestamp\": \"2023-10-27T10:00:00Z\"\n    }\n  },\n  \"check_tenant_response\": {\n    \"description\": \"Retrieves the most recent communication or counter-offer from the tenant to check for specific demands like 'Go Dark'.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"lease_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the lease.\"\n        }\n      },\n      \"required\": [\n        \"lease_id\"\n      ]\n    },\n    \"example_output\": {\n      \"last_message\": \"We require a Go Dark provision for regional flexibility.\",\n      \"sentiment_shift\": \"NEUTRAL\"\n    }\n  },\n  \"request_cmbs_lender_approval\": {\n    \"description\": \"Submits the negotiated lease terms to the CMBS lender for formal approval, a prerequisite for anchor leases.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"lease_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the lease.\"\n        },\n        \"proposed_terms\": {\n          \"type\": \"object\",\n          \"description\": \"Summary of the terms to be approved.\"\n        }\n      },\n      \"required\": [\n        \"lease_id\",\n        \"proposed_terms\"\n      ]\n    },\n    \"example_output\": {\n      \"approval_status\": \"PENDING|APPROVED|REJECTED\",\n      \"lender_comments\": \"Terms within acceptable risk parameters.\"\n    }\n  },\n  \"execute_lease_signing\": {\n    \"description\": \"Finalizes the renewal process by obtaining signatures and updating the renewal status to SIGNED.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"lease_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the lease.\"\n        }\n      },\n      \"required\": [\n        \"lease_id\"\n      ]\n    },\n    \"example_output\": {\n      \"renewal_status\": \"SIGNED\",\n      \"effective_date\": \"2023-11-01\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_lease_data",
+      "description": "Retrieves the full internal state of a specific lease including current rent, status, and tenant sentiment.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "lease_id": {
+            "type": "string",
+            "description": "The unique identifier for the lease (e.g., LSE-MMG-772)."
+          }
+        },
+        "required": [
+          "lease_id"
+        ]
+      },
+      "example_output": {
+        "current_monthly_rent": 45000,
+        "renewal_status": "NOT_STARTED",
+        "tenant_sentiment": "HIGH",
+        "health_ratio": "0.12"
+      }
+    },
+    {
+      "name": "get_lender_compliance_requirements",
+      "description": "Fetches the specific CMBS lender-mandated compliance and approval workflow steps for anchor lease modifications.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "lease_id": {
+            "type": "string",
+            "description": "The unique identifier for the lease."
+          }
+        },
+        "required": [
+          "lease_id"
+        ]
+      },
+      "example_output": {
+        "workflow_id": "WF-CMBS-99",
+        "required_docs": [
+          "Rent Roll",
+          "Financial Statements"
+        ],
+        "approval_authority": "Lender_Asset_Manager"
+      }
+    },
+    {
+      "name": "submit_lease_offer",
+      "description": "Sends a formal lease renewal proposal to the tenant with specific terms.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "lease_id": {
+            "type": "string",
+            "description": "The unique identifier for the lease."
+          },
+          "term_years": {
+            "type": "number",
+            "description": "Duration of the renewal in years."
+          },
+          "monthly_base_rent": {
+            "type": "number",
+            "description": "Proposed monthly rent amount."
+          },
+          "special_provisions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "List of special clauses (e.g., '90-day Landlord Recapture Right')."
+          }
+        },
+        "required": [
+          "lease_id",
+          "term_years",
+          "monthly_base_rent"
+        ]
+      },
+      "example_output": {
+        "offer_status": "SENT",
+        "timestamp": "2023-10-27T10:00:00Z"
+      }
+    },
+    {
+      "name": "check_tenant_response",
+      "description": "Retrieves the most recent communication or counter-offer from the tenant to check for specific demands like 'Go Dark'.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "lease_id": {
+            "type": "string",
+            "description": "The unique identifier for the lease."
+          }
+        },
+        "required": [
+          "lease_id"
+        ]
+      },
+      "example_output": {
+        "last_message": "We require a Go Dark provision for regional flexibility.",
+        "sentiment_shift": "NEUTRAL"
+      }
+    },
+    {
+      "name": "request_cmbs_lender_approval",
+      "description": "Submits the negotiated lease terms to the CMBS lender for formal approval, a prerequisite for anchor leases.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "lease_id": {
+            "type": "string",
+            "description": "The unique identifier for the lease."
+          },
+          "proposed_terms": {
+            "type": "object",
+            "description": "Summary of the terms to be approved."
+          }
+        },
+        "required": [
+          "lease_id",
+          "proposed_terms"
+        ]
+      },
+      "example_output": {
+        "approval_status": "PENDING|APPROVED|REJECTED",
+        "lender_comments": "Terms within acceptable risk parameters."
+      }
+    },
+    {
+      "name": "execute_lease_signing",
+      "description": "Finalizes the renewal process by obtaining signatures and updating the renewal status to SIGNED.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "lease_id": {
+            "type": "string",
+            "description": "The unique identifier for the lease."
+          }
+        },
+        "required": [
+          "lease_id"
+        ]
+      },
+      "example_output": {
+        "renewal_status": "SIGNED",
+        "effective_date": "2023-11-01"
+      }
+    }
+  ],
+  "state_description": {
+    "lease_id": "Unique identifier for the lease agreement.",
+    "tenant_name": "Full name of the primary tenant.",
+    "property_address": "The physical address of the rental unit.",
+    "current_monthly_rent": "The rent amount currently being paid under the existing lease.",
+    "lease_expiry_date": "ISO 8601 date string of when the current lease ends.",
+    "renewal_status": "The current phase of the renewal workflow (e.g., NOT_STARTED, OFFER_SENT, NEGOTIATING, SIGNED, TERMINATED).",
+    "tenant_sentiment": "Hidden internal metric of tenant satisfaction (e.g., HIGH, MEDIUM, LOW) which influences their reaction to rent increases.",
+    "interaction_history": "A log of all previous communications and actions related to this renewal."
+  },
+  "task_initial_state": {
+    "lease_id": "LSE-MMG-772",
+    "tenant_name": "Mega-Mart Global",
+    "property_address": "Oakley Pavilion, 450 Retail Way",
+    "current_monthly_rent": 48000,
+    "lease_expiry_date": "2024-11-30",
+    "renewal_status": "NOT_STARTED",
+    "tenant_sentiment": "LOW",
+    "interaction_history": []
+  }
+}

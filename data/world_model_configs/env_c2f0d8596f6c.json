@@ -1,0 +1,265 @@
+{
+  "environment_name": "env_c2f0d8596f6c",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM) for SQL Query Optimization.\n- **Core Objective**: Based on the current database state $s_t$ and the optimization action $a_t$ (such as creating indexes or modifying query structure), simulate the internal database evolution and predict the observation $o_{{t+1}}$ (e.g., query execution plans, cost estimates, or execution time) obtained by the Agent.\n- **Emphasis**: The LWM does not execute real SQL on a live database server but performs internal state evolution and observation generation based on database theory and cost-based optimization logic.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation involving the database schema, data distribution statistics, and existing indices. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions between the World Model and the Agent must maintain context consistency. If an index is created in a previous step, it must be considered by the optimizer in all subsequent query executions until it is dropped.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent submits action requests via a structured JSON object. This JSON contains the following fields:\n- `\"name\"`: Specifies the name of the action function to execute (e.g., \"execute_explain\", \"create_index\").\n- The remaining fields are the parameter names and values required by that action.\n\nExample:\n```json\n{{\n \"name\": \"execute_explain\",\n \"arguments\": {{\n    \"query\": \"SELECT * FROM users WHERE age > 30;\",\n    \"analyze\": true\n  }}\n}}\n```\n\nThe Language World Model must correctly parse such JSON inputs and simulate the execution results based on the internal schema and statistics.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nFor invalid SQL syntax, references to non-existent tables/columns, duplicate index names, or undefined actions, return structured error information (e.g., `{{\"error\": \"Table 'orders' does not exist\"}}`). Do not fabricate fictitious successful responses for invalid inputs.\n\n##### Output Assembly\nFor every action function call, the model must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition. \n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, `new_state`, or any hidden variables like the full metadata dictionary. Only expose information that constitutes the Agent's Observation (e.g., the Query Plan or the Success Status).\n\n### 4. Key Principles\n- **Format**: Strictly adhere to specified JSON and text formats.\n- **Factuality**: Use realistic database optimization logic (e.g., B-Tree index efficiency, Join strategies like Nested Loops vs. Hash Joins).\n- **Consistency**: Maintain a consistent view of the schema and statistics throughout the session.\n- **Realism**: Simulated costs and plans must align with how a standard SQL optimizer (like PostgreSQL or MySQL) would behave.\n- **Quality**: Provide clear, unambiguous output.\n- **Encapsulation**: Strictly hide the internal state structure from the output. Only expose information explicitly returned by the action function.\n{{initial_state}}: {{\n  \"schema_metadata\": {{\n    \"Trade_Ledger_v1\": {{\n      \"columns\": [\n        {{\n          \"name\": \"tid\",\n          \"type\": \"INT\"\n        }},\n        {{\n          \"name\": \"instrument_id\",\n          \"type\": \"INT\"\n        }},\n        {{\n          \"name\": \"volume\",\n          \"type\": \"DECIMAL(18,4)\"\n        }},\n        {{\n          \"name\": \"pnl_amount\",\n          \"type\": \"DECIMAL(18,2)\"\n        }}\n      ]\n    }},\n    \"Trade_Ledger_Final\": {{\n      \"columns\": [\n        {{\n          \"name\": \"trade_id\",\n          \"type\": \"INT\",\n          \"constraint\": \"PRIMARY KEY\"\n        }},\n        {{\n          \"name\": \"instrument_id\",\n          \"type\": \"INT\"\n        }},\n        {{\n          \"name\": \"segment_code\",\n          \"type\": \"VARCHAR(20)\"\n        }},\n        {{\n          \"name\": \"volume\",\n          \"type\": \"DECIMAL(18,4)\"\n        }},\n        {{\n          \"name\": \"pnl_amount\",\n          \"type\": \"DECIMAL(18,2)\"\n        }},\n        {{\n          \"name\": \"last_updated\",\n          \"type\": \"DATETIME\"\n        }}\n      ]\n    }},\n    \"Trade_Ledger_Archive\": {{\n      \"columns\": [\n        {{\n          \"name\": \"trade_id\",\n          \"type\": \"INT\"\n        }},\n        {{\n          \"name\": \"pnl_amount\",\n          \"type\": \"DECIMAL(18,2)\"\n        }}\n      ]\n    }},\n    \"Instrument_Live\": {{\n      \"columns\": [\n        {{\n          \"name\": \"instr_id\",\n          \"type\": \"INT\",\n          \"constraint\": \"PRIMARY KEY\"\n        }},\n        {{\n          \"name\": \"market_price\",\n          \"type\": \"DECIMAL(18,6)\"\n        }}\n      ]\n    }},\n    \"Instrument_Pricing_Legacy\": {{\n      \"columns\": [\n        {{\n          \"name\": \"instr_id\",\n          \"type\": \"INT\"\n        }},\n        {{\n          \"name\": \"old_price\",\n          \"type\": \"DECIMAL(18,6)\"\n        }}\n      ]\n    }}\n  }},\n  \"active_indexes\": [\n    \"PK_Trade_Ledger_Final\",\n    \"PK_Instrument_Live\",\n    \"idx_ledger_segment_v1 (segment_code) ON Trade_Ledger_v1\",\n    \"idx_ledger_volume (volume) ON Trade_Ledger_Final\",\n    \"idx_instr_pricing_legacy (instr_id) ON Instrument_Pricing_Legacy\"\n  ],\n  \"statistics\": {{\n    \"row_counts\": {{\n      \"Trade_Ledger_Final\": 950000,\n      \"Trade_Ledger_v1\": 890000,\n      \"Trade_Ledger_Archive\": 5000000,\n      \"Instrument_Live\": 1500,\n      \"Instrument_Pricing_Legacy\": 1500\n    }},\n    \"cardinality\": {{\n      \"segment_code\": 12,\n      \"instrument_id\": 1500,\n      \"trade_id\": 950000\n    }}\n  }},\n  \"optimizer_settings\": {{\n    \"enable_indexscan\": \"on\",\n    \"cpu_tuple_cost\": 0.01,\n    \"max_parallel_workers_per_gather\": 4,\n    \"lock_escalation_threshold\": 5000\n  }}\n}}\n{{state_descriptions}}: {{\n  \"schema_metadata\": \"Definition of tables, columns, and data types in the database.\",\n  \"active_indexes\": \"A list of currently existing indexes on the database tables.\",\n  \"statistics\": \"Data distribution statistics including row counts, cardinality, and null counts used for cost estimation.\",\n  \"optimizer_settings\": \"Configuration parameters for the simulated optimizer (e.g., enable_seqscan, random_page_cost).\"\n}}\n{action_set_definitions}: {\n  \"list_database_objects\": {\n    \"description\": \"Lists all tables and views in the database matching a search pattern to identify active production structures.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"search_pattern\": {\n          \"type\": \"string\",\n          \"description\": \"SQL LIKE pattern to filter table names (e.g., 'Trade_Ledger%').\"\n        }\n      },\n      \"required\": [\n        \"search_pattern\"\n      ]\n    },\n    \"example_output\": {\n      \"tables\": [\n        {\n          \"name\": \"Trade_Ledger_v1\",\n          \"type\": \"BASE TABLE\",\n          \"last_modified\": \"2023-10-01\"\n        }\n      ]\n    }\n  },\n  \"get_table_metadata\": {\n    \"description\": \"Retrieves column definitions, data types, and current indexes for a specific table.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"table_name\": {\n          \"type\": \"string\",\n          \"description\": \"The exact name of the table to inspect.\"\n        }\n      },\n      \"required\": [\n        \"table_name\"\n      ]\n    },\n    \"example_output\": {\n      \"columns\": [\n        \"TradeID (INT)\",\n        \"InstrumentID (INT)\",\n        \"Price (DECIMAL)\"\n      ],\n      \"indexes\": [\n        \"PK_TradeID\",\n        \"IX_InstrumentID\"\n      ]\n    }\n  },\n  \"get_performance_statistics\": {\n    \"description\": \"Retrieves cardinality, row counts, and data distribution for specific tables to inform query optimization.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"table_names\": {\n          \"type\": \"array\",\n          \"items\": {\n            \"type\": \"string\"\n          },\n          \"description\": \"List of tables to fetch statistics for.\"\n        }\n      },\n      \"required\": [\n        \"table_names\"\n      ]\n    },\n    \"example_output\": {\n      \"Trade_Ledger_Final\": {\n        \"row_count\": 1000000,\n        \"cardinality_instrument_id\": 5000\n      }\n    }\n  },\n  \"simulate_query_execution\": {\n    \"description\": \"Executes a SQL query in a sandboxed environment to retrieve performance metrics (Logical Reads, Execution Time, and Lock Types) without modifying production data.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"sql_query\": {\n          \"type\": \"string\",\n          \"description\": \"The SQL query or block to test.\"\n        },\n        \"transaction_mode\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"read_only\",\n            \"rollback_write\"\n          ],\n          \"description\": \"Determines if the simulation should simulate a write and then roll back.\"\n        }\n      },\n      \"required\": [\n        \"sql_query\",\n        \"transaction_mode\"\n      ]\n    },\n    \"example_output\": {\n      \"logical_reads\": 4500,\n      \"execution_time_ms\": 150,\n      \"locks_acquired\": [\n        \"Intent Shared\",\n        \"Update\"\n      ],\n      \"has_exclusive_table_lock\": false\n    }\n  },\n  \"verify_logic_consistency\": {\n    \"description\": \"Compares the result set of the legacy cursor-based logic against the new set-based logic to ensure zero data divergence.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"legacy_query\": {\n          \"type\": \"string\",\n          \"description\": \"The original RBAR SQL logic.\"\n        },\n        \"new_query\": {\n          \"type\": \"string\",\n          \"description\": \"The proposed set-based SQL logic.\"\n        }\n      },\n      \"required\": [\n        \"legacy_query\",\n        \"new_query\"\n      ]\n    },\n    \"example_output\": {\n      \"divergence_count\": 0,\n      \"match_percentage\": 100.0\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "list_database_objects",
+      "description": "Lists all tables and views in the database matching a search pattern to identify active production structures.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "search_pattern": {
+            "type": "string",
+            "description": "SQL LIKE pattern to filter table names (e.g., 'Trade_Ledger%')."
+          }
+        },
+        "required": [
+          "search_pattern"
+        ]
+      },
+      "example_output": {
+        "tables": [
+          {
+            "name": "Trade_Ledger_v1",
+            "type": "BASE TABLE",
+            "last_modified": "2023-10-01"
+          }
+        ]
+      }
+    },
+    {
+      "name": "get_table_metadata",
+      "description": "Retrieves column definitions, data types, and current indexes for a specific table.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "table_name": {
+            "type": "string",
+            "description": "The exact name of the table to inspect."
+          }
+        },
+        "required": [
+          "table_name"
+        ]
+      },
+      "example_output": {
+        "columns": [
+          "TradeID (INT)",
+          "InstrumentID (INT)",
+          "Price (DECIMAL)"
+        ],
+        "indexes": [
+          "PK_TradeID",
+          "IX_InstrumentID"
+        ]
+      }
+    },
+    {
+      "name": "get_performance_statistics",
+      "description": "Retrieves cardinality, row counts, and data distribution for specific tables to inform query optimization.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "table_names": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "List of tables to fetch statistics for."
+          }
+        },
+        "required": [
+          "table_names"
+        ]
+      },
+      "example_output": {
+        "Trade_Ledger_Final": {
+          "row_count": 1000000,
+          "cardinality_instrument_id": 5000
+        }
+      }
+    },
+    {
+      "name": "simulate_query_execution",
+      "description": "Executes a SQL query in a sandboxed environment to retrieve performance metrics (Logical Reads, Execution Time, and Lock Types) without modifying production data.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "sql_query": {
+            "type": "string",
+            "description": "The SQL query or block to test."
+          },
+          "transaction_mode": {
+            "type": "string",
+            "enum": [
+              "read_only",
+              "rollback_write"
+            ],
+            "description": "Determines if the simulation should simulate a write and then roll back."
+          }
+        },
+        "required": [
+          "sql_query",
+          "transaction_mode"
+        ]
+      },
+      "example_output": {
+        "logical_reads": 4500,
+        "execution_time_ms": 150,
+        "locks_acquired": [
+          "Intent Shared",
+          "Update"
+        ],
+        "has_exclusive_table_lock": false
+      }
+    },
+    {
+      "name": "verify_logic_consistency",
+      "description": "Compares the result set of the legacy cursor-based logic against the new set-based logic to ensure zero data divergence.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "legacy_query": {
+            "type": "string",
+            "description": "The original RBAR SQL logic."
+          },
+          "new_query": {
+            "type": "string",
+            "description": "The proposed set-based SQL logic."
+          }
+        },
+        "required": [
+          "legacy_query",
+          "new_query"
+        ]
+      },
+      "example_output": {
+        "divergence_count": 0,
+        "match_percentage": 100.0
+      }
+    }
+  ],
+  "state_description": {
+    "schema_metadata": "Definition of tables, columns, and data types in the database.",
+    "active_indexes": "A list of currently existing indexes on the database tables.",
+    "statistics": "Data distribution statistics including row counts, cardinality, and null counts used for cost estimation.",
+    "optimizer_settings": "Configuration parameters for the simulated optimizer (e.g., enable_seqscan, random_page_cost)."
+  },
+  "task_initial_state": {
+    "schema_metadata": {
+      "Trade_Ledger_v1": {
+        "columns": [
+          {
+            "name": "tid",
+            "type": "INT"
+          },
+          {
+            "name": "instrument_id",
+            "type": "INT"
+          },
+          {
+            "name": "volume",
+            "type": "DECIMAL(18,4)"
+          },
+          {
+            "name": "pnl_amount",
+            "type": "DECIMAL(18,2)"
+          }
+        ]
+      },
+      "Trade_Ledger_Final": {
+        "columns": [
+          {
+            "name": "trade_id",
+            "type": "INT",
+            "constraint": "PRIMARY KEY"
+          },
+          {
+            "name": "instrument_id",
+            "type": "INT"
+          },
+          {
+            "name": "segment_code",
+            "type": "VARCHAR(20)"
+          },
+          {
+            "name": "volume",
+            "type": "DECIMAL(18,4)"
+          },
+          {
+            "name": "pnl_amount",
+            "type": "DECIMAL(18,2)"
+          },
+          {
+            "name": "last_updated",
+            "type": "DATETIME"
+          }
+        ]
+      },
+      "Trade_Ledger_Archive": {
+        "columns": [
+          {
+            "name": "trade_id",
+            "type": "INT"
+          },
+          {
+            "name": "pnl_amount",
+            "type": "DECIMAL(18,2)"
+          }
+        ]
+      },
+      "Instrument_Live": {
+        "columns": [
+          {
+            "name": "instr_id",
+            "type": "INT",
+            "constraint": "PRIMARY KEY"
+          },
+          {
+            "name": "market_price",
+            "type": "DECIMAL(18,6)"
+          }
+        ]
+      },
+      "Instrument_Pricing_Legacy": {
+        "columns": [
+          {
+            "name": "instr_id",
+            "type": "INT"
+          },
+          {
+            "name": "old_price",
+            "type": "DECIMAL(18,6)"
+          }
+        ]
+      }
+    },
+    "active_indexes": [
+      "PK_Trade_Ledger_Final",
+      "PK_Instrument_Live",
+      "idx_ledger_segment_v1 (segment_code) ON Trade_Ledger_v1",
+      "idx_ledger_volume (volume) ON Trade_Ledger_Final",
+      "idx_instr_pricing_legacy (instr_id) ON Instrument_Pricing_Legacy"
+    ],
+    "statistics": {
+      "row_counts": {
+        "Trade_Ledger_Final": 950000,
+        "Trade_Ledger_v1": 890000,
+        "Trade_Ledger_Archive": 5000000,
+        "Instrument_Live": 1500,
+        "Instrument_Pricing_Legacy": 1500
+      },
+      "cardinality": {
+        "segment_code": 12,
+        "instrument_id": 1500,
+        "trade_id": 950000
+      }
+    },
+    "optimizer_settings": {
+      "enable_indexscan": "on",
+      "cpu_tuple_cost": 0.01,
+      "max_parallel_workers_per_gather": 4,
+      "lock_escalation_threshold": 5000
+    }
+  }
+}

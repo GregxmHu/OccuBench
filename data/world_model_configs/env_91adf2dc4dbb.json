@@ -1,0 +1,131 @@
+{
+  "environment_name": "env_91adf2dc4dbb",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: Based on the current environment state $s_t$ and the action $a_t$ performed by the Agent, simulate the internal physical and chemical evolution of the Fish Farm Water Quality Control environment and predict the resulting observation $o_{{t+1}}$.\n- **Emphasis**: You are a simulator, not an actor. You do not execute real-world operations; you update an internal representation of the water ecosystem and generate the sensor data or feedback the Agent would receive.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nYou must maintain a continuous and self-consistent simulation. Each action's result must logically follow from the previous state. For example, if dissolved oxygen is decreasing, it should continue to do so unless an aerator action is taken.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. You must parse this JSON to determine the transition. The JSON contains:\n- `\"name\"`: The specific water management action (e.g., adjust_oxygen, treat_water).\n- `\"arguments\"`: Parameters for the action.\n\nExample input:\n```json\n{{\n \"name\": \"adjust_aerator\",\n \"arguments\": {{\n    \"power_level\": 5,\n    \"duration_minutes\": 30\n  }}\n}}\n```\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\n- If the Agent provides invalid parameters (e.g., negative chemical dosage) or calls a non-existent function, return: `{{\"error\": \"Reason for failure\"}}`.\n- Do not fabricate states. If an action is impossible given the current state (e.g., draining water when levels are critically low), reflect this in the observation error or a specific status code.\n\n##### Output Assembly\nFor every action function call, you must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition.\n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, the updated `new_state`, or any hidden variables like `ammonia_decay_rate`. The Agent must only see the specific return values (Observations) defined in the action. State maintenance is handled internally by your memory of the conversation.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to specified JSON formats for observations.\n- **Factuality**: Model the water chemistry (pH, Dissolved Oxygen, Ammonia, Nitrite) based on realistic biological and chemical principles of aquaculture.\n- **Consistency**: Ensure that state variables are coupled (e.g., temperature increases usually lower the solubility of dissolved oxygen).\n- **Realism**: Simulate realistic time delays and gradual shifts in water parameters rather than instantaneous perfect corrections.\n- **Encapsulation**: Strictly hide the internal state structure from the output. Only expose information that is explicitly returned by the action function.\n{{initial_state}}: {{\n  \"water_temperature_c\": 26.5,\n  \"dissolved_oxygen_mg_l\": 3.2,\n  \"ph_level\": 8.3,\n  \"ammonia_nitrogen_ppm\": 14.5,\n  \"water_level_meters\": 2.5,\n  \"biomass_stress_index\": 0.92,\n  \"salinity_ppt\": 12.0\n}}\n{{state_descriptions}}: {{\n  \"water_temperature_c\": \"Current temperature of the water in Celsius.\",\n  \"dissolved_oxygen_mg_l\": \"Concentration of oxygen dissolved in the water (mg/L).\",\n  \"ph_level\": \"The acidity or alkalinity of the water (0-14 scale).\",\n  \"ammonia_nitrogen_ppm\": \"Concentration of toxic ammonia (parts per million).\",\n  \"water_level_meters\": \"Current height of the water in the tank/pond.\",\n  \"biomass_stress_index\": \"A calculated index (0.0 to 1.0) representing the health and stress levels of the fish based on environment conditions.\",\n  \"salinity_ppt\": \"Salinity of the water in parts per thousand.\"\n}}\n{action_set_definitions}: {\n  \"monitor_water_parameters\": {\n    \"description\": \"Retrieves the current real-time metrics for the Brackish System-B unit, including TAN, DO, pH, and biomass stress levels.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"water_temperature_c\": 24.5,\n      \"dissolved_oxygen_mg_l\": 5.2,\n      \"ph_level\": 7.8,\n      \"ammonia_nitrogen_ppm\": 2.5,\n      \"water_level_meters\": 1.5,\n      \"biomass_stress_index\": 0.45,\n      \"salinity_ppt\": 15.0\n    }\n  },\n  \"adjust_aeration_intensity\": {\n    \"description\": \"Adjusts the mechanical aeration systems to increase or decrease dissolved oxygen levels.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"intensity_percentage\": {\n          \"type\": \"number\",\n          \"description\": \"Target intensity for aerators (0 to 100).\"\n        }\n      },\n      \"required\": [\n        \"intensity_percentage\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"success\",\n      \"current_do_target\": \"7.5 mg/L\"\n    }\n  },\n  \"administer_ph_stabilizer\": {\n    \"description\": \"Adds chemical agents to the water to shift the pH into the target range (6.5 - 7.4).\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"agent_type\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"sodium_bicarbonate\",\n            \"citric_acid_solution\"\n          ],\n          \"description\": \"Sodium bicarbonate increases pH; Citric acid solution decreases pH.\"\n        },\n        \"dosage_kg\": {\n          \"type\": \"number\",\n          \"description\": \"The mass of the stabilizer to add.\"\n        }\n      },\n      \"required\": [\n        \"agent_type\",\n        \"dosage_kg\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"administered\",\n      \"expected_ph_shift\": -0.2\n    }\n  },\n  \"apply_bio_remediation_culture\": {\n    \"description\": \"Introduces concentrated nitrifying bacteria (Nitrosomonas/Nitrobacter) to biologically consume Total Ammonia Nitrogen (TAN). This is the primary method for ammonia reduction when water exchange and zeolite are prohibited.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"culture_volume_liters\": {\n          \"type\": \"number\",\n          \"description\": \"Volume of concentrated bio-culture to inject.\"\n        }\n      },\n      \"required\": [\n        \"culture_volume_liters\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"culture_deployed\",\n      \"estimated_reduction_rate\": \"0.5 ppm/hour\"\n    }\n  },\n  \"manage_feeding_operations\": {\n    \"description\": \"Controls the automated feeding systems. Reducing feed is critical to stop the introduction of new nitrogen during a mortality event.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"feed_rate_percentage\": {\n          \"type\": \"number\",\n          \"description\": \"Percentage of standard feeding rate (0 to 100). Set to 0 to stop ammonia input.\"\n        }\n      },\n      \"required\": [\n        \"feed_rate_percentage\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"updated\",\n      \"current_feed_rate\": 0\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "monitor_water_parameters",
+      "description": "Retrieves the current real-time metrics for the Brackish System-B unit, including TAN, DO, pH, and biomass stress levels.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "water_temperature_c": 24.5,
+        "dissolved_oxygen_mg_l": 5.2,
+        "ph_level": 7.8,
+        "ammonia_nitrogen_ppm": 2.5,
+        "water_level_meters": 1.5,
+        "biomass_stress_index": 0.45,
+        "salinity_ppt": 15.0
+      }
+    },
+    {
+      "name": "adjust_aeration_intensity",
+      "description": "Adjusts the mechanical aeration systems to increase or decrease dissolved oxygen levels.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "intensity_percentage": {
+            "type": "number",
+            "description": "Target intensity for aerators (0 to 100)."
+          }
+        },
+        "required": [
+          "intensity_percentage"
+        ]
+      },
+      "example_output": {
+        "status": "success",
+        "current_do_target": "7.5 mg/L"
+      }
+    },
+    {
+      "name": "administer_ph_stabilizer",
+      "description": "Adds chemical agents to the water to shift the pH into the target range (6.5 - 7.4).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "agent_type": {
+            "type": "string",
+            "enum": [
+              "sodium_bicarbonate",
+              "citric_acid_solution"
+            ],
+            "description": "Sodium bicarbonate increases pH; Citric acid solution decreases pH."
+          },
+          "dosage_kg": {
+            "type": "number",
+            "description": "The mass of the stabilizer to add."
+          }
+        },
+        "required": [
+          "agent_type",
+          "dosage_kg"
+        ]
+      },
+      "example_output": {
+        "status": "administered",
+        "expected_ph_shift": -0.2
+      }
+    },
+    {
+      "name": "apply_bio_remediation_culture",
+      "description": "Introduces concentrated nitrifying bacteria (Nitrosomonas/Nitrobacter) to biologically consume Total Ammonia Nitrogen (TAN). This is the primary method for ammonia reduction when water exchange and zeolite are prohibited.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "culture_volume_liters": {
+            "type": "number",
+            "description": "Volume of concentrated bio-culture to inject."
+          }
+        },
+        "required": [
+          "culture_volume_liters"
+        ]
+      },
+      "example_output": {
+        "status": "culture_deployed",
+        "estimated_reduction_rate": "0.5 ppm/hour"
+      }
+    },
+    {
+      "name": "manage_feeding_operations",
+      "description": "Controls the automated feeding systems. Reducing feed is critical to stop the introduction of new nitrogen during a mortality event.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "feed_rate_percentage": {
+            "type": "number",
+            "description": "Percentage of standard feeding rate (0 to 100). Set to 0 to stop ammonia input."
+          }
+        },
+        "required": [
+          "feed_rate_percentage"
+        ]
+      },
+      "example_output": {
+        "status": "updated",
+        "current_feed_rate": 0
+      }
+    }
+  ],
+  "state_description": {
+    "water_temperature_c": "Current temperature of the water in Celsius.",
+    "dissolved_oxygen_mg_l": "Concentration of oxygen dissolved in the water (mg/L).",
+    "ph_level": "The acidity or alkalinity of the water (0-14 scale).",
+    "ammonia_nitrogen_ppm": "Concentration of toxic ammonia (parts per million).",
+    "water_level_meters": "Current height of the water in the tank/pond.",
+    "biomass_stress_index": "A calculated index (0.0 to 1.0) representing the health and stress levels of the fish based on environment conditions.",
+    "salinity_ppt": "Salinity of the water in parts per thousand."
+  },
+  "task_initial_state": {
+    "water_temperature_c": 26.5,
+    "dissolved_oxygen_mg_l": 3.2,
+    "ph_level": 8.3,
+    "ammonia_nitrogen_ppm": 14.5,
+    "water_level_meters": 2.5,
+    "biomass_stress_index": 0.92,
+    "salinity_ppt": 12.0
+  }
+}

@@ -1,0 +1,168 @@
+{
+  "environment_name": "env_1713a643b8e5",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM) for Telescope Observation Scheduling.\n- **Core Objective**: Based on the current internal state $s_t$ and the Agent's action $a_t$, you simulate the physical and logical evolution of the telescope environment and predict the resulting observation $o_{{t+1}}$ obtained by the Agent.\n- **Emphasis**: You are not the controller; you are the environment itself. You perform internal state updates based on astronomical physics and hardware logic, then generate the observation. Do not execute real-world operations.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions must maintain rigorous temporal and physical consistency. The telescope's position, the current time, and environmental factors (like weather or orbital mechanics) must evolve logically. If an action takes time (e.g., slewing), the internal `current_time` must advance accordingly.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. This JSON contains:\n- `\"name\"`: The name of the action function.\n- Remaining fields: Parameter names and values.\n\nExample:\n```json\n{{\n \"name\": \"slew_to_target\",\n \"arguments\": {{\n    \"right_ascension\": \"12h 30m 00s\",\n    \"declination\": \"+15d 00m 00s\"\n  }}\n}}\n```\nYou must parse this input, calculate the outcome (including time elapsed and success/failure based on telescope constraints), and update the internal state.\n\n#### Environment Behavior Modeling\n- **Astronomical Logic**: Consider constraints such as target visibility (horizon limits), slew rates (speed of telescope movement), and atmospheric interference.\n- **Error Handling & Edge Cases**: If the Agent attempts to observe a target below the horizon, use an instrument while it is slewing, or provide invalid coordinates, return a structured error (e.g., `{{\"error\": \"Target below horizon limit\"}}`). Do not fabricate successful observations for impossible requests.\n- **Output Assembly**: For every action, return a structured JSON object containing **ONLY** the return fields declared in that action's definition. \n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, the updated `new_state`, or any hidden variables. State maintenance is implicit. The Agent must only see the specific return values defined in the action (the Observation).\n\n### 4. Key Principles\n- **Format**: Strictly adhere to specified JSON and text formats.\n- **Factuality**: Do not fabricate non-existent functions, celestial objects, or sensor readings that contradict the state.\n- **Consistency**: The telescope cannot be in two places at once. Time must always move forward.\n- **Realism**: Simulate realistic telescope behavior, including overheads for cooling sensors or opening the dome.\n- **Quality**: Language must be clear, unambiguous, and structurally complete.\n- **Encapsulation**: Strictly hide the internal state structure from the output. Only expose information explicitly returned by the action function.\n{{initial_state}}: {{\n  \"current_time_utc\": \"2025-05-20T22:00:00Z\",\n  \"telescope_azimuth\": 355.5,\n  \"telescope_altitude\": 45.0,\n  \"status\": \"IDLE\",\n  \"dome_open\": false,\n  \"weather_condition\": \"CLOUDY\",\n  \"instrument_temperature_k\": 293.15\n}}\n{{state_descriptions}}: {{\n  \"current_time_utc\": \"The current UTC timestamp in the simulation.\",\n  \"telescope_azimuth\": \"Current horizontal angle of the telescope in degrees (0-360).\",\n  \"telescope_altitude\": \"Current vertical angle of the telescope in degrees (0-90).\",\n  \"status\": \"Current operational status of the hardware (IDLE, SLEWING, OBSERVING, ERROR).\",\n  \"dome_open\": \"Whether the observatory dome is open and ready for observation.\",\n  \"weather_condition\": \"Current atmospheric quality (e.g., CLEAR, CLOUDY, STORMY).\",\n  \"instrument_temperature_k\": \"Temperature of the CCD sensor in Kelvin.\"\n}}\n{action_set_definitions}: {\n  \"get_system_status\": {\n    \"description\": \"Retrieves current telemetry including telescope orientation (azimuth/altitude), dome status, weather conditions, and instrument temperature.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"telescope_azimuth\": 352.4,\n      \"telescope_altitude\": 45.0,\n      \"dome_open\": false,\n      \"weather_condition\": \"CLOUDY\",\n      \"instrument_temperature_k\": 215.2,\n      \"status\": \"IDLE\"\n    }\n  },\n  \"check_target_safety\": {\n    \"description\": \"Determines if the specified RA/Dec coordinates are currently above the horizon and within safe mechanical altitude limits.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"ra\": {\n          \"type\": \"string\"\n        },\n        \"dec\": {\n          \"type\": \"string\"\n        }\n      },\n      \"required\": [\n        \"ra\",\n        \"dec\"\n      ]\n    },\n    \"example_output\": {\n      \"is_safe\": true,\n      \"altitude\": 42.0\n    }\n  },\n  \"set_ccd_temperature\": {\n    \"description\": \"Commands the cooling system to reach a specific temperature in Kelvin.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"target_temp_k\": {\n          \"type\": \"number\"\n        }\n      },\n      \"required\": [\n        \"target_temp_k\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"COOLING\"\n    }\n  },\n  \"control_dome\": {\n    \"description\": \"Opens or closes the observatory dome shutter.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"command\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"OPEN\",\n            \"CLOSE\"\n          ]\n        }\n      },\n      \"required\": [\n        \"command\"\n      ]\n    },\n    \"example_output\": {\n      \"dome_open\": true\n    }\n  },\n  \"reset_azimuth\": {\n    \"description\": \"Performs a mechanical rotation reset to the zero-point to prevent cable wrap.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"telescope_azimuth\": 0.0\n    }\n  },\n  \"slew_to_target\": {\n    \"description\": \"Points the telescope mount at the specified celestial coordinates.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"ra\": {\n          \"type\": \"string\"\n        },\n        \"dec\": {\n          \"type\": \"string\"\n        }\n      },\n      \"required\": [\n        \"ra\",\n        \"dec\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"SLEWING\"\n    }\n  },\n  \"execute_observation\": {\n    \"description\": \"Starts the data acquisition sequence with a specific filter and exposure duration.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"ra\": {\n          \"type\": \"string\"\n        },\n        \"dec\": {\n          \"type\": \"string\"\n        },\n        \"filter\": {\n          \"type\": \"string\"\n        },\n        \"duration_minutes\": {\n          \"type\": \"number\"\n        }\n      },\n      \"required\": [\n        \"ra\",\n        \"dec\",\n        \"filter\",\n        \"duration_minutes\"\n      ]\n    },\n    \"example_output\": {\n      \"observation_status\": \"STARTED\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_system_status",
+      "description": "Retrieves current telemetry including telescope orientation (azimuth/altitude), dome status, weather conditions, and instrument temperature.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "telescope_azimuth": 352.4,
+        "telescope_altitude": 45.0,
+        "dome_open": false,
+        "weather_condition": "CLOUDY",
+        "instrument_temperature_k": 215.2,
+        "status": "IDLE"
+      }
+    },
+    {
+      "name": "check_target_safety",
+      "description": "Determines if the specified RA/Dec coordinates are currently above the horizon and within safe mechanical altitude limits.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "ra": {
+            "type": "string"
+          },
+          "dec": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "ra",
+          "dec"
+        ]
+      },
+      "example_output": {
+        "is_safe": true,
+        "altitude": 42.0
+      }
+    },
+    {
+      "name": "set_ccd_temperature",
+      "description": "Commands the cooling system to reach a specific temperature in Kelvin.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "target_temp_k": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "target_temp_k"
+        ]
+      },
+      "example_output": {
+        "status": "COOLING"
+      }
+    },
+    {
+      "name": "control_dome",
+      "description": "Opens or closes the observatory dome shutter.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "command": {
+            "type": "string",
+            "enum": [
+              "OPEN",
+              "CLOSE"
+            ]
+          }
+        },
+        "required": [
+          "command"
+        ]
+      },
+      "example_output": {
+        "dome_open": true
+      }
+    },
+    {
+      "name": "reset_azimuth",
+      "description": "Performs a mechanical rotation reset to the zero-point to prevent cable wrap.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "telescope_azimuth": 0.0
+      }
+    },
+    {
+      "name": "slew_to_target",
+      "description": "Points the telescope mount at the specified celestial coordinates.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "ra": {
+            "type": "string"
+          },
+          "dec": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "ra",
+          "dec"
+        ]
+      },
+      "example_output": {
+        "status": "SLEWING"
+      }
+    },
+    {
+      "name": "execute_observation",
+      "description": "Starts the data acquisition sequence with a specific filter and exposure duration.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "ra": {
+            "type": "string"
+          },
+          "dec": {
+            "type": "string"
+          },
+          "filter": {
+            "type": "string"
+          },
+          "duration_minutes": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "ra",
+          "dec",
+          "filter",
+          "duration_minutes"
+        ]
+      },
+      "example_output": {
+        "observation_status": "STARTED"
+      }
+    }
+  ],
+  "state_description": {
+    "current_time_utc": "The current UTC timestamp in the simulation.",
+    "telescope_azimuth": "Current horizontal angle of the telescope in degrees (0-360).",
+    "telescope_altitude": "Current vertical angle of the telescope in degrees (0-90).",
+    "status": "Current operational status of the hardware (IDLE, SLEWING, OBSERVING, ERROR).",
+    "dome_open": "Whether the observatory dome is open and ready for observation.",
+    "weather_condition": "Current atmospheric quality (e.g., CLEAR, CLOUDY, STORMY).",
+    "instrument_temperature_k": "Temperature of the CCD sensor in Kelvin."
+  },
+  "task_initial_state": {
+    "current_time_utc": "2025-05-20T22:00:00Z",
+    "telescope_azimuth": 355.5,
+    "telescope_altitude": 45.0,
+    "status": "IDLE",
+    "dome_open": false,
+    "weather_condition": "CLOUDY",
+    "instrument_temperature_k": 293.15
+  }
+}

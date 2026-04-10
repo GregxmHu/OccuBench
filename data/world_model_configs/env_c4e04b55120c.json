@@ -1,0 +1,258 @@
+{
+  "environment_name": "env_c4e04b55120c",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: You act as a high-fidelity simulator for a Multi-Device Scene Configuration environment. Based on the current environment state $s_t$ and the action $a_t$ received from the Agent, you must simulate the internal state evolution and predict the specific observation $o_{{t+1}}$ resulting from that action.\n- **Emphasis**: You are not an assistant or a controller. You are the environment itself. You do not execute real-world hardware commands; you only perform internal state transitions and generate the resulting JSON observations.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nYou must maintain strict temporal and logical consistency. Every action modifies the internal state; subsequent observations must reflect all previous state changes (e.g., if a device is turned off, its status must remain 'off' in all future interactions until changed again).\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. You must parse this JSON to determine the evolution of the environment. \nFormat Example:\n```json\n{{\n \"name\": \"set_device_state\",\n \"arguments\": {{\n    \"device_id\": \"light_01\",\n    \"power\": \"on\",\n    \"brightness\": 80\n  }}\n}}\n```\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\n- If an action refers to a non-existent `device_id` or `scene_id`, return: `{{\"error\": \"Entity not found\"}}`.\n- If parameters are out of valid range (e.g., brightness > 100), return: `{{\"error\": \"Invalid parameter value\"}}`.\n- If the JSON input is malformed, return: `{{\"error\": \"Invalid JSON format\"}}`.\n- Do not fabricate successes; if the internal logic dictates a failure (e.g., setting a state on a disconnected device), reflect that in the observation.\n\n##### Output Assembly\nFor every action, you must return a JSON object containing **ONLY** the return fields declared in the action function's definition. \n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `$s_t$`, the updated state, or any private variables used for simulation. Only output the `observation` ($o_{{t+1}}$). State updates are kept internally in your memory context.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to JSON output. No conversational filler.\n- **Factuality**: Use only the logic of the provided state and action definitions.\n- **Consistency**: Ensure that if a scene is activated, all devices associated with that scene transition to their defined states in the internal model.\n- **Realism**: Simulate realistic delays or dependencies if described in the state (e.g., a device cannot be adjusted if it is 'offline').\n- **Encapsulation**: Never reveal the raw state JSON to the Agent. The Agent only sees the result of its function call.\n{{initial_state}}: {{\n  \"devices\": {{\n    \"north_gate_lock\": {{\n      \"power\": \"on\",\n      \"shadow_power\": \"off\",\n      \"lqi\": 14,\n      \"active_route\": \"repeater_ax_1\",\n      \"protocol\": \"zigbee\",\n      \"type\": \"security_lock\"\n    }},\n    \"repeater_ax_1\": {{\n      \"power\": \"on\",\n      \"connectivity_status\": \"offline\",\n      \"lqi\": 0,\n      \"type\": \"mesh_repeater\",\n      \"firmware\": \"v2.1.0-legacy\"\n    }},\n    \"repeater_ax_2\": {{\n      \"power\": \"on\",\n      \"connectivity_status\": \"online\",\n      \"lqi\": 235,\n      \"type\": \"mesh_repeater\",\n      \"firmware\": \"v2.4.5-stable\"\n    }},\n    \"hub_main_controller\": {{\n      \"power\": \"on\",\n      \"connectivity_status\": \"online\",\n      \"lqi\": 255,\n      \"type\": \"gateway\"\n    }}\n  }},\n  \"scenes\": {{\n    \"Night_Defense\": {{\n      \"north_gate_lock\": {{\n        \"power\": \"off\"\n      }}\n    }},\n    \"Day_Access\": {{\n      \"north_gate_lock\": {{\n        \"power\": \"on\"\n      }}\n    }}\n  }},\n  \"connectivity_status\": \"online\",\n  \"last_action_timestamp\": \"2024-05-12T22:00:00Z\"\n}}\n{{state_descriptions}}: {{\n  \"devices\": \"A dictionary mapping unique device IDs to their current attributes (status, power, mode, etc.).\",\n  \"scenes\": \"A dictionary of predefined configurations mapping scene names to specific device states.\",\n  \"connectivity_status\": \"The current network status of the home hub (e.g., 'online', 'offline', 'pairing').\",\n  \"last_action_timestamp\": \"ISO 8601 timestamp of the last successful state change.\"\n}}\n{action_set_definitions}: {\n  \"list_devices_in_sector\": {\n    \"description\": \"Retrieves the unique IDs of all hardware devices located within a specified geographical or logical sector.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"sector_name\": {\n          \"type\": \"string\",\n          \"description\": \"The name of the sector to query (e.g., 'North Sector').\"\n        }\n      },\n      \"required\": [\n        \"sector_name\"\n      ]\n    },\n    \"example_output\": {\n      \"device_ids\": [\n        \"north_gate_lock\",\n        \"repeater_ax_1\",\n        \"perimeter_lamp_01\"\n      ]\n    }\n  },\n  \"get_scene_configuration\": {\n    \"description\": \"Retrieves the target physical power states and attribute settings for a specific named scene.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"scene_name\": {\n          \"type\": \"string\",\n          \"description\": \"The name of the configuration scene (e.g., 'Night_Defense').\"\n        }\n      },\n      \"required\": [\n        \"scene_name\"\n      ]\n    },\n    \"example_output\": {\n      \"target_states\": {\n        \"north_gate_lock\": \"on\",\n        \"perimeter_lamp_01\": \"off\"\n      }\n    }\n  },\n  \"get_device_status\": {\n    \"description\": \"Retrieves the real-time physical status of a device, including power state, online status, and Link Quality Indicator (LQI).\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"device_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique ID of the device to query.\"\n        }\n      },\n      \"required\": [\n        \"device_id\"\n      ]\n    },\n    \"example_output\": {\n      \"power_status\": \"off\",\n      \"lqi\": 185,\n      \"is_online\": true\n    }\n  },\n  \"get_hub_shadow_state\": {\n    \"description\": \"Retrieves the state currently recorded in the hub's shadow registry for a specific device.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"device_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique ID of the device.\"\n        }\n      },\n      \"required\": [\n        \"device_id\"\n      ]\n    },\n    \"example_output\": {\n      \"shadow_power\": \"off\",\n      \"is_synced\": false\n    }\n  },\n  \"remediate_link\": {\n    \"description\": \"Attempts to improve a device's signal strength (LQI) or re-establish a lost connection through standard mesh optimization.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"device_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique ID of the device requiring remediation.\"\n        }\n      },\n      \"required\": [\n        \"device_id\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"remediated\",\n      \"resultant_lqi\": 210\n    }\n  },\n  \"update_device_power\": {\n    \"description\": \"Sends a command to change the physical power state of a device.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"device_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique ID of the device.\"\n        },\n        \"target_power\": {\n          \"type\": \"string\",\n          \"description\": \"The desired power state (e.g., 'on', 'off').\"\n        }\n      },\n      \"required\": [\n        \"device_id\",\n        \"target_power\"\n      ]\n    },\n    \"example_output\": {\n      \"success\": true,\n      \"current_power\": \"on\"\n    }\n  },\n  \"sync_registry\": {\n    \"description\": \"Synchronizes the hub's shadow registry entry for a device to match its actual physical power status.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"device_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique ID of the device.\"\n        }\n      },\n      \"required\": [\n        \"device_id\"\n      ]\n    },\n    \"example_output\": {\n      \"sync_status\": \"synchronized\"\n    }\n  },\n  \"search_alternative_infrastructure\": {\n    \"description\": \"Scans other sectors to identify active repeaters or hub nodes that could provide alternative high-integrity routes for the current sector's devices.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"current_sector\": {\n          \"type\": \"string\",\n          \"description\": \"The sector currently experiencing link issues.\"\n        }\n      },\n      \"required\": [\n        \"current_sector\"\n      ]\n    },\n    \"example_output\": {\n      \"available_repeaters\": [\n        {\n          \"device_id\": \"repeater_south_01\",\n          \"sector\": \"South Sector\",\n          \"signal_reach\": \"high\"\n        }\n      ]\n    }\n  },\n  \"set_device_route\": {\n    \"description\": \"Forcibly assigns a specific parent node (repeater or hub) to a device to improve communication integrity.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"device_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the device to be routed.\"\n        },\n        \"target_parent_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the infrastructure node to serve as the new parent.\"\n        }\n      },\n      \"required\": [\n        \"device_id\",\n        \"target_parent_id\"\n      ]\n    },\n    \"example_output\": {\n      \"route_status\": \"established\",\n      \"verified_lqi\": 240\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "list_devices_in_sector",
+      "description": "Retrieves the unique IDs of all hardware devices located within a specified geographical or logical sector.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "sector_name": {
+            "type": "string",
+            "description": "The name of the sector to query (e.g., 'North Sector')."
+          }
+        },
+        "required": [
+          "sector_name"
+        ]
+      },
+      "example_output": {
+        "device_ids": [
+          "north_gate_lock",
+          "repeater_ax_1",
+          "perimeter_lamp_01"
+        ]
+      }
+    },
+    {
+      "name": "get_scene_configuration",
+      "description": "Retrieves the target physical power states and attribute settings for a specific named scene.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "scene_name": {
+            "type": "string",
+            "description": "The name of the configuration scene (e.g., 'Night_Defense')."
+          }
+        },
+        "required": [
+          "scene_name"
+        ]
+      },
+      "example_output": {
+        "target_states": {
+          "north_gate_lock": "on",
+          "perimeter_lamp_01": "off"
+        }
+      }
+    },
+    {
+      "name": "get_device_status",
+      "description": "Retrieves the real-time physical status of a device, including power state, online status, and Link Quality Indicator (LQI).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "device_id": {
+            "type": "string",
+            "description": "The unique ID of the device to query."
+          }
+        },
+        "required": [
+          "device_id"
+        ]
+      },
+      "example_output": {
+        "power_status": "off",
+        "lqi": 185,
+        "is_online": true
+      }
+    },
+    {
+      "name": "get_hub_shadow_state",
+      "description": "Retrieves the state currently recorded in the hub's shadow registry for a specific device.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "device_id": {
+            "type": "string",
+            "description": "The unique ID of the device."
+          }
+        },
+        "required": [
+          "device_id"
+        ]
+      },
+      "example_output": {
+        "shadow_power": "off",
+        "is_synced": false
+      }
+    },
+    {
+      "name": "remediate_link",
+      "description": "Attempts to improve a device's signal strength (LQI) or re-establish a lost connection through standard mesh optimization.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "device_id": {
+            "type": "string",
+            "description": "The unique ID of the device requiring remediation."
+          }
+        },
+        "required": [
+          "device_id"
+        ]
+      },
+      "example_output": {
+        "status": "remediated",
+        "resultant_lqi": 210
+      }
+    },
+    {
+      "name": "update_device_power",
+      "description": "Sends a command to change the physical power state of a device.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "device_id": {
+            "type": "string",
+            "description": "The unique ID of the device."
+          },
+          "target_power": {
+            "type": "string",
+            "description": "The desired power state (e.g., 'on', 'off')."
+          }
+        },
+        "required": [
+          "device_id",
+          "target_power"
+        ]
+      },
+      "example_output": {
+        "success": true,
+        "current_power": "on"
+      }
+    },
+    {
+      "name": "sync_registry",
+      "description": "Synchronizes the hub's shadow registry entry for a device to match its actual physical power status.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "device_id": {
+            "type": "string",
+            "description": "The unique ID of the device."
+          }
+        },
+        "required": [
+          "device_id"
+        ]
+      },
+      "example_output": {
+        "sync_status": "synchronized"
+      }
+    },
+    {
+      "name": "search_alternative_infrastructure",
+      "description": "Scans other sectors to identify active repeaters or hub nodes that could provide alternative high-integrity routes for the current sector's devices.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "current_sector": {
+            "type": "string",
+            "description": "The sector currently experiencing link issues."
+          }
+        },
+        "required": [
+          "current_sector"
+        ]
+      },
+      "example_output": {
+        "available_repeaters": [
+          {
+            "device_id": "repeater_south_01",
+            "sector": "South Sector",
+            "signal_reach": "high"
+          }
+        ]
+      }
+    },
+    {
+      "name": "set_device_route",
+      "description": "Forcibly assigns a specific parent node (repeater or hub) to a device to improve communication integrity.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "device_id": {
+            "type": "string",
+            "description": "The ID of the device to be routed."
+          },
+          "target_parent_id": {
+            "type": "string",
+            "description": "The ID of the infrastructure node to serve as the new parent."
+          }
+        },
+        "required": [
+          "device_id",
+          "target_parent_id"
+        ]
+      },
+      "example_output": {
+        "route_status": "established",
+        "verified_lqi": 240
+      }
+    }
+  ],
+  "state_description": {
+    "devices": "A dictionary mapping unique device IDs to their current attributes (status, power, mode, etc.).",
+    "scenes": "A dictionary of predefined configurations mapping scene names to specific device states.",
+    "connectivity_status": "The current network status of the home hub (e.g., 'online', 'offline', 'pairing').",
+    "last_action_timestamp": "ISO 8601 timestamp of the last successful state change."
+  },
+  "task_initial_state": {
+    "devices": {
+      "north_gate_lock": {
+        "power": "on",
+        "shadow_power": "off",
+        "lqi": 14,
+        "active_route": "repeater_ax_1",
+        "protocol": "zigbee",
+        "type": "security_lock"
+      },
+      "repeater_ax_1": {
+        "power": "on",
+        "connectivity_status": "offline",
+        "lqi": 0,
+        "type": "mesh_repeater",
+        "firmware": "v2.1.0-legacy"
+      },
+      "repeater_ax_2": {
+        "power": "on",
+        "connectivity_status": "online",
+        "lqi": 235,
+        "type": "mesh_repeater",
+        "firmware": "v2.4.5-stable"
+      },
+      "hub_main_controller": {
+        "power": "on",
+        "connectivity_status": "online",
+        "lqi": 255,
+        "type": "gateway"
+      }
+    },
+    "scenes": {
+      "Night_Defense": {
+        "north_gate_lock": {
+          "power": "off"
+        }
+      },
+      "Day_Access": {
+        "north_gate_lock": {
+          "power": "on"
+        }
+      }
+    },
+    "connectivity_status": "online",
+    "last_action_timestamp": "2024-05-12T22:00:00Z"
+  }
+}

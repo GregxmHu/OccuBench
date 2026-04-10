@@ -1,0 +1,204 @@
+{
+  "environment_name": "env_7027de2ee610",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: Act as the authoritative simulation environment for a Loan Risk Assessment system. Based on the current internal state $s_t$ and the Agent's action $a_t$, you must simulate the evolution of the loan processing environment and predict the observation $o_{{t+1}}$ (return values) for the Agent.\n- **Emphasis**: You are a simulator, not a decision-maker. You do not execute real-world banking transactions; you maintain the internal logic, consistency, and data integrity of the loan application lifecycle.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nYou must maintain strict continuity across the interaction history. The internal state evolves with every valid action (e.g., approving a loan decreases available capital; checking a credit score may log an inquiry in the state). Ensure that subsequent observations reflect these changes.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. You must parse this JSON to determine the intended transition. \n\nExample format:\n```json\n{{\n \"name\": \"check_credit_history\",\n \"arguments\": {{\n    \"applicant_id\": \"APP-9921\",\n    \"bureau\": \"Equifax\"\n  }}\n}}\n```\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\n- If an action refers to a non-existent `applicant_id` or `loan_id`, return an error observation: `{{\"error\": \"Entity not found\"}}`.\n- If an action is attempted that violates environment logic (e.g., approving a loan that has already been rejected), return an error: `{{\"error\": \"Invalid state transition: application already finalized\"}}`.\n- Do not fabricate data; if a field is not in the state or defined by the action result, return an appropriate error or null value as per the schema.\n\n##### Output Assembly\nFor every action function call, you must return a structured JSON object containing **ONLY** the return fields declared in that specific action function's definition. \n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, `new_state`, or any hidden state variables. You are an API; the Agent only sees the `observation`. Do not output the internal state update process.\n\n### 4. Key Principles\n- **Format**: Output must be strictly valid JSON for observations.\n- **Factuality**: Simulations must be based on the provided state and action definitions. Do not hallucinate applicant details not present in the internal state.\n- **Consistency**: If a loan is approved, subsequent calls to check bank liquidity or application status must reflect that approval.\n- **Realism**: The simulation should mimic realistic financial constraints (e.g., debt-to-income ratios, credit score impacts).\n- **Quality**: Observations should be professional and clear, following standard banking data formats.\n- **Encapsulation**: Strictly hide the internal state structure. Only expose information explicitly returned by the action function.\n{{initial_state}}: {{\n  \"application_registry\": [\n    {{\n      \"application_id\": \"APP-5520\",\n      \"applicant_name\": \"CloudScale AI\",\n      \"requested_amount\": 3000000.0,\n      \"status\": \"UNDER_REVIEW\",\n      \"submission_date\": \"2023-10-15\"\n    }}\n  ],\n  \"credit_bureau_records\": {{\n    \"APP-5520\": {{\n      \"financial_metrics\": {{\n        \"annual_recurring_revenue\": 6600000.0,\n        \"monthly_recurring_revenue\": 550000.0,\n        \"net_monthly_burn\": 450000.0,\n        \"current_cash_balance\": 1800000.0,\n        \"last_equity_round_size\": 15000000.0,\n        \"gross_margin\": 0.78,\n        \"net_dollar_retention\": 1.05,\n        \"magic_number\": 0.85\n      }},\n      \"equity_background\": {{\n        \"lead_investor\": \"Sequoia Capital\",\n        \"investor_tier\": \"Tier 1\",\n        \"total_equity_raised\": 22000000.0\n      }},\n      \"credit_score\": 745\n    }}\n  }},\n  \"available_capital\": 5000000.0,\n  \"risk_policy_thresholds\": {{\n    \"min_credit_score\": 600,\n    \"max_dti_ratio\": 0.45,\n    \"min_saas_gross_margin\": 0.7,\n    \"min_post_loan_runway_months\": 12,\n    \"max_mrr_multiple\": 6.0,\n    \"max_equity_percentage\": 0.3\n  }},\n  \"audit_log\": [\n    {{\n      \"timestamp\": \"2023-10-15T09:00:00Z\",\n      \"action\": \"APPLICATION_RECEIVED\",\n      \"details\": \"CloudScale AI submitted venture debt request.\"\n    }}\n  ]\n}}\n{{state_descriptions}}: {{\n  \"application_registry\": \"A collection of all loan applications currently in the system, including applicant personal data, requested amounts, and current status.\",\n  \"credit_bureau_records\": \"A database of credit scores and historical payment data indexed by applicant identifier.\",\n  \"available_capital\": \"The total amount of currency available in the bank's reserve for lending.\",\n  \"risk_policy_thresholds\": \"Configurable parameters for risk assessment, such as minimum acceptable credit score or maximum debt-to-income ratio.\",\n  \"audit_log\": \"A record of actions taken by the Agent (e.g., credit pulls, status changes) for compliance tracking.\"\n}}\n{action_set_definitions}: {\n  \"get_application_info\": {\n    \"description\": \"Retrieves the core details of a loan application, including the applicant company name, requested loan amount, and the name of the lead investor.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"application_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the loan application (e.g., APP-5520).\"\n        }\n      },\n      \"required\": [\n        \"application_id\"\n      ]\n    },\n    \"example_output\": {\n      \"company_name\": \"CloudScale AI\",\n      \"requested_amount\": 3000000,\n      \"lead_investor_name\": \"Sequoia Capital\",\n      \"current_status\": \"Pending\"\n    }\n  },\n  \"get_company_financials\": {\n    \"description\": \"Retrieves the financial performance metrics for the company associated with the application, including MRR, Gross Margin, Burn Rate, current cash balance, and equity funding history.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"application_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the loan application.\"\n        }\n      },\n      \"required\": [\n        \"application_id\"\n      ]\n    },\n    \"example_output\": {\n      \"monthly_recurring_revenue\": 500000,\n      \"gross_margin_percentage\": 75,\n      \"monthly_burn_rate\": 150000,\n      \"current_cash_balance\": 1000000,\n      \"total_equity_raised\": 5000000\n    }\n  },\n  \"get_investor_tier\": {\n    \"description\": \"Checks the internal database to determine the tier/ranking of a specific venture capital firm.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"investor_name\": {\n          \"type\": \"string\",\n          \"description\": \"The name of the lead investor firm.\"\n        }\n      },\n      \"required\": [\n        \"investor_name\"\n      ]\n    },\n    \"example_output\": {\n      \"tier\": \"Tier 1\",\n      \"reputation_score\": 95\n    }\n  },\n  \"get_risk_policy_thresholds\": {\n    \"description\": \"Retrieves the underwriting formulas and thresholds, such as the MRR multiplier or equity percentage used to calculate max loan size.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"max_loan_mrr_multiplier\": 6,\n      \"max_loan_equity_percentage\": 0.25,\n      \"min_investor_tier\": \"Tier 2\"\n    }\n  },\n  \"update_application_status\": {\n    \"description\": \"Updates the status and approved amount of a loan application in the registry.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"application_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the loan application.\"\n        },\n        \"status\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"Approved\",\n            \"Rejected\",\n            \"Under Review\"\n          ],\n          \"description\": \"The new status of the application.\"\n        },\n        \"approved_amount\": {\n          \"type\": \"number\",\n          \"description\": \"The final approved loan amount.\"\n        }\n      },\n      \"required\": [\n        \"application_id\",\n        \"status\",\n        \"approved_amount\"\n      ]\n    },\n    \"example_output\": {\n      \"success\": true,\n      \"updated_at\": \"2023-10-27T10:00:00Z\"\n    }\n  },\n  \"record_covenant\": {\n    \"description\": \"Logs a mandatory legal or financial covenant against a specific loan application for compliance and tracking.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"application_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the loan application.\"\n        },\n        \"covenant_name\": {\n          \"type\": \"string\",\n          \"description\": \"The name of the covenant (e.g., 'Minimum Liquidity').\"\n        },\n        \"value_description\": {\n          \"type\": \"string\",\n          \"description\": \"The specific value or calculation result associated with the covenant (e.g., '$600,000').\"\n        }\n      },\n      \"required\": [\n        \"application_id\",\n        \"covenant_name\",\n        \"value_description\"\n      ]\n    },\n    \"example_output\": {\n      \"covenant_id\": \"COV-992\",\n      \"status\": \"Logged\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_application_info",
+      "description": "Retrieves the core details of a loan application, including the applicant company name, requested loan amount, and the name of the lead investor.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "application_id": {
+            "type": "string",
+            "description": "The unique identifier for the loan application (e.g., APP-5520)."
+          }
+        },
+        "required": [
+          "application_id"
+        ]
+      },
+      "example_output": {
+        "company_name": "CloudScale AI",
+        "requested_amount": 3000000,
+        "lead_investor_name": "Sequoia Capital",
+        "current_status": "Pending"
+      }
+    },
+    {
+      "name": "get_company_financials",
+      "description": "Retrieves the financial performance metrics for the company associated with the application, including MRR, Gross Margin, Burn Rate, current cash balance, and equity funding history.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "application_id": {
+            "type": "string",
+            "description": "The unique identifier for the loan application."
+          }
+        },
+        "required": [
+          "application_id"
+        ]
+      },
+      "example_output": {
+        "monthly_recurring_revenue": 500000,
+        "gross_margin_percentage": 75,
+        "monthly_burn_rate": 150000,
+        "current_cash_balance": 1000000,
+        "total_equity_raised": 5000000
+      }
+    },
+    {
+      "name": "get_investor_tier",
+      "description": "Checks the internal database to determine the tier/ranking of a specific venture capital firm.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "investor_name": {
+            "type": "string",
+            "description": "The name of the lead investor firm."
+          }
+        },
+        "required": [
+          "investor_name"
+        ]
+      },
+      "example_output": {
+        "tier": "Tier 1",
+        "reputation_score": 95
+      }
+    },
+    {
+      "name": "get_risk_policy_thresholds",
+      "description": "Retrieves the underwriting formulas and thresholds, such as the MRR multiplier or equity percentage used to calculate max loan size.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "max_loan_mrr_multiplier": 6,
+        "max_loan_equity_percentage": 0.25,
+        "min_investor_tier": "Tier 2"
+      }
+    },
+    {
+      "name": "update_application_status",
+      "description": "Updates the status and approved amount of a loan application in the registry.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "application_id": {
+            "type": "string",
+            "description": "The unique identifier for the loan application."
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "Approved",
+              "Rejected",
+              "Under Review"
+            ],
+            "description": "The new status of the application."
+          },
+          "approved_amount": {
+            "type": "number",
+            "description": "The final approved loan amount."
+          }
+        },
+        "required": [
+          "application_id",
+          "status",
+          "approved_amount"
+        ]
+      },
+      "example_output": {
+        "success": true,
+        "updated_at": "2023-10-27T10:00:00Z"
+      }
+    },
+    {
+      "name": "record_covenant",
+      "description": "Logs a mandatory legal or financial covenant against a specific loan application for compliance and tracking.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "application_id": {
+            "type": "string",
+            "description": "The unique identifier for the loan application."
+          },
+          "covenant_name": {
+            "type": "string",
+            "description": "The name of the covenant (e.g., 'Minimum Liquidity')."
+          },
+          "value_description": {
+            "type": "string",
+            "description": "The specific value or calculation result associated with the covenant (e.g., '$600,000')."
+          }
+        },
+        "required": [
+          "application_id",
+          "covenant_name",
+          "value_description"
+        ]
+      },
+      "example_output": {
+        "covenant_id": "COV-992",
+        "status": "Logged"
+      }
+    }
+  ],
+  "state_description": {
+    "application_registry": "A collection of all loan applications currently in the system, including applicant personal data, requested amounts, and current status.",
+    "credit_bureau_records": "A database of credit scores and historical payment data indexed by applicant identifier.",
+    "available_capital": "The total amount of currency available in the bank's reserve for lending.",
+    "risk_policy_thresholds": "Configurable parameters for risk assessment, such as minimum acceptable credit score or maximum debt-to-income ratio.",
+    "audit_log": "A record of actions taken by the Agent (e.g., credit pulls, status changes) for compliance tracking."
+  },
+  "task_initial_state": {
+    "application_registry": [
+      {
+        "application_id": "APP-5520",
+        "applicant_name": "CloudScale AI",
+        "requested_amount": 3000000.0,
+        "status": "UNDER_REVIEW",
+        "submission_date": "2023-10-15"
+      }
+    ],
+    "credit_bureau_records": {
+      "APP-5520": {
+        "financial_metrics": {
+          "annual_recurring_revenue": 6600000.0,
+          "monthly_recurring_revenue": 550000.0,
+          "net_monthly_burn": 450000.0,
+          "current_cash_balance": 1800000.0,
+          "last_equity_round_size": 15000000.0,
+          "gross_margin": 0.78,
+          "net_dollar_retention": 1.05,
+          "magic_number": 0.85
+        },
+        "equity_background": {
+          "lead_investor": "Sequoia Capital",
+          "investor_tier": "Tier 1",
+          "total_equity_raised": 22000000.0
+        },
+        "credit_score": 745
+      }
+    },
+    "available_capital": 5000000.0,
+    "risk_policy_thresholds": {
+      "min_credit_score": 600,
+      "max_dti_ratio": 0.45,
+      "min_saas_gross_margin": 0.7,
+      "min_post_loan_runway_months": 12,
+      "max_mrr_multiple": 6.0,
+      "max_equity_percentage": 0.3
+    },
+    "audit_log": [
+      {
+        "timestamp": "2023-10-15T09:00:00Z",
+        "action": "APPLICATION_RECEIVED",
+        "details": "CloudScale AI submitted venture debt request."
+      }
+    ]
+  }
+}

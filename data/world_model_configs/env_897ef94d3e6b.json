@@ -1,0 +1,235 @@
+{
+  "environment_name": "env_897ef94d3e6b",
+  "world_model_system_prompt": "## 1. Role and Objective\n- **Role**: Language World Model (LWM) for Cloud Infrastructure Provisioning.\n- **Core Objective**: Based on the current cloud infrastructure state $s_t$ and the provisioning action $a_t$ requested by the Agent, simulate the internal evolution of the cloud environment and predict the resulting observation $o_{{t+1}}$.\n- **Emphasis**: You are a simulator. You do not execute real API calls to cloud providers (e.g., AWS, Azure, GCP). Instead, you maintain an internal representation of the infrastructure and generate realistic API-style responses (Observations) as the environment state changes.\n\n## 2. Environment Management\n\n### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n### Context Awareness\nAll interactions must maintain absolute context consistency. If a Virtual Machine (VM) is created in step $t$, it must remain in the state in step $t+1$ unless explicitly deleted or modified by a subsequent action. All resource dependencies (e.g., a subnet belonging to a specific VPC) must be logically preserved.\n\n## 3. Environment Execution\n\n### Action Space\nThe Agent interacts with the environment by calling action functions (e.g., provision_vm, delete_network, update_storage). The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object containing:\n- `\"name\"`: The name of the provisioning action to execute.\n- The specific parameters required by that action (e.g., `cpu_cores`, `image_id`, `vpc_id`).\n\nExample Input:\n```json\n{{\n \"name\": \"create_instance\",\n \"arguments\": {{\n    \"instance_type\": \"t2.micro\",\n    \"region\": \"us-east-1\",\n    \"tags\": {{\"Project\": \"Alpha\"}}\n  }}\n}}\n```\nYou must parse this input and simulate the infrastructure change internally before generating the observation.\n\n### Environment Behavior Modeling\n\n#### Error Handling & Edge Cases\nYou must simulate realistic cloud errors. Return structured error information (e.g., `{{\"error\": \"ResourceLimitExceeded\", \"message\": \"Quota for VPCs reached\"}}`) if:\n- Parameters are invalid or missing.\n- Actions reference non-existent resource IDs.\n- State conflicts occur (e.g., attempting to delete a non-empty VPC).\n- Quotas or limits are exceeded.\nDo not fabricate successful responses for failed logic.\n\n#### Output Assembly\nFor every action, return a structured JSON object containing **ONLY** the return fields declared in the action function's definition (the Observation).\n\n**CRITICAL CONSTRAINT**: Your output must **NOT** expose the full internal state `s_t` or any hidden state tracking variables. The Agent only receives the specific return values (e.g., `instance_id`, `status`, `public_ip`). State maintenance is your internal responsibility.\n\n## 4. Key Principles\n- **Format**: Strictly adhere to JSON for both input parsing and output generation.\n- **Factuality**: Use realistic naming conventions and status codes (e.g., 'provisioning', 'running', 'terminated').\n- **Consistency**: Ensure that IDs generated for new resources are unique and consistent in subsequent interactions.\n- **Realism**: Simulate the causal logic of cloud environments (e.g., a VM cannot be 'running' if its attached Volume is 'error').\n- **Quality**: Observations should be structurally complete and mimic real Cloud Provider API responses.\n- **Encapsulation**: Strictly hide the internal state structure from the output. Only expose information that is explicitly returned by the action function.\n{{initial_state}}: {{\n  \"resources\": [\n    {{\n      \"id\": \"res-9901\",\n      \"type\": \"policy_config\",\n      \"name\": \"Environment-Policy-Manager\",\n      \"attributes\": {{\n        \"Security-Posture\": \"Tier-1\",\n        \"Last-Audit\": \"2023-10-27\"\n      }},\n      \"status\": \"active\"\n    }},\n    {{\n      \"id\": \"vpc-5520\",\n      \"type\": \"vpc\",\n      \"name\": \"primary-provisioning-vpc\",\n      \"status\": \"available\"\n    }},\n    {{\n      \"id\": \"sub-1101\",\n      \"type\": \"subnet\",\n      \"name\": \"General-Purpose-Subnet\",\n      \"vpc_id\": \"vpc-5520\",\n      \"status\": \"available\"\n    }},\n    {{\n      \"id\": \"sub-1102\",\n      \"type\": \"subnet\",\n      \"name\": \"Isolated-Subnet-Alpha\",\n      \"vpc_id\": \"vpc-5520\",\n      \"status\": \"available\"\n    }},\n    {{\n      \"id\": \"db-2288\",\n      \"type\": \"database_instance\",\n      \"name\": \"legacy-settlement-data\",\n      \"vpc_id\": \"vpc-5520\",\n      \"subnet_id\": \"sub-1101\",\n      \"multi_az\": false,\n      \"storage_encrypted\": false,\n      \"status\": \"running\",\n      \"tags\": {{\n        \"Service\": \"Settlement\",\n        \"Integrity-Check\": \"Pending\"\n      }}\n    }},\n    {{\n      \"id\": \"inst-4405\",\n      \"type\": \"virtual_machine\",\n      \"name\": \"temporary-bastion-host\",\n      \"vpc_id\": \"vpc-5520\",\n      \"subnet_id\": \"sub-1101\",\n      \"status\": \"running\"\n    }}\n  ],\n  \"quotas\": {{\n    \"instances\": {{\n      \"used\": 2,\n      \"limit\": 2\n    }},\n    \"vpcs\": {{\n      \"used\": 1,\n      \"limit\": 5\n    }}\n  }},\n  \"region_config\": \"us-east-1\",\n  \"network_topology\": {{\n    \"vpc-5520\": [\n      \"sub-1101\",\n      \"sub-1102\"\n    ]\n  }},\n  \"global_resource_counter\": 1025\n}}\n{{state_descriptions}}: {{\n  \"resources\": \"A list of all provisioned cloud resources including their current configuration and lifecycle status.\",\n  \"quotas\": \"The current usage and limits for different resource types (e.g., max_instances, max_vpcs).\",\n  \"region_config\": \"The active cloud region where resources are being provisioned.\",\n  \"network_topology\": \"Mapping of networking dependencies such as VPC-to-Subnet relationships and Routing Tables.\",\n  \"global_resource_counter\": \"An internal counter used to generate unique Resource IDs (e.g., i-001, vpc-002).\"\n}}\n{action_set_definitions}: {\n  \"list_resources\": {\n    \"description\": \"Retrieves a list of all provisioned resources in the environment to identify resource IDs and names.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"resource_type\": {\n          \"type\": \"string\",\n          \"description\": \"Optional filter for specific resource types (e.g., 'database', 'policy-manager').\"\n        }\n      },\n      \"required\": []\n    },\n    \"example_output\": {\n      \"resources\": [\n        {\n          \"id\": \"res-123\",\n          \"name\": \"settlement-db-legacy\",\n          \"type\": \"database\"\n        }\n      ]\n    }\n  },\n  \"get_resource_details\": {\n    \"description\": \"Retrieves the full configuration and current tags for a specific resource using its unique ID.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"resource_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier of the resource.\"\n        }\n      },\n      \"required\": [\n        \"resource_id\"\n      ]\n    },\n    \"example_output\": {\n      \"id\": \"res-123\",\n      \"tags\": {\n        \"Security-Posture\": \"Tier-1\",\n        \"Integrity-Check\": \"Pending\"\n      },\n      \"status\": \"Running\"\n    }\n  },\n  \"update_resource_tag\": {\n    \"description\": \"Updates or adds a specific tag value to an existing resource.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"resource_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the resource to update.\"\n        },\n        \"tag_key\": {\n          \"type\": \"string\",\n          \"description\": \"The key of the tag (e.g., 'Integrity-Check').\"\n        },\n        \"tag_value\": {\n          \"type\": \"string\",\n          \"description\": \"The new value for the tag (e.g., 'Verified').\"\n        }\n      },\n      \"required\": [\n        \"resource_id\",\n        \"tag_key\",\n        \"tag_value\"\n      ]\n    },\n    \"example_output\": {\n      \"success\": true,\n      \"resource_id\": \"res-123\"\n    }\n  },\n  \"get_regional_quota\": {\n    \"description\": \"Checks current resource usage and limits for the active region.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"resource_category\": {\n          \"type\": \"string\",\n          \"description\": \"The category of quota to check (e.g., 'instances').\"\n        }\n      },\n      \"required\": [\n        \"resource_category\"\n      ]\n    },\n    \"example_output\": {\n      \"category\": \"instances\",\n      \"current_usage\": 1,\n      \"limit\": 2\n    }\n  },\n  \"provision_database\": {\n    \"description\": \"Deploys a new database instance with specific compliance settings.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"subnet_name\": {\n          \"type\": \"string\",\n          \"description\": \"The name of the subnet where the database will be provisioned.\"\n        },\n        \"encryption_enabled\": {\n          \"type\": \"boolean\",\n          \"description\": \"Must be set to true for organization compliance.\"\n        },\n        \"redundancy_level\": {\n          \"type\": \"string\",\n          \"description\": \"The redundancy standard (e.g., 'High-Availability', 'Multi-AZ').\"\n        }\n      },\n      \"required\": [\n        \"subnet_name\",\n        \"encryption_enabled\",\n        \"redundancy_level\"\n      ]\n    },\n    \"example_output\": {\n      \"id\": \"db-new-999\",\n      \"status\": \"Provisioning\"\n    }\n  },\n  \"decommission_resource\": {\n    \"description\": \"Permanently removes a resource from the cloud environment.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"resource_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the resource to decommission.\"\n        }\n      },\n      \"required\": [\n        \"resource_id\"\n      ]\n    },\n    \"example_output\": {\n      \"success\": true,\n      \"resource_id\": \"res-123\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "list_resources",
+      "description": "Retrieves a list of all provisioned resources in the environment to identify resource IDs and names.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "resource_type": {
+            "type": "string",
+            "description": "Optional filter for specific resource types (e.g., 'database', 'policy-manager')."
+          }
+        },
+        "required": []
+      },
+      "example_output": {
+        "resources": [
+          {
+            "id": "res-123",
+            "name": "settlement-db-legacy",
+            "type": "database"
+          }
+        ]
+      }
+    },
+    {
+      "name": "get_resource_details",
+      "description": "Retrieves the full configuration and current tags for a specific resource using its unique ID.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "resource_id": {
+            "type": "string",
+            "description": "The unique identifier of the resource."
+          }
+        },
+        "required": [
+          "resource_id"
+        ]
+      },
+      "example_output": {
+        "id": "res-123",
+        "tags": {
+          "Security-Posture": "Tier-1",
+          "Integrity-Check": "Pending"
+        },
+        "status": "Running"
+      }
+    },
+    {
+      "name": "update_resource_tag",
+      "description": "Updates or adds a specific tag value to an existing resource.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "resource_id": {
+            "type": "string",
+            "description": "The ID of the resource to update."
+          },
+          "tag_key": {
+            "type": "string",
+            "description": "The key of the tag (e.g., 'Integrity-Check')."
+          },
+          "tag_value": {
+            "type": "string",
+            "description": "The new value for the tag (e.g., 'Verified')."
+          }
+        },
+        "required": [
+          "resource_id",
+          "tag_key",
+          "tag_value"
+        ]
+      },
+      "example_output": {
+        "success": true,
+        "resource_id": "res-123"
+      }
+    },
+    {
+      "name": "get_regional_quota",
+      "description": "Checks current resource usage and limits for the active region.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "resource_category": {
+            "type": "string",
+            "description": "The category of quota to check (e.g., 'instances')."
+          }
+        },
+        "required": [
+          "resource_category"
+        ]
+      },
+      "example_output": {
+        "category": "instances",
+        "current_usage": 1,
+        "limit": 2
+      }
+    },
+    {
+      "name": "provision_database",
+      "description": "Deploys a new database instance with specific compliance settings.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "subnet_name": {
+            "type": "string",
+            "description": "The name of the subnet where the database will be provisioned."
+          },
+          "encryption_enabled": {
+            "type": "boolean",
+            "description": "Must be set to true for organization compliance."
+          },
+          "redundancy_level": {
+            "type": "string",
+            "description": "The redundancy standard (e.g., 'High-Availability', 'Multi-AZ')."
+          }
+        },
+        "required": [
+          "subnet_name",
+          "encryption_enabled",
+          "redundancy_level"
+        ]
+      },
+      "example_output": {
+        "id": "db-new-999",
+        "status": "Provisioning"
+      }
+    },
+    {
+      "name": "decommission_resource",
+      "description": "Permanently removes a resource from the cloud environment.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "resource_id": {
+            "type": "string",
+            "description": "The ID of the resource to decommission."
+          }
+        },
+        "required": [
+          "resource_id"
+        ]
+      },
+      "example_output": {
+        "success": true,
+        "resource_id": "res-123"
+      }
+    }
+  ],
+  "state_description": {
+    "resources": "A list of all provisioned cloud resources including their current configuration and lifecycle status.",
+    "quotas": "The current usage and limits for different resource types (e.g., max_instances, max_vpcs).",
+    "region_config": "The active cloud region where resources are being provisioned.",
+    "network_topology": "Mapping of networking dependencies such as VPC-to-Subnet relationships and Routing Tables.",
+    "global_resource_counter": "An internal counter used to generate unique Resource IDs (e.g., i-001, vpc-002)."
+  },
+  "task_initial_state": {
+    "resources": [
+      {
+        "id": "res-9901",
+        "type": "policy_config",
+        "name": "Environment-Policy-Manager",
+        "attributes": {
+          "Security-Posture": "Tier-1",
+          "Last-Audit": "2023-10-27"
+        },
+        "status": "active"
+      },
+      {
+        "id": "vpc-5520",
+        "type": "vpc",
+        "name": "primary-provisioning-vpc",
+        "status": "available"
+      },
+      {
+        "id": "sub-1101",
+        "type": "subnet",
+        "name": "General-Purpose-Subnet",
+        "vpc_id": "vpc-5520",
+        "status": "available"
+      },
+      {
+        "id": "sub-1102",
+        "type": "subnet",
+        "name": "Isolated-Subnet-Alpha",
+        "vpc_id": "vpc-5520",
+        "status": "available"
+      },
+      {
+        "id": "db-2288",
+        "type": "database_instance",
+        "name": "legacy-settlement-data",
+        "vpc_id": "vpc-5520",
+        "subnet_id": "sub-1101",
+        "multi_az": false,
+        "storage_encrypted": false,
+        "status": "running",
+        "tags": {
+          "Service": "Settlement",
+          "Integrity-Check": "Pending"
+        }
+      },
+      {
+        "id": "inst-4405",
+        "type": "virtual_machine",
+        "name": "temporary-bastion-host",
+        "vpc_id": "vpc-5520",
+        "subnet_id": "sub-1101",
+        "status": "running"
+      }
+    ],
+    "quotas": {
+      "instances": {
+        "used": 2,
+        "limit": 2
+      },
+      "vpcs": {
+        "used": 1,
+        "limit": 5
+      }
+    },
+    "region_config": "us-east-1",
+    "network_topology": {
+      "vpc-5520": [
+        "sub-1101",
+        "sub-1102"
+      ]
+    },
+    "global_resource_counter": 1025
+  }
+}

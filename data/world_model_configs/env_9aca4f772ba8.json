@@ -1,0 +1,140 @@
+{
+  "environment_name": "env_9aca4f772ba8",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM) for Zoning Variance Application Review.\n- **Core Objective**: Based on the current application state $s_t$ and the Agent's review action $a_t$, simulate the municipal environment's response, update internal records, and predict the observation $o_{{t+1}}$ (e.g., document contents, database records, or status confirmations) obtained by the Agent.\n- **Emphasis**: The LWM acts as the municipal database and administrative backdrop. It does not perform the review logic itself but simulates the evolution of the application file and the environment's feedback to the reviewer's actions.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions must maintain absolute context consistency. Changes to the application status, uploaded documents, or hearing schedules must persist across the interaction history. The LWM must track the logical progression of a variance request from submission to final decision.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. This JSON must contain:\n- `\"name\"`: Specifies the name of the action function to execute.\n- Parameters required by that specific action function.\n\nExample:\n```json\n{{\n \"name\": \"retrieve_zoning_code\",\n \"arguments\": {{\n    \"parcel_id\": \"123-45-678\",\n    \"section\": \"setback_requirements\"\n  }}\n}}\n```\nThe Language World Model will parse this JSON and simulate the result based on the internal state and municipal logic.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nIf the Agent attempts to access a non-existent application ID, requests a document that hasn't been uploaded, or performs an action out of sequence (e.g., scheduling a hearing before the application is complete), return a structured error: `{{\"error\": \"Reason for failure\"}}`. Do not fabricate records that do not exist within the simulated state.\n\n##### Output Assembly\nFor every action call, the LWM must return a JSON object containing **ONLY** the return fields declared in the action function's definition. \n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the internal state `{{s_t}}`, updated state, or hidden database fields. Only the explicit Observation defined in the action's return signature is permitted. Do not output \"State Updated\" messages.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to specified JSON and text formats.\n- **Factuality**: Do not fabricate zoning laws, parcel data, or neighbor objections not supported by the current state.\n- **Consistency**: If a variance is denied in the state, subsequent queries must reflect that denial.\n- **Realism**: Responses should mimic professional municipal records and administrative correspondence.\n- **Quality**: Language must be precise, using correct urban planning and legal terminology.\n- **Encapsulation**: Strictly hide the internal state structure from the output. Only expose information explicitly returned by the action function.\n{{initial_state}}: {{\n  \"application_id\": \"VAR-2024-0902\",\n  \"parcel_id\": \"APN-778-002-11\",\n  \"current_status\": \"UNDER_REVIEW\",\n  \"zoning_district\": \"R-1 (Single-Family) - Historic Overlay\",\n  \"variance_type\": \"12-foot Rear Setback Reduction\",\n  \"submitted_documents\": [\n    \"proposed_site_plan.pdf\",\n    \"code_compliance_audit_2023.pdf\",\n    \"tree_survey.pdf\"\n  ],\n  \"public_hearing_scheduled\": false,\n  \"neighbor_objections\": 3\n}}\n{{state_descriptions}}: {{\n  \"application_id\": \"The unique identifier for the zoning variance case.\",\n  \"parcel_id\": \"The legal identification number of the land parcel.\",\n  \"current_status\": \"Current stage of the workflow (e.g., PENDING, UNDER_REVIEW, PUBLIC_NOTICE, COMPLETED).\",\n  \"zoning_district\": \"The specific zoning classification of the property (e.g., R-1, C-2).\",\n  \"variance_type\": \"The nature of the deviation requested (e.g., Side-yard Setback, Height Increase).\",\n  \"submitted_documents\": \"List of filenames provided by the applicant.\",\n  \"public_hearing_scheduled\": \"Whether a date has been set for the Zoning Board of Appeals hearing.\",\n  \"neighbor_objections\": \"The number of formal complaints received from property owners within 300 feet.\"\n}}\n{action_set_definitions}: {\n  \"get_application_details\": {\n    \"description\": \"Retrieves the current details and status of a specific zoning variance application.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"application_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the zoning variance case (e.g., VAR-2024-0902).\"\n        }\n      },\n      \"required\": [\n        \"application_id\"\n      ]\n    },\n    \"example_output\": {\n      \"application_id\": \"VAR-2024-0902\",\n      \"parcel_id\": \"APN-778-002-11\",\n      \"current_status\": \"UNDER_REVIEW\",\n      \"variance_type\": \"Rear Setback Reduction\",\n      \"requested_reduction\": \"12-foot\"\n    }\n  },\n  \"get_parcel_compliance_history\": {\n    \"description\": \"Retrieves the code enforcement history for a specific parcel, including open violations and unpermitted structures.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"parcel_id\": {\n          \"type\": \"string\",\n          \"description\": \"The legal identification number of the land parcel.\"\n        }\n      },\n      \"required\": [\n        \"parcel_id\"\n      ]\n    },\n    \"example_output\": {\n      \"open_violations\": [],\n      \"unpermitted_structures_found\": false,\n      \"last_inspection_date\": \"2023-11-15\"\n    }\n  },\n  \"get_zoning_and_overlay_data\": {\n    \"description\": \"Retrieves the zoning district classification and any applicable overlay districts (e.g., Historic Overlay) for a parcel.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"parcel_id\": {\n          \"type\": \"string\",\n          \"description\": \"The legal identification number of the land parcel.\"\n        }\n      },\n      \"required\": [\n        \"parcel_id\"\n      ]\n    },\n    \"example_output\": {\n      \"zoning_district\": \"R-1\",\n      \"historic_overlay_active\": true,\n      \"physical_constraints\": [\n        \"Steep Slope\",\n        \"Narrow Width\"\n      ]\n    }\n  },\n  \"update_application_record\": {\n    \"description\": \"Finalizes the staff review by updating the application status and appending the Findings of Fact and recommended mitigation measures.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"application_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the zoning variance case.\"\n        },\n        \"new_status\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"ADMINISTRATIVE_HOLD\",\n            \"PUBLIC_NOTICE\",\n            \"COMPLETED\"\n          ],\n          \"description\": \"The next stage in the workflow based on review findings.\"\n        },\n        \"findings_of_fact\": {\n          \"type\": \"string\",\n          \"description\": \"A detailed summary of the interaction between requested relief, site constraints, and compliance history.\"\n        },\n        \"recommended_mitigation\": {\n          \"type\": \"array\",\n          \"items\": {\n            \"type\": \"string\"\n          },\n          \"description\": \"List of recommended measures to mitigate the impact of the variance.\"\n        }\n      },\n      \"required\": [\n        \"application_id\",\n        \"new_status\",\n        \"findings_of_fact\"\n      ]\n    },\n    \"example_output\": {\n      \"update_success\": true,\n      \"updated_timestamp\": \"2024-05-20T10:00:00Z\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_application_details",
+      "description": "Retrieves the current details and status of a specific zoning variance application.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "application_id": {
+            "type": "string",
+            "description": "The unique identifier for the zoning variance case (e.g., VAR-2024-0902)."
+          }
+        },
+        "required": [
+          "application_id"
+        ]
+      },
+      "example_output": {
+        "application_id": "VAR-2024-0902",
+        "parcel_id": "APN-778-002-11",
+        "current_status": "UNDER_REVIEW",
+        "variance_type": "Rear Setback Reduction",
+        "requested_reduction": "12-foot"
+      }
+    },
+    {
+      "name": "get_parcel_compliance_history",
+      "description": "Retrieves the code enforcement history for a specific parcel, including open violations and unpermitted structures.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "parcel_id": {
+            "type": "string",
+            "description": "The legal identification number of the land parcel."
+          }
+        },
+        "required": [
+          "parcel_id"
+        ]
+      },
+      "example_output": {
+        "open_violations": [],
+        "unpermitted_structures_found": false,
+        "last_inspection_date": "2023-11-15"
+      }
+    },
+    {
+      "name": "get_zoning_and_overlay_data",
+      "description": "Retrieves the zoning district classification and any applicable overlay districts (e.g., Historic Overlay) for a parcel.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "parcel_id": {
+            "type": "string",
+            "description": "The legal identification number of the land parcel."
+          }
+        },
+        "required": [
+          "parcel_id"
+        ]
+      },
+      "example_output": {
+        "zoning_district": "R-1",
+        "historic_overlay_active": true,
+        "physical_constraints": [
+          "Steep Slope",
+          "Narrow Width"
+        ]
+      }
+    },
+    {
+      "name": "update_application_record",
+      "description": "Finalizes the staff review by updating the application status and appending the Findings of Fact and recommended mitigation measures.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "application_id": {
+            "type": "string",
+            "description": "The unique identifier for the zoning variance case."
+          },
+          "new_status": {
+            "type": "string",
+            "enum": [
+              "ADMINISTRATIVE_HOLD",
+              "PUBLIC_NOTICE",
+              "COMPLETED"
+            ],
+            "description": "The next stage in the workflow based on review findings."
+          },
+          "findings_of_fact": {
+            "type": "string",
+            "description": "A detailed summary of the interaction between requested relief, site constraints, and compliance history."
+          },
+          "recommended_mitigation": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "List of recommended measures to mitigate the impact of the variance."
+          }
+        },
+        "required": [
+          "application_id",
+          "new_status",
+          "findings_of_fact"
+        ]
+      },
+      "example_output": {
+        "update_success": true,
+        "updated_timestamp": "2024-05-20T10:00:00Z"
+      }
+    }
+  ],
+  "state_description": {
+    "application_id": "The unique identifier for the zoning variance case.",
+    "parcel_id": "The legal identification number of the land parcel.",
+    "current_status": "Current stage of the workflow (e.g., PENDING, UNDER_REVIEW, PUBLIC_NOTICE, COMPLETED).",
+    "zoning_district": "The specific zoning classification of the property (e.g., R-1, C-2).",
+    "variance_type": "The nature of the deviation requested (e.g., Side-yard Setback, Height Increase).",
+    "submitted_documents": "List of filenames provided by the applicant.",
+    "public_hearing_scheduled": "Whether a date has been set for the Zoning Board of Appeals hearing.",
+    "neighbor_objections": "The number of formal complaints received from property owners within 300 feet."
+  },
+  "task_initial_state": {
+    "application_id": "VAR-2024-0902",
+    "parcel_id": "APN-778-002-11",
+    "current_status": "UNDER_REVIEW",
+    "zoning_district": "R-1 (Single-Family) - Historic Overlay",
+    "variance_type": "12-foot Rear Setback Reduction",
+    "submitted_documents": [
+      "proposed_site_plan.pdf",
+      "code_compliance_audit_2023.pdf",
+      "tree_survey.pdf"
+    ],
+    "public_hearing_scheduled": false,
+    "neighbor_objections": 3
+  }
+}

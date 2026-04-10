@@ -1,0 +1,216 @@
+{
+  "environment_name": "env_2d6af23d6e42",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: Act as a high-fidelity simulator for the Ship Cargo Loading Optimization environment. Based on the current internal state $s_t$ and the Agent's action $a_t$, you will simulate the physical and logic evolution of the cargo loading process and predict the resulting observation $o_{{t+1}}$.\n- **Emphasis**: You are the environment itself. You do not suggest actions; you only process actions and return observations. You must maintain the internal logic of ship stability, weight distribution, and inventory management.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions between the World Model and the Agent must maintain context consistency. You must track the cumulative weight, the specific placement of containers in the ship's grid, and the remaining items on the dock throughout the session.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. This JSON contains:\n- `\"name\"`: The name of the action function to execute.\n- Parameters required by that function.\n\nYou must parse this JSON, update the internal state (e.g., moving a container from dock to deck), and generate the observation.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\n- If an action exceeds the ship's `max_weight_capacity`, return an error observation.\n- If a container is placed in an occupied grid coordinate, return an error.\n- If the ship becomes critically unstable (based on center of gravity/stability index), the observation should reflect the danger or failure state.\n- For invalid parameters or undefined actions, return: `{{\"error\": \"Specific error message\"}}`. Do not fabricate states.\n\n##### Output Assembly\nFor every action function call, you must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition.\n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, `new_state`, or hidden variables like the full `deck_layout` unless specifically requested by an observation function. State maintenance is internal. Only expose the \"Observation\".\n\n### 4. Key Principles\n- **Format**: Strictly adhere to JSON for both receiving actions and returning observations.\n- **Factuality**: Simulate realistic physics for cargo (e.g., you cannot place a heavy container on top of a fragile one without consequences defined in the logic).\n- **Consistency**: If a container is moved to the ship, it must no longer exist in the dock inventory.\n- **Realism**: Actions take place in a sequential, logical timeline.\n- **Encapsulation**: Strictly hide the internal state structure from the output. Do not output the state update text.\n{{initial_state}}: {{\n  \"ship_id\": \"CARGO-VESS-001\",\n  \"max_weight_capacity\": 50000,\n  \"current_total_weight\": 44250,\n  \"stability_index\": 0.96,\n  \"containers_on_dock\": [\n    {{\n      \"id\": \"HT-TRANS-01-A\",\n      \"weight\": 180,\n      \"type\": \"Standard\",\n      \"description\": \"Auxiliary transformer unit\"\n    }},\n    {{\n      \"id\": \"HT-TRANS-01-B\",\n      \"weight\": 182,\n      \"type\": \"Standard\",\n      \"description\": \"Standard voltage regulator\"\n    }},\n    {{\n      \"id\": \"HT-TRANS-02-A\",\n      \"weight\": 182,\n      \"type\": \"Heavy-Lift\",\n      \"description\": \"Primary propulsion transformer\"\n    }},\n    {{\n      \"id\": \"HT-TRANS-02-B\",\n      \"weight\": 185,\n      \"type\": \"Heavy-Lift\",\n      \"description\": \"High-capacity core\"\n    }},\n    {{\n      \"id\": \"HT-TRANS-02-C-SPARE\",\n      \"weight\": 182,\n      \"type\": \"Heavy-Lift-Backup\",\n      \"description\": \"Backup unit for 02-A\"\n    }},\n    {{\n      \"id\": \"GRIP-MAT-V1-41\",\n      \"weight\": 1,\n      \"type\": \"Friction-Material\",\n      \"mu_value\": 0.41\n    }},\n    {{\n      \"id\": \"GRIP-MAT-V2-43\",\n      \"weight\": 1,\n      \"type\": \"Friction-Material\",\n      \"mu_value\": 0.43\n    }},\n    {{\n      \"id\": \"GRIP-MAT-V2-43-ECO\",\n      \"weight\": 1,\n      \"type\": \"Friction-Material\",\n      \"mu_value\": 0.38\n    }},\n    {{\n      \"id\": \"GRIP-MAT-V3-45\",\n      \"weight\": 1,\n      \"type\": \"Friction-Material\",\n      \"mu_value\": 0.45\n    }},\n    {{\n      \"id\": \"TIMBER-S-030\",\n      \"weight\": 2,\n      \"type\": \"Dunnage\",\n      \"mu_value\": 0.3\n    }}\n  ],\n  \"deck_layout\": {{\n    \"A1\": \"CONT-P-101\",\n    \"A2\": \"CONT-P-102\",\n    \"B1\": \"CONT-Q-201\",\n    \"B2\": \"CONT-Q-202\",\n    \"C1\": \"CONT-R-301\",\n    \"D1\": \"CONT-S-401\",\n    \"D2\": \"CONT-S-402\"\n  }}\n}}\n{{state_descriptions}}: {{\n  \"ship_id\": \"Unique identifier for the vessel being loaded.\",\n  \"max_weight_capacity\": \"The maximum total weight the ship can safely carry in metric tons.\",\n  \"current_total_weight\": \"The current sum of weights of all loaded containers.\",\n  \"stability_index\": \"A calculated value (0.0 to 1.0) representing the ship's balance. 1.0 is perfectly balanced.\",\n  \"containers_on_dock\": \"A list of container objects currently waiting to be loaded, each with an id, weight, and type.\",\n  \"deck_layout\": \"A mapping of grid coordinates (e.g., 'A1', 'B2') to container IDs currently placed on the ship.\"\n}}\n{action_set_definitions}: {\n  \"scan_dock_inventory\": {\n    \"description\": \"Scans the containers currently on the dock to retrieve detailed metadata including weight, type, variant, and specific route assignments.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"containers\": [\n        {\n          \"container_id\": \"CONT-001\",\n          \"type\": \"HT-Series\",\n          \"variant\": \"Heavy-Lift\",\n          \"weight\": 182,\n          \"route\": \"North Atlantic winter route\"\n        }\n      ]\n    }\n  },\n  \"get_vessel_status\": {\n    \"description\": \"Retrieves the current physical state of the ship, including total weight capacity and current stability metrics.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"ship_id\": \"VESS-99\",\n      \"max_weight_capacity\": 5000,\n      \"current_total_weight\": 1200,\n      \"stability_index\": 0.85\n    }\n  },\n  \"scan_dock_materials\": {\n    \"description\": \"Lists available friction-enhancing materials on the dock and their verified friction coefficients (μ).\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"materials\": [\n        {\n          \"material_id\": \"MAT-X\",\n          \"friction_coefficient\": 0.43\n        }\n      ]\n    }\n  },\n  \"get_deck_grid_status\": {\n    \"description\": \"Returns the current occupancy status of all deck grid coordinates.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"grid_status\": [\n        {\n          \"coordinate\": \"A1\",\n          \"occupied\": false,\n          \"container_id\": null\n        }\n      ]\n    }\n  },\n  \"simulate_stability_impact\": {\n    \"description\": \"Simulates the result of placing a specific container at a specific coordinate to predict the final ship stability and weight.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"container_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the container to be loaded.\"\n        },\n        \"coordinate\": {\n          \"type\": \"string\",\n          \"description\": \"The target grid coordinate (e.g., 'B2').\"\n        }\n      },\n      \"required\": [\n        \"container_id\",\n        \"coordinate\"\n      ]\n    },\n    \"example_output\": {\n      \"predicted_total_weight\": 1382,\n      \"predicted_stability_index\": 0.88\n    }\n  },\n  \"perform_loading_operation\": {\n    \"description\": \"Executes the physical loading of a container onto the ship using a specified friction material at a specific coordinate.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"container_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the container to load.\"\n        },\n        \"coordinate\": {\n          \"type\": \"string\",\n          \"description\": \"The target deck coordinate.\"\n        },\n        \"material_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the friction material to apply.\"\n        }\n      },\n      \"required\": [\n        \"container_id\",\n        \"coordinate\",\n        \"material_id\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"success\",\n      \"timestamp\": \"2023-10-27T10:00:00Z\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "scan_dock_inventory",
+      "description": "Scans the containers currently on the dock to retrieve detailed metadata including weight, type, variant, and specific route assignments.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "containers": [
+          {
+            "container_id": "CONT-001",
+            "type": "HT-Series",
+            "variant": "Heavy-Lift",
+            "weight": 182,
+            "route": "North Atlantic winter route"
+          }
+        ]
+      }
+    },
+    {
+      "name": "get_vessel_status",
+      "description": "Retrieves the current physical state of the ship, including total weight capacity and current stability metrics.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "ship_id": "VESS-99",
+        "max_weight_capacity": 5000,
+        "current_total_weight": 1200,
+        "stability_index": 0.85
+      }
+    },
+    {
+      "name": "scan_dock_materials",
+      "description": "Lists available friction-enhancing materials on the dock and their verified friction coefficients (μ).",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "materials": [
+          {
+            "material_id": "MAT-X",
+            "friction_coefficient": 0.43
+          }
+        ]
+      }
+    },
+    {
+      "name": "get_deck_grid_status",
+      "description": "Returns the current occupancy status of all deck grid coordinates.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "grid_status": [
+          {
+            "coordinate": "A1",
+            "occupied": false,
+            "container_id": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "simulate_stability_impact",
+      "description": "Simulates the result of placing a specific container at a specific coordinate to predict the final ship stability and weight.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "container_id": {
+            "type": "string",
+            "description": "The ID of the container to be loaded."
+          },
+          "coordinate": {
+            "type": "string",
+            "description": "The target grid coordinate (e.g., 'B2')."
+          }
+        },
+        "required": [
+          "container_id",
+          "coordinate"
+        ]
+      },
+      "example_output": {
+        "predicted_total_weight": 1382,
+        "predicted_stability_index": 0.88
+      }
+    },
+    {
+      "name": "perform_loading_operation",
+      "description": "Executes the physical loading of a container onto the ship using a specified friction material at a specific coordinate.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "container_id": {
+            "type": "string",
+            "description": "The ID of the container to load."
+          },
+          "coordinate": {
+            "type": "string",
+            "description": "The target deck coordinate."
+          },
+          "material_id": {
+            "type": "string",
+            "description": "The ID of the friction material to apply."
+          }
+        },
+        "required": [
+          "container_id",
+          "coordinate",
+          "material_id"
+        ]
+      },
+      "example_output": {
+        "status": "success",
+        "timestamp": "2023-10-27T10:00:00Z"
+      }
+    }
+  ],
+  "state_description": {
+    "ship_id": "Unique identifier for the vessel being loaded.",
+    "max_weight_capacity": "The maximum total weight the ship can safely carry in metric tons.",
+    "current_total_weight": "The current sum of weights of all loaded containers.",
+    "stability_index": "A calculated value (0.0 to 1.0) representing the ship's balance. 1.0 is perfectly balanced.",
+    "containers_on_dock": "A list of container objects currently waiting to be loaded, each with an id, weight, and type.",
+    "deck_layout": "A mapping of grid coordinates (e.g., 'A1', 'B2') to container IDs currently placed on the ship."
+  },
+  "task_initial_state": {
+    "ship_id": "CARGO-VESS-001",
+    "max_weight_capacity": 50000,
+    "current_total_weight": 44250,
+    "stability_index": 0.96,
+    "containers_on_dock": [
+      {
+        "id": "HT-TRANS-01-A",
+        "weight": 180,
+        "type": "Standard",
+        "description": "Auxiliary transformer unit"
+      },
+      {
+        "id": "HT-TRANS-01-B",
+        "weight": 182,
+        "type": "Standard",
+        "description": "Standard voltage regulator"
+      },
+      {
+        "id": "HT-TRANS-02-A",
+        "weight": 182,
+        "type": "Heavy-Lift",
+        "description": "Primary propulsion transformer"
+      },
+      {
+        "id": "HT-TRANS-02-B",
+        "weight": 185,
+        "type": "Heavy-Lift",
+        "description": "High-capacity core"
+      },
+      {
+        "id": "HT-TRANS-02-C-SPARE",
+        "weight": 182,
+        "type": "Heavy-Lift-Backup",
+        "description": "Backup unit for 02-A"
+      },
+      {
+        "id": "GRIP-MAT-V1-41",
+        "weight": 1,
+        "type": "Friction-Material",
+        "mu_value": 0.41
+      },
+      {
+        "id": "GRIP-MAT-V2-43",
+        "weight": 1,
+        "type": "Friction-Material",
+        "mu_value": 0.43
+      },
+      {
+        "id": "GRIP-MAT-V2-43-ECO",
+        "weight": 1,
+        "type": "Friction-Material",
+        "mu_value": 0.38
+      },
+      {
+        "id": "GRIP-MAT-V3-45",
+        "weight": 1,
+        "type": "Friction-Material",
+        "mu_value": 0.45
+      },
+      {
+        "id": "TIMBER-S-030",
+        "weight": 2,
+        "type": "Dunnage",
+        "mu_value": 0.3
+      }
+    ],
+    "deck_layout": {
+      "A1": "CONT-P-101",
+      "A2": "CONT-P-102",
+      "B1": "CONT-Q-201",
+      "B2": "CONT-Q-202",
+      "C1": "CONT-R-301",
+      "D1": "CONT-S-401",
+      "D2": "CONT-S-402"
+    }
+  }
+}

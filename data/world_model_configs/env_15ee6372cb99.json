@@ -1,0 +1,182 @@
+{
+  "environment_name": "env_15ee6372cb99",
+  "world_model_system_prompt": "# 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: Based on the current mission state $s_t$ and the rescue coordinator's (Agent) action $a_t$, you simulate the evolution of the Search and Rescue (SAR) environment and predict the resulting observation $o_{{t+1}}$.\n- **Emphasis**: You are a simulator of the SAR scenario. You do not execute real-world rescues; you model internal state transitions (e.g., drone battery depletion, victim health changes, weather shifts) and provide the Agent with the sensory feedback resulting from their commands.\n\n# 2. Environment Management\n\n## State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n## Context Awareness\nAll interactions between the World Model and the Agent must maintain strict context consistency. You must track the physical location of assets, the status of victims, and the progression of time to ensure that subsequent observations are logically derived from previous states.\n\n# 3. Environment Execution\n\n## Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n## Input Parsing & Program Execution\nThe Agent submits action requests via a structured JSON object. This JSON contains:\n- `\"name\"`: The name of the action function (e.g., move_drone, deploy_sensor, drop_supplies).\n- Parameters required by that function.\n\nExample:\n```json\n{{\n \"name\": \"deploy_uav\",\n \"arguments\": {{\n    \"uav_id\": \"drone_alpha\",\n    \"target_coordinates\": [22.3, 114.1]\n  }}\n}}\n```\nYou must parse this input and simulate the environment's response based on the logic of a search and rescue mission.\n\n## Environment Behavior Modeling\n\n### Error Handling & Edge Cases\nIf the Agent attempts an impossible action (e.g., flying a drone with 0% battery, searching an area outside the map, or using an undefined command), return a structured error:\n`{{\"error\": \"Description of why the action failed\"}}`\nDo not fabricate successful results for invalid actions.\n\n### Output Assembly\nFor every action call, return a structured JSON object containing **ONLY** the return fields declared in that action's definition. \n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the internal state `$s_t$`, the updated state, or any hidden mission variables. Only expose the `observation` (the information the Agent would actually see or receive via telemetry).\n\n# 4. Key Principles\n- **Format**: Strictly adhere to JSON for all outputs.\n- **Factuality**: Use realistic SAR physics (e.g., flight time consumes battery, weather affects visibility).\n- **Consistency**: If a victim is marked as \"critical,\" their status should deteriorate unless medical aid is simulated.\n- **Realism**: Actions take place in a dynamic environment; random variables (like signal interference) should follow realistic patterns.\n- **Quality**: Ensure all simulated data (coordinates, timestamps, sensor readings) is precise and structured.\n- **Encapsulation**: Never reveal the full backend state. Only provide the specific observations defined in the action set.\n{{initial_state}}: {{\n  \"mission_time_elapsed\": 45,\n  \"drone_fleet\": [\n    {{\n      \"id\": \"heavy_lift_uav_01\",\n      \"pos\": [\n        0.0,\n        0.0\n      ],\n      \"battery\": 54,\n      \"status\": \"ready\"\n    }},\n    {{\n      \"id\": \"scout_uav_01\",\n      \"pos\": [\n        0.0,\n        0.0\n      ],\n      \"battery\": 90,\n      \"status\": \"ready\"\n    }}\n  ],\n  \"victim_registry\": [\n    {{\n      \"victim_id\": \"Bravo\",\n      \"location\": [\n        25.5,\n        42.0\n      ],\n      \"health_score\": 35,\n      \"identified\": false\n    }}\n  ],\n  \"weather_conditions\": {{\n    \"wind_speed\": 12.5,\n    \"visibility\": \"clear\",\n    \"precipitation\": false\n  }},\n  \"resource_inventory\": {{\n    \"medkits\": 5,\n    \"rations\": 10,\n    \"water_liters\": 25\n  }}\n}}\n{{state_descriptions}}: {{\n  \"mission_time_elapsed\": \"Total minutes passed since the start of the mission.\",\n  \"drone_fleet\": \"List of active UAVs with their current coordinates, battery levels, and cargo status.\",\n  \"victim_registry\": \"Information regarding detected and suspected victim locations and health status.\",\n  \"weather_conditions\": \"Current environmental factors affecting operations.\",\n  \"resource_inventory\": \"Supplies available at the base station.\"\n}}\n{action_set_definitions}: {\n  \"get_victim_info\": {\n    \"description\": \"Retrieves the current health status, location, and survivability time limit for a specific subject.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"victim_id\": {\n          \"type\": \"string\",\n          \"description\": \"The name or ID of the subject (e.g., 'Bravo').\"\n        }\n      },\n      \"required\": [\n        \"victim_id\"\n      ]\n    },\n    \"example_output\": {\n      \"health_score\": 35,\n      \"survivability_limit_minutes\": 120,\n      \"location\": \"Sector 7-G\"\n    }\n  },\n  \"get_environmental_status\": {\n    \"description\": \"Retrieves the current mission time elapsed and real-time weather safety conditions.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {}\n    },\n    \"example_output\": {\n      \"mission_time_elapsed\": 45,\n      \"weather_safety_status\": \"clear\",\n      \"wind_speed_kmh\": 15\n    }\n  },\n  \"get_resource_inventory\": {\n    \"description\": \"Checks the availability of medical and extraction supplies at the base station.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {}\n    },\n    \"example_output\": {\n      \"medkit_count\": 5,\n      \"litter_carry_units\": 2\n    }\n  },\n  \"get_drone_fleet_status\": {\n    \"description\": \"Returns a list of all active UAVs, their types (e.g., heavy-lift), battery levels, and current coordinates.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {}\n    },\n    \"example_output\": {\n      \"drones\": [\n        {\n          \"drone_id\": \"HL-UAV-01\",\n          \"type\": \"heavy-lift\",\n          \"battery_percent\": 62,\n          \"status\": \"idle\"\n        }\n      ]\n    }\n  },\n  \"apply_medical_supply\": {\n    \"description\": \"Applies a specific resource to a subject to stabilize their health.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"victim_id\": {\n          \"type\": \"string\",\n          \"description\": \"The subject to treat.\"\n        },\n        \"resource_type\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"medkit\"\n          ],\n          \"description\": \"The type of resource to apply.\"\n        }\n      },\n      \"required\": [\n        \"victim_id\",\n        \"resource_type\"\n      ]\n    },\n    \"example_output\": {\n      \"success\": true,\n      \"new_health_score\": 45\n    }\n  },\n  \"execute_extraction\": {\n    \"description\": \"Initiates the transport of a subject to the base station using a specified method and asset.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"victim_id\": {\n          \"type\": \"string\",\n          \"description\": \"The subject to extract.\"\n        },\n        \"method\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"aerial_hoist\",\n            \"litter_carry\"\n          ],\n          \"description\": \"The protocol for transport.\"\n        },\n        \"asset_id\": {\n          \"type\": \"string\",\n          \"description\": \"The specific drone ID (if aerial) or team ID (if litter-carry) performing the action.\"\n        }\n      },\n      \"required\": [\n        \"victim_id\",\n        \"method\"\n      ]\n    },\n    \"example_output\": {\n      \"extraction_status\": \"in_progress\",\n      \"estimated_arrival_time\": 15\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_victim_info",
+      "description": "Retrieves the current health status, location, and survivability time limit for a specific subject.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "victim_id": {
+            "type": "string",
+            "description": "The name or ID of the subject (e.g., 'Bravo')."
+          }
+        },
+        "required": [
+          "victim_id"
+        ]
+      },
+      "example_output": {
+        "health_score": 35,
+        "survivability_limit_minutes": 120,
+        "location": "Sector 7-G"
+      }
+    },
+    {
+      "name": "get_environmental_status",
+      "description": "Retrieves the current mission time elapsed and real-time weather safety conditions.",
+      "parameters": {
+        "type": "object",
+        "properties": {}
+      },
+      "example_output": {
+        "mission_time_elapsed": 45,
+        "weather_safety_status": "clear",
+        "wind_speed_kmh": 15
+      }
+    },
+    {
+      "name": "get_resource_inventory",
+      "description": "Checks the availability of medical and extraction supplies at the base station.",
+      "parameters": {
+        "type": "object",
+        "properties": {}
+      },
+      "example_output": {
+        "medkit_count": 5,
+        "litter_carry_units": 2
+      }
+    },
+    {
+      "name": "get_drone_fleet_status",
+      "description": "Returns a list of all active UAVs, their types (e.g., heavy-lift), battery levels, and current coordinates.",
+      "parameters": {
+        "type": "object",
+        "properties": {}
+      },
+      "example_output": {
+        "drones": [
+          {
+            "drone_id": "HL-UAV-01",
+            "type": "heavy-lift",
+            "battery_percent": 62,
+            "status": "idle"
+          }
+        ]
+      }
+    },
+    {
+      "name": "apply_medical_supply",
+      "description": "Applies a specific resource to a subject to stabilize their health.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "victim_id": {
+            "type": "string",
+            "description": "The subject to treat."
+          },
+          "resource_type": {
+            "type": "string",
+            "enum": [
+              "medkit"
+            ],
+            "description": "The type of resource to apply."
+          }
+        },
+        "required": [
+          "victim_id",
+          "resource_type"
+        ]
+      },
+      "example_output": {
+        "success": true,
+        "new_health_score": 45
+      }
+    },
+    {
+      "name": "execute_extraction",
+      "description": "Initiates the transport of a subject to the base station using a specified method and asset.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "victim_id": {
+            "type": "string",
+            "description": "The subject to extract."
+          },
+          "method": {
+            "type": "string",
+            "enum": [
+              "aerial_hoist",
+              "litter_carry"
+            ],
+            "description": "The protocol for transport."
+          },
+          "asset_id": {
+            "type": "string",
+            "description": "The specific drone ID (if aerial) or team ID (if litter-carry) performing the action."
+          }
+        },
+        "required": [
+          "victim_id",
+          "method"
+        ]
+      },
+      "example_output": {
+        "extraction_status": "in_progress",
+        "estimated_arrival_time": 15
+      }
+    }
+  ],
+  "state_description": {
+    "mission_time_elapsed": "Total minutes passed since the start of the mission.",
+    "drone_fleet": "List of active UAVs with their current coordinates, battery levels, and cargo status.",
+    "victim_registry": "Information regarding detected and suspected victim locations and health status.",
+    "weather_conditions": "Current environmental factors affecting operations.",
+    "resource_inventory": "Supplies available at the base station."
+  },
+  "task_initial_state": {
+    "mission_time_elapsed": 45,
+    "drone_fleet": [
+      {
+        "id": "heavy_lift_uav_01",
+        "pos": [
+          0.0,
+          0.0
+        ],
+        "battery": 54,
+        "status": "ready"
+      },
+      {
+        "id": "scout_uav_01",
+        "pos": [
+          0.0,
+          0.0
+        ],
+        "battery": 90,
+        "status": "ready"
+      }
+    ],
+    "victim_registry": [
+      {
+        "victim_id": "Bravo",
+        "location": [
+          25.5,
+          42.0
+        ],
+        "health_score": 35,
+        "identified": false
+      }
+    ],
+    "weather_conditions": {
+      "wind_speed": 12.5,
+      "visibility": "clear",
+      "precipitation": false
+    },
+    "resource_inventory": {
+      "medkits": 5,
+      "rations": 10,
+      "water_liters": 25
+    }
+  }
+}

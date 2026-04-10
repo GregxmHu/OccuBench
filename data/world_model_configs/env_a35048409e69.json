@@ -1,0 +1,111 @@
+{
+  "environment_name": "env_a35048409e69",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: You function as a high-fidelity simulator for a Power Grid Load Balancing environment. Based on the current internal state $s_t$ and the action $a_t$ executed by the Agent, you must simulate the underlying physics and logic of the power grid to calculate the new state $s_{{t+1}}$ and generate the resulting observation $o_{{t+1}}$.\n- **Emphasis**: You do not perform actions in a real-world grid. You are a simulation layer that ensures environmental continuity, energy balance, and realistic response to control signals.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nYou must maintain a continuous and consistent timeline. Every action impacts the internal state, and subsequent actions must operate on the updated state resulting from previous interactions. You are responsible for tracking variables such as current demand, generation levels, and storage reserves internally.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent submits action requests via a structured JSON object. You must parse this JSON to identify the action and its parameters. \nFormat:\n```json\n{{\n \"name\": \"action_name\",\n \"arguments\": {{\n    \"param1\": \"value1\"\n  }}\n}}\n```\nYou must simulate the execution of the specified action by updating the grid's internal variables (e.g., adjusting generation ramp rates, calculating frequency deviations, or updating battery SOC).\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\n- If an action parameter is out of physical bounds (e.g., requesting generation higher than plant capacity), return an error message: `{{\"error\": \"Physical limit exceeded\"}}`.\n- If the action name is not recognized, return `{{\"error\": \"Action not found\"}}`.\n- Do not invent state values or approximate success if the input is malformed.\n\n##### Output Assembly\nFor every action, you must return a structured JSON object containing **ONLY** the observation fields defined for that specific action. \n\n**CRITICAL CONSTRAINT**: You must **NOT** output the full internal state `s_{{t+1}}`. You must **NOT** output lines like \"Updated state: ...\". Only return the specific JSON observation that the Agent is supposed to see. All state transitions happen silently within your internal logic.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to JSON for both inputs and outputs.\n- **Factuality**: Use realistic power grid dynamics (e.g., power balance: Generation + Storage Discharge = Demand + Storage Charge + Losses).\n- **Consistency**: If an action increases thermal generation at time $t$, the telemetry at time $t+1$ must reflect that increased value.\n- **Realism**: Simulate stochastic elements if applicable (e.g., slight demand fluctuations or renewable intermittency) while remaining logically grounded.\n- **Quality**: Ensure all numerical outputs are precise and logically derived from the state transition.\n- **Encapsulation**: The internal state is your private memory. The Agent only interacts with the grid through the defined Observations.\n{{initial_state}}: {{\n  \"grid_load_mw\": 6000.0,\n  \"thermal_gen_mw\": 4500.0,\n  \"renewable_gen_mw\": 1200.0,\n  \"battery_soc_mwh\": 400.0,\n  \"grid_frequency_hz\": 50.0,\n  \"timestamp_hour\": 19\n}}\n{{state_descriptions}}: {{\n  \"grid_load_mw\": \"The current total electricity demand from the consumer side in Megawatts.\",\n  \"thermal_gen_mw\": \"Current power output from controllable thermal power plants (coal/gas) in Megawatts.\",\n  \"renewable_gen_mw\": \"Current power output from non-controllable sources (solar/wind) in Megawatts.\",\n  \"battery_soc_mwh\": \"Current energy stored in the grid-scale battery system in Megawatt-hours.\",\n  \"grid_frequency_hz\": \"The system frequency, where 50.0 or 60.0 represents a perfect balance between supply and demand.\",\n  \"timestamp_hour\": \"The current hour of the simulation cycle (0-23).\"\n}}\n{action_set_definitions}: {\n  \"get_grid_state\": {\n    \"description\": \"Retrieves the current operational telemetry from the power grid including load, generation, battery levels, and frequency.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"grid_load_mw\": 1250.0,\n      \"thermal_gen_mw\": 800.0,\n      \"renewable_gen_mw\": 450.0,\n      \"battery_soc_mwh\": 180.0,\n      \"grid_frequency_hz\": 50.0,\n      \"timestamp_hour\": 18\n    }\n  },\n  \"set_thermal_dispatch\": {\n    \"description\": \"Sets the target output for thermal power plants. Note: The system enforces a maximum change of 40 MW per interval relative to the current output.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"target_mw\": {\n          \"type\": \"number\",\n          \"description\": \"The desired thermal power output in Megawatts.\"\n        }\n      },\n      \"required\": [\n        \"target_mw\"\n      ]\n    },\n    \"example_output\": {\n      \"applied_output_mw\": 840.0,\n      \"ramp_limited\": true\n    }\n  },\n  \"set_battery_dispatch\": {\n    \"description\": \"Commands the battery storage system to discharge (positive MW) or charge (negative MW). Ensure SOC remains above 150 MWh.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"dispatch_mw\": {\n          \"type\": \"number\",\n          \"description\": \"The amount of power to add to (positive) or remove from (negative) the grid in Megawatts.\"\n        }\n      },\n      \"required\": [\n        \"dispatch_mw\"\n      ]\n    },\n    \"example_output\": {\n      \"battery_output_mw\": 25.0,\n      \"current_soc_mwh\": 178.5\n    }\n  },\n  \"set_load_shedding\": {\n    \"description\": \"Emergency tool to force a reduction in consumer demand (load shedding) to prevent frequency collapse when supply capacity is exhausted.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"shed_mw\": {\n          \"type\": \"number\",\n          \"description\": \"The amount of load to shed in Megawatts. Should be 0 during normal operations.\"\n        }\n      },\n      \"required\": [\n        \"shed_mw\"\n      ]\n    },\n    \"example_output\": {\n      \"active_shedding_mw\": 10.0\n    }\n  },\n  \"step_simulation\": {\n    \"description\": \"Advances the simulation to the next dispatch interval. The world model updates state and calculates frequency based on the balance of supply, demand, and shedding.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"new_timestamp\": \"18:15\",\n      \"interval_id\": 12\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_grid_state",
+      "description": "Retrieves the current operational telemetry from the power grid including load, generation, battery levels, and frequency.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "grid_load_mw": 1250.0,
+        "thermal_gen_mw": 800.0,
+        "renewable_gen_mw": 450.0,
+        "battery_soc_mwh": 180.0,
+        "grid_frequency_hz": 50.0,
+        "timestamp_hour": 18
+      }
+    },
+    {
+      "name": "set_thermal_dispatch",
+      "description": "Sets the target output for thermal power plants. Note: The system enforces a maximum change of 40 MW per interval relative to the current output.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "target_mw": {
+            "type": "number",
+            "description": "The desired thermal power output in Megawatts."
+          }
+        },
+        "required": [
+          "target_mw"
+        ]
+      },
+      "example_output": {
+        "applied_output_mw": 840.0,
+        "ramp_limited": true
+      }
+    },
+    {
+      "name": "set_battery_dispatch",
+      "description": "Commands the battery storage system to discharge (positive MW) or charge (negative MW). Ensure SOC remains above 150 MWh.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "dispatch_mw": {
+            "type": "number",
+            "description": "The amount of power to add to (positive) or remove from (negative) the grid in Megawatts."
+          }
+        },
+        "required": [
+          "dispatch_mw"
+        ]
+      },
+      "example_output": {
+        "battery_output_mw": 25.0,
+        "current_soc_mwh": 178.5
+      }
+    },
+    {
+      "name": "set_load_shedding",
+      "description": "Emergency tool to force a reduction in consumer demand (load shedding) to prevent frequency collapse when supply capacity is exhausted.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "shed_mw": {
+            "type": "number",
+            "description": "The amount of load to shed in Megawatts. Should be 0 during normal operations."
+          }
+        },
+        "required": [
+          "shed_mw"
+        ]
+      },
+      "example_output": {
+        "active_shedding_mw": 10.0
+      }
+    },
+    {
+      "name": "step_simulation",
+      "description": "Advances the simulation to the next dispatch interval. The world model updates state and calculates frequency based on the balance of supply, demand, and shedding.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "new_timestamp": "18:15",
+        "interval_id": 12
+      }
+    }
+  ],
+  "state_description": {
+    "grid_load_mw": "The current total electricity demand from the consumer side in Megawatts.",
+    "thermal_gen_mw": "Current power output from controllable thermal power plants (coal/gas) in Megawatts.",
+    "renewable_gen_mw": "Current power output from non-controllable sources (solar/wind) in Megawatts.",
+    "battery_soc_mwh": "Current energy stored in the grid-scale battery system in Megawatt-hours.",
+    "grid_frequency_hz": "The system frequency, where 50.0 or 60.0 represents a perfect balance between supply and demand.",
+    "timestamp_hour": "The current hour of the simulation cycle (0-23)."
+  },
+  "task_initial_state": {
+    "grid_load_mw": 6000.0,
+    "thermal_gen_mw": 4500.0,
+    "renewable_gen_mw": 1200.0,
+    "battery_soc_mwh": 400.0,
+    "grid_frequency_hz": 50.0,
+    "timestamp_hour": 19
+  }
+}

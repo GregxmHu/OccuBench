@@ -1,0 +1,196 @@
+{
+  "environment_name": "env_00a27f2bfba0",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Clear Role**: Language World Model (LWM)\n- **Core Objective**: Based on the current meeting room state $s_t$ and the scheduling action $a_t$ provided by the Agent, simulate the internal evolution of the booking system and predict the observation $o_{{t+1}}$ (e.g., booking confirmation, availability lists, or error messages).\n- **Emphasis**: The LWM does not manage a real physical calendar or send actual email invites. It performs internal state evolution (tracking room occupancy and conflicts) and generates the resulting observation for the Agent.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation tracking rooms, their features, and current reservations. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nEmphasis: All interactions between the World Model and the Agent must maintain context consistency. If a room is booked in step $t$, it must remain unavailable for overlapping time slots in all subsequent steps until the booking is cancelled or the simulated time progresses.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. This JSON must contain the following fields:\n- `\"name\"`: Specifies the name of the action function to execute (e.g., \"book_room\", \"check_availability\", \"cancel_booking\").\n- The remaining fields are the parameter names and corresponding values required by that action function.\n\nExample:\n```json\n{{\n \"name\": \"book_room\",\n \"arguments\": {{\n    \"room_id\": \"Conference-A\",\n    \"start_time\": \"2025-10-10T10:00:00\",\n    \"end_time\": \"2025-10-10T11:00:00\",\n    \"user\": \"Alice\"\n  }}\n}}\n```\nThe Language World Model must correctly parse such JSON inputs, check for scheduling conflicts against the internal state, and simulate the execution results.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nFor invalid parameters (e.g., end_time before start_time), undefined actions, booking conflicts (double-booking the same room), or non-existent room IDs, return structured error information (e.g., `{{\"error\": \"Room 'Conference-A' is already occupied at this time\"}}`), and **do not fabricate states or fictitious responses**.\n\n##### Output Assembly\nFor every action function call, the model must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition.\n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, `new_state`, or any hidden variables like the full list of all bookings if not explicitly requested. The state maintenance is implicit in the history. The Agent must only see the specific return values defined in the action (the Observation).\n\n### 4. Key Principles\n- **Format**: Strictly adhere to specified JSON and text formats.\n- **Factuality**: Do not fabricate non-existent rooms or successful bookings if a conflict exists in the state.\n- **Consistency**: Room availability must be logically consistent across the timeline.\n- **Realism**: Simulated behaviors must align with standard professional scheduling logic (e.g., no overlapping meetings in the same room).\n- **Quality**: Language must be clear, unambiguous, and structurally complete.\n- **Encapsulation**: Strictly hide the internal state structure from the output. Only expose information that is explicitly returned by the action function. Do not output the state update.\n{{initial_state}}: {{\n  \"rooms\": [\n    {{\n      \"room_id\": \"Clinical-Suite-4B\",\n      \"capacity\": 12,\n      \"features\": [\n        \"PACS\",\n        \"Secure_AV\",\n        \"Sound_Masking\",\n        \"High_ACH_Ventilation\"\n      ]\n    }},\n    {{\n      \"room_id\": \"Administrative-Room-1\",\n      \"capacity\": 20,\n      \"features\": [\n        \"Projector\",\n        \"Standard_WiFi\"\n      ]\n    }}\n  ],\n  \"bookings\": [\n    {{\n      \"booking_id\": \"BK-7721\",\n      \"room_id\": \"Clinical-Suite-4B\",\n      \"start_time\": \"2025-01-01T07:30:00\",\n      \"end_time\": \"2025-01-01T09:00:00\",\n      \"organizer\": \"Dr. Smith (Infectious Disease Patient Walkthrough)\"\n    }}\n  ],\n  \"current_system_time\": \"2025-01-01T09:10:00\"\n}}\n{{state_descriptions}}: {{\n  \"rooms\": \"A list of available meeting rooms and their metadata.\",\n  \"bookings\": \"Current active reservations in the system.\",\n  \"current_system_time\": \"The current reference time in the simulation (ISO 8601).\"\n}}\n{action_set_definitions}: {\n  \"get_system_info\": {\n    \"description\": \"Retrieves the current system time and date, which is essential for determining the 'earliest possible time'.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"current_time\": \"2023-10-27T08:30:00Z\"\n    }\n  },\n  \"search_room_by_name\": {\n    \"description\": \"Searches for a specific room by its name to retrieve its unique identifier and specific metadata.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"room_name\": {\n          \"type\": \"string\",\n          \"description\": \"The name of the suite (e.g., 'Clinical Suite 4B').\"\n        }\n      },\n      \"required\": [\n        \"room_name\"\n      ]\n    },\n    \"example_output\": {\n      \"room_id\": \"ROOM_4B_ID\",\n      \"capacity\": 10,\n      \"location\": \"Wing B, Level 4\"\n    }\n  },\n  \"verify_clinical_clearance\": {\n    \"description\": \"Checks if a room has been officially cleared for clinical use following sanitization protocols (e.g., after infectious disease exposure).\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"room_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the room.\"\n        }\n      },\n      \"required\": [\n        \"room_id\"\n      ]\n    },\n    \"example_output\": {\n      \"is_cleared\": true,\n      \"last_sanitized_time\": \"2023-10-27T09:05:00Z\",\n      \"clearance_type\": \"clinical-grade\"\n    }\n  },\n  \"check_equipment_readiness\": {\n    \"description\": \"Confirms the operational status of specific categories of specialized medical equipment in a room.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"room_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the room.\"\n        },\n        \"equipment_category\": {\n          \"type\": \"string\",\n          \"description\": \"The type of equipment to check (e.g., 'medical imaging').\"\n        }\n      },\n      \"required\": [\n        \"room_id\",\n        \"equipment_category\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"operational\",\n      \"tested_at\": \"2023-10-27T08:45:00Z\",\n      \"equipment_list\": [\n        \"MRI Link 1\",\n        \"CT Viewer\"\n      ]\n    }\n  },\n  \"get_room_schedule\": {\n    \"description\": \"Retrieves the current list of bookings for a specific room on a specific date to identify availability.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"room_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the room.\"\n        },\n        \"date\": {\n          \"type\": \"string\",\n          \"description\": \"The date to check in YYYY-MM-DD format.\"\n        }\n      },\n      \"required\": [\n        \"room_id\",\n        \"date\"\n      ]\n    },\n    \"example_output\": {\n      \"bookings\": [\n        {\n          \"start\": \"08:00\",\n          \"end\": \"09:00\",\n          \"event\": \"Infectious Disease Walkthrough\"\n        }\n      ]\n    }\n  },\n  \"create_booking\": {\n    \"description\": \"Finalizes a reservation in the system for a specific user and event.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"room_id\": {\n          \"type\": \"string\",\n          \"description\": \"The identifier of the room to book.\"\n        },\n        \"attendee\": {\n          \"type\": \"string\",\n          \"description\": \"The name of the lead clinician (e.g., 'Dr. Aris').\"\n        },\n        \"event_name\": {\n          \"type\": \"string\",\n          \"description\": \"The title of the meeting.\"\n        },\n        \"start_time\": {\n          \"type\": \"string\",\n          \"description\": \"ISO 8601 start time.\"\n        },\n        \"duration_minutes\": {\n          \"type\": \"integer\",\n          \"description\": \"Duration of the meeting in minutes.\"\n        }\n      },\n      \"required\": [\n        \"room_id\",\n        \"attendee\",\n        \"event_name\",\n        \"start_time\",\n        \"duration_minutes\"\n      ]\n    },\n    \"example_output\": {\n      \"booking_id\": \"RES-99201\",\n      \"status\": \"confirmed\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_system_info",
+      "description": "Retrieves the current system time and date, which is essential for determining the 'earliest possible time'.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "current_time": "2023-10-27T08:30:00Z"
+      }
+    },
+    {
+      "name": "search_room_by_name",
+      "description": "Searches for a specific room by its name to retrieve its unique identifier and specific metadata.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "room_name": {
+            "type": "string",
+            "description": "The name of the suite (e.g., 'Clinical Suite 4B')."
+          }
+        },
+        "required": [
+          "room_name"
+        ]
+      },
+      "example_output": {
+        "room_id": "ROOM_4B_ID",
+        "capacity": 10,
+        "location": "Wing B, Level 4"
+      }
+    },
+    {
+      "name": "verify_clinical_clearance",
+      "description": "Checks if a room has been officially cleared for clinical use following sanitization protocols (e.g., after infectious disease exposure).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "room_id": {
+            "type": "string",
+            "description": "The unique identifier for the room."
+          }
+        },
+        "required": [
+          "room_id"
+        ]
+      },
+      "example_output": {
+        "is_cleared": true,
+        "last_sanitized_time": "2023-10-27T09:05:00Z",
+        "clearance_type": "clinical-grade"
+      }
+    },
+    {
+      "name": "check_equipment_readiness",
+      "description": "Confirms the operational status of specific categories of specialized medical equipment in a room.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "room_id": {
+            "type": "string",
+            "description": "The unique identifier for the room."
+          },
+          "equipment_category": {
+            "type": "string",
+            "description": "The type of equipment to check (e.g., 'medical imaging')."
+          }
+        },
+        "required": [
+          "room_id",
+          "equipment_category"
+        ]
+      },
+      "example_output": {
+        "status": "operational",
+        "tested_at": "2023-10-27T08:45:00Z",
+        "equipment_list": [
+          "MRI Link 1",
+          "CT Viewer"
+        ]
+      }
+    },
+    {
+      "name": "get_room_schedule",
+      "description": "Retrieves the current list of bookings for a specific room on a specific date to identify availability.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "room_id": {
+            "type": "string",
+            "description": "The unique identifier for the room."
+          },
+          "date": {
+            "type": "string",
+            "description": "The date to check in YYYY-MM-DD format."
+          }
+        },
+        "required": [
+          "room_id",
+          "date"
+        ]
+      },
+      "example_output": {
+        "bookings": [
+          {
+            "start": "08:00",
+            "end": "09:00",
+            "event": "Infectious Disease Walkthrough"
+          }
+        ]
+      }
+    },
+    {
+      "name": "create_booking",
+      "description": "Finalizes a reservation in the system for a specific user and event.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "room_id": {
+            "type": "string",
+            "description": "The identifier of the room to book."
+          },
+          "attendee": {
+            "type": "string",
+            "description": "The name of the lead clinician (e.g., 'Dr. Aris')."
+          },
+          "event_name": {
+            "type": "string",
+            "description": "The title of the meeting."
+          },
+          "start_time": {
+            "type": "string",
+            "description": "ISO 8601 start time."
+          },
+          "duration_minutes": {
+            "type": "integer",
+            "description": "Duration of the meeting in minutes."
+          }
+        },
+        "required": [
+          "room_id",
+          "attendee",
+          "event_name",
+          "start_time",
+          "duration_minutes"
+        ]
+      },
+      "example_output": {
+        "booking_id": "RES-99201",
+        "status": "confirmed"
+      }
+    }
+  ],
+  "state_description": {
+    "rooms": "A list of available meeting rooms and their metadata.",
+    "bookings": "Current active reservations in the system.",
+    "current_system_time": "The current reference time in the simulation (ISO 8601)."
+  },
+  "task_initial_state": {
+    "rooms": [
+      {
+        "room_id": "Clinical-Suite-4B",
+        "capacity": 12,
+        "features": [
+          "PACS",
+          "Secure_AV",
+          "Sound_Masking",
+          "High_ACH_Ventilation"
+        ]
+      },
+      {
+        "room_id": "Administrative-Room-1",
+        "capacity": 20,
+        "features": [
+          "Projector",
+          "Standard_WiFi"
+        ]
+      }
+    ],
+    "bookings": [
+      {
+        "booking_id": "BK-7721",
+        "room_id": "Clinical-Suite-4B",
+        "start_time": "2025-01-01T07:30:00",
+        "end_time": "2025-01-01T09:00:00",
+        "organizer": "Dr. Smith (Infectious Disease Patient Walkthrough)"
+      }
+    ],
+    "current_system_time": "2025-01-01T09:10:00"
+  }
+}

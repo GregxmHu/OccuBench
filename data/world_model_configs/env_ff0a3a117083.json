@@ -1,0 +1,158 @@
+{
+  "environment_name": "env_ff0a3a117083",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: You act as a high-fidelity simulator for a Greenhouse Irrigation Control environment. Based on the current internal state $s_t$ and the action $a_t$ submitted by the Agent, you must simulate the physical and logical evolution of the greenhouse environment and predict the resulting observation $o_{{t+1}}$.\n- **Emphasis**: You are not the controller; you are the environment itself. You do not suggest actions. Your task is to perform internal state transitions and generate precise feedback based on those transitions.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nYou must maintain a consistent internal timeline and physical logic. Every action evolves the state (e.g., activating irrigation increases soil moisture but decreases the water tank level over time). All subsequent interactions must be grounded in the state resulting from previous actions.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the greenhouse by calling specific action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nEach action execution generates a JSON observation.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. You must parse this JSON to determine which simulation logic to trigger. \n\nExample Input:\n```json\n{{\n \"name\": \"activate_sprinkler\",\n \"arguments\": {{\n    \"duration_minutes\": 5,\n    \"flow_rate\": 2.0\n  }}\n}}\n```\nYou must validate the parameters, calculate the physical changes (e.g., evaporation based on temperature, moisture increase based on flow), and prepare the observation output.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nIf the Agent provides invalid parameters (e.g., negative duration), calls an undefined action, or requests an operation that conflicts with the current state (e.g., watering when the water tank is empty), you must return a structured error message:\n- `{{\"error\": \"Description of the specific failure\"}}`\nDo not fabricate successful outcomes for failed logic.\n\n##### Output Assembly\nFor every action call, you must return a structured JSON object containing **ONLY** the observation fields defined in that specific action's documentation.\n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the internal state structure ($s_{{t+1}}$), updated state fields, or hidden variables. You only reveal what the specific action's \"return value\" or \"observation\" allows. The maintenance of the state is your internal responsibility and remains invisible to the Agent unless an action (like a sensor check) explicitly returns that data.\n\n### 4. Key Principles\n- **Format**: Strictly output JSON. No conversational filler.\n- **Factuality**: Adhere to the physics of irrigation; soil cannot exceed 100% moisture, and water cannot be drawn from an empty tank.\n- **Consistency**: If the temperature is high, soil moisture should deplete faster in your internal calculations between steps.\n- **Realism**: Simulate realistic delays and resource consumption.\n- **Encapsulation**: Never output lines like \"State updated to...\". Only output the Observation JSON.\n{{initial_state}}: {{\n  \"soil_moisture_percentage\": 31.5,\n  \"ambient_temperature_celsius\": 33.5,\n  \"water_tank_level_liters\": 250.0,\n  \"pump_active\": false,\n  \"humidity_percentage\": 42.0,\n  \"last_irrigation_timestamp\": \"2023-11-10T07:30:00Z\"\n}}\n{{state_descriptions}}: {{\n  \"soil_moisture_percentage\": \"The current volumetric water content in the soil, ranging from 0 to 100.\",\n  \"ambient_temperature_celsius\": \"The internal air temperature of the greenhouse in degrees Celsius.\",\n  \"water_tank_level_liters\": \"The volume of water remaining in the irrigation supply tank.\",\n  \"pump_active\": \"Indicates whether the irrigation pump is currently powered on.\",\n  \"humidity_percentage\": \"The relative humidity level inside the greenhouse.\",\n  \"last_irrigation_timestamp\": \"The system time when the irrigation system was last deactivated.\"\n}}\n{action_set_definitions}: {\n  \"get_environment_telemetry\": {\n    \"description\": \"Retrieves current real-time data from the greenhouse sensors including soil moisture and tank levels.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"soil_moisture_percentage\": 32.5,\n      \"water_tank_level_liters\": 450.0,\n      \"pump_active\": false\n    }\n  },\n  \"get_water_quality_data\": {\n    \"description\": \"Analyzes the raw leachate and current system water for UV Transmittance (UVT) and ion concentrations.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"uv_transmittance_pct\": 65.0,\n      \"sodium_level_mmol_l\": 7.2\n    }\n  },\n  \"configure_filtration_path\": {\n    \"description\": \"Sets the path for the reclamation unit. Use 'media_filtration' for low clarity/UVT water and 'direct_path' for clear water.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"mode\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"media_filtration\",\n            \"direct_path\"\n          ],\n          \"description\": \"The filtration method to apply.\"\n        }\n      },\n      \"required\": [\n        \"mode\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"path_configured\",\n      \"active_mode\": \"media_filtration\"\n    }\n  },\n  \"process_leachate_reclamation\": {\n    \"description\": \"Initiates the reclamation of raw leachate into the system buffer.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"volume_to_reclaim_liters\": {\n          \"type\": \"number\",\n          \"description\": \"The amount of water to process from leachate.\"\n        }\n      },\n      \"required\": [\n        \"volume_to_reclaim_liters\"\n      ]\n    },\n    \"example_output\": {\n      \"processed_volume\": 450.0,\n      \"stage\": \"awaiting_disinfection\"\n    }\n  },\n  \"apply_uvc_disinfection\": {\n    \"description\": \"Applies UV-C radiation to the reclaimed water to neutralize pathogens like ToBRFV.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"dose_mj_cm2\": {\n          \"type\": \"number\",\n          \"minimum\": 0,\n          \"description\": \"The UV-C dose intensity in mJ/cm².\"\n        }\n      },\n      \"required\": [\n        \"dose_mj_cm2\"\n      ]\n    },\n    \"example_output\": {\n      \"pathogen_neutralized\": true,\n      \"final_dose\": 255.0\n    }\n  },\n  \"execute_ion_rebalancing\": {\n    \"description\": \"Performs a system bleed and Reverse Osmosis (RO) dilution to lower non-target ion concentrations.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"target_sodium_limit\": {\n          \"type\": \"number\",\n          \"description\": \"The maximum allowable sodium level.\"\n        }\n      },\n      \"required\": [\n        \"target_sodium_limit\"\n      ]\n    },\n    \"example_output\": {\n      \"new_sodium_level\": 5.8,\n      \"status\": \"dilution_complete\"\n    }\n  },\n  \"finalize_irrigation_and_refill\": {\n    \"description\": \"Triggers the final irrigation pump and completes the tank refill to target levels.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"target_soil_moisture_pct\": {\n          \"type\": \"number\"\n        },\n        \"target_tank_level_liters\": {\n          \"type\": \"number\"\n        }\n      },\n      \"required\": [\n        \"target_soil_moisture_pct\",\n        \"target_tank_level_liters\"\n      ]\n    },\n    \"example_output\": {\n      \"final_moisture\": 40.0,\n      \"final_tank_level\": 900.0,\n      \"status\": \"success\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_environment_telemetry",
+      "description": "Retrieves current real-time data from the greenhouse sensors including soil moisture and tank levels.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "soil_moisture_percentage": 32.5,
+        "water_tank_level_liters": 450.0,
+        "pump_active": false
+      }
+    },
+    {
+      "name": "get_water_quality_data",
+      "description": "Analyzes the raw leachate and current system water for UV Transmittance (UVT) and ion concentrations.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "uv_transmittance_pct": 65.0,
+        "sodium_level_mmol_l": 7.2
+      }
+    },
+    {
+      "name": "configure_filtration_path",
+      "description": "Sets the path for the reclamation unit. Use 'media_filtration' for low clarity/UVT water and 'direct_path' for clear water.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "mode": {
+            "type": "string",
+            "enum": [
+              "media_filtration",
+              "direct_path"
+            ],
+            "description": "The filtration method to apply."
+          }
+        },
+        "required": [
+          "mode"
+        ]
+      },
+      "example_output": {
+        "status": "path_configured",
+        "active_mode": "media_filtration"
+      }
+    },
+    {
+      "name": "process_leachate_reclamation",
+      "description": "Initiates the reclamation of raw leachate into the system buffer.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "volume_to_reclaim_liters": {
+            "type": "number",
+            "description": "The amount of water to process from leachate."
+          }
+        },
+        "required": [
+          "volume_to_reclaim_liters"
+        ]
+      },
+      "example_output": {
+        "processed_volume": 450.0,
+        "stage": "awaiting_disinfection"
+      }
+    },
+    {
+      "name": "apply_uvc_disinfection",
+      "description": "Applies UV-C radiation to the reclaimed water to neutralize pathogens like ToBRFV.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "dose_mj_cm2": {
+            "type": "number",
+            "minimum": 0,
+            "description": "The UV-C dose intensity in mJ/cm²."
+          }
+        },
+        "required": [
+          "dose_mj_cm2"
+        ]
+      },
+      "example_output": {
+        "pathogen_neutralized": true,
+        "final_dose": 255.0
+      }
+    },
+    {
+      "name": "execute_ion_rebalancing",
+      "description": "Performs a system bleed and Reverse Osmosis (RO) dilution to lower non-target ion concentrations.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "target_sodium_limit": {
+            "type": "number",
+            "description": "The maximum allowable sodium level."
+          }
+        },
+        "required": [
+          "target_sodium_limit"
+        ]
+      },
+      "example_output": {
+        "new_sodium_level": 5.8,
+        "status": "dilution_complete"
+      }
+    },
+    {
+      "name": "finalize_irrigation_and_refill",
+      "description": "Triggers the final irrigation pump and completes the tank refill to target levels.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "target_soil_moisture_pct": {
+            "type": "number"
+          },
+          "target_tank_level_liters": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "target_soil_moisture_pct",
+          "target_tank_level_liters"
+        ]
+      },
+      "example_output": {
+        "final_moisture": 40.0,
+        "final_tank_level": 900.0,
+        "status": "success"
+      }
+    }
+  ],
+  "state_description": {
+    "soil_moisture_percentage": "The current volumetric water content in the soil, ranging from 0 to 100.",
+    "ambient_temperature_celsius": "The internal air temperature of the greenhouse in degrees Celsius.",
+    "water_tank_level_liters": "The volume of water remaining in the irrigation supply tank.",
+    "pump_active": "Indicates whether the irrigation pump is currently powered on.",
+    "humidity_percentage": "The relative humidity level inside the greenhouse.",
+    "last_irrigation_timestamp": "The system time when the irrigation system was last deactivated."
+  },
+  "task_initial_state": {
+    "soil_moisture_percentage": 31.5,
+    "ambient_temperature_celsius": 33.5,
+    "water_tank_level_liters": 250.0,
+    "pump_active": false,
+    "humidity_percentage": 42.0,
+    "last_irrigation_timestamp": "2023-11-10T07:30:00Z"
+  }
+}

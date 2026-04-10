@@ -1,0 +1,242 @@
+{
+  "environment_name": "env_ea522f91e0d4",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: Based on the current internal state $s_t$ and the action $a_t$ executed by the Agent, you are responsible for simulating the evolution of the Regulatory Filing Submission environment. You must predict the next observation $o_{{t+1}}$ that the Agent receives.\n- **Emphasis**: You are a simulator of a regulatory portal (e.g., SEC EDGAR, HMRC, or similar systems). You do not perform real-world filing; you perform internal state transitions and generate realistic observations based on regulatory logic and constraints.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation to track the progress of the filing process. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions must maintain strict context consistency. The model must track which form is currently active, which fields have been validated, and whether the session remains authorized. Subsequent actions must respect the state changes caused by previous actions.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. You must parse this JSON to determine the intended transition. The format is:\n- `\"name\"`: The action function name.\n- `\"arguments\"`: Key-value pairs for parameters.\n\nExample:\n```json\n{{\n \"name\": \"upload_document\",\n \"arguments\": {{\n    \"file_name\": \"annual_report_2023.pdf\",\n    \"document_type\": \"FORM_10K\"\n  }}\n}}\n```\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\n- If an Agent attempts to submit an incomplete form, return a validation error observation.\n- If an action refers to a non-existent filing ID or an unauthorized session, return an error: `{{\"error\": \"Unauthorized\"}}` or `{{\"error\": \"Invalid Filing ID\"}}`.\n- For malformed JSON or undefined actions, return: `{{\"error\": \"Action 'name' not recognized\"}}`.\n- Do not fabricate data; if a field is missing in the state, the observation should reflect that absence.\n\n##### Output Assembly\nFor every action, return a structured JSON object containing **ONLY** the return fields defined in the action's specific output schema (the Observation).\n\n**CRITICAL CONSTRAINT**: You must **NOT** output the internal state $s_t$ or the updated state $s_{{t+1}}$. The transition happens internally in your memory. The output must strictly be the observation $o_{{t+1}}$ intended for the Agent.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to JSON output.\n- **Factuality**: Simulate realistic regulatory responses (e.g., confirmation numbers, timestamped receipts, or specific validation error codes).\n- **Consistency**: If a document is uploaded in step $t$, it must be present in the state for step $t+1$ and reflected in subsequent list actions.\n- **Realism**: Simulate realistic constraints, such as file size limits, specific date formats, and mandatory field requirements.\n- **Quality**: Ensure all simulated error messages or confirmation strings are clear and professional.\n- **Encapsulation**: The internal state structure (e.g., the database of drafts) is hidden. Only return the specific return values of the action called.\n{{initial_state}}: {{\n  \"session_active\": true,\n  \"current_filing_id\": \"AEG-2023-GHG\",\n  \"filing_status\": \"DATA_ENTRY\",\n  \"form_data\": {{\n    \"reporting_entity\": \"Aegis Global Manufacturing\",\n    \"fiscal_year\": \"2023\",\n    \"boundary_approach\": \"Operational Control\",\n    \"scope_1_stationary_combustion\": 45200.0,\n    \"scope_2_location_based_mwh\": 100000.0,\n    \"scope_2_location_based_tco2e\": 60000.0,\n    \"scope_3_category_1_primary_tco2e\": 250000.0,\n    \"uncovered_procurement_spend_usd\": 20000000.0\n  }},\n  \"uploaded_attachments\": [\n    {{\n      \"file_id\": \"FILE-9921\",\n      \"file_name\": \"detroit_hvac_maintenance_q4.pdf\",\n      \"content_summary\": \"Maintenance log indicates 50kg recharge of R-410A refrigerant for Chiller Unit 4.\"\n    }},\n    {{\n      \"file_id\": \"FILE-9922\",\n      \"file_name\": \"ercot_retirement_cert_2023.pdf\",\n      \"content_summary\": \"Confirmation of 40,000 MWh wind RECs retired in the name of Aegis Global Manufacturing.\"\n    }}\n  ],\n  \"validation_flags\": {{\n    \"boundary_consistency\": \"PASSED\",\n    \"scope_1_fugitive_check\": \"FAIL_MISSING_DATA\",\n    \"scope_2_dual_reporting\": \"FAIL_MISSING_MARKET_BASED\",\n    \"scope_3_completeness\": \"FAIL_DATA_GAPS\",\n    \"audit_readiness\": \"PENDING\"\n  }},\n  \"system_timestamp\": \"2024-03-10T14:00:00Z\"\n}}\n{{state_descriptions}}: {{\n  \"session_active\": \"Whether the current user session is valid and authorized.\",\n  \"current_filing_id\": \"The unique identifier of the filing currently being processed.\",\n  \"filing_status\": \"The current stage of the filing (e.g., CREATED, DATA_ENTRY, VALIDATING, SUBMITTED).\",\n  \"form_data\": \"A collection of key-value pairs representing the fields filled in the regulatory form.\",\n  \"uploaded_attachments\": \"A list of metadata for files successfully uploaded to the filing.\",\n  \"validation_flags\": \"Internal record of which sections have passed automated validation checks.\",\n  \"system_timestamp\": \"The current simulation time, used to check against submission deadlines.\"\n}}\n{action_set_definitions}: {\n  \"get_session_context\": {\n    \"description\": \"Retrieves the current user session status and authorization levels.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"session_active\": true,\n      \"user_role\": \"Sustainability_Officer\",\n      \"auth_token\": \"bearer_token_xyz\"\n    }\n  },\n  \"get_filing_state\": {\n    \"description\": \"Retrieves the full current state of a specific regulatory filing, including form data and validation flags.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"filing_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the filing (e.g., AEG-2023-GHG).\"\n        }\n      },\n      \"required\": [\n        \"filing_id\"\n      ]\n    },\n    \"example_output\": {\n      \"filing_status\": \"DATA_ENTRY\",\n      \"validation_flags\": {\n        \"scope_1_refrigerants\": \"MISSING_DATA\",\n        \"scope_2_market_based\": \"PENDING_VERIFICATION\"\n      },\n      \"form_data\": {}\n    }\n  },\n  \"query_facility_records\": {\n    \"description\": \"Queries external facility logs (e.g., HVAC, maintenance) for specific environmental data.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"facility_id\": {\n          \"type\": \"string\",\n          \"description\": \"The name or ID of the facility (e.g., Detroit).\"\n        },\n        \"log_type\": {\n          \"type\": \"string\",\n          \"description\": \"Type of logs to search (e.g., HVAC, energy_meter).\"\n        },\n        \"keyword\": {\n          \"type\": \"string\",\n          \"description\": \"Specific substance or event to search for (e.g., R-410A).\"\n        }\n      },\n      \"required\": [\n        \"facility_id\",\n        \"log_type\"\n      ]\n    },\n    \"example_output\": {\n      \"records\": [\n        {\n          \"date\": \"2023-06-12\",\n          \"event\": \"Leak detected\",\n          \"substance\": \"R-410A\",\n          \"amount_kg\": 15.5\n        }\n      ]\n    }\n  },\n  \"query_energy_registry\": {\n    \"description\": \"Retrieves certificate data from power registries like ERCOT to verify renewable energy purchases.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"registry_name\": {\n          \"type\": \"string\",\n          \"description\": \"The registry to query (e.g., ERCOT).\"\n        },\n        \"entity_name\": {\n          \"type\": \"string\",\n          \"description\": \"The entity associated with the certificate.\"\n        },\n        \"certificate_type\": {\n          \"type\": \"string\",\n          \"description\": \"The type of energy attribute (e.g., Wind PPA).\"\n        }\n      },\n      \"required\": [\n        \"registry_name\",\n        \"entity_name\"\n      ]\n    },\n    \"example_output\": {\n      \"certificates\": [\n        {\n          \"id\": \"CERT-998\",\n          \"source\": \"Wind\",\n          \"mwh_verified\": 4500\n        }\n      ]\n    }\n  },\n  \"update_ghg_inventory\": {\n    \"description\": \"Updates specific scope values and attaches evidence to the filing form.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"filing_id\": {\n          \"type\": \"string\",\n          \"description\": \"Target filing ID.\"\n        },\n        \"scope_category\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"Scope 1\",\n            \"Scope 2 - Location\",\n            \"Scope 2 - Market\",\n            \"Scope 3\"\n          ]\n        },\n        \"update_details\": {\n          \"type\": \"object\",\n          \"description\": \"Key-value pairs of fields to update.\"\n        }\n      },\n      \"required\": [\n        \"filing_id\",\n        \"scope_category\",\n        \"update_details\"\n      ]\n    },\n    \"example_output\": {\n      \"success\": true,\n      \"updated_fields\": [\n        \"market_based_total\"\n      ]\n    }\n  },\n  \"apply_spend_based_eeio\": {\n    \"description\": \"Calculates emissions for Scope 3 using the Environmentally Extended Input-Output (EEIO) method based on procurement spend.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"filing_id\": {\n          \"type\": \"string\"\n        },\n        \"spend_amount\": {\n          \"type\": \"number\",\n          \"description\": \"Total spend in currency units.\"\n        },\n        \"category_description\": {\n          \"type\": \"string\",\n          \"description\": \"Description of what was purchased to determine the correct emission factor.\"\n        }\n      },\n      \"required\": [\n        \"filing_id\",\n        \"spend_amount\",\n        \"category_description\"\n      ]\n    },\n    \"example_output\": {\n      \"calculated_mtco2e\": 1250.5,\n      \"factor_used\": \"EEIO_Category_Misc_Procurement\"\n    }\n  },\n  \"validate_and_submit\": {\n    \"description\": \"Triggers the final system validation of the filing and attempts to transition the status to SUBMITTED.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"filing_id\": {\n          \"type\": \"string\"\n        }\n      },\n      \"required\": [\n        \"filing_id\"\n      ]\n    },\n    \"example_output\": {\n      \"new_status\": \"SUBMITTED\",\n      \"remaining_flags\": []\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_session_context",
+      "description": "Retrieves the current user session status and authorization levels.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "session_active": true,
+        "user_role": "Sustainability_Officer",
+        "auth_token": "bearer_token_xyz"
+      }
+    },
+    {
+      "name": "get_filing_state",
+      "description": "Retrieves the full current state of a specific regulatory filing, including form data and validation flags.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "filing_id": {
+            "type": "string",
+            "description": "The unique identifier for the filing (e.g., AEG-2023-GHG)."
+          }
+        },
+        "required": [
+          "filing_id"
+        ]
+      },
+      "example_output": {
+        "filing_status": "DATA_ENTRY",
+        "validation_flags": {
+          "scope_1_refrigerants": "MISSING_DATA",
+          "scope_2_market_based": "PENDING_VERIFICATION"
+        },
+        "form_data": {}
+      }
+    },
+    {
+      "name": "query_facility_records",
+      "description": "Queries external facility logs (e.g., HVAC, maintenance) for specific environmental data.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "facility_id": {
+            "type": "string",
+            "description": "The name or ID of the facility (e.g., Detroit)."
+          },
+          "log_type": {
+            "type": "string",
+            "description": "Type of logs to search (e.g., HVAC, energy_meter)."
+          },
+          "keyword": {
+            "type": "string",
+            "description": "Specific substance or event to search for (e.g., R-410A)."
+          }
+        },
+        "required": [
+          "facility_id",
+          "log_type"
+        ]
+      },
+      "example_output": {
+        "records": [
+          {
+            "date": "2023-06-12",
+            "event": "Leak detected",
+            "substance": "R-410A",
+            "amount_kg": 15.5
+          }
+        ]
+      }
+    },
+    {
+      "name": "query_energy_registry",
+      "description": "Retrieves certificate data from power registries like ERCOT to verify renewable energy purchases.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "registry_name": {
+            "type": "string",
+            "description": "The registry to query (e.g., ERCOT)."
+          },
+          "entity_name": {
+            "type": "string",
+            "description": "The entity associated with the certificate."
+          },
+          "certificate_type": {
+            "type": "string",
+            "description": "The type of energy attribute (e.g., Wind PPA)."
+          }
+        },
+        "required": [
+          "registry_name",
+          "entity_name"
+        ]
+      },
+      "example_output": {
+        "certificates": [
+          {
+            "id": "CERT-998",
+            "source": "Wind",
+            "mwh_verified": 4500
+          }
+        ]
+      }
+    },
+    {
+      "name": "update_ghg_inventory",
+      "description": "Updates specific scope values and attaches evidence to the filing form.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "filing_id": {
+            "type": "string",
+            "description": "Target filing ID."
+          },
+          "scope_category": {
+            "type": "string",
+            "enum": [
+              "Scope 1",
+              "Scope 2 - Location",
+              "Scope 2 - Market",
+              "Scope 3"
+            ]
+          },
+          "update_details": {
+            "type": "object",
+            "description": "Key-value pairs of fields to update."
+          }
+        },
+        "required": [
+          "filing_id",
+          "scope_category",
+          "update_details"
+        ]
+      },
+      "example_output": {
+        "success": true,
+        "updated_fields": [
+          "market_based_total"
+        ]
+      }
+    },
+    {
+      "name": "apply_spend_based_eeio",
+      "description": "Calculates emissions for Scope 3 using the Environmentally Extended Input-Output (EEIO) method based on procurement spend.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "filing_id": {
+            "type": "string"
+          },
+          "spend_amount": {
+            "type": "number",
+            "description": "Total spend in currency units."
+          },
+          "category_description": {
+            "type": "string",
+            "description": "Description of what was purchased to determine the correct emission factor."
+          }
+        },
+        "required": [
+          "filing_id",
+          "spend_amount",
+          "category_description"
+        ]
+      },
+      "example_output": {
+        "calculated_mtco2e": 1250.5,
+        "factor_used": "EEIO_Category_Misc_Procurement"
+      }
+    },
+    {
+      "name": "validate_and_submit",
+      "description": "Triggers the final system validation of the filing and attempts to transition the status to SUBMITTED.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "filing_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "filing_id"
+        ]
+      },
+      "example_output": {
+        "new_status": "SUBMITTED",
+        "remaining_flags": []
+      }
+    }
+  ],
+  "state_description": {
+    "session_active": "Whether the current user session is valid and authorized.",
+    "current_filing_id": "The unique identifier of the filing currently being processed.",
+    "filing_status": "The current stage of the filing (e.g., CREATED, DATA_ENTRY, VALIDATING, SUBMITTED).",
+    "form_data": "A collection of key-value pairs representing the fields filled in the regulatory form.",
+    "uploaded_attachments": "A list of metadata for files successfully uploaded to the filing.",
+    "validation_flags": "Internal record of which sections have passed automated validation checks.",
+    "system_timestamp": "The current simulation time, used to check against submission deadlines."
+  },
+  "task_initial_state": {
+    "session_active": true,
+    "current_filing_id": "AEG-2023-GHG",
+    "filing_status": "DATA_ENTRY",
+    "form_data": {
+      "reporting_entity": "Aegis Global Manufacturing",
+      "fiscal_year": "2023",
+      "boundary_approach": "Operational Control",
+      "scope_1_stationary_combustion": 45200.0,
+      "scope_2_location_based_mwh": 100000.0,
+      "scope_2_location_based_tco2e": 60000.0,
+      "scope_3_category_1_primary_tco2e": 250000.0,
+      "uncovered_procurement_spend_usd": 20000000.0
+    },
+    "uploaded_attachments": [
+      {
+        "file_id": "FILE-9921",
+        "file_name": "detroit_hvac_maintenance_q4.pdf",
+        "content_summary": "Maintenance log indicates 50kg recharge of R-410A refrigerant for Chiller Unit 4."
+      },
+      {
+        "file_id": "FILE-9922",
+        "file_name": "ercot_retirement_cert_2023.pdf",
+        "content_summary": "Confirmation of 40,000 MWh wind RECs retired in the name of Aegis Global Manufacturing."
+      }
+    ],
+    "validation_flags": {
+      "boundary_consistency": "PASSED",
+      "scope_1_fugitive_check": "FAIL_MISSING_DATA",
+      "scope_2_dual_reporting": "FAIL_MISSING_MARKET_BASED",
+      "scope_3_completeness": "FAIL_DATA_GAPS",
+      "audit_readiness": "PENDING"
+    },
+    "system_timestamp": "2024-03-10T14:00:00Z"
+  }
+}

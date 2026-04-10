@@ -1,0 +1,162 @@
+{
+  "environment_name": "env_33dd73b81e20",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM) for Building Inspection Compliance.\n- **Core Objective**: Based on the current building state $s_t$ and the inspector's (Agent) action $a_t$, simulate the environment's internal evolution and predict the specific observation $o_{{t+1}}$ obtained by the Agent.\n- **Emphasis**: You are a simulator. You do not perform real-world inspections or file actual legal reports. Your task is to maintain the internal logic of a building's compliance status and generate realistic feedback based on the actions taken.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions between the World Model and the Agent must maintain rigorous context consistency. If an action modifies a structural component (e.g., 'repair_wiring'), the results of subsequent inspection actions (e.g., 'check_electrical_safety') must reflect that change.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent submits action requests via a structured JSON object. This JSON contains:\n- `\"name\"`: Specifies the name of the action function to execute.\n- The remaining fields are the parameter names and values required by that action.\n\nExample:\n```json\n{{\n \"name\": \"inspect_room\",\n \"arguments\": {{\n    \"room_id\": \"Mechanical_Room_B1\",\n    \"focus\": \"fire_suppression\"\n  }}\n}}\n```\n\nYou must parse these inputs and simulate the resulting observation based on the internal environment logic.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nFor invalid parameters (e.g., inspecting a non-existent floor), undefined actions, or state conflicts, return structured error information (e.g., `{{\"error\": \"Room ID not found\"}}`). Do not fabricate states or fictitious responses beyond the logic of the building environment.\n\n##### Output Assembly\nFor every action function call, you must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition. \n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, `new_state`, or any hidden variables. You are the custodian of the state; the Agent only receives the 'Observation' (the return values of the function). Do not output the state update process.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to specified JSON and text formats.\n- **Factuality**: Do not simulate non-existent compliance codes or building features not implied by the state.\n- **Consistency**: Building physics and regulatory logic must remain self-consistent (e.g., a building with no power cannot have a 'functioning' digital elevator display).\n- **Realism**: Simulated observations must align with professional building inspection standards.\n- **Quality**: Language must be technical, clear, and unambiguous.\n- **Encapsulation**: Strictly hide the internal state structure from the output. Only expose information that is explicitly returned by the action function.\n{{initial_state}}: {{\n  \"building_id\": \"BLDG-7700\",\n  \"structural_integrity_score\": 88,\n  \"fire_alarm_system_status\": \"offline\",\n  \"last_fire_drill_date\": \"2023-11-05\",\n  \"electrical_compliance_certified\": true,\n  \"active_violations\": [\n    \"PRAC: Pending PCM Clearance - Mechanical Room B1 (Amosite Asbestos)\",\n    \"PRAC: Pending PCM Clearance - Mechanical Room B-1 (Non-Hazardous Particulate)\",\n    \"PRAC: Pending Wipe Clearance - Mechanical Room B1-A (Lead-Based Paint)\",\n    \"PRAC: Pending Visual Inspection - Mechanical Room B-1 (Post-Construction Dust)\",\n    \"PRAC: Pending PCM Clearance - Mechanical Room B1-Annex (Fiberglass Insulation)\",\n    \"System Error: Fire alarm control panel communication failure\",\n    \"Maintenance: Uncertified wiring detected in Mechanical Room B1-A\"\n  ],\n  \"occupancy_load\": 0\n}}\n{{state_descriptions}}: {{\n  \"building_id\": \"Unique identifier for the property being inspected.\",\n  \"structural_integrity_score\": \"A rating from 0-100 indicating the physical soundness of the building foundation and frame.\",\n  \"fire_alarm_system_status\": \"Current operational mode of the fire safety system (e.g., 'operational', 'fault', 'offline').\",\n  \"last_fire_drill_date\": \"ISO 8601 formatted date of the last recorded safety exercise.\",\n  \"electrical_compliance_certified\": \"Indicates if the electrical wiring meets the current municipal code.\",\n  \"active_violations\": \"A list of strings describing current unresolved building code violations.\",\n  \"occupancy_load\": \"The current number of people inside the building.\"\n}}\n{action_set_definitions}: {\n  \"get_building_status\": {\n    \"description\": \"Retrieves the current state of a building, including structural scores, active violations, and safety system statuses.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"building_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the property (e.g., 'BLDG-7700').\"\n        }\n      },\n      \"required\": [\n        \"building_id\"\n      ]\n    },\n    \"example_output\": {\n      \"building_id\": \"BLDG-7700\",\n      \"structural_integrity_score\": 85,\n      \"fire_alarm_system_status\": \"fault\",\n      \"active_violations\": [\n        \"Asbestos hazard in B1\",\n        \"Blocked exit\"\n      ],\n      \"electrical_compliance_certified\": false\n    }\n  },\n  \"submit_abatement_clearance\": {\n    \"description\": \"Submits environmental clearance documentation for a specific room to resolve hazardous material violations.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"building_id\": {\n          \"type\": \"string\",\n          \"description\": \"Unique identifier for the building.\"\n        },\n        \"room_id\": {\n          \"type\": \"string\",\n          \"description\": \"The specific room requiring clearance (e.g., 'B1').\"\n        },\n        \"standard\": {\n          \"type\": \"string\",\n          \"description\": \"The regulatory standard to adhere to (e.g., 'PRAC').\"\n        }\n      },\n      \"required\": [\n        \"building_id\",\n        \"room_id\",\n        \"standard\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"success\",\n      \"message\": \"Asbestos abatement for B1 verified under PRAC standard.\"\n    }\n  },\n  \"remediate_safety_system\": {\n    \"description\": \"Triggers repairs or certification updates for life-safety systems (fire alarms, electrical) to restore them to 'operational' or 'certified' status.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"building_id\": {\n          \"type\": \"string\",\n          \"description\": \"Unique identifier for the building.\"\n        },\n        \"system_type\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"fire_alarm\",\n            \"electrical\"\n          ],\n          \"description\": \"The system requiring remediation.\"\n        }\n      },\n      \"required\": [\n        \"building_id\",\n        \"system_type\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"repaired\",\n      \"new_status\": \"operational\"\n    }\n  },\n  \"purge_violation_log\": {\n    \"description\": \"Removes specific resolved environmental or safety violations from the active violations list.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"building_id\": {\n          \"type\": \"string\",\n          \"description\": \"Unique identifier for the building.\"\n        },\n        \"violation_keyword\": {\n          \"type\": \"string\",\n          \"description\": \"Keyword to identify which violations to purge (e.g., 'B1', 'asbestos').\"\n        }\n      },\n      \"required\": [\n        \"building_id\",\n        \"violation_keyword\"\n      ]\n    },\n    \"example_output\": {\n      \"purged_count\": 1,\n      \"remaining_violations\": []\n    }\n  },\n  \"request_certificate_of_reoccupancy\": {\n    \"description\": \"Initiates the final inspection and issues the Certificate of Re-Occupancy if all conditions are met.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"building_id\": {\n          \"type\": \"string\",\n          \"description\": \"Unique identifier for the building.\"\n        }\n      },\n      \"required\": [\n        \"building_id\"\n      ]\n    },\n    \"example_output\": {\n      \"certificate_id\": \"REOCC-2023-XYZ\",\n      \"status\": \"issued\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_building_status",
+      "description": "Retrieves the current state of a building, including structural scores, active violations, and safety system statuses.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "building_id": {
+            "type": "string",
+            "description": "The unique identifier for the property (e.g., 'BLDG-7700')."
+          }
+        },
+        "required": [
+          "building_id"
+        ]
+      },
+      "example_output": {
+        "building_id": "BLDG-7700",
+        "structural_integrity_score": 85,
+        "fire_alarm_system_status": "fault",
+        "active_violations": [
+          "Asbestos hazard in B1",
+          "Blocked exit"
+        ],
+        "electrical_compliance_certified": false
+      }
+    },
+    {
+      "name": "submit_abatement_clearance",
+      "description": "Submits environmental clearance documentation for a specific room to resolve hazardous material violations.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "building_id": {
+            "type": "string",
+            "description": "Unique identifier for the building."
+          },
+          "room_id": {
+            "type": "string",
+            "description": "The specific room requiring clearance (e.g., 'B1')."
+          },
+          "standard": {
+            "type": "string",
+            "description": "The regulatory standard to adhere to (e.g., 'PRAC')."
+          }
+        },
+        "required": [
+          "building_id",
+          "room_id",
+          "standard"
+        ]
+      },
+      "example_output": {
+        "status": "success",
+        "message": "Asbestos abatement for B1 verified under PRAC standard."
+      }
+    },
+    {
+      "name": "remediate_safety_system",
+      "description": "Triggers repairs or certification updates for life-safety systems (fire alarms, electrical) to restore them to 'operational' or 'certified' status.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "building_id": {
+            "type": "string",
+            "description": "Unique identifier for the building."
+          },
+          "system_type": {
+            "type": "string",
+            "enum": [
+              "fire_alarm",
+              "electrical"
+            ],
+            "description": "The system requiring remediation."
+          }
+        },
+        "required": [
+          "building_id",
+          "system_type"
+        ]
+      },
+      "example_output": {
+        "status": "repaired",
+        "new_status": "operational"
+      }
+    },
+    {
+      "name": "purge_violation_log",
+      "description": "Removes specific resolved environmental or safety violations from the active violations list.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "building_id": {
+            "type": "string",
+            "description": "Unique identifier for the building."
+          },
+          "violation_keyword": {
+            "type": "string",
+            "description": "Keyword to identify which violations to purge (e.g., 'B1', 'asbestos')."
+          }
+        },
+        "required": [
+          "building_id",
+          "violation_keyword"
+        ]
+      },
+      "example_output": {
+        "purged_count": 1,
+        "remaining_violations": []
+      }
+    },
+    {
+      "name": "request_certificate_of_reoccupancy",
+      "description": "Initiates the final inspection and issues the Certificate of Re-Occupancy if all conditions are met.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "building_id": {
+            "type": "string",
+            "description": "Unique identifier for the building."
+          }
+        },
+        "required": [
+          "building_id"
+        ]
+      },
+      "example_output": {
+        "certificate_id": "REOCC-2023-XYZ",
+        "status": "issued"
+      }
+    }
+  ],
+  "state_description": {
+    "building_id": "Unique identifier for the property being inspected.",
+    "structural_integrity_score": "A rating from 0-100 indicating the physical soundness of the building foundation and frame.",
+    "fire_alarm_system_status": "Current operational mode of the fire safety system (e.g., 'operational', 'fault', 'offline').",
+    "last_fire_drill_date": "ISO 8601 formatted date of the last recorded safety exercise.",
+    "electrical_compliance_certified": "Indicates if the electrical wiring meets the current municipal code.",
+    "active_violations": "A list of strings describing current unresolved building code violations.",
+    "occupancy_load": "The current number of people inside the building."
+  },
+  "task_initial_state": {
+    "building_id": "BLDG-7700",
+    "structural_integrity_score": 88,
+    "fire_alarm_system_status": "offline",
+    "last_fire_drill_date": "2023-11-05",
+    "electrical_compliance_certified": true,
+    "active_violations": [
+      "PRAC: Pending PCM Clearance - Mechanical Room B1 (Amosite Asbestos)",
+      "PRAC: Pending PCM Clearance - Mechanical Room B-1 (Non-Hazardous Particulate)",
+      "PRAC: Pending Wipe Clearance - Mechanical Room B1-A (Lead-Based Paint)",
+      "PRAC: Pending Visual Inspection - Mechanical Room B-1 (Post-Construction Dust)",
+      "PRAC: Pending PCM Clearance - Mechanical Room B1-Annex (Fiberglass Insulation)",
+      "System Error: Fire alarm control panel communication failure",
+      "Maintenance: Uncertified wiring detected in Mechanical Room B1-A"
+    ],
+    "occupancy_load": 0
+  }
+}

@@ -1,0 +1,238 @@
+{
+  "environment_name": "env_fc6e0c388a95",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: You are a specialized simulator for a CI/CD Pipeline environment. Based on the current internal state $s_t$ and the action $a_t$ performed by the Agent (DevOps AI), your task is to simulate the internal evolution of the pipeline and generate the observation $o_{{t+1}}$ resulting from that action. \n- **Emphasis**: You do not execute real bash commands or interact with real cloud providers. You maintain a self-consistent virtual environment where pipeline failures can be diagnosed, debugged, and potentially resolved through simulated state transitions.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nYou must maintain strict continuity. If an Agent modifies a configuration file or clears disk space in step $t$, that change must persist and influence the results of actions in step $t+1$ and beyond. The history of actions and their consequences defines the current state of the CI/CD environment.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. You must parse this JSON to determine the evolution of the environment. The format is:\n- `\"name\"`: The name of the action function.\n- Remaining fields: Arguments for the function.\n\nExample Input:\n```json\n{{\n \"name\": \"read_pipeline_log\",\n \"arguments\": {{\n    \"stage\": \"build\",\n    \"lines\": 50\n  }}\n}}\n```\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\n- If the Agent calls a function not defined in the action set, return: `{{\"error\": \"Action '...' not found\"}}`.\n- If an action requires parameters that are missing or of the wrong type, return an appropriate error JSON.\n- If an action is logically impossible given the current state (e.g., retrying a pipeline while it is still running), return a functional error message (e.g., `{{\"error\": \"Pipeline is currently in 'RUNNING' state; cannot retry.\"}}`).\n- Do not fabricate data outside the scope of the simulation.\n\n##### Output Assembly\nFor every action, return a structured JSON object containing **ONLY** the return fields declared in the action function's definition. \n\n**CRITICAL CONSTRAINT**: You must **NOT** output the updated internal state JSON or the `{{initial_state}}` structure in your response. The Agent must only receive the specific `observation` (the return values of the function). Your internal reasoning about state updates must remain hidden from the final output.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to JSON for all observations.\n- **Factuality**: Simulate realistic CI/CD behaviors (e.g., if a YAML syntax error exists in a config file, the 'lint' action should return a failure observation).\n- **Consistency**: If a fix is applied to a configuration, subsequent 'retry' actions should reflect the progress or resolution of that specific error.\n- **Realism**: Logs and system outputs should mimic typical CI/CD tools (like GitHub Actions, Jenkins, or GitLab CI).\n- **Encapsulation**: Strictly hide the internal state structure. Only expose information explicitly returned by the action function.\n{{initial_state}}: {{\n  \"pipeline_metadata\": {{\n    \"run_id\": \"OPS-9288\",\n    \"status\": \"FAILED\",\n    \"trigger\": \"webhook\"\n  }},\n  \"pipeline_stages\": [\n    {{\n      \"stage_name\": \"lint\",\n      \"status\": \"SUCCESS\",\n      \"exit_code\": 0\n    }},\n    {{\n      \"stage_name\": \"security-scan\",\n      \"status\": \"SUCCESS\",\n      \"exit_code\": 0\n    }},\n    {{\n      \"stage_name\": \"deploy-init\",\n      \"status\": \"FAILED\",\n      \"exit_code\": 1\n    }},\n    {{\n      \"stage_name\": \"production-rollout\",\n      \"status\": \"QUEUED\",\n      \"exit_code\": null\n    }}\n  ],\n  \"virtual_filesystem\": {{\n    \"bitbucket-pipelines.yml\": \"image: atlassian/pipelines-awscli\\nstages:\\n  - lint\\n  - security-scan\\n  - deploy-init\\n  - production-rollout\",\n    \"config/service_account.json\": \"{{\\n  \\\"id\\\": \\\"AKIA_LEGACY_EXPIRED_001\\\",\\n  \\\"status\\\": \\\"INACTIVE\\\",\\n  \\\"note\\\": \\\"Do not delete - audit history only\\\"\\n}}\",\n    \"config/deploy_creds_v2.json\": \"{{\\n  \\\"AWS_ACCESS_KEY_ID\\\": \\\"AKIA_PROD_LIVE_882\\\",\\n  \\\"REGION\\\": \\\"us-west-2\\\"\\n}}\",\n    \"scripts/backup_deploy.sh.tmp\": \"export AWS_SECRET_ACCESS_KEY='v1-secret-key-leak-882'\\n./deploy.sh\",\n    \"infra/vault_sync.py\": \"import os\\n# Syncs secrets from Vault to runner environment\",\n    \"archive/old_secrets.txt\": \"AKIA_STAGING_992 (Expired 2023-01-01)\"\n  }},\n  \"system_environment\": {{\n    \"disk_usage_percent\": 42.1,\n    \"memory_usage_percent\": 18.5,\n    \"network_connectivity\": true,\n    \"installed_dependencies\": [\n      \"git\",\n      \"aws-cli\",\n      \"vault\",\n      \"git-filter-repo\"\n    ]\n  }},\n  \"logs_db\": {{\n    \"security-scan\": \"Scan Complete. Findings: 0 High, 2 Low (Legacy files ignored).\",\n    \"deploy-init\": \"[ERROR] UnauthorizedException: The credential 'AKIA_PROD_LIVE_882' found in 'config/deploy_creds_v2.json' has been flagged for exposure in a public-facing temporary buffer 'scripts/backup_deploy.sh.tmp'. Mandatory Kill Switch engaged. Access to 'production-rollout' is locked until rotation and history scrub are verified.\",\n    \"audit\": \"System check: AKIA_LEGACY_EXPIRED_001 remains in state 'INACTIVE'. AKIA_STAGING_992 remains in state 'EXPIRED'.\"\n  }}\n}}\n{{state_descriptions}}: {{\n  \"pipeline_metadata\": \"General info about the pipeline run\",\n  \"pipeline_stages\": \"The list of stages and their individual statuses\",\n  \"virtual_filesystem\": \"A mapping of file paths to their current content within the simulated repository\",\n  \"system_environment\": \"Status of the runner/infrastructure\",\n  \"logs_db\": \"Storage of internal log strings mapped by stage name\"\n}}\n{action_set_definitions}: {\n  \"get_pipeline_metadata\": {\n    \"description\": \"Retrieves the status, stage list, and metadata for a specific pipeline execution.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"run_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique ID of the pipeline run (e.g., 'OPS-9288').\"\n        }\n      },\n      \"required\": [\n        \"run_id\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"FAILED\",\n      \"failed_stage\": \"deploy-init\"\n    }\n  },\n  \"get_stage_logs\": {\n    \"description\": \"Retrieves the execution logs for a specific pipeline stage to extract error details and security scan results.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"run_id\": {\n          \"type\": \"string\",\n          \"description\": \"The pipeline run ID.\"\n        },\n        \"stage_name\": {\n          \"type\": \"string\",\n          \"description\": \"The name of the stage (e.g., 'deploy-init').\"\n        }\n      },\n      \"required\": [\n        \"run_id\",\n        \"stage_name\"\n      ]\n    },\n    \"example_output\": {\n      \"logs\": \"Security violation: found active key 'AWS_ID_8812' in /src/config.yaml\"\n    }\n  },\n  \"inspect_credential_status\": {\n    \"description\": \"Queries the central credential management system to verify if a credential is 'ACTIVE', 'INACTIVE', or 'EXPIRED'.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"credential_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID or name of the credential to verify.\"\n        }\n      },\n      \"required\": [\n        \"credential_id\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"ACTIVE\",\n      \"type\": \"long-lived\"\n    }\n  },\n  \"read_repository_file\": {\n    \"description\": \"Reads the content of a specific file from the virtual filesystem to inspect configurations or legacy data.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"file_path\": {\n          \"type\": \"string\",\n          \"description\": \"The full path to the file.\"\n        }\n      },\n      \"required\": [\n        \"file_path\"\n      ]\n    },\n    \"example_output\": {\n      \"content\": \"API_KEY=legacy_001 (Status: EXPIRED)\"\n    }\n  },\n  \"find_credential_occurrences\": {\n    \"description\": \"Scans the entire repository to find every file path where a specific credential string or ID is exposed.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"credential_pattern\": {\n          \"type\": \"string\",\n          \"description\": \"The credential string or ID to search for.\"\n        }\n      },\n      \"required\": [\n        \"credential_pattern\"\n      ]\n    },\n    \"example_output\": {\n      \"paths\": [\n        \"/src/config.yaml\",\n        \"/tmp/exposure_buffer.log\"\n      ]\n    }\n  },\n  \"remediate_and_rotate\": {\n    \"description\": \"Revokes the target credential and issues a new one, updating the internal secret manager.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"credential_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the active credential to rotate.\"\n        }\n      },\n      \"required\": [\n        \"credential_id\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"SUCCESS\",\n      \"new_id\": \"AWS_ID_8813\"\n    }\n  },\n  \"scrub_repository_history\": {\n    \"description\": \"Deletes the credential and purges all historical Git commits for a specified list of file paths.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"file_paths\": {\n          \"type\": \"array\",\n          \"items\": {\n            \"type\": \"string\"\n          },\n          \"description\": \"The list of all file paths containing the exposure.\"\n        },\n        \"credential_pattern\": {\n          \"type\": \"string\",\n          \"description\": \"The credential value/ID to purge.\"\n        }\n      },\n      \"required\": [\n        \"file_paths\",\n        \"credential_pattern\"\n      ]\n    },\n    \"example_output\": {\n      \"scrubbed_files\": 2,\n      \"history_status\": \"CLEAN\"\n    }\n  },\n  \"trigger_pipeline_retry\": {\n    \"description\": \"Restarts the CI/CD pipeline run to verify the fix.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"run_id\": {\n          \"type\": \"string\",\n          \"description\": \"The pipeline run ID.\"\n        }\n      },\n      \"required\": [\n        \"run_id\"\n      ]\n    },\n    \"example_output\": {\n      \"new_status\": \"RUNNING\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_pipeline_metadata",
+      "description": "Retrieves the status, stage list, and metadata for a specific pipeline execution.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "run_id": {
+            "type": "string",
+            "description": "The unique ID of the pipeline run (e.g., 'OPS-9288')."
+          }
+        },
+        "required": [
+          "run_id"
+        ]
+      },
+      "example_output": {
+        "status": "FAILED",
+        "failed_stage": "deploy-init"
+      }
+    },
+    {
+      "name": "get_stage_logs",
+      "description": "Retrieves the execution logs for a specific pipeline stage to extract error details and security scan results.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "run_id": {
+            "type": "string",
+            "description": "The pipeline run ID."
+          },
+          "stage_name": {
+            "type": "string",
+            "description": "The name of the stage (e.g., 'deploy-init')."
+          }
+        },
+        "required": [
+          "run_id",
+          "stage_name"
+        ]
+      },
+      "example_output": {
+        "logs": "Security violation: found active key 'AWS_ID_8812' in /src/config.yaml"
+      }
+    },
+    {
+      "name": "inspect_credential_status",
+      "description": "Queries the central credential management system to verify if a credential is 'ACTIVE', 'INACTIVE', or 'EXPIRED'.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "credential_id": {
+            "type": "string",
+            "description": "The ID or name of the credential to verify."
+          }
+        },
+        "required": [
+          "credential_id"
+        ]
+      },
+      "example_output": {
+        "status": "ACTIVE",
+        "type": "long-lived"
+      }
+    },
+    {
+      "name": "read_repository_file",
+      "description": "Reads the content of a specific file from the virtual filesystem to inspect configurations or legacy data.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "file_path": {
+            "type": "string",
+            "description": "The full path to the file."
+          }
+        },
+        "required": [
+          "file_path"
+        ]
+      },
+      "example_output": {
+        "content": "API_KEY=legacy_001 (Status: EXPIRED)"
+      }
+    },
+    {
+      "name": "find_credential_occurrences",
+      "description": "Scans the entire repository to find every file path where a specific credential string or ID is exposed.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "credential_pattern": {
+            "type": "string",
+            "description": "The credential string or ID to search for."
+          }
+        },
+        "required": [
+          "credential_pattern"
+        ]
+      },
+      "example_output": {
+        "paths": [
+          "/src/config.yaml",
+          "/tmp/exposure_buffer.log"
+        ]
+      }
+    },
+    {
+      "name": "remediate_and_rotate",
+      "description": "Revokes the target credential and issues a new one, updating the internal secret manager.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "credential_id": {
+            "type": "string",
+            "description": "The ID of the active credential to rotate."
+          }
+        },
+        "required": [
+          "credential_id"
+        ]
+      },
+      "example_output": {
+        "status": "SUCCESS",
+        "new_id": "AWS_ID_8813"
+      }
+    },
+    {
+      "name": "scrub_repository_history",
+      "description": "Deletes the credential and purges all historical Git commits for a specified list of file paths.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "file_paths": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "The list of all file paths containing the exposure."
+          },
+          "credential_pattern": {
+            "type": "string",
+            "description": "The credential value/ID to purge."
+          }
+        },
+        "required": [
+          "file_paths",
+          "credential_pattern"
+        ]
+      },
+      "example_output": {
+        "scrubbed_files": 2,
+        "history_status": "CLEAN"
+      }
+    },
+    {
+      "name": "trigger_pipeline_retry",
+      "description": "Restarts the CI/CD pipeline run to verify the fix.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "run_id": {
+            "type": "string",
+            "description": "The pipeline run ID."
+          }
+        },
+        "required": [
+          "run_id"
+        ]
+      },
+      "example_output": {
+        "new_status": "RUNNING"
+      }
+    }
+  ],
+  "state_description": {
+    "pipeline_metadata": "General info about the pipeline run",
+    "pipeline_stages": "The list of stages and their individual statuses",
+    "virtual_filesystem": "A mapping of file paths to their current content within the simulated repository",
+    "system_environment": "Status of the runner/infrastructure",
+    "logs_db": "Storage of internal log strings mapped by stage name"
+  },
+  "task_initial_state": {
+    "pipeline_metadata": {
+      "run_id": "OPS-9288",
+      "status": "FAILED",
+      "trigger": "webhook"
+    },
+    "pipeline_stages": [
+      {
+        "stage_name": "lint",
+        "status": "SUCCESS",
+        "exit_code": 0
+      },
+      {
+        "stage_name": "security-scan",
+        "status": "SUCCESS",
+        "exit_code": 0
+      },
+      {
+        "stage_name": "deploy-init",
+        "status": "FAILED",
+        "exit_code": 1
+      },
+      {
+        "stage_name": "production-rollout",
+        "status": "QUEUED",
+        "exit_code": null
+      }
+    ],
+    "virtual_filesystem": {
+      "bitbucket-pipelines.yml": "image: atlassian/pipelines-awscli\nstages:\n  - lint\n  - security-scan\n  - deploy-init\n  - production-rollout",
+      "config/service_account.json": "{\n  \"id\": \"AKIA_LEGACY_EXPIRED_001\",\n  \"status\": \"INACTIVE\",\n  \"note\": \"Do not delete - audit history only\"\n}",
+      "config/deploy_creds_v2.json": "{\n  \"AWS_ACCESS_KEY_ID\": \"AKIA_PROD_LIVE_882\",\n  \"REGION\": \"us-west-2\"\n}",
+      "scripts/backup_deploy.sh.tmp": "export AWS_SECRET_ACCESS_KEY='v1-secret-key-leak-882'\n./deploy.sh",
+      "infra/vault_sync.py": "import os\n# Syncs secrets from Vault to runner environment",
+      "archive/old_secrets.txt": "AKIA_STAGING_992 (Expired 2023-01-01)"
+    },
+    "system_environment": {
+      "disk_usage_percent": 42.1,
+      "memory_usage_percent": 18.5,
+      "network_connectivity": true,
+      "installed_dependencies": [
+        "git",
+        "aws-cli",
+        "vault",
+        "git-filter-repo"
+      ]
+    },
+    "logs_db": {
+      "security-scan": "Scan Complete. Findings: 0 High, 2 Low (Legacy files ignored).",
+      "deploy-init": "[ERROR] UnauthorizedException: The credential 'AKIA_PROD_LIVE_882' found in 'config/deploy_creds_v2.json' has been flagged for exposure in a public-facing temporary buffer 'scripts/backup_deploy.sh.tmp'. Mandatory Kill Switch engaged. Access to 'production-rollout' is locked until rotation and history scrub are verified.",
+      "audit": "System check: AKIA_LEGACY_EXPIRED_001 remains in state 'INACTIVE'. AKIA_STAGING_992 remains in state 'EXPIRED'."
+    }
+  }
+}

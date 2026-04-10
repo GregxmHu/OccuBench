@@ -1,0 +1,209 @@
+{
+  "environment_name": "env_2d3a2952ce91",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: Based on the current internal state $s_t$ and the action $a_t$ performed by the Agent, simulate the evolution of the travel planning environment and predict the resulting observation $o_{{t+1}}$ for the Agent.\n- **Emphasis**: The LWM acts as a simulator. It does not perform actual web searches or financial transactions; it calculates state changes (e.g., budget depletion, scheduling conflicts) and generates realistic observations based on the internal logic of the travel scenario.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation to track the user's travel progress, budget, and bookings. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions between the World Model and the Agent must maintain strict context consistency. Subsequent observations must reflect previous actions (e.g., if a flight was booked at step $t$, the budget at $t+1$ must be reduced, and the flight must appear in the itinerary).\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. This JSON must contain the following fields:\n- `\"name\"`: Specifies the name of the action function to execute (e.g., `search_flights`, `book_hotel`, `add_activity`).\n- Additional fields as required by the specific action's parameters.\n\nExample:\n```json\n{{\n \"name\": \"book_flight\",\n \"arguments\": {{\n    \"flight_id\": \"CX888\",\n    \"passenger_name\": \"John Doe\"\n  }}\n}}\n```\n\nThe Language World Model must parse this JSON, update the internal state $s_t \\rightarrow s_{{t+1}}$, and generate the corresponding observation.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nIf the Agent attempts an invalid operation—such as booking a hotel that exceeds the remaining budget, selecting a non-existent flight ID, or scheduling overlapping activities—the LWM must return a structured error message (e.g., `{{\"error\": \"Insufficient budget\", \"remaining\": 500, \"required\": 1200}}`). Do not fabricate successful outcomes for failed logic.\n\n##### Output Assembly\nFor every action function call, the model must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition. \n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state $s_{{t+1}}$ or any internal state keys unless specifically requested by the action's return schema. The state maintenance is implicit. Only expose the `observation` ($o_{{t+1}}$).\n\n### 4. Key Principles\n- **Format**: Strictly adhere to JSON for all outputs.\n- **Factuality**: Simulations must follow the logical constraints of travel (e.g., travel dates must be chronological).\n- **Consistency**: The itinerary and budget must remain self-consistent throughout the session.\n- **Realism**: Flight durations, hotel pricing, and activity timings should reflect reasonable real-world values.\n- **Encapsulation**: Strictly hide the internal state structure from the output. Do not output \"State Updated\" messages or the new state JSON.\n{{initial_state}}: {{\n  \"budget_limit\": 5000,\n  \"current_expenditure\": 3500,\n  \"booked_flights\": [\n    {{\n      \"flight_id\": \"AF-012\",\n      \"from\": \"New York (JFK)\",\n      \"to\": \"Paris (CDG)\",\n      \"date\": \"2024-01-01\",\n      \"cost\": 600\n    }},\n    {{\n      \"flight_id\": \"LH-190\",\n      \"from\": \"Paris (CDG)\",\n      \"to\": \"Berlin (BER)\",\n      \"date\": \"2024-01-31\",\n      \"cost\": 150\n    }}\n  ],\n  \"booked_hotels\": [\n    {{\n      \"hotel_id\": \"PAR-CENTRAL-01\",\n      \"city\": \"Paris\",\n      \"check_in\": \"2024-01-01\",\n      \"check_out\": \"2024-01-31\",\n      \"cost\": 1200\n    }},\n    {{\n      \"hotel_id\": \"BER-MITTE-44\",\n      \"city\": \"Berlin\",\n      \"check_in\": \"2024-01-31\",\n      \"check_out\": \"2024-03-30\",\n      \"cost\": 1550\n    }}\n  ],\n  \"itinerary_schedule\": [\n    {{\n      \"date\": \"2024-01-01 to 2024-01-30\",\n      \"event\": \"Schengen Stay: France (30 days)\"\n    }},\n    {{\n      \"date\": \"2024-01-31 to 2024-03-29\",\n      \"event\": \"Schengen Stay: Germany (59 days). Total Schengen usage: 89 days.\"\n    }}\n  ],\n  \"current_location\": \"Berlin, Germany\"\n}}\n{{state_descriptions}}: {{\n  \"budget_limit\": \"The total maximum budget allocated for the trip.\",\n  \"current_expenditure\": \"The total amount spent on bookings so far.\",\n  \"booked_flights\": \"List of objects containing flight details currently confirmed.\",\n  \"booked_hotels\": \"List of objects containing hotel booking details.\",\n  \"itinerary_schedule\": \"A chronological list of daily activities and transit events.\",\n  \"current_location\": \"The current geographical city/location of the traveler in the simulation.\"\n}}\n{action_set_definitions}: {\n  \"get_budget_summary\": {\n    \"description\": \"Retrieves the user's financial status, including the total budget limit and current expenditures already logged in the environment.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"budget_limit\": 1500.0,\n      \"current_expenditure\": 0.0,\n      \"remaining_budget\": 1500.0\n    }\n  },\n  \"get_environment_context\": {\n    \"description\": \"Retrieves the traveler's current physical location, the current date in the simulation, and the current count of Schengen days used.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"current_location\": \"Berlin\",\n      \"current_date\": \"2023-10-01\",\n      \"schengen_days_used\": 89\n    }\n  },\n  \"search_flights\": {\n    \"description\": \"Searches for direct flights to non-Schengen destinations that do not transit through the Schengen zone.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"origin\": {\n          \"type\": \"string\",\n          \"description\": \"The starting city.\"\n        },\n        \"departure_date\": {\n          \"type\": \"string\",\n          \"description\": \"The date of travel (YYYY-MM-DD).\"\n        },\n        \"exclude_carriers\": {\n          \"type\": \"array\",\n          \"items\": {\n            \"type\": \"string\"\n          },\n          \"description\": \"List of airlines to ignore (e.g., 'Eco-Carrier').\"\n        },\n        \"is_direct\": {\n          \"type\": \"boolean\",\n          \"description\": \"Must be true to avoid layovers.\"\n        },\n        \"destination_type\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"non-Schengen\"\n          ],\n          \"description\": \"Constraint to ensure the destination is outside the Schengen zone.\"\n        }\n      },\n      \"required\": [\n        \"origin\",\n        \"departure_date\",\n        \"is_direct\",\n        \"destination_type\"\n      ]\n    },\n    \"example_output\": [\n      {\n        \"flight_id\": \"FL-123\",\n        \"destination\": \"London\",\n        \"price\": 200,\n        \"carrier\": \"GlobalAir\"\n      }\n    ]\n  },\n  \"search_accommodation\": {\n    \"description\": \"Searches for lodging options in a specific city for a set duration, filtering by specific infrastructure exclusions.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"city\": {\n          \"type\": \"string\",\n          \"description\": \"City to search in.\"\n        },\n        \"check_in_date\": {\n          \"type\": \"string\",\n          \"description\": \"Start date of residency.\"\n        },\n        \"duration_days\": {\n          \"type\": \"integer\",\n          \"description\": \"Number of nights required.\"\n        },\n        \"exclude_categories\": {\n          \"type\": \"array\",\n          \"items\": {\n            \"type\": \"string\"\n          },\n          \"description\": \"Types of accommodation to exclude (e.g., 'Shared-Bandwidth', 'Co-living Space').\"\n        }\n      },\n      \"required\": [\n        \"city\",\n        \"check_in_date\",\n        \"duration_days\",\n        \"exclude_categories\"\n      ]\n    },\n    \"example_output\": [\n      {\n        \"hotel_id\": \"HTL-99\",\n        \"name\": \"Tech Suites\",\n        \"total_price\": 800,\n        \"amenities\": [\n          \"Dedicated Fiber\"\n        ]\n      }\n    ]\n  },\n  \"confirm_booking\": {\n    \"description\": \"Finalizes the booking of both flight and hotel, updating the environment state including expenditure and itinerary.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"flight_id\": {\n          \"type\": \"string\"\n        },\n        \"hotel_id\": {\n          \"type\": \"string\"\n        },\n        \"total_cost\": {\n          \"type\": \"number\"\n        }\n      },\n      \"required\": [\n        \"flight_id\",\n        \"hotel_id\",\n        \"total_cost\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"confirmed\",\n      \"itinerary_id\": \"ITIN-555\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_budget_summary",
+      "description": "Retrieves the user's financial status, including the total budget limit and current expenditures already logged in the environment.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "budget_limit": 1500.0,
+        "current_expenditure": 0.0,
+        "remaining_budget": 1500.0
+      }
+    },
+    {
+      "name": "get_environment_context",
+      "description": "Retrieves the traveler's current physical location, the current date in the simulation, and the current count of Schengen days used.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "current_location": "Berlin",
+        "current_date": "2023-10-01",
+        "schengen_days_used": 89
+      }
+    },
+    {
+      "name": "search_flights",
+      "description": "Searches for direct flights to non-Schengen destinations that do not transit through the Schengen zone.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "origin": {
+            "type": "string",
+            "description": "The starting city."
+          },
+          "departure_date": {
+            "type": "string",
+            "description": "The date of travel (YYYY-MM-DD)."
+          },
+          "exclude_carriers": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "List of airlines to ignore (e.g., 'Eco-Carrier')."
+          },
+          "is_direct": {
+            "type": "boolean",
+            "description": "Must be true to avoid layovers."
+          },
+          "destination_type": {
+            "type": "string",
+            "enum": [
+              "non-Schengen"
+            ],
+            "description": "Constraint to ensure the destination is outside the Schengen zone."
+          }
+        },
+        "required": [
+          "origin",
+          "departure_date",
+          "is_direct",
+          "destination_type"
+        ]
+      },
+      "example_output": [
+        {
+          "flight_id": "FL-123",
+          "destination": "London",
+          "price": 200,
+          "carrier": "GlobalAir"
+        }
+      ]
+    },
+    {
+      "name": "search_accommodation",
+      "description": "Searches for lodging options in a specific city for a set duration, filtering by specific infrastructure exclusions.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "city": {
+            "type": "string",
+            "description": "City to search in."
+          },
+          "check_in_date": {
+            "type": "string",
+            "description": "Start date of residency."
+          },
+          "duration_days": {
+            "type": "integer",
+            "description": "Number of nights required."
+          },
+          "exclude_categories": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Types of accommodation to exclude (e.g., 'Shared-Bandwidth', 'Co-living Space')."
+          }
+        },
+        "required": [
+          "city",
+          "check_in_date",
+          "duration_days",
+          "exclude_categories"
+        ]
+      },
+      "example_output": [
+        {
+          "hotel_id": "HTL-99",
+          "name": "Tech Suites",
+          "total_price": 800,
+          "amenities": [
+            "Dedicated Fiber"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "confirm_booking",
+      "description": "Finalizes the booking of both flight and hotel, updating the environment state including expenditure and itinerary.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "flight_id": {
+            "type": "string"
+          },
+          "hotel_id": {
+            "type": "string"
+          },
+          "total_cost": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "flight_id",
+          "hotel_id",
+          "total_cost"
+        ]
+      },
+      "example_output": {
+        "status": "confirmed",
+        "itinerary_id": "ITIN-555"
+      }
+    }
+  ],
+  "state_description": {
+    "budget_limit": "The total maximum budget allocated for the trip.",
+    "current_expenditure": "The total amount spent on bookings so far.",
+    "booked_flights": "List of objects containing flight details currently confirmed.",
+    "booked_hotels": "List of objects containing hotel booking details.",
+    "itinerary_schedule": "A chronological list of daily activities and transit events.",
+    "current_location": "The current geographical city/location of the traveler in the simulation."
+  },
+  "task_initial_state": {
+    "budget_limit": 5000,
+    "current_expenditure": 3500,
+    "booked_flights": [
+      {
+        "flight_id": "AF-012",
+        "from": "New York (JFK)",
+        "to": "Paris (CDG)",
+        "date": "2024-01-01",
+        "cost": 600
+      },
+      {
+        "flight_id": "LH-190",
+        "from": "Paris (CDG)",
+        "to": "Berlin (BER)",
+        "date": "2024-01-31",
+        "cost": 150
+      }
+    ],
+    "booked_hotels": [
+      {
+        "hotel_id": "PAR-CENTRAL-01",
+        "city": "Paris",
+        "check_in": "2024-01-01",
+        "check_out": "2024-01-31",
+        "cost": 1200
+      },
+      {
+        "hotel_id": "BER-MITTE-44",
+        "city": "Berlin",
+        "check_in": "2024-01-31",
+        "check_out": "2024-03-30",
+        "cost": 1550
+      }
+    ],
+    "itinerary_schedule": [
+      {
+        "date": "2024-01-01 to 2024-01-30",
+        "event": "Schengen Stay: France (30 days)"
+      },
+      {
+        "date": "2024-01-31 to 2024-03-29",
+        "event": "Schengen Stay: Germany (59 days). Total Schengen usage: 89 days."
+      }
+    ],
+    "current_location": "Berlin, Germany"
+  }
+}

@@ -1,0 +1,218 @@
+{
+  "environment_name": "env_658120b132e0",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: Based on the current internal state $s_t$ and the action $a_t$ provided by the Agent, simulate the evolution of the Supplier Evaluation Scoring environment and predict the resulting observation $o_{{t+1}}$ obtained by the Agent.\n- **Emphasis**: You are a simulator. You do not perform real-world database writes or external API calls. Your task is to maintain logical consistency of the supplier data and scoring metrics internally and provide realistic responses based on the provided action set.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions between the World Model and the Agent must maintain context consistency. Every action performed modifies the internal environment state (e.g., updating a supplier's quality score or changing an audit status), and subsequent observations must reflect these changes.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. This JSON contains:\n- `\"name\"`: Specifies the name of the action function to execute.\n- Parameters required by that specific function.\n\nExample format:\n```json\n{{\n \"name\": \"update_supplier_score\",\n \"arguments\": {{\n    \"supplier_id\": \"SUP-001\",\n    \"metric\": \"quality\",\n    \"new_value\": 95\n  }}\n}}\n```\nYou must parse this input and simulate the transition of the supplier's metrics or status.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nIf the Agent attempts to evaluate a non-existent supplier, provides scores outside of valid ranges (e.g., negative scores or exceeding 100), or uses undefined actions, return a structured error message:\n- Example: `{{\"error\": \"Supplier ID 'SUP-999' not found\"}}`\nDo not fabricate successful responses for invalid inputs.\n\n##### Output Assembly\nFor every action function call, you must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition. \n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, `new_state`, or hidden variables like the entire supplier database list (unless explicitly requested by a 'list' action). The Agent must only see the specific return values (the Observation) defined in the action.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to JSON for all observations and errors.\n- **Factuality**: Only use the supplier data and scoring logic provided or established in the session history.\n- **Consistency**: If a supplier's score is updated, that specific supplier's total score or rank must reflect that change in all future observations.\n- **Realism**: Scoring calculations and status transitions (e.g., from 'Pending' to 'Audited') should follow the logical flow of a procurement/quality management system.\n- **Quality**: Ensure responses are concise and focused solely on the observation.\n- **Encapsulation**: Strictly hide the internal state structure from the output. Only expose information that is explicitly returned by the action function. Do not output the state update process.\n{{initial_state}}: {{\n  \"suppliers\": [\n    {{\n      \"id\": \"GOL-77\",\n      \"name\": \"Global Ocean Link\",\n      \"performance_metrics\": {{\n        \"quality\": 85,\n        \"delivery\": 92,\n        \"cost\": 88,\n        \"rollover_ratio\": 0.06\n      }},\n      \"compliance_status\": \"Active\",\n      \"operational_metadata\": {{\n        \"recent_vessel\": \"M/V Northern Jubilee\",\n        \"contract_id\": \"NAC-2024-GLOBAL\"\n      }}\n    }}\n  ],\n  \"evaluation_weights\": {{\n    \"quality\": 0.5,\n    \"delivery\": 0.7,\n    \"cost\": 0.3\n  }},\n  \"audit_history\": [\n    {{\n      \"audit_id\": \"AUD-9921\",\n      \"supplier_id\": \"GOL-77\",\n      \"date\": \"2024-11-15\",\n      \"finding\": \"INCIDENT REPORT: M/V Northern Jubilee confirmed 22 containers rolled out of 50 booked (44% rollover). Classification: Commercial Rollover - Spot market rates were $2,100 above contract at time of loading. Metric update pending.\",\n      \"status\": \"Open\"\n    }}\n  ],\n  \"system_metadata\": {{\n    \"current_period\": \"2024-Q4\",\n    \"last_calculation\": \"2024-10-01\"\n  }}\n}}\n{{state_descriptions}}: {{\n  \"suppliers\": \"A list of objects representing suppliers, including their IDs, performance metrics, and compliance status.\",\n  \"evaluation_weights\": \"The weights assigned to different scoring categories (e.g., quality: 0.4, delivery: 0.3, cost: 0.3).\",\n  \"audit_history\": \"A log of past audits performed on suppliers including dates and results.\",\n  \"system_metadata\": \"Metadata such as the last calculation timestamp or current evaluation period.\"\n}}\n{action_set_definitions}: {\n  \"get_supplier_id\": {\n    \"description\": \"Retrieves the unique identifier for a supplier based on their name or partial string match.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"supplier_name\": {\n          \"type\": \"string\",\n          \"description\": \"The name of the carrier/supplier (e.g., 'GOL-77' or 'Global Ocean Link').\"\n        }\n      },\n      \"required\": [\n        \"supplier_name\"\n      ]\n    },\n    \"example_output\": {\n      \"supplier_id\": \"SUP-7701\",\n      \"official_name\": \"Global Ocean Link Limited\"\n    }\n  },\n  \"get_voyage_report\": {\n    \"description\": \"Retrieves operational data, incident logs, and specific rollover counts for a particular vessel voyage.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"voyage_id\": {\n          \"type\": \"string\",\n          \"description\": \"The name or ID of the voyage (e.g., 'M/V Northern Jubilee').\"\n        }\n      },\n      \"required\": [\n        \"voyage_id\"\n      ]\n    },\n    \"example_output\": {\n      \"voyage_rollover_count\": 12,\n      \"voyage_total_containers\": 100,\n      \"incident_logs\": [\n        \"Engine failure\",\n        \"Berth delay\"\n      ]\n    }\n  },\n  \"get_quarterly_performance\": {\n    \"description\": \"Retrieves the aggregated performance metrics for a supplier for a specific quarter, including total shipments and total rollovers.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"supplier_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique ID of the supplier.\"\n        },\n        \"period\": {\n          \"type\": \"string\",\n          \"description\": \"The assessment period (e.g., '2024-Q4').\"\n        }\n      },\n      \"required\": [\n        \"supplier_id\",\n        \"period\"\n      ]\n    },\n    \"example_output\": {\n      \"total_rollovers\": 45,\n      \"total_shipments\": 500,\n      \"current_avg_score\": 88\n    }\n  },\n  \"adjust_performance_metrics\": {\n    \"description\": \"Updates specific scoring categories for a supplier based on audit or voyage findings.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"supplier_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique ID of the supplier.\"\n        },\n        \"category\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"delivery\",\n            \"quality\",\n            \"cost\",\n            \"compliance\"\n          ],\n          \"description\": \"The scoring category to modify.\"\n        },\n        \"score_delta\": {\n          \"type\": \"number\",\n          \"description\": \"The amount to change the score (positive or negative).\"\n        },\n        \"justification\": {\n          \"type\": \"string\",\n          \"description\": \"Detailed reason for the adjustment.\"\n        }\n      },\n      \"required\": [\n        \"supplier_id\",\n        \"category\",\n        \"score_delta\",\n        \"justification\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"success\",\n      \"updated_category_score\": 75\n    }\n  },\n  \"update_compliance_status\": {\n    \"description\": \"Sets the final compliance status for a supplier for a specific period.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"supplier_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique ID of the supplier.\"\n        },\n        \"status\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"Compliant\",\n            \"Non-Compliant\"\n          ],\n          \"description\": \"The final status determined by threshold checks.\"\n        },\n        \"evidence_summary\": {\n          \"type\": \"string\",\n          \"description\": \"A summary of the metrics (e.g., voyage vs quarterly) leading to this status.\"\n        }\n      },\n      \"required\": [\n        \"supplier_id\",\n        \"status\",\n        \"evidence_summary\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"locked\"\n    }\n  },\n  \"finalize_reconciled_scorecard\": {\n    \"description\": \"Triggers a system-wide reconciliation to ensure all internal scoring parameters match the updated metrics and locks the evaluation for the period.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"supplier_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique ID of the supplier.\"\n        },\n        \"period\": {\n          \"type\": \"string\",\n          \"description\": \"The assessment period.\"\n        }\n      },\n      \"required\": [\n        \"supplier_id\",\n        \"period\"\n      ]\n    },\n    \"example_output\": {\n      \"final_composite_score\": 82.4,\n      \"reconciliation_status\": \"consistent\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_supplier_id",
+      "description": "Retrieves the unique identifier for a supplier based on their name or partial string match.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "supplier_name": {
+            "type": "string",
+            "description": "The name of the carrier/supplier (e.g., 'GOL-77' or 'Global Ocean Link')."
+          }
+        },
+        "required": [
+          "supplier_name"
+        ]
+      },
+      "example_output": {
+        "supplier_id": "SUP-7701",
+        "official_name": "Global Ocean Link Limited"
+      }
+    },
+    {
+      "name": "get_voyage_report",
+      "description": "Retrieves operational data, incident logs, and specific rollover counts for a particular vessel voyage.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "voyage_id": {
+            "type": "string",
+            "description": "The name or ID of the voyage (e.g., 'M/V Northern Jubilee')."
+          }
+        },
+        "required": [
+          "voyage_id"
+        ]
+      },
+      "example_output": {
+        "voyage_rollover_count": 12,
+        "voyage_total_containers": 100,
+        "incident_logs": [
+          "Engine failure",
+          "Berth delay"
+        ]
+      }
+    },
+    {
+      "name": "get_quarterly_performance",
+      "description": "Retrieves the aggregated performance metrics for a supplier for a specific quarter, including total shipments and total rollovers.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "supplier_id": {
+            "type": "string",
+            "description": "The unique ID of the supplier."
+          },
+          "period": {
+            "type": "string",
+            "description": "The assessment period (e.g., '2024-Q4')."
+          }
+        },
+        "required": [
+          "supplier_id",
+          "period"
+        ]
+      },
+      "example_output": {
+        "total_rollovers": 45,
+        "total_shipments": 500,
+        "current_avg_score": 88
+      }
+    },
+    {
+      "name": "adjust_performance_metrics",
+      "description": "Updates specific scoring categories for a supplier based on audit or voyage findings.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "supplier_id": {
+            "type": "string",
+            "description": "The unique ID of the supplier."
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "delivery",
+              "quality",
+              "cost",
+              "compliance"
+            ],
+            "description": "The scoring category to modify."
+          },
+          "score_delta": {
+            "type": "number",
+            "description": "The amount to change the score (positive or negative)."
+          },
+          "justification": {
+            "type": "string",
+            "description": "Detailed reason for the adjustment."
+          }
+        },
+        "required": [
+          "supplier_id",
+          "category",
+          "score_delta",
+          "justification"
+        ]
+      },
+      "example_output": {
+        "status": "success",
+        "updated_category_score": 75
+      }
+    },
+    {
+      "name": "update_compliance_status",
+      "description": "Sets the final compliance status for a supplier for a specific period.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "supplier_id": {
+            "type": "string",
+            "description": "The unique ID of the supplier."
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "Compliant",
+              "Non-Compliant"
+            ],
+            "description": "The final status determined by threshold checks."
+          },
+          "evidence_summary": {
+            "type": "string",
+            "description": "A summary of the metrics (e.g., voyage vs quarterly) leading to this status."
+          }
+        },
+        "required": [
+          "supplier_id",
+          "status",
+          "evidence_summary"
+        ]
+      },
+      "example_output": {
+        "status": "locked"
+      }
+    },
+    {
+      "name": "finalize_reconciled_scorecard",
+      "description": "Triggers a system-wide reconciliation to ensure all internal scoring parameters match the updated metrics and locks the evaluation for the period.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "supplier_id": {
+            "type": "string",
+            "description": "The unique ID of the supplier."
+          },
+          "period": {
+            "type": "string",
+            "description": "The assessment period."
+          }
+        },
+        "required": [
+          "supplier_id",
+          "period"
+        ]
+      },
+      "example_output": {
+        "final_composite_score": 82.4,
+        "reconciliation_status": "consistent"
+      }
+    }
+  ],
+  "state_description": {
+    "suppliers": "A list of objects representing suppliers, including their IDs, performance metrics, and compliance status.",
+    "evaluation_weights": "The weights assigned to different scoring categories (e.g., quality: 0.4, delivery: 0.3, cost: 0.3).",
+    "audit_history": "A log of past audits performed on suppliers including dates and results.",
+    "system_metadata": "Metadata such as the last calculation timestamp or current evaluation period."
+  },
+  "task_initial_state": {
+    "suppliers": [
+      {
+        "id": "GOL-77",
+        "name": "Global Ocean Link",
+        "performance_metrics": {
+          "quality": 85,
+          "delivery": 92,
+          "cost": 88,
+          "rollover_ratio": 0.06
+        },
+        "compliance_status": "Active",
+        "operational_metadata": {
+          "recent_vessel": "M/V Northern Jubilee",
+          "contract_id": "NAC-2024-GLOBAL"
+        }
+      }
+    ],
+    "evaluation_weights": {
+      "quality": 0.5,
+      "delivery": 0.7,
+      "cost": 0.3
+    },
+    "audit_history": [
+      {
+        "audit_id": "AUD-9921",
+        "supplier_id": "GOL-77",
+        "date": "2024-11-15",
+        "finding": "INCIDENT REPORT: M/V Northern Jubilee confirmed 22 containers rolled out of 50 booked (44% rollover). Classification: Commercial Rollover - Spot market rates were $2,100 above contract at time of loading. Metric update pending.",
+        "status": "Open"
+      }
+    ],
+    "system_metadata": {
+      "current_period": "2024-Q4",
+      "last_calculation": "2024-10-01"
+    }
+  }
+}

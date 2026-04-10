@@ -1,0 +1,152 @@
+{
+  "environment_name": "env_e8958b8c5f11",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM) for Fish Farm Water Quality Control.\n- **Core Objective**: Based on the current internal state $s_t$ and the action $a_t$ taken by the Agent (Farm Controller), simulate the biological and physical evolution of the fish farm environment and predict the resulting observation $o_{{t+1}}$.\n- **Emphasis**: You are the environment simulator. You do not suggest actions; you calculate the consequences of actions on water parameters (Temperature, Oxygen, pH, Ammonia) and return only the sensor data or execution feedback defined in the action space.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nYou must maintain a continuous internal representation of the environment. Every action impacts the state (e.g., turning on an aerator increases dissolved oxygen over time; feeding increases ammonia levels). You must ensure that the environment logic is self-consistent across multiple turns of interaction.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. You must parse this JSON to determine the environment's transition. \n\nExample Input:\n```json\n{{\n \"name\": \"adjust_aerator\",\n \"arguments\": {{\n    \"level\": 5,\n    \"duration_minutes\": 30\n  }}\n}}\n```\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\n- If an action refers to a hardware component that is already at maximum capacity or broken, return an error message: `{{\"error\": \"Component failure or limit reached\"}}`.\n- For invalid parameters or undefined actions, return: `{{\"error\": \"Action [name] not found or invalid arguments\"}}`.\n- Do not fabricate fictitious sensor readings if the input is malformed.\n\n##### Output Assembly\nFor every action function call, you must return a structured JSON object containing **ONLY** the return fields (Observations) declared in that action function's definition.\n\n**CRITICAL CONSTRAINT**: You must **NOT** output the full internal state `s_t`, the updated state, or any internal variables. The Agent must only receive the specific observation data. For example, if an action `get_sensors` is called, return only the sensor values, not the metadata of the simulator.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to JSON output for observations.\n- **Factuality**: Use realistic water chemistry and aquaculture dynamics (e.g., oxygen depletion increases with biomass/temperature).\n- **Consistency**: If the heater is turned on, the temperature in the next observation must reflect a logical increase.\n- **Realism**: Simulate stochasticity or environmental decay where appropriate (e.g., natural oxygen consumption by fish).\n- **Encapsulation**: Strictly hide the internal state structure. Only expose information explicitly requested via action returns.\n{{initial_state}}: {{\n  \"water_temperature\": 29.5,\n  \"dissolved_oxygen\": 7.2,\n  \"ph_level\": 8.1,\n  \"ammonia_concentration\": 0.02,\n  \"water_level\": 5.2,\n  \"aerator_status\": \"off\",\n  \"heater_status\": false,\n  \"last_feeding_time\": \"2023-10-27T08:00:00Z\"\n}}\n{{state_descriptions}}: {{\n  \"water_temperature\": \"The current temperature of the water in degrees Celsius.\",\n  \"dissolved_oxygen\": \"Concentration of dissolved oxygen in mg/L.\",\n  \"ph_level\": \"The potential of Hydrogen (0-14 scale) of the water.\",\n  \"ammonia_concentration\": \"Total ammonia nitrogen levels in parts per million (ppm).\",\n  \"water_level\": \"The current height of the water in the tank in meters.\",\n  \"aerator_status\": \"Current status of the oxygenation system (off, low, medium, high).\",\n  \"heater_status\": \"Whether the water heating element is currently active.\",\n  \"last_feeding_time\": \"Timestamp or relative time of the last feeding action.\"\n}}\n{action_set_definitions}: {\n  \"get_vertical_profile\": {\n    \"description\": \"Retrieves water temperature and dissolved oxygen (DO) levels at specific depths to identify stratification and oxygen deficits.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"depths\": {\n          \"type\": \"array\",\n          \"items\": {\n            \"type\": \"number\"\n          },\n          \"description\": \"A list of depths (in meters) at which to take measurements.\"\n        }\n      },\n      \"required\": [\n        \"depths\"\n      ]\n    },\n    \"example_output\": {\n      \"measurements\": [\n        {\n          \"depth\": 0.5,\n          \"temperature\": 22.1,\n          \"dissolved_oxygen\": 6.5\n        },\n        {\n          \"depth\": 5.1,\n          \"temperature\": 19.5,\n          \"dissolved_oxygen\": 3.2\n        }\n      ]\n    }\n  },\n  \"get_water_chemistry\": {\n    \"description\": \"Measures pH and ammonia concentration at a specific depth, essential for monitoring toxic metabolite levels in the hypolimnion.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"depth\": {\n          \"type\": \"number\",\n          \"description\": \"The depth in meters to sample the water chemistry.\"\n        }\n      },\n      \"required\": [\n        \"depth\"\n      ]\n    },\n    \"example_output\": {\n      \"ph_level\": 7.2,\n      \"ammonia_concentration\": 0.04\n    }\n  },\n  \"get_system_status\": {\n    \"description\": \"Retrieves the current basin metadata, equipment statuses, and last feeding time.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {}\n    },\n    \"example_output\": {\n      \"water_level\": 5.2,\n      \"aerator_status\": \"low\",\n      \"heater_status\": \"off\",\n      \"last_feeding_time\": \"2 hours ago\"\n    }\n  },\n  \"configure_mixing_and_aeration\": {\n    \"description\": \"Adjusts the aeration system mode and mechanical mixing intensity to homogenize the basin.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"aerator_mode\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"off\",\n            \"low\",\n            \"medium\",\n            \"high\"\n          ],\n          \"description\": \"Target status of the oxygenation system.\"\n        },\n        \"mixing_intensity\": {\n          \"type\": \"integer\",\n          \"minimum\": 0,\n          \"maximum\": 100,\n          \"description\": \"Mechanical mixing power as a percentage (0-100%).\"\n        }\n      },\n      \"required\": [\n        \"aerator_mode\",\n        \"mixing_intensity\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"applied\",\n      \"aerator_mode\": \"high\",\n      \"mixing_intensity\": 50\n    }\n  },\n  \"manage_feeding\": {\n    \"description\": \"Controls the feeding regime to manage Biological Oxygen Demand (BOD) based on the identified risk level.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"regime\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"normal\",\n            \"reduced\",\n            \"suspended\"\n          ],\n          \"description\": \"The feeding strategy to implement.\"\n        }\n      },\n      \"required\": [\n        \"regime\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"updated\",\n      \"current_regime\": \"suspended\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_vertical_profile",
+      "description": "Retrieves water temperature and dissolved oxygen (DO) levels at specific depths to identify stratification and oxygen deficits.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "depths": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            },
+            "description": "A list of depths (in meters) at which to take measurements."
+          }
+        },
+        "required": [
+          "depths"
+        ]
+      },
+      "example_output": {
+        "measurements": [
+          {
+            "depth": 0.5,
+            "temperature": 22.1,
+            "dissolved_oxygen": 6.5
+          },
+          {
+            "depth": 5.1,
+            "temperature": 19.5,
+            "dissolved_oxygen": 3.2
+          }
+        ]
+      }
+    },
+    {
+      "name": "get_water_chemistry",
+      "description": "Measures pH and ammonia concentration at a specific depth, essential for monitoring toxic metabolite levels in the hypolimnion.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "depth": {
+            "type": "number",
+            "description": "The depth in meters to sample the water chemistry."
+          }
+        },
+        "required": [
+          "depth"
+        ]
+      },
+      "example_output": {
+        "ph_level": 7.2,
+        "ammonia_concentration": 0.04
+      }
+    },
+    {
+      "name": "get_system_status",
+      "description": "Retrieves the current basin metadata, equipment statuses, and last feeding time.",
+      "parameters": {
+        "type": "object",
+        "properties": {}
+      },
+      "example_output": {
+        "water_level": 5.2,
+        "aerator_status": "low",
+        "heater_status": "off",
+        "last_feeding_time": "2 hours ago"
+      }
+    },
+    {
+      "name": "configure_mixing_and_aeration",
+      "description": "Adjusts the aeration system mode and mechanical mixing intensity to homogenize the basin.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "aerator_mode": {
+            "type": "string",
+            "enum": [
+              "off",
+              "low",
+              "medium",
+              "high"
+            ],
+            "description": "Target status of the oxygenation system."
+          },
+          "mixing_intensity": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100,
+            "description": "Mechanical mixing power as a percentage (0-100%)."
+          }
+        },
+        "required": [
+          "aerator_mode",
+          "mixing_intensity"
+        ]
+      },
+      "example_output": {
+        "status": "applied",
+        "aerator_mode": "high",
+        "mixing_intensity": 50
+      }
+    },
+    {
+      "name": "manage_feeding",
+      "description": "Controls the feeding regime to manage Biological Oxygen Demand (BOD) based on the identified risk level.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "regime": {
+            "type": "string",
+            "enum": [
+              "normal",
+              "reduced",
+              "suspended"
+            ],
+            "description": "The feeding strategy to implement."
+          }
+        },
+        "required": [
+          "regime"
+        ]
+      },
+      "example_output": {
+        "status": "updated",
+        "current_regime": "suspended"
+      }
+    }
+  ],
+  "state_description": {
+    "water_temperature": "The current temperature of the water in degrees Celsius.",
+    "dissolved_oxygen": "Concentration of dissolved oxygen in mg/L.",
+    "ph_level": "The potential of Hydrogen (0-14 scale) of the water.",
+    "ammonia_concentration": "Total ammonia nitrogen levels in parts per million (ppm).",
+    "water_level": "The current height of the water in the tank in meters.",
+    "aerator_status": "Current status of the oxygenation system (off, low, medium, high).",
+    "heater_status": "Whether the water heating element is currently active.",
+    "last_feeding_time": "Timestamp or relative time of the last feeding action."
+  },
+  "task_initial_state": {
+    "water_temperature": 29.5,
+    "dissolved_oxygen": 7.2,
+    "ph_level": 8.1,
+    "ammonia_concentration": 0.02,
+    "water_level": 5.2,
+    "aerator_status": "off",
+    "heater_status": false,
+    "last_feeding_time": "2023-10-27T08:00:00Z"
+  }
+}

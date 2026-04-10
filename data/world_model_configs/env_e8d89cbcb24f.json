@@ -1,0 +1,247 @@
+{
+  "environment_name": "env_e8d89cbcb24f",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: You act as the backend environment for an Expense Report Auditing task. Based on the current state $s_t$ (the database of reports, receipts, and policies) and the action $a_t$ executed by the Agent (Auditor), you simulate the environment's internal state transition and predict the observation $o_{{t+1}}$ (API responses, document contents, or status updates) obtained by the Agent.\n- **Emphasis**: You do not perform auditing yourself. You simulate the system's response to an auditor's actions. Your internal state must remain consistent across multiple turns of interaction.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions between the World Model and the Agent must maintain context consistency. If a report status is updated in one step, that change must be reflected in all subsequent observations. You must track the lifecycle of each expense report (e.g., from 'Pending' to 'Approved' or 'Rejected').\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. This JSON must contain the following fields:\n- `\"name\"`: Specifies the name of the action function to execute.\n- The remaining fields are the parameter names and corresponding values required by that action function.\n\nExample Input:\n```json\n{{\n \"name\": \"approve_report\",\n \"arguments\": {{\n    \"report_id\": \"EXP-1001\",\n    \"comment\": \"All receipts verified.\"\n  }}\n}}\n```\n\nAs the Language World Model, you must parse this JSON, update your internal representation of the expense system, and return the specified output.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\n- If the Agent attempts to audit a non-existent `report_id`, return: `{{\"error\": \"Report ID not found\"}}`.\n- If the Agent provides invalid parameters (e.g., missing a required 'reason' for rejection), return: `{{\"error\": \"Missing required argument: reason\"}}`.\n- If an action is logically impossible (e.g., approving a report that is already 'Rejected'), return a descriptive error.\n- Do not fabricate data; if a receipt is missing in the state, the observation must reflect that it is missing.\n\n##### Output Assembly\nFor every action function call, you must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition. \n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t` or the `new_state`. You must strictly hide the internal database structure. Only expose the specific Observation (return values) defined in the action.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to specified JSON and text formats.\n- **Factuality**: Do not fabricate non-existent reports, policies, or system behaviors.\n- **Consistency**: If a policy defines a limit of $50, the environment must consistently flag or allow interactions based on that $50 limit in the state.\n- **Realism**: Simulate realistic system behavior, including timestamp updates for audit logs when a status changes.\n- **Quality**: Observations should be professional and mimic a real corporate auditing software interface.\n- **Encapsulation**: Strictly hide the internal state structure from the output. Only expose information that is explicitly returned by the action function. Do not output the state update.\n{{initial_state}}: {{\n  \"reports\": [\n    {{\n      \"report_id\": \"EXP-7722\",\n      \"employee_id\": \"EMP-4402\",\n      \"employee_name\": \"Marcus Thorne\",\n      \"device_enrollment\": \"BYOD (Personal)\",\n      \"amount\": 636.5,\n      \"currency\": \"USD\",\n      \"category\": \"Mileage\",\n      \"current_status\": \"Pending\",\n      \"details\": {{\n        \"claimed_miles\": 950,\n        \"trip_date\": \"2024-11-12\",\n        \"start_location\": \"Corporate HQ\",\n        \"end_location\": \"Satellite Office B\"\n      }}\n    }}\n  ],\n  \"receipts\": {{\n    \"EXP-7722\": {{\n      \"odometer_data\": {{\n        \"start_photo_id\": \"ODO_S_99\",\n        \"end_photo_id\": \"ODO_E_100\",\n        \"icd_score\": 0.15\n      }},\n      \"system_forensics\": {{\n        \"gis_optimized_distance\": 480,\n        \"vbm_calculation\": 0.979,\n        \"mdm_logs\": {{\n          \"device_id\": \"MT-PHONE-01\",\n          \"events\": [\n            {{\n              \"timestamp\": \"2024-11-12T09:00:00Z\",\n              \"type\": \"Security Alert\",\n              \"description\": \"Mock Location Application 'GPS_JoyStick' active during tracked session.\"\n            }}\n          ]\n        }}\n      }}\n    }}\n  }},\n  \"company_policies\": [\n    {{\n      \"policy_id\": \"POL-MIL-V1\",\n      \"name\": \"Mileage Variance Rule\",\n      \"threshold\": 0.15,\n      \"action\": \"Variances exceeding 15% require manual review or forensic check.\"\n    }},\n    {{\n      \"policy_id\": \"POL-PRIV-09\",\n      \"name\": \"Corporate Privacy & Admissibility Protocol\",\n      \"description\": \"Digital artifacts from 'BYOD (Personal)' devices (GPS/MDM) are inadmissible as evidence for 'Forensic Escalation (Fraud)' unless a signed 'Privacy Consent Waiver (Form 10-A)' is documented in the audit logs. If no waiver exists for a BYOD device, forensic findings must be disregarded, and the report should be handled as 'Reject for Correction' due to inaccurate mileage, rather than fraud.\"\n    }}\n  ],\n  \"audit_logs\": [\n    {{\n      \"timestamp\": \"2024-01-15T10:00:00Z\",\n      \"actor_id\": \"SYS_ADMIN\",\n      \"action\": \"Signed Agreement Uploaded\",\n      \"document_name\": \"Standard Employment Contract - EMP-4402\"\n    }},\n    {{\n      \"timestamp\": \"2024-11-13T16:45:00Z\",\n      \"actor_id\": \"EMP-4402\",\n      \"action\": \"Report Submitted\",\n      \"details\": \"EXP-7722 submitted for reimbursement.\"\n    }}\n  ]\n}}\n{{state_descriptions}}: {{\n  \"reports\": \"A list of expense report objects containing details like report_id, employee_id, amount, currency, category, and current status.\",\n  \"receipts\": \"A mapping of report_ids to their associated receipt data, which may include OCR text or image descriptions.\",\n  \"company_policies\": \"A list of rules and limits for different expense categories (e.g., Travel, Meals).\",\n  \"audit_logs\": \"A history of actions performed on the reports, including timestamps and actor IDs.\"\n}}\n{action_set_definitions}: {\n  \"get_report_details\": {\n    \"description\": \"Retrieves the core details of a specific expense report including employee_id, amount, and category.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"report_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier of the expense report (e.g., 'EXP-7722').\"\n        }\n      },\n      \"required\": [\n        \"report_id\"\n      ]\n    },\n    \"example_output\": {\n      \"report_id\": \"EXP-7722\",\n      \"employee_id\": \"EMP-990\",\n      \"amount\": 1250.0,\n      \"category\": \"Travel\",\n      \"status\": \"Pending_Audit\"\n    }\n  },\n  \"get_receipt_data\": {\n    \"description\": \"Retrieves OCR text and descriptive metadata for all receipts associated with a report.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"report_id\": {\n          \"type\": \"string\",\n          \"description\": \"The report ID to query.\"\n        }\n      },\n      \"required\": [\n        \"report_id\"\n      ]\n    },\n    \"example_output\": {\n      \"receipts\": [\n        {\n          \"receipt_id\": \"R-001\",\n          \"ocr_text\": \"Grand Hotel - Total: $1250.00 - Date: 2023-10-12\",\n          \"description\": \"Hotel stay invoice\"\n        }\n      ]\n    }\n  },\n  \"get_policy_rules\": {\n    \"description\": \"Retrieves specific policy constraints, including category limits and the 'Corporate Privacy & Admissibility Protocol'.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"policy_names\": {\n          \"type\": \"array\",\n          \"items\": {\n            \"type\": \"string\"\n          },\n          \"description\": \"List of policy names to retrieve.\"\n        }\n      },\n      \"required\": [\n        \"policy_names\"\n      ]\n    },\n    \"example_output\": {\n      \"policies\": [\n        {\n          \"policy_name\": \"Corporate Privacy & Admissibility Protocol\",\n          \"rules\": \"GPS data is only admissible if device enrollment is 'Enterprise' and 'Waiver_A' is signed.\"\n        }\n      ]\n    }\n  },\n  \"get_employee_privacy_profile\": {\n    \"description\": \"Retrieves the device enrollment status and legal waivers signed by a specific employee.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"employee_id\": {\n          \"type\": \"string\",\n          \"description\": \"The employee identifier.\"\n        }\n      },\n      \"required\": [\n        \"employee_id\"\n      ]\n    },\n    \"example_output\": {\n      \"enrollment_status\": \"Enterprise\",\n      \"signed_waivers\": [\n        \"Waiver_A\",\n        \"NDB-Protocol\"\n      ]\n    }\n  },\n  \"fetch_digital_artifacts\": {\n    \"description\": \"Retrieves MDM logs or GPS data for an employee during the timeframe of a report. Access is logged and subject to privacy audit.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"employee_id\": {\n          \"type\": \"string\"\n        },\n        \"artifact_types\": {\n          \"type\": \"array\",\n          \"items\": {\n            \"type\": \"string\",\n            \"enum\": [\n              \"GPS\",\n              \"MDM_LOGS\"\n            ]\n          }\n        },\n        \"report_id\": {\n          \"type\": \"string\"\n        }\n      },\n      \"required\": [\n        \"employee_id\",\n        \"artifact_types\",\n        \"report_id\"\n      ]\n    },\n    \"example_output\": {\n      \"gps_data\": \"Coordinates (40.7128, -74.0060) match hotel location.\",\n      \"mdm_logs\": \"Device active at 09:00 AM.\"\n    }\n  },\n  \"submit_audit_decision\": {\n    \"description\": \"Records the final adjudication for an expense report.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"report_id\": {\n          \"type\": \"string\"\n        },\n        \"decision\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"Approve\",\n            \"Reject for Correction\",\n            \"Forensic Escalation\"\n          ]\n        },\n        \"justification\": {\n          \"type\": \"string\",\n          \"description\": \"Detailed reasoning referencing policy and evidence.\"\n        }\n      },\n      \"required\": [\n        \"report_id\",\n        \"decision\",\n        \"justification\"\n      ]\n    },\n    \"example_output\": {\n      \"confirmation\": \"Success\",\n      \"transaction_id\": \"TXN-5562\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_report_details",
+      "description": "Retrieves the core details of a specific expense report including employee_id, amount, and category.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "report_id": {
+            "type": "string",
+            "description": "The unique identifier of the expense report (e.g., 'EXP-7722')."
+          }
+        },
+        "required": [
+          "report_id"
+        ]
+      },
+      "example_output": {
+        "report_id": "EXP-7722",
+        "employee_id": "EMP-990",
+        "amount": 1250.0,
+        "category": "Travel",
+        "status": "Pending_Audit"
+      }
+    },
+    {
+      "name": "get_receipt_data",
+      "description": "Retrieves OCR text and descriptive metadata for all receipts associated with a report.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "report_id": {
+            "type": "string",
+            "description": "The report ID to query."
+          }
+        },
+        "required": [
+          "report_id"
+        ]
+      },
+      "example_output": {
+        "receipts": [
+          {
+            "receipt_id": "R-001",
+            "ocr_text": "Grand Hotel - Total: $1250.00 - Date: 2023-10-12",
+            "description": "Hotel stay invoice"
+          }
+        ]
+      }
+    },
+    {
+      "name": "get_policy_rules",
+      "description": "Retrieves specific policy constraints, including category limits and the 'Corporate Privacy & Admissibility Protocol'.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "policy_names": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "List of policy names to retrieve."
+          }
+        },
+        "required": [
+          "policy_names"
+        ]
+      },
+      "example_output": {
+        "policies": [
+          {
+            "policy_name": "Corporate Privacy & Admissibility Protocol",
+            "rules": "GPS data is only admissible if device enrollment is 'Enterprise' and 'Waiver_A' is signed."
+          }
+        ]
+      }
+    },
+    {
+      "name": "get_employee_privacy_profile",
+      "description": "Retrieves the device enrollment status and legal waivers signed by a specific employee.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "employee_id": {
+            "type": "string",
+            "description": "The employee identifier."
+          }
+        },
+        "required": [
+          "employee_id"
+        ]
+      },
+      "example_output": {
+        "enrollment_status": "Enterprise",
+        "signed_waivers": [
+          "Waiver_A",
+          "NDB-Protocol"
+        ]
+      }
+    },
+    {
+      "name": "fetch_digital_artifacts",
+      "description": "Retrieves MDM logs or GPS data for an employee during the timeframe of a report. Access is logged and subject to privacy audit.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "employee_id": {
+            "type": "string"
+          },
+          "artifact_types": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "GPS",
+                "MDM_LOGS"
+              ]
+            }
+          },
+          "report_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "employee_id",
+          "artifact_types",
+          "report_id"
+        ]
+      },
+      "example_output": {
+        "gps_data": "Coordinates (40.7128, -74.0060) match hotel location.",
+        "mdm_logs": "Device active at 09:00 AM."
+      }
+    },
+    {
+      "name": "submit_audit_decision",
+      "description": "Records the final adjudication for an expense report.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "report_id": {
+            "type": "string"
+          },
+          "decision": {
+            "type": "string",
+            "enum": [
+              "Approve",
+              "Reject for Correction",
+              "Forensic Escalation"
+            ]
+          },
+          "justification": {
+            "type": "string",
+            "description": "Detailed reasoning referencing policy and evidence."
+          }
+        },
+        "required": [
+          "report_id",
+          "decision",
+          "justification"
+        ]
+      },
+      "example_output": {
+        "confirmation": "Success",
+        "transaction_id": "TXN-5562"
+      }
+    }
+  ],
+  "state_description": {
+    "reports": "A list of expense report objects containing details like report_id, employee_id, amount, currency, category, and current status.",
+    "receipts": "A mapping of report_ids to their associated receipt data, which may include OCR text or image descriptions.",
+    "company_policies": "A list of rules and limits for different expense categories (e.g., Travel, Meals).",
+    "audit_logs": "A history of actions performed on the reports, including timestamps and actor IDs."
+  },
+  "task_initial_state": {
+    "reports": [
+      {
+        "report_id": "EXP-7722",
+        "employee_id": "EMP-4402",
+        "employee_name": "Marcus Thorne",
+        "device_enrollment": "BYOD (Personal)",
+        "amount": 636.5,
+        "currency": "USD",
+        "category": "Mileage",
+        "current_status": "Pending",
+        "details": {
+          "claimed_miles": 950,
+          "trip_date": "2024-11-12",
+          "start_location": "Corporate HQ",
+          "end_location": "Satellite Office B"
+        }
+      }
+    ],
+    "receipts": {
+      "EXP-7722": {
+        "odometer_data": {
+          "start_photo_id": "ODO_S_99",
+          "end_photo_id": "ODO_E_100",
+          "icd_score": 0.15
+        },
+        "system_forensics": {
+          "gis_optimized_distance": 480,
+          "vbm_calculation": 0.979,
+          "mdm_logs": {
+            "device_id": "MT-PHONE-01",
+            "events": [
+              {
+                "timestamp": "2024-11-12T09:00:00Z",
+                "type": "Security Alert",
+                "description": "Mock Location Application 'GPS_JoyStick' active during tracked session."
+              }
+            ]
+          }
+        }
+      }
+    },
+    "company_policies": [
+      {
+        "policy_id": "POL-MIL-V1",
+        "name": "Mileage Variance Rule",
+        "threshold": 0.15,
+        "action": "Variances exceeding 15% require manual review or forensic check."
+      },
+      {
+        "policy_id": "POL-PRIV-09",
+        "name": "Corporate Privacy & Admissibility Protocol",
+        "description": "Digital artifacts from 'BYOD (Personal)' devices (GPS/MDM) are inadmissible as evidence for 'Forensic Escalation (Fraud)' unless a signed 'Privacy Consent Waiver (Form 10-A)' is documented in the audit logs. If no waiver exists for a BYOD device, forensic findings must be disregarded, and the report should be handled as 'Reject for Correction' due to inaccurate mileage, rather than fraud."
+      }
+    ],
+    "audit_logs": [
+      {
+        "timestamp": "2024-01-15T10:00:00Z",
+        "actor_id": "SYS_ADMIN",
+        "action": "Signed Agreement Uploaded",
+        "document_name": "Standard Employment Contract - EMP-4402"
+      },
+      {
+        "timestamp": "2024-11-13T16:45:00Z",
+        "actor_id": "EMP-4402",
+        "action": "Report Submitted",
+        "details": "EXP-7722 submitted for reimbursement."
+      }
+    ]
+  }
+}

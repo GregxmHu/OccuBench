@@ -1,0 +1,152 @@
+{
+  "environment_name": "env_21d78e00d19e",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: Based on the current internal state $s_t$ and the action $a_t$ provided by the Agent, simulate the evolution of the Product Listing Moderation environment and predict the resulting observation $o_{{t+1}}$ obtained by the Agent.\n- **Emphasis**: You are a simulator of the environment logic. You do not perform real-world moderation; you maintain the consistency of the listing database, moderation queues, and audit logs internally, generating only the specific observations defined by the action functions.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions between the World Model and the Agent must maintain strict context consistency. Any action performed (e.g., approving a product) must permanently alter the internal state for the duration of the session, affecting all subsequent observations.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. This JSON must contain the following fields:\n- `\"name\"`: Specifies the name of the action function to execute (e.g., \"approve_listing\", \"flag_listing\").\n- The remaining fields are the parameter names and corresponding values required by that action function (e.g., `listing_id`, `reason_code`).\n\nExample Input:\n```json\n{{\n \"name\": \"get_listing_details\",\n \"arguments\": {{\n    \"listing_id\": \"PROD-12345\"\n  }}\n}}\n```\n\nYou must correctly parse these JSON inputs and simulate the resulting change in the environment.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nIf the Agent provides invalid parameters (e.g., a non-existent `listing_id`), calls undefined actions, or attempts an illegal transition (e.g., approving an already deleted listing), return a structured error message:\n`{{\"error\": \"Description of the specific error\"}}`.\nDo not fabricate data or guess the Agent's intent.\n\n##### Output Assembly\nFor every action function call, you must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition.\n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, the `new_state`, or any metadata regarding your internal variables. You are the environment; the Agent only sees what the \"sensors\" (the action return values) provide. Do not output the state update process.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to specified JSON formats for both input parsing and output generation.\n- **Factuality**: Do not fabricate product listings, moderation policies, or system responses not supported by the current state or logic.\n- **Consistency**: If a listing is marked as 'Rejected' in the internal state, subsequent 'get_listing_details' calls must reflect this status.\n- **Realism**: Simulate realistic moderation workflows, including timestamp updates and audit log increments.\n- **Quality**: Ensure all generated text within observations (e.g., error messages or listing descriptions) is clear and unambiguous.\n- **Encapsulation**: Strictly hide the internal state structure from the output. Only expose information that is explicitly returned by the action function.\n{{initial_state}}: {{\n  \"active_queue\": [\n    {{\n      \"listing_id\": \"GLOBAL-991-ZH\",\n      \"title\": \"Natural Essence - This tea magically cures all respiratory diseases\",\n      \"seller_id\": \"SHENZHEN_EXPORTS\",\n      \"category\": \"Ingestibles\",\n      \"automated_css\": 0.96,\n      \"seller_locale\": \"CN\",\n      \"marketplace_locale\": \"US\"\n    }},\n    {{\n      \"listing_id\": \"DOMESTIC-404-Z\",\n      \"title\": \"V.i.t.a.m.i.n C Boost - C.u.r.e.s everything\",\n      \"seller_id\": \"HEALTH_GUY_NY\",\n      \"category\": \"Ingestibles\",\n      \"automated_css\": 0.12,\n      \"seller_locale\": \"US\",\n      \"marketplace_locale\": \"US\"\n    }},\n    {{\n      \"listing_id\": \"EURO-772-DE\",\n      \"title\": \"The world's most incredible tasting chocolate\",\n      \"seller_id\": \"BERLIN_SWEETS\",\n      \"category\": \"Grocery\",\n      \"automated_css\": 0.05,\n      \"seller_locale\": \"DE\",\n      \"marketplace_locale\": \"US\"\n    }}\n  ],\n  \"moderation_history\": [],\n  \"moderator_stats\": {{\n    \"items_processed\": 0,\n    \"flagged_count\": 0\n  }},\n  \"policy_rules\": {{\n    \"standard_hard_reject_threshold\": 0.9,\n    \"cross_border_health_protocol\": \"ROUTE_TO_BILINGUAL_REVIEW\",\n    \"obfuscation_policy\": \"MANDATORY_REJECT\",\n    \"puffery_threshold\": 0.1,\n    \"enforcement_actions\": [\n      \"APPROVE\",\n      \"SOFT_REJECT_RFI\",\n      \"HARD_REJECT_STRIKE\",\n      \"ROUTE_TO_BILINGUAL_REVIEW\"\n    ]\n  }}\n}}\n{{state_descriptions}}: {{\n  \"active_queue\": \"A list of product listing objects currently awaiting moderation review.\",\n  \"moderation_history\": \"An audit log containing records of previous actions, including timestamp, listing_id, and decision.\",\n  \"moderator_stats\": \"Cumulative statistics for the current session, such as items_processed and average_time_per_item.\",\n  \"policy_rules\": \"The set of moderation guidelines currently active in the environment (e.g., restricted keywords).\"\n}}\n{action_set_definitions}: {\n  \"fetch_active_queue\": {\n    \"description\": \"Retrieves the list of all pending product listing IDs currently in the moderation queue.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"listing_ids\": [\n        \"PROD-101\",\n        \"PROD-102\"\n      ]\n    }\n  },\n  \"get_listing_details\": {\n    \"description\": \"Retrieves metadata and content analysis for a specific product listing, including seller origin, automated flags, and text analysis.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"listing_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier of the product listing.\"\n        }\n      },\n      \"required\": [\n        \"listing_id\"\n      ]\n    },\n    \"example_output\": {\n      \"seller_origin\": \"cross-border\",\n      \"has_health_claim_flag\": true,\n      \"has_zalgo_text\": false,\n      \"has_non_standard_unicode\": false,\n      \"css_score\": 85,\n      \"current_status\": \"pending\"\n    }\n  },\n  \"apply_moderation_action\": {\n    \"description\": \"Submits a moderation decision for a specific listing to the environment.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"listing_id\": {\n          \"type\": \"string\",\n          \"description\": \"The identifier of the listing.\"\n        },\n        \"action\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"Approved\",\n            \"Soft Reject\",\n            \"Hard Reject\",\n            \"Bilingual Validation Required\"\n          ],\n          \"description\": \"The moderation decision to apply.\"\n        },\n        \"reasoning\": {\n          \"type\": \"string\",\n          \"description\": \"Brief justification for the decision based on policy.\"\n        }\n      },\n      \"required\": [\n        \"listing_id\",\n        \"action\"\n      ]\n    },\n    \"example_output\": {\n      \"success\": true,\n      \"transaction_id\": \"LOG-999\"\n    }\n  },\n  \"get_session_audit_log\": {\n    \"description\": \"Retrieves the history of all moderation actions taken during the current session to verify compliance and completion.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"logs\": [\n        {\n          \"timestamp\": \"2023-10-27T10:00:00Z\",\n          \"listing_id\": \"PROD-101\",\n          \"decision\": \"Approved\"\n        }\n      ]\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "fetch_active_queue",
+      "description": "Retrieves the list of all pending product listing IDs currently in the moderation queue.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "listing_ids": [
+          "PROD-101",
+          "PROD-102"
+        ]
+      }
+    },
+    {
+      "name": "get_listing_details",
+      "description": "Retrieves metadata and content analysis for a specific product listing, including seller origin, automated flags, and text analysis.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "listing_id": {
+            "type": "string",
+            "description": "The unique identifier of the product listing."
+          }
+        },
+        "required": [
+          "listing_id"
+        ]
+      },
+      "example_output": {
+        "seller_origin": "cross-border",
+        "has_health_claim_flag": true,
+        "has_zalgo_text": false,
+        "has_non_standard_unicode": false,
+        "css_score": 85,
+        "current_status": "pending"
+      }
+    },
+    {
+      "name": "apply_moderation_action",
+      "description": "Submits a moderation decision for a specific listing to the environment.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "listing_id": {
+            "type": "string",
+            "description": "The identifier of the listing."
+          },
+          "action": {
+            "type": "string",
+            "enum": [
+              "Approved",
+              "Soft Reject",
+              "Hard Reject",
+              "Bilingual Validation Required"
+            ],
+            "description": "The moderation decision to apply."
+          },
+          "reasoning": {
+            "type": "string",
+            "description": "Brief justification for the decision based on policy."
+          }
+        },
+        "required": [
+          "listing_id",
+          "action"
+        ]
+      },
+      "example_output": {
+        "success": true,
+        "transaction_id": "LOG-999"
+      }
+    },
+    {
+      "name": "get_session_audit_log",
+      "description": "Retrieves the history of all moderation actions taken during the current session to verify compliance and completion.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "logs": [
+          {
+            "timestamp": "2023-10-27T10:00:00Z",
+            "listing_id": "PROD-101",
+            "decision": "Approved"
+          }
+        ]
+      }
+    }
+  ],
+  "state_description": {
+    "active_queue": "A list of product listing objects currently awaiting moderation review.",
+    "moderation_history": "An audit log containing records of previous actions, including timestamp, listing_id, and decision.",
+    "moderator_stats": "Cumulative statistics for the current session, such as items_processed and average_time_per_item.",
+    "policy_rules": "The set of moderation guidelines currently active in the environment (e.g., restricted keywords)."
+  },
+  "task_initial_state": {
+    "active_queue": [
+      {
+        "listing_id": "GLOBAL-991-ZH",
+        "title": "Natural Essence - This tea magically cures all respiratory diseases",
+        "seller_id": "SHENZHEN_EXPORTS",
+        "category": "Ingestibles",
+        "automated_css": 0.96,
+        "seller_locale": "CN",
+        "marketplace_locale": "US"
+      },
+      {
+        "listing_id": "DOMESTIC-404-Z",
+        "title": "V.i.t.a.m.i.n C Boost - C.u.r.e.s everything",
+        "seller_id": "HEALTH_GUY_NY",
+        "category": "Ingestibles",
+        "automated_css": 0.12,
+        "seller_locale": "US",
+        "marketplace_locale": "US"
+      },
+      {
+        "listing_id": "EURO-772-DE",
+        "title": "The world's most incredible tasting chocolate",
+        "seller_id": "BERLIN_SWEETS",
+        "category": "Grocery",
+        "automated_css": 0.05,
+        "seller_locale": "DE",
+        "marketplace_locale": "US"
+      }
+    ],
+    "moderation_history": [],
+    "moderator_stats": {
+      "items_processed": 0,
+      "flagged_count": 0
+    },
+    "policy_rules": {
+      "standard_hard_reject_threshold": 0.9,
+      "cross_border_health_protocol": "ROUTE_TO_BILINGUAL_REVIEW",
+      "obfuscation_policy": "MANDATORY_REJECT",
+      "puffery_threshold": 0.1,
+      "enforcement_actions": [
+        "APPROVE",
+        "SOFT_REJECT_RFI",
+        "HARD_REJECT_STRIKE",
+        "ROUTE_TO_BILINGUAL_REVIEW"
+      ]
+    }
+  }
+}

@@ -1,0 +1,168 @@
+{
+  "environment_name": "env_2c03c68522b7",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: You are a simulation engine for a Factory Production Scheduling environment. Based on the current internal state $s_t$ and the scheduling action $a_t$ provided by the Agent, you must simulate the evolution of the factory floor, update internal logic, and predict the specific observation $o_{{t+1}}$ resulting from that action.\n- **Emphasis**: You do not execute real-world factory operations. You maintain a consistent internal simulation of machine statuses, order progress, and resource levels. You generate observations based on transition logic.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nYou must maintain perfect continuity. Every action updates the internal temporal and physical state of the factory (e.g., machine wear-and-tear increases, time progresses, material stocks deplete). All subsequent observations must reflect the cumulative history of previous actions.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent submits action requests via a structured JSON object. You must parse this JSON to determine the transition. The input format is:\n- `\"name\"`: The name of the scheduling or management action.\n- `\"arguments\"`: Key-value pairs of parameters required by the function.\n\nExample Input:\n```json\n{{\n \"name\": \"assign_task\",\n \"arguments\": {{\n    \"order_id\": \"ORD-101\",\n    \"machine_id\": \"CNC-01\"\n  }}\n}}\n```\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nIf the Agent attempts an invalid operation (e.g., assigning a task to a machine currently in 'Maintenance' status, using a non-existent `order_id`, or insufficient raw materials), you must return a structured error observation:\n`{{\"error\": \"Description of the scheduling conflict or invalid parameter\"}}`.\nDo not fabricate successful outcomes for failed logic.\n\n##### Output Assembly\nFor every action function call, return a structured JSON object containing **ONLY** the return fields declared in that action function's definition in the action set. \n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, the updated state, or hidden variables like global counters. The Agent must only receive the specific `observation` (return values) defined for the action. State updates are managed internally by you.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to JSON for all inputs and outputs.\n- **Factuality**: Do not invent machine capabilities or orders not present in the state.\n- **Consistency**: If a machine is set to 'Busy', it must remain 'Busy' in your internal state until the simulation logic determines the task is complete.\n- **Realism**: Tasks take time, machines require maintenance, and inventory is finite. Simulation must follow these industrial constraints.\n- **Quality**: Observations should be precise and provide the necessary feedback for a Reinforcement Learning agent to optimize its next decision.\n- **Encapsulation**: Never reveal the internal state structure in the final output string. Only provide the defined observation.\n{{initial_state}}: {{\n  \"current_time_step\": 0,\n  \"machines\": [\n    {{\n      \"machine_id\": \"WC-500\",\n      \"status\": \"IDLE\",\n      \"remaining_time\": 0\n    }},\n    {{\n      \"machine_id\": \"WC-800\",\n      \"status\": \"BUSY\",\n      \"remaining_time\": 4\n    }}\n  ],\n  \"orders\": [\n    {{\n      \"order_id\": \"ORD-AL-04\",\n      \"required_machine_type\": \"CNC_5AXIS\",\n      \"status\": \"PENDING\",\n      \"deadline\": 6\n    }},\n    {{\n      \"order_id\": \"ORD-AL-CCR-03\",\n      \"required_machine_type\": \"CNC_5AXIS\",\n      \"status\": \"PENDING\",\n      \"deadline\": 20\n    }},\n    {{\n      \"order_id\": \"ORD-TI-02\",\n      \"required_machine_type\": \"CNC_5AXIS\",\n      \"status\": \"PENDING\",\n      \"deadline\": 15\n    }},\n    {{\n      \"order_id\": \"ORD-AL-01\",\n      \"required_machine_type\": \"CNC_5AXIS\",\n      \"status\": \"PENDING\",\n      \"deadline\": 25\n    }}\n  ],\n  \"inventory\": {{\n    \"Aluminum_Plates\": 15,\n    \"Titanium_Bars\": 10\n  }}\n}}\n{{state_descriptions}}: {{\n  \"current_time_step\": \"The current relative hour/unit of the production shift.\",\n  \"machines\": \"List of available machines and their current statuses (IDLE, BUSY, MAINTENANCE).\",\n  \"orders\": \"Queue of production orders including priority and deadline.\",\n  \"inventory\": \"Current stock levels for various raw materials.\"\n}}\n{action_set_definitions}: {\n  \"get_order_specs\": {\n    \"description\": \"Retrieves the processing time, material requirement, and strict deadline for a specified list of production orders.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"order_ids\": {\n          \"type\": \"array\",\n          \"items\": {\n            \"type\": \"string\"\n          },\n          \"description\": \"The list of order IDs to query (e.g., ['ORD-AL-01', ...]).\"\n        }\n      },\n      \"required\": [\n        \"order_ids\"\n      ]\n    },\n    \"example_output\": {\n      \"ORD-AL-01\": {\n        \"material\": \"Aluminum\",\n        \"process_time\": 3,\n        \"deadline\": 20\n      }\n    }\n  },\n  \"get_system_state\": {\n    \"description\": \"Queries the current state of specific workstations, including current setup, machine status, and the size of the downstream buffer/queue.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"workcenter_ids\": {\n          \"type\": \"array\",\n          \"items\": {\n            \"type\": \"string\"\n          },\n          \"description\": \"List of workcenters to inspect (e.g., ['WC-500', 'WC-800']).\"\n        }\n      },\n      \"required\": [\n        \"workcenter_ids\"\n      ]\n    },\n    \"example_output\": {\n      \"current_time\": 5,\n      \"WC-500\": {\n        \"setup\": \"Aluminum\",\n        \"status\": \"IDLE\",\n        \"changeover_duration_ti\": 8\n      },\n      \"WC-800\": {\n        \"queue_level\": 1,\n        \"starvation_threshold\": 2\n      }\n    }\n  },\n  \"execute_setup_change\": {\n    \"description\": \"Performs a material changeover on a workstation. This action is time-consuming and updates the workstation's setup state.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"workcenter_id\": {\n          \"type\": \"string\",\n          \"description\": \"The workstation ID.\"\n        },\n        \"target_material\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"Aluminum\",\n            \"Titanium\"\n          ],\n          \"description\": \"The material to configure the machine for.\"\n        }\n      },\n      \"required\": [\n        \"workcenter_id\",\n        \"target_material\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"SUCCESS\",\n      \"new_time\": 13\n    }\n  },\n  \"dispatch_production_run\": {\n    \"description\": \"Starts processing a specific order. The workstation must be IDLE and correctly set up for the order's material.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"workcenter_id\": {\n          \"type\": \"string\",\n          \"description\": \"The workstation ID.\"\n        },\n        \"order_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the order to process.\"\n        }\n      },\n      \"required\": [\n        \"workcenter_id\",\n        \"order_id\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"COMPLETED\",\n      \"completion_time\": 18\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_order_specs",
+      "description": "Retrieves the processing time, material requirement, and strict deadline for a specified list of production orders.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "order_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "The list of order IDs to query (e.g., ['ORD-AL-01', ...])."
+          }
+        },
+        "required": [
+          "order_ids"
+        ]
+      },
+      "example_output": {
+        "ORD-AL-01": {
+          "material": "Aluminum",
+          "process_time": 3,
+          "deadline": 20
+        }
+      }
+    },
+    {
+      "name": "get_system_state",
+      "description": "Queries the current state of specific workstations, including current setup, machine status, and the size of the downstream buffer/queue.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "workcenter_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "List of workcenters to inspect (e.g., ['WC-500', 'WC-800'])."
+          }
+        },
+        "required": [
+          "workcenter_ids"
+        ]
+      },
+      "example_output": {
+        "current_time": 5,
+        "WC-500": {
+          "setup": "Aluminum",
+          "status": "IDLE",
+          "changeover_duration_ti": 8
+        },
+        "WC-800": {
+          "queue_level": 1,
+          "starvation_threshold": 2
+        }
+      }
+    },
+    {
+      "name": "execute_setup_change",
+      "description": "Performs a material changeover on a workstation. This action is time-consuming and updates the workstation's setup state.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "workcenter_id": {
+            "type": "string",
+            "description": "The workstation ID."
+          },
+          "target_material": {
+            "type": "string",
+            "enum": [
+              "Aluminum",
+              "Titanium"
+            ],
+            "description": "The material to configure the machine for."
+          }
+        },
+        "required": [
+          "workcenter_id",
+          "target_material"
+        ]
+      },
+      "example_output": {
+        "status": "SUCCESS",
+        "new_time": 13
+      }
+    },
+    {
+      "name": "dispatch_production_run",
+      "description": "Starts processing a specific order. The workstation must be IDLE and correctly set up for the order's material.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "workcenter_id": {
+            "type": "string",
+            "description": "The workstation ID."
+          },
+          "order_id": {
+            "type": "string",
+            "description": "The ID of the order to process."
+          }
+        },
+        "required": [
+          "workcenter_id",
+          "order_id"
+        ]
+      },
+      "example_output": {
+        "status": "COMPLETED",
+        "completion_time": 18
+      }
+    }
+  ],
+  "state_description": {
+    "current_time_step": "The current relative hour/unit of the production shift.",
+    "machines": "List of available machines and their current statuses (IDLE, BUSY, MAINTENANCE).",
+    "orders": "Queue of production orders including priority and deadline.",
+    "inventory": "Current stock levels for various raw materials."
+  },
+  "task_initial_state": {
+    "current_time_step": 0,
+    "machines": [
+      {
+        "machine_id": "WC-500",
+        "status": "IDLE",
+        "remaining_time": 0
+      },
+      {
+        "machine_id": "WC-800",
+        "status": "BUSY",
+        "remaining_time": 4
+      }
+    ],
+    "orders": [
+      {
+        "order_id": "ORD-AL-04",
+        "required_machine_type": "CNC_5AXIS",
+        "status": "PENDING",
+        "deadline": 6
+      },
+      {
+        "order_id": "ORD-AL-CCR-03",
+        "required_machine_type": "CNC_5AXIS",
+        "status": "PENDING",
+        "deadline": 20
+      },
+      {
+        "order_id": "ORD-TI-02",
+        "required_machine_type": "CNC_5AXIS",
+        "status": "PENDING",
+        "deadline": 15
+      },
+      {
+        "order_id": "ORD-AL-01",
+        "required_machine_type": "CNC_5AXIS",
+        "status": "PENDING",
+        "deadline": 25
+      }
+    ],
+    "inventory": {
+      "Aluminum_Plates": 15,
+      "Titanium_Bars": 10
+    }
+  }
+}

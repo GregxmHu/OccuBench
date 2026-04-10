@@ -1,0 +1,287 @@
+{
+  "environment_name": "env_481cd5ca7021",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM) for Cloud Infrastructure Provisioning.\n- **Core Objective**: Based on the current infrastructure state $s_t$ and the provisioning action $a_t$ (e.g., creating a VM, configuring a VPC), simulate the environment changes and predict the observation $o_{{t+1}}$ (e.g., resource metadata, success confirmation, or error logs).\n- **Emphasis**: The LWM does not execute real cloud API calls. It performs internal state evolution to maintain a consistent representation of the virtual cloud environment and generates realistic observations for the Agent.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions between the World Model and the Agent must maintain context consistency. The LWM must track the lifecycle of resources (e.g., a resource cannot be modified if it was previously deleted) and ensure that network dependencies or quota limits are respected across the timeline.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. This JSON must contain the following fields:\n- `\"name\"`: Specifies the name of the cloud provisioning action (e.g., `launch_instance`, `create_subnet`).\n- The remaining fields are the parameters required by that specific action.\n\nExample:\n```json\n{{\n \"name\": \"create_vm_instance\",\n \"arguments\": {{\n    \"instance_type\": \"t3.medium\",\n    \"image_id\": \"ami-0abcdef1234567890\",\n    \"region\": \"us-east-1\"\n  }}\n}}\n```\n\nThe Language World Model must correctly parse such JSON inputs, update the internal resource registry, and simulate the execution results.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nFor invalid parameters (e.g., non-existent instance types), undefined actions, state conflicts (e.g., IP address overlap), or exceeding account quotas, return structured error information (e.g., `{{\"error\": \"QuotaExceeded\", \"message\": \"Maximum number of vCPUs reached\"}}`). Do not fabricate states or fictitious successful responses if the logic dictates failure.\n\n##### Output Assembly\nFor every action call, the model must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition.\n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, the `new_state`, or any hidden variables like the full inventory of resources. The state maintenance is implicit. The Agent must only see the specific return values defined in the action (the Observation).\n\n### 4. Key Principles\n- **Format**: Strictly adhere to specified JSON and text formats.\n- **Factuality**: Do not fabricate non-existent cloud services, regions, or state attributes.\n- **Consistency**: Infrastructure evolution must be self-consistent (e.g., if a VPC is deleted, its subnets must be accounted for according to provider logic).\n- **Realism**: Simulated behaviors must align with cloud provider dynamics (e.g., provisioning latency simulations, resource ID generation patterns).\n- **Quality**: Language must be professional, technical, and structurally complete.\n- **Encapsulation**: Strictly hide the internal cloud state structure from the output. Only expose information explicitly returned by the action function.\n{{initial_state}}: {{\n  \"provisioned_resources\": [\n    {{\n      \"resource_id\": \"fleet-manager-hub\",\n      \"type\": \"management_cluster\",\n      \"status\": \"running\",\n      \"node_count\": 1,\n      \"region\": \"us-east-1\",\n      \"metadata\": {{\n        \"gitops_engine\": \"ArgoCD\",\n        \"reconciliation_schedule\": \"5m\",\n        \"regional_config\": {{\n          \"us-east-1\": \"enabled\",\n          \"ap-northeast-1\": \"suspended_due_to_api_drift\"\n        }}\n      }}\n    }},\n    {{\n      \"resource_id\": \"nebula-eu-prod\",\n      \"type\": \"workload_cluster\",\n      \"status\": \"running\",\n      \"node_count\": 4,\n      \"region\": \"eu-central-1\",\n      \"metadata\": {{\n        \"SyncStatus\": \"Synced\",\n        \"HealthStatus\": \"Healthy\"\n      }}\n    }},\n    {{\n      \"resource_id\": \"tmp-migration-vault\",\n      \"type\": \"workload_cluster\",\n      \"status\": \"running\",\n      \"node_count\": 5,\n      \"region\": \"us-east-1\",\n      \"metadata\": {{\n        \"SyncStatus\": \"Unknown\",\n        \"HealthStatus\": \"Degraded\",\n        \"last_reconcile\": \"2023-10-15T12:00:00Z\",\n        \"managed_by\": \"manual-override\"\n      }}\n    }}\n  ],\n  \"network_topology\": {{\n    \"vpcs\": {{\n      \"vpc-hub\": {{\n        \"cidr\": \"10.0.0.0/16\",\n        \"region\": \"us-east-1\"\n      }},\n      \"vpc-tokyo\": {{\n        \"cidr\": \"10.5.0.0/16\",\n        \"region\": \"ap-northeast-1\"\n      }}\n    }},\n    \"subnets\": {{\n      \"subnet-hub-1a\": {{\n        \"vpc\": \"vpc-hub\",\n        \"cidr\": \"10.0.1.0/24\"\n      }},\n      \"subnet-tokyo-1a\": {{\n        \"vpc\": \"vpc-tokyo\",\n        \"cidr\": \"10.5.1.0/24\"\n      }}\n    }}\n  }},\n  \"account_quotas\": {{\n    \"max_instances\": 10,\n    \"current_instances\": 10\n  }},\n  \"billing_status\": {{\n    \"total_cost_usd\": 1560.0,\n    \"currency\": \"USD\"\n  }}\n}}\n{{state_descriptions}}: {{\n  \"provisioned_resources\": \"A list of all active cloud resources including their IDs, types, and current statuses (e.g., running, stopped).\",\n  \"network_topology\": \"Mapping of VPCs, subnets, route tables, and security group rules.\",\n  \"account_quotas\": \"Current limits and usage counts for resources like vCPUs, Elastic IPs, and storage volume size.\",\n  \"billing_status\": \"Accumulated cost and pricing models applied to the current session.\"\n}}\n{action_set_definitions}: {\n  \"get_account_quotas\": {\n    \"description\": \"Retrieves the current usage and maximum limits for cloud resources (e.g., instances) in a specific region.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"region\": {\n          \"type\": \"string\",\n          \"description\": \"The cloud region to query, e.g., 'ap-northeast-1'.\"\n        },\n        \"resource_type\": {\n          \"type\": \"string\",\n          \"description\": \"The resource type to check (e.g., 'instances').\"\n        }\n      },\n      \"required\": [\n        \"region\"\n      ]\n    },\n    \"example_output\": {\n      \"limit\": 10,\n      \"current_usage\": 9\n    }\n  },\n  \"get_hub_regional_config\": {\n    \"description\": \"Retrieves the operational status and drift information for a specific region within the management hub.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"hub_name\": {\n          \"type\": \"string\",\n          \"description\": \"The name of the management hub cluster.\"\n        },\n        \"region\": {\n          \"type\": \"string\",\n          \"description\": \"The region to inspect.\"\n        }\n      },\n      \"required\": [\n        \"hub_name\",\n        \"region\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"Suspended\",\n      \"drift_detected\": true\n    }\n  },\n  \"configure_management_hub_region\": {\n    \"description\": \"Updates regional configuration on the management hub to enable regions or resolve API drift issues.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"hub_name\": {\n          \"type\": \"string\",\n          \"description\": \"The name of the management hub cluster.\"\n        },\n        \"region\": {\n          \"type\": \"string\",\n          \"description\": \"The target region.\"\n        },\n        \"desired_status\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"Enabled\",\n            \"Disabled\"\n          ],\n          \"description\": \"The desired operational state.\"\n        },\n        \"resolve_drift\": {\n          \"type\": \"boolean\",\n          \"description\": \"If true, synchronizes the hub state with the cloud provider to resolve inconsistencies.\"\n        }\n      },\n      \"required\": [\n        \"hub_name\",\n        \"region\",\n        \"desired_status\"\n      ]\n    },\n    \"example_output\": {\n      \"result\": \"Success\",\n      \"current_status\": \"Enabled\"\n    }\n  },\n  \"list_fleet_resources\": {\n    \"description\": \"Lists all workload clusters managed by the hub, providing their names, current node counts, and status.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"hub_name\": {\n          \"type\": \"string\",\n          \"description\": \"The name of the management hub cluster.\"\n        }\n      },\n      \"required\": [\n        \"hub_name\"\n      ]\n    },\n    \"example_output\": {\n      \"clusters\": [\n        {\n          \"name\": \"tmp-migration-vault\",\n          \"node_count\": 4,\n          \"region\": \"ap-northeast-1\"\n        }\n      ]\n    }\n  },\n  \"apply_cluster_manifest\": {\n    \"description\": \"Uses GitOps protocols to create or update a workload cluster configuration. This tool can reduce node counts even when at quota limits to facilitate resource reallocation.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"hub_name\": {\n          \"type\": \"string\",\n          \"description\": \"The management hub cluster name.\"\n        },\n        \"cluster_name\": {\n          \"type\": \"string\",\n          \"description\": \"The name of the cluster to create or modify.\"\n        },\n        \"region\": {\n          \"type\": \"string\",\n          \"description\": \"The deployment region.\"\n        },\n        \"node_count\": {\n          \"type\": \"integer\",\n          \"description\": \"The target number of nodes.\"\n        },\n        \"management_protocol\": {\n          \"type\": \"string\",\n          \"description\": \"The protocol used, e.g., 'GitOps'.\"\n        }\n      },\n      \"required\": [\n        \"hub_name\",\n        \"cluster_name\",\n        \"region\",\n        \"node_count\",\n        \"management_protocol\"\n      ]\n    },\n    \"example_output\": {\n      \"sync_status\": \"Accepted\",\n      \"target_node_count\": 2\n    }\n  },\n  \"delete_workload_cluster\": {\n    \"description\": \"Completely removes a workload cluster and its associated resources from the cloud and the management plane to free up account quota.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"hub_name\": {\n          \"type\": \"string\",\n          \"description\": \"The management hub cluster name.\"\n        },\n        \"cluster_name\": {\n          \"type\": \"string\",\n          \"description\": \"The name of the cluster to delete.\"\n        }\n      },\n      \"required\": [\n        \"hub_name\",\n        \"cluster_name\"\n      ]\n    },\n    \"example_output\": {\n      \"deletion_initiated\": true,\n      \"status\": \"Deleting\"\n    }\n  },\n  \"get_cluster_health_metrics\": {\n    \"description\": \"Retrieves the real-time sync and health status for a specific workload cluster.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"hub_name\": {\n          \"type\": \"string\",\n          \"description\": \"The management hub name.\"\n        },\n        \"cluster_name\": {\n          \"type\": \"string\",\n          \"description\": \"The workload cluster name.\"\n        }\n      },\n      \"required\": [\n        \"hub_name\",\n        \"cluster_name\"\n      ]\n    },\n    \"example_output\": {\n      \"sync_state\": \"Synced\",\n      \"health_state\": \"Healthy\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_account_quotas",
+      "description": "Retrieves the current usage and maximum limits for cloud resources (e.g., instances) in a specific region.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "region": {
+            "type": "string",
+            "description": "The cloud region to query, e.g., 'ap-northeast-1'."
+          },
+          "resource_type": {
+            "type": "string",
+            "description": "The resource type to check (e.g., 'instances')."
+          }
+        },
+        "required": [
+          "region"
+        ]
+      },
+      "example_output": {
+        "limit": 10,
+        "current_usage": 9
+      }
+    },
+    {
+      "name": "get_hub_regional_config",
+      "description": "Retrieves the operational status and drift information for a specific region within the management hub.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "hub_name": {
+            "type": "string",
+            "description": "The name of the management hub cluster."
+          },
+          "region": {
+            "type": "string",
+            "description": "The region to inspect."
+          }
+        },
+        "required": [
+          "hub_name",
+          "region"
+        ]
+      },
+      "example_output": {
+        "status": "Suspended",
+        "drift_detected": true
+      }
+    },
+    {
+      "name": "configure_management_hub_region",
+      "description": "Updates regional configuration on the management hub to enable regions or resolve API drift issues.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "hub_name": {
+            "type": "string",
+            "description": "The name of the management hub cluster."
+          },
+          "region": {
+            "type": "string",
+            "description": "The target region."
+          },
+          "desired_status": {
+            "type": "string",
+            "enum": [
+              "Enabled",
+              "Disabled"
+            ],
+            "description": "The desired operational state."
+          },
+          "resolve_drift": {
+            "type": "boolean",
+            "description": "If true, synchronizes the hub state with the cloud provider to resolve inconsistencies."
+          }
+        },
+        "required": [
+          "hub_name",
+          "region",
+          "desired_status"
+        ]
+      },
+      "example_output": {
+        "result": "Success",
+        "current_status": "Enabled"
+      }
+    },
+    {
+      "name": "list_fleet_resources",
+      "description": "Lists all workload clusters managed by the hub, providing their names, current node counts, and status.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "hub_name": {
+            "type": "string",
+            "description": "The name of the management hub cluster."
+          }
+        },
+        "required": [
+          "hub_name"
+        ]
+      },
+      "example_output": {
+        "clusters": [
+          {
+            "name": "tmp-migration-vault",
+            "node_count": 4,
+            "region": "ap-northeast-1"
+          }
+        ]
+      }
+    },
+    {
+      "name": "apply_cluster_manifest",
+      "description": "Uses GitOps protocols to create or update a workload cluster configuration. This tool can reduce node counts even when at quota limits to facilitate resource reallocation.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "hub_name": {
+            "type": "string",
+            "description": "The management hub cluster name."
+          },
+          "cluster_name": {
+            "type": "string",
+            "description": "The name of the cluster to create or modify."
+          },
+          "region": {
+            "type": "string",
+            "description": "The deployment region."
+          },
+          "node_count": {
+            "type": "integer",
+            "description": "The target number of nodes."
+          },
+          "management_protocol": {
+            "type": "string",
+            "description": "The protocol used, e.g., 'GitOps'."
+          }
+        },
+        "required": [
+          "hub_name",
+          "cluster_name",
+          "region",
+          "node_count",
+          "management_protocol"
+        ]
+      },
+      "example_output": {
+        "sync_status": "Accepted",
+        "target_node_count": 2
+      }
+    },
+    {
+      "name": "delete_workload_cluster",
+      "description": "Completely removes a workload cluster and its associated resources from the cloud and the management plane to free up account quota.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "hub_name": {
+            "type": "string",
+            "description": "The management hub cluster name."
+          },
+          "cluster_name": {
+            "type": "string",
+            "description": "The name of the cluster to delete."
+          }
+        },
+        "required": [
+          "hub_name",
+          "cluster_name"
+        ]
+      },
+      "example_output": {
+        "deletion_initiated": true,
+        "status": "Deleting"
+      }
+    },
+    {
+      "name": "get_cluster_health_metrics",
+      "description": "Retrieves the real-time sync and health status for a specific workload cluster.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "hub_name": {
+            "type": "string",
+            "description": "The management hub name."
+          },
+          "cluster_name": {
+            "type": "string",
+            "description": "The workload cluster name."
+          }
+        },
+        "required": [
+          "hub_name",
+          "cluster_name"
+        ]
+      },
+      "example_output": {
+        "sync_state": "Synced",
+        "health_state": "Healthy"
+      }
+    }
+  ],
+  "state_description": {
+    "provisioned_resources": "A list of all active cloud resources including their IDs, types, and current statuses (e.g., running, stopped).",
+    "network_topology": "Mapping of VPCs, subnets, route tables, and security group rules.",
+    "account_quotas": "Current limits and usage counts for resources like vCPUs, Elastic IPs, and storage volume size.",
+    "billing_status": "Accumulated cost and pricing models applied to the current session."
+  },
+  "task_initial_state": {
+    "provisioned_resources": [
+      {
+        "resource_id": "fleet-manager-hub",
+        "type": "management_cluster",
+        "status": "running",
+        "node_count": 1,
+        "region": "us-east-1",
+        "metadata": {
+          "gitops_engine": "ArgoCD",
+          "reconciliation_schedule": "5m",
+          "regional_config": {
+            "us-east-1": "enabled",
+            "ap-northeast-1": "suspended_due_to_api_drift"
+          }
+        }
+      },
+      {
+        "resource_id": "nebula-eu-prod",
+        "type": "workload_cluster",
+        "status": "running",
+        "node_count": 4,
+        "region": "eu-central-1",
+        "metadata": {
+          "SyncStatus": "Synced",
+          "HealthStatus": "Healthy"
+        }
+      },
+      {
+        "resource_id": "tmp-migration-vault",
+        "type": "workload_cluster",
+        "status": "running",
+        "node_count": 5,
+        "region": "us-east-1",
+        "metadata": {
+          "SyncStatus": "Unknown",
+          "HealthStatus": "Degraded",
+          "last_reconcile": "2023-10-15T12:00:00Z",
+          "managed_by": "manual-override"
+        }
+      }
+    ],
+    "network_topology": {
+      "vpcs": {
+        "vpc-hub": {
+          "cidr": "10.0.0.0/16",
+          "region": "us-east-1"
+        },
+        "vpc-tokyo": {
+          "cidr": "10.5.0.0/16",
+          "region": "ap-northeast-1"
+        }
+      },
+      "subnets": {
+        "subnet-hub-1a": {
+          "vpc": "vpc-hub",
+          "cidr": "10.0.1.0/24"
+        },
+        "subnet-tokyo-1a": {
+          "vpc": "vpc-tokyo",
+          "cidr": "10.5.1.0/24"
+        }
+      }
+    },
+    "account_quotas": {
+      "max_instances": 10,
+      "current_instances": 10
+    },
+    "billing_status": {
+      "total_cost_usd": 1560.0,
+      "currency": "USD"
+    }
+  }
+}

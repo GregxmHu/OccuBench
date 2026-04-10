@@ -1,0 +1,234 @@
+{
+  "environment_name": "env_8aa6589929ee",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: Based on the current state $s_t$ and the action $a_t$ provided by the Agent (Auditor), simulate the internal evolution of the Expense Report Auditing environment and predict the resulting observation $o_{{t+1}}$.\n- **Emphasis**: You are a simulator of an expense management system. You do not perform real-world auditing; you compute the logic of how the system state changes (e.g., updating report statuses) and what data the auditor sees next.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions between the World Model and the Agent must maintain strict context consistency. Any changes to a report's status, notes, or flags must persist in the internal state throughout the session history to ensure the environment remains self-consistent.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. This JSON will contain:\n- `\"name\"`: Specifies the name of the action function to execute.\n- The remaining fields are the parameters for that action.\n\nExample Input:\n```json\n{{\n \"name\": \"approve_report\",\n \"arguments\": {{\n    \"report_id\": \"EXP-101\",\n    \"comment\": \"Valid receipt provided.\"\n  }}\n}}\n```\n\nYou must parse this input, apply the logic to the internal state (e.g., changing the status of EXP-101 to 'Approved'), and generate the appropriate observation defined for that action.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nIf the Agent attempts to audit a non-existent `report_id`, violates a state transition (e.g., approving an already rejected report), or provides invalid parameters, return a structured error:\n`{{\"error\": \"Reason for failure\"}}`.\nDo not fabricate data or proceed with state changes if the action is invalid.\n\n##### Output Assembly\nFor every action function call, return a structured JSON object containing **ONLY** the return fields declared in that action function's definition.\n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `$s_t$`, the updated state, or any hidden system variables. The Agent must only see the specific return values (the Observation) specified in the action definition.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to specified JSON formats for both inputs and outputs.\n- **Factuality**: Do not simulate data (receipts, amounts) that contradict the provided `{{initial_state}}`.\n- **Consistency**: If a report is flagged for fraud, it must remain flagged unless a specific action clears it.\n- **Realism**: The simulation should reflect a professional corporate auditing environment (e.g., status changes trigger timestamps, comments are appended to history).\n- **Quality**: Ensure all generated observations are clear and structured.\n- **Encapsulation**: Hide the backend database structure. Only return the specific observation data requested by the action.\n{{initial_state}}: {{\n  \"reports\": [\n    {{\n      \"id\": \"EXP-TR-7701\",\n      \"submitter\": \"Marcus Thorne\",\n      \"amount\": 1250.0,\n      \"currency\": \"USD\",\n      \"category\": \"Lodging\",\n      \"timestamp\": \"2024-11-01T14:20:00Z\",\n      \"status\": \"pending\"\n    }},\n    {{\n      \"id\": \"EXP-TR-7702\",\n      \"submitter\": \"Marcus Thorne\",\n      \"amount\": 280.0,\n      \"currency\": \"USD\",\n      \"category\": \"Office Supplies\",\n      \"timestamp\": \"2024-11-01T14:25:00Z\",\n      \"status\": \"pending\"\n    }}\n  ],\n  \"receipt_store\": {{\n    \"EXP-TR-7701\": {{\n      \"vendor\": \"The Blackstone Chicago\",\n      \"ocr_summary\": \"3 Nights Room Charge: $900.00; Taxes: $150.00; In-Room Mini-bar: $45.00; Hotel Spa: $155.00. Total: $1250.00\",\n      \"confidence_score\": 0.99,\n      \"image_url\": \"https://finance.internal/receipts/mt_blackstone.pdf\"\n    }},\n    \"EXP-TR-7702\": {{\n      \"vendor\": \"The Gage Tavern\",\n      \"ocr_summary\": \"Dinner for 3. Items: Steak, Wine, Appetizers. Total: $280.00. Payment: Corp Card ...8812.\",\n      \"mcc_code\": \"5813\",\n      \"confidence_score\": 0.95,\n      \"image_url\": \"https://finance.internal/receipts/mt_gage.jpg\"\n    }}\n  }},\n  \"policy_rules\": {{\n    \"meal_limit_per_person\": 100.0,\n    \"lodging_nightly_limit\": 350.0,\n    \"disallowed_categories\": [\n      \"Mini-bar\",\n      \"Spa\",\n      \"Entertainment/Bar\"\n    ],\n    \"fpaa_mcc_reconciliation_required\": true\n  }},\n  \"audit_logs\": [\n    {{\n      \"timestamp\": \"2024-11-01T14:26:00Z\",\n      \"action\": \"system_flag\",\n      \"details\": \"EXP-TR-7702: FPAA Lock triggered. MCC 5813 (Drinking Places) conflicts with user category 'Office Supplies'. Manual MCC reconciliation and attendee substantiation required before status transition.\"\n    }}\n  ]\n}}\n{{state_descriptions}}: {{\n  \"reports\": \"A list of expense report objects, each containing id, submitter, amount, currency, category, timestamp, and current status (e.g., pending, under_review, approved, rejected).\",\n  \"receipt_store\": \"A mapping of report IDs to their digital receipt metadata, including OCR confidence scores and image URLs.\",\n  \"policy_rules\": \"The corporate expense policy limits per category (e.g., Meal limit: $50) used to calculate compliance flags.\",\n  \"audit_logs\": \"An internal log of all modifications made to report statuses during the current session.\"\n}}\n{action_set_definitions}: {\n  \"get_policy_rules\": {\n    \"description\": \"Retrieves the current corporate expense policy rules, including category limits and prohibited items.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"meal_limit_per_head\": 100,\n      \"prohibited_items\": [\n        \"mini-bar\",\n        \"spa\",\n        \"entertainment\"\n      ],\n      \"currency\": \"USD\"\n    }\n  },\n  \"search_reports\": {\n    \"description\": \"Searches for expense reports based on submitter name or description keywords.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"submitter\": {\n          \"type\": \"string\",\n          \"description\": \"The name of the employee who submitted the reports.\"\n        },\n        \"keyword\": {\n          \"type\": \"string\",\n          \"description\": \"A keyword to filter reports (e.g., 'Chicago').\"\n        }\n      },\n      \"required\": [\n        \"submitter\"\n      ]\n    },\n    \"example_output\": {\n      \"reports\": [\n        {\n          \"id\": \"EXP-001\",\n          \"amount\": 250.0,\n          \"category\": \"Meal\",\n          \"status\": \"pending\"\n        }\n      ]\n    }\n  },\n  \"get_report_details\": {\n    \"description\": \"Retrieves comprehensive details for a specific report, including FPAA flags and system lock status.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"report_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier of the report.\"\n        }\n      },\n      \"required\": [\n        \"report_id\"\n      ]\n    },\n    \"example_output\": {\n      \"id\": \"EXP-001\",\n      \"description\": \"Dinner with client\",\n      \"has_fpaa_lock\": true,\n      \"fpaa_conflict_description\": \"Merchant data mismatch\",\n      \"category\": \"Meal\",\n      \"total_amount\": 150.0\n    }\n  },\n  \"get_receipt_analysis\": {\n    \"description\": \"Retrieves OCR data and metadata for a receipt, including itemized lines and attendee counts for meals.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"report_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier of the report associated with the receipt.\"\n        }\n      },\n      \"required\": [\n        \"report_id\"\n      ]\n    },\n    \"example_output\": {\n      \"attendee_count\": 2,\n      \"items\": [\n        {\n          \"desc\": \"Steak\",\n          \"price\": 80.0\n        },\n        {\n          \"desc\": \"Mini-bar water\",\n          \"price\": 10.0\n        }\n      ],\n      \"ocr_confidence\": 0.98\n    }\n  },\n  \"resolve_fpaa_conflict\": {\n    \"description\": \"Clears the automated FPAA lock on a record after manual reconciliation.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"report_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier of the report.\"\n        },\n        \"resolution_note\": {\n          \"type\": \"string\",\n          \"description\": \"Explanation of how the conflict was reconciled.\"\n        }\n      },\n      \"required\": [\n        \"report_id\",\n        \"resolution_note\"\n      ]\n    },\n    \"example_output\": {\n      \"success\": true,\n      \"new_status\": \"under_review\"\n    }\n  },\n  \"update_report_final_status\": {\n    \"description\": \"Sets the final status of a report. Can adjust the final approved amount if certain items are rejected.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"report_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier of the report.\"\n        },\n        \"status\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"approved\",\n            \"rejected\",\n            \"partially_approved\"\n          ],\n          \"description\": \"The final status of the report.\"\n        },\n        \"approved_amount\": {\n          \"type\": \"number\",\n          \"description\": \"The final amount to be paid out (must match total_amount unless partially_approved).\"\n        },\n        \"audit_note\": {\n          \"type\": \"string\",\n          \"description\": \"Detailed reasoning for the status and any amount adjustments.\"\n        }\n      },\n      \"required\": [\n        \"report_id\",\n        \"status\",\n        \"approved_amount\",\n        \"audit_note\"\n      ]\n    },\n    \"example_output\": {\n      \"id\": \"EXP-001\",\n      \"final_status\": \"partially_approved\",\n      \"audit_log_entry\": \"Log-ID-999\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_policy_rules",
+      "description": "Retrieves the current corporate expense policy rules, including category limits and prohibited items.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "meal_limit_per_head": 100,
+        "prohibited_items": [
+          "mini-bar",
+          "spa",
+          "entertainment"
+        ],
+        "currency": "USD"
+      }
+    },
+    {
+      "name": "search_reports",
+      "description": "Searches for expense reports based on submitter name or description keywords.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "submitter": {
+            "type": "string",
+            "description": "The name of the employee who submitted the reports."
+          },
+          "keyword": {
+            "type": "string",
+            "description": "A keyword to filter reports (e.g., 'Chicago')."
+          }
+        },
+        "required": [
+          "submitter"
+        ]
+      },
+      "example_output": {
+        "reports": [
+          {
+            "id": "EXP-001",
+            "amount": 250.0,
+            "category": "Meal",
+            "status": "pending"
+          }
+        ]
+      }
+    },
+    {
+      "name": "get_report_details",
+      "description": "Retrieves comprehensive details for a specific report, including FPAA flags and system lock status.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "report_id": {
+            "type": "string",
+            "description": "The unique identifier of the report."
+          }
+        },
+        "required": [
+          "report_id"
+        ]
+      },
+      "example_output": {
+        "id": "EXP-001",
+        "description": "Dinner with client",
+        "has_fpaa_lock": true,
+        "fpaa_conflict_description": "Merchant data mismatch",
+        "category": "Meal",
+        "total_amount": 150.0
+      }
+    },
+    {
+      "name": "get_receipt_analysis",
+      "description": "Retrieves OCR data and metadata for a receipt, including itemized lines and attendee counts for meals.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "report_id": {
+            "type": "string",
+            "description": "The unique identifier of the report associated with the receipt."
+          }
+        },
+        "required": [
+          "report_id"
+        ]
+      },
+      "example_output": {
+        "attendee_count": 2,
+        "items": [
+          {
+            "desc": "Steak",
+            "price": 80.0
+          },
+          {
+            "desc": "Mini-bar water",
+            "price": 10.0
+          }
+        ],
+        "ocr_confidence": 0.98
+      }
+    },
+    {
+      "name": "resolve_fpaa_conflict",
+      "description": "Clears the automated FPAA lock on a record after manual reconciliation.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "report_id": {
+            "type": "string",
+            "description": "The unique identifier of the report."
+          },
+          "resolution_note": {
+            "type": "string",
+            "description": "Explanation of how the conflict was reconciled."
+          }
+        },
+        "required": [
+          "report_id",
+          "resolution_note"
+        ]
+      },
+      "example_output": {
+        "success": true,
+        "new_status": "under_review"
+      }
+    },
+    {
+      "name": "update_report_final_status",
+      "description": "Sets the final status of a report. Can adjust the final approved amount if certain items are rejected.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "report_id": {
+            "type": "string",
+            "description": "The unique identifier of the report."
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "approved",
+              "rejected",
+              "partially_approved"
+            ],
+            "description": "The final status of the report."
+          },
+          "approved_amount": {
+            "type": "number",
+            "description": "The final amount to be paid out (must match total_amount unless partially_approved)."
+          },
+          "audit_note": {
+            "type": "string",
+            "description": "Detailed reasoning for the status and any amount adjustments."
+          }
+        },
+        "required": [
+          "report_id",
+          "status",
+          "approved_amount",
+          "audit_note"
+        ]
+      },
+      "example_output": {
+        "id": "EXP-001",
+        "final_status": "partially_approved",
+        "audit_log_entry": "Log-ID-999"
+      }
+    }
+  ],
+  "state_description": {
+    "reports": "A list of expense report objects, each containing id, submitter, amount, currency, category, timestamp, and current status (e.g., pending, under_review, approved, rejected).",
+    "receipt_store": "A mapping of report IDs to their digital receipt metadata, including OCR confidence scores and image URLs.",
+    "policy_rules": "The corporate expense policy limits per category (e.g., Meal limit: $50) used to calculate compliance flags.",
+    "audit_logs": "An internal log of all modifications made to report statuses during the current session."
+  },
+  "task_initial_state": {
+    "reports": [
+      {
+        "id": "EXP-TR-7701",
+        "submitter": "Marcus Thorne",
+        "amount": 1250.0,
+        "currency": "USD",
+        "category": "Lodging",
+        "timestamp": "2024-11-01T14:20:00Z",
+        "status": "pending"
+      },
+      {
+        "id": "EXP-TR-7702",
+        "submitter": "Marcus Thorne",
+        "amount": 280.0,
+        "currency": "USD",
+        "category": "Office Supplies",
+        "timestamp": "2024-11-01T14:25:00Z",
+        "status": "pending"
+      }
+    ],
+    "receipt_store": {
+      "EXP-TR-7701": {
+        "vendor": "The Blackstone Chicago",
+        "ocr_summary": "3 Nights Room Charge: $900.00; Taxes: $150.00; In-Room Mini-bar: $45.00; Hotel Spa: $155.00. Total: $1250.00",
+        "confidence_score": 0.99,
+        "image_url": "https://finance.internal/receipts/mt_blackstone.pdf"
+      },
+      "EXP-TR-7702": {
+        "vendor": "The Gage Tavern",
+        "ocr_summary": "Dinner for 3. Items: Steak, Wine, Appetizers. Total: $280.00. Payment: Corp Card ...8812.",
+        "mcc_code": "5813",
+        "confidence_score": 0.95,
+        "image_url": "https://finance.internal/receipts/mt_gage.jpg"
+      }
+    },
+    "policy_rules": {
+      "meal_limit_per_person": 100.0,
+      "lodging_nightly_limit": 350.0,
+      "disallowed_categories": [
+        "Mini-bar",
+        "Spa",
+        "Entertainment/Bar"
+      ],
+      "fpaa_mcc_reconciliation_required": true
+    },
+    "audit_logs": [
+      {
+        "timestamp": "2024-11-01T14:26:00Z",
+        "action": "system_flag",
+        "details": "EXP-TR-7702: FPAA Lock triggered. MCC 5813 (Drinking Places) conflicts with user category 'Office Supplies'. Manual MCC reconciliation and attendee substantiation required before status transition."
+      }
+    ]
+  }
+}

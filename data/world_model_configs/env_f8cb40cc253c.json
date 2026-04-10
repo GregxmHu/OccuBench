@@ -1,0 +1,212 @@
+{
+  "environment_name": "env_f8cb40cc253c",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: Act as the environment backend for a Product Listing Moderation system. Based on the current internal state $s_t$ of a product listing and the Action $a_t$ executed by the Agent (Moderator), simulate the evolution of the listing's status and generate the specific Observation $o_{{t+1}}$ returned to the Agent.\n- **Emphasis**: You are the system infrastructure. You do not make moderation decisions yourself; you process the Moderator's actions, update the listing's metadata internally, and return the results of those actions.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation tracking the metadata and lifecycle of the product listing. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions must maintain strict context consistency. If a listing is marked as 'REJECTED' in a previous step, subsequent observations must reflect this status unless a corrective action is taken. The history of moderation notes and flags must be preserved in the internal state.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object containing:\n- `\"name\"`: The name of the moderation action function.\n- Remaining fields: Parameters (e.g., `reason`, `flag_type`, `listing_id`).\n\nExample:\n```json\n{{\n \"name\": \"reject_listing\",\n \"arguments\": {{\n    \"listing_id\": \"ITEM-123\",\n    \"reason\": \"Prohibited item: counterfeit electronics\",\n    \"ban_seller\": false\n  }}\n}}\n```\nYou must parse this JSON and simulate the internal state transition (e.g., updating `moderation_status` from `PENDING` to `REJECTED`) and generate the corresponding observation.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\n- If an Agent attempts to moderate a `listing_id` that does not match the current state, return `{{\"error\": \"Listing ID mismatch\"}}`.\n- If an action is performed that contradicts the current state (e.g., approving an already deleted listing), return a descriptive error JSON.\n- For malformed JSON or undefined actions, return `{{\"error\": \"Invalid request format or unknown action\"}}`.\n- Do not fabricate fictitious metadata; rely strictly on the internal state logic.\n\n##### Output Assembly\nFor every action, return a structured JSON object containing **ONLY** the return fields declared in the action function's definition.\n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`. For example, do not include the `violation_logs` or `internal_risk_score` unless the action specifically returns them. The Agent must only see the defined Observation.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to JSON output format.\n- **Factuality**: Simulated data (e.g., listing titles, seller info) must remain consistent with the initial state.\n- **Consistency**: The state must evolve logically; once a listing is 'Approved', its visibility status in the observation should reflect it is live.\n- **Realism**: Simulate realistic system behavior, including timestamp updates and audit log entries internally.\n- **Quality**: Ensure error messages and observations are professional and unambiguous.\n- **Encapsulation**: Strictly hide the internal state JSON structure from the final output. Only expose information explicitly returned by the action function.\n{{initial_state}}: {{\n  \"listing_id\": \"LIST-PI-7721\",\n  \"moderation_status\": \"PENDING_REVIEW\",\n  \"listing_content\": {{\n    \"title\": \"Nikon Z9 Flagship Mirrorless Camera - New\",\n    \"description\": \"The Nikon Z9 is a professional-grade mirrorless camera featuring a 45.7MP sensor. Brand new in box with all original accessories.\",\n    \"price\": 4500.0,\n    \"category\": \"Electronics > Cameras\"\n  }},\n  \"risk_signals\": [\n    \"N&TD_CLAIM: Material_Difference\",\n    \"RO_ID: Nikon_Americas\",\n    \"ISSUE: Japanese_Firmware_No_US_Warranty\"\n  ],\n  \"moderation_history\": [\n    {{\n      \"timestamp\": \"2023-11-01T09:15:00Z\",\n      \"action\": \"N&TD_RECEIVED\",\n      \"actor\": \"System\",\n      \"note\": \"Notice & Takedown filed by Nikon Americas. Claim: Parallel Import with material differences (Firmware language lock to Japanese / No US warranty coverage).\"\n    }}\n  ],\n  \"seller_risk_score\": 15.0,\n  \"material_difference_flag\": false,\n  \"exhaustion_region_code\": \"US\"\n}}\n{{state_descriptions}}: {{\n  \"listing_id\": \"Unique identifier for the product listing being moderated.\",\n  \"moderation_status\": \"The current workflow stage of the listing (e.g., PENDING_REVIEW, APPROVED, REJECTED, FLAGGED, ESCALATED).\",\n  \"listing_content\": \"The text and metadata submitted by the seller, including title, description, and price.\",\n  \"risk_signals\": \"Automated system flags or keywords detected (e.g., 'replica', 'counterfeit').\",\n  \"moderation_history\": \"Internal log of all actions taken on this listing by various agents or systems.\"\n}}\n{action_set_definitions}: {\n  \"get_listing_data\": {\n    \"description\": \"Retrieves the current metadata, content, and system signals for a specific listing.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"listing_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier of the product listing.\"\n        }\n      },\n      \"required\": [\n        \"listing_id\"\n      ]\n    },\n    \"example_output\": {\n      \"listing_id\": \"LIST-PI-7721\",\n      \"moderation_status\": \"PENDING_REVIEW\",\n      \"listing_content\": \"Nikon Camera - Japanese Import...\",\n      \"risk_signals\": [\n        \"IMPORT_MODEL\"\n      ]\n    }\n  },\n  \"get_moderation_history\": {\n    \"description\": \"Retrieves the internal log of all previous actions, takedown notices, and status changes for a listing.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"listing_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier of the product listing.\"\n        }\n      },\n      \"required\": [\n        \"listing_id\"\n      ]\n    },\n    \"example_output\": {\n      \"history\": [\n        {\n          \"timestamp\": \"2023-10-01\",\n          \"action\": \"NOTICE_RECEIVED\",\n          \"actor\": \"Nikon Americas\",\n          \"details\": \"Japanese domestic model, restricted firmware, no domestic warranty.\"\n        }\n      ]\n    }\n  },\n  \"message_seller\": {\n    \"description\": \"Sends a formal inquiry to the seller to request documentation or clarify listing details.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"listing_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier of the product listing.\"\n        },\n        \"subject\": {\n          \"type\": \"string\",\n          \"description\": \"The reason for contact (e.g., 'Supply Chain Verification').\"\n        },\n        \"body\": {\n          \"type\": \"string\",\n          \"description\": \"The detailed message asking for specific proofs or disclosures.\"\n        }\n      },\n      \"required\": [\n        \"listing_id\",\n        \"subject\",\n        \"body\"\n      ]\n    },\n    \"example_output\": {\n      \"message_id\": \"MSG-99821\",\n      \"status\": \"SENT\"\n    }\n  },\n  \"retrieve_seller_communications\": {\n    \"description\": \"Fetches the latest messages and uploaded documents sent by the seller in response to inquiries.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"listing_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier of the product listing.\"\n        }\n      },\n      \"required\": [\n        \"listing_id\"\n      ]\n    },\n    \"example_output\": {\n      \"messages\": [\n        {\n          \"sender\": \"Seller\",\n          \"content\": \"Here is the invoice for the stock.\",\n          \"attachments\": [\n            \"invoice_01.pdf\"\n          ]\n        }\n      ]\n    }\n  },\n  \"update_listing_status\": {\n    \"description\": \"Updates the final moderation status of the listing (e.g., APPROVED, REJECTED).\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"listing_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier of the product listing.\"\n        },\n        \"new_status\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"APPROVED\",\n            \"REJECTED\",\n            \"FLAGGED\",\n            \"ESCALATED\"\n          ],\n          \"description\": \"The target moderation stage.\"\n        },\n        \"resolution_note\": {\n          \"type\": \"string\",\n          \"description\": \"A summary of why this decision was reached.\"\n        }\n      },\n      \"required\": [\n        \"listing_id\",\n        \"new_status\",\n        \"resolution_note\"\n      ]\n    },\n    \"example_output\": {\n      \"success\": true,\n      \"updated_at\": \"2023-10-02T12:00:00Z\"\n    }\n  },\n  \"set_policy_flags\": {\n    \"description\": \"Applies specific internal risk and policy tags to a listing for future monitoring.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"listing_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier of the product listing.\"\n        },\n        \"flags\": {\n          \"type\": \"array\",\n          \"items\": {\n            \"type\": \"string\"\n          },\n          \"description\": \"List of policy identifiers (e.g., 'PARALLEL_IMPORT', 'MATERIAL_DIFFERENCE').\"\n        }\n      },\n      \"required\": [\n        \"listing_id\",\n        \"flags\"\n      ]\n    },\n    \"example_output\": {\n      \"current_flags\": [\n        \"PARALLEL_IMPORT\",\n        \"WARRANTY_DISCREPANCY\"\n      ]\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_listing_data",
+      "description": "Retrieves the current metadata, content, and system signals for a specific listing.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "listing_id": {
+            "type": "string",
+            "description": "The unique identifier of the product listing."
+          }
+        },
+        "required": [
+          "listing_id"
+        ]
+      },
+      "example_output": {
+        "listing_id": "LIST-PI-7721",
+        "moderation_status": "PENDING_REVIEW",
+        "listing_content": "Nikon Camera - Japanese Import...",
+        "risk_signals": [
+          "IMPORT_MODEL"
+        ]
+      }
+    },
+    {
+      "name": "get_moderation_history",
+      "description": "Retrieves the internal log of all previous actions, takedown notices, and status changes for a listing.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "listing_id": {
+            "type": "string",
+            "description": "The unique identifier of the product listing."
+          }
+        },
+        "required": [
+          "listing_id"
+        ]
+      },
+      "example_output": {
+        "history": [
+          {
+            "timestamp": "2023-10-01",
+            "action": "NOTICE_RECEIVED",
+            "actor": "Nikon Americas",
+            "details": "Japanese domestic model, restricted firmware, no domestic warranty."
+          }
+        ]
+      }
+    },
+    {
+      "name": "message_seller",
+      "description": "Sends a formal inquiry to the seller to request documentation or clarify listing details.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "listing_id": {
+            "type": "string",
+            "description": "The unique identifier of the product listing."
+          },
+          "subject": {
+            "type": "string",
+            "description": "The reason for contact (e.g., 'Supply Chain Verification')."
+          },
+          "body": {
+            "type": "string",
+            "description": "The detailed message asking for specific proofs or disclosures."
+          }
+        },
+        "required": [
+          "listing_id",
+          "subject",
+          "body"
+        ]
+      },
+      "example_output": {
+        "message_id": "MSG-99821",
+        "status": "SENT"
+      }
+    },
+    {
+      "name": "retrieve_seller_communications",
+      "description": "Fetches the latest messages and uploaded documents sent by the seller in response to inquiries.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "listing_id": {
+            "type": "string",
+            "description": "The unique identifier of the product listing."
+          }
+        },
+        "required": [
+          "listing_id"
+        ]
+      },
+      "example_output": {
+        "messages": [
+          {
+            "sender": "Seller",
+            "content": "Here is the invoice for the stock.",
+            "attachments": [
+              "invoice_01.pdf"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "update_listing_status",
+      "description": "Updates the final moderation status of the listing (e.g., APPROVED, REJECTED).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "listing_id": {
+            "type": "string",
+            "description": "The unique identifier of the product listing."
+          },
+          "new_status": {
+            "type": "string",
+            "enum": [
+              "APPROVED",
+              "REJECTED",
+              "FLAGGED",
+              "ESCALATED"
+            ],
+            "description": "The target moderation stage."
+          },
+          "resolution_note": {
+            "type": "string",
+            "description": "A summary of why this decision was reached."
+          }
+        },
+        "required": [
+          "listing_id",
+          "new_status",
+          "resolution_note"
+        ]
+      },
+      "example_output": {
+        "success": true,
+        "updated_at": "2023-10-02T12:00:00Z"
+      }
+    },
+    {
+      "name": "set_policy_flags",
+      "description": "Applies specific internal risk and policy tags to a listing for future monitoring.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "listing_id": {
+            "type": "string",
+            "description": "The unique identifier of the product listing."
+          },
+          "flags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "List of policy identifiers (e.g., 'PARALLEL_IMPORT', 'MATERIAL_DIFFERENCE')."
+          }
+        },
+        "required": [
+          "listing_id",
+          "flags"
+        ]
+      },
+      "example_output": {
+        "current_flags": [
+          "PARALLEL_IMPORT",
+          "WARRANTY_DISCREPANCY"
+        ]
+      }
+    }
+  ],
+  "state_description": {
+    "listing_id": "Unique identifier for the product listing being moderated.",
+    "moderation_status": "The current workflow stage of the listing (e.g., PENDING_REVIEW, APPROVED, REJECTED, FLAGGED, ESCALATED).",
+    "listing_content": "The text and metadata submitted by the seller, including title, description, and price.",
+    "risk_signals": "Automated system flags or keywords detected (e.g., 'replica', 'counterfeit').",
+    "moderation_history": "Internal log of all actions taken on this listing by various agents or systems."
+  },
+  "task_initial_state": {
+    "listing_id": "LIST-PI-7721",
+    "moderation_status": "PENDING_REVIEW",
+    "listing_content": {
+      "title": "Nikon Z9 Flagship Mirrorless Camera - New",
+      "description": "The Nikon Z9 is a professional-grade mirrorless camera featuring a 45.7MP sensor. Brand new in box with all original accessories.",
+      "price": 4500.0,
+      "category": "Electronics > Cameras"
+    },
+    "risk_signals": [
+      "N&TD_CLAIM: Material_Difference",
+      "RO_ID: Nikon_Americas",
+      "ISSUE: Japanese_Firmware_No_US_Warranty"
+    ],
+    "moderation_history": [
+      {
+        "timestamp": "2023-11-01T09:15:00Z",
+        "action": "N&TD_RECEIVED",
+        "actor": "System",
+        "note": "Notice & Takedown filed by Nikon Americas. Claim: Parallel Import with material differences (Firmware language lock to Japanese / No US warranty coverage)."
+      }
+    ],
+    "seller_risk_score": 15.0,
+    "material_difference_flag": false,
+    "exhaustion_region_code": "US"
+  }
+}

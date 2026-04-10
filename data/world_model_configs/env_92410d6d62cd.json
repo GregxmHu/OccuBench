@@ -1,0 +1,210 @@
+{
+  "environment_name": "env_92410d6d62cd",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM) for Mine Ventilation Control\n- **Core Objective**: Based on the current internal state $s_t$ and the ventilation control action $a_t$ executed by the Agent, simulate the aerodynamic and gas-dynamic evolution of the mine environment. Predict and return the specific observation $o_{{t+1}}$ resulting from the action.\n- **Emphasis**: You are a simulator. You do not perform real-world control; you evolve the internal state of the mine (e.g., airflow distribution, gas concentrations, fan pressure) and generate realistic feedback for the Agent.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions must maintain rigorous temporal and physical consistency. The LWM must track the accumulation of gases and the inertia of mechanical fans across the interaction history to ensure that subsequent observations reflect previous actions and environmental trends.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object containing:\n- `\"name\"`: The name of the ventilation control action (e.g., adjust fan, toggle damper).\n- Parameters required by that action function.\n\nExample:\n```json\n{{\n \"name\": \"adjust_main_fan\",\n \"arguments\": {{\n    \"fan_id\": \"north_shaft_01\",\n    \"frequency_hz\": 45.0\n  }}\n}}\n```\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\n- If an action involves a non-existent fan or damper ID, or if parameters (like frequency or blade angle) exceed physical limits, return: `{{\"error\": \"Description of the physical constraint violation\"}}`.\n- Do not fabricate data; if the input is malformed, prompt for the correct JSON structure.\n\n##### Output Assembly\nFor every action call, the model must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition. \n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, `new_state`, or hidden variables like global air-pressure matrices. The Agent must only see the specific sensor readings or status confirmations (the Observation) defined in the action's output schema. State updates are managed internally by the LWM.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to specified JSON and text formats.\n- **Factuality**: Simulations must reflect the laws of mine ventilation (e.g., Atkinson's Law for pressure-flow relationships, gas dilution principles).\n- **Consistency**: If a fan's power is reduced, the airflow in the associated branches must decrease, and gas concentrations (if present) should logically rise over time.\n- **Realism**: Account for delay and noise in sensor readings; mechanical changes (like fan ramp-up) should not be instantaneous unless specified.\n- **Quality**: Use precise technical terminology related to mining engineering.\n- **Encapsulation**: Strictly hide the internal state structure from the output. Only expose information that is explicitly returned by the action function.\n{{initial_state}}: {{\n  \"fans\": [\n    {{\n      \"fan_id\": \"EF-101\",\n      \"role\": \"Primary Exhaust\",\n      \"rpm\": 0,\n      \"frequency_hz\": 0.0,\n      \"operating_pressure_pa\": 0.0,\n      \"interlock_status\": \"TRIPPED_HIGH_VACUUM\",\n      \"vfd_mode\": \"remote\"\n    }},\n    {{\n      \"fan_id\": \"SF-202\",\n      \"role\": \"Forcing Scavenger\",\n      \"rpm\": 0,\n      \"frequency_hz\": 0.0,\n      \"operating_pressure_pa\": 0.0,\n      \"interlock_status\": \"READY\",\n      \"vfd_mode\": \"remote\"\n    }}\n  ],\n  \"dampers\": [\n    {{\n      \"damper_id\": \"D-800-ALPHA\",\n      \"open_percentage\": 100.0\n    }}\n  ],\n  \"air_quality_sensors\": {{\n    \"FACE_SENSOR\": {{\n      \"CH4_percent\": 0.01,\n      \"CO_ppm\": 550.0,\n      \"O2_percent\": 19.2\n    }},\n    \"MID_RAMP_SENSOR\": {{\n      \"CH4_percent\": 0.0,\n      \"CO_ppm\": 45.0,\n      \"O2_percent\": 20.6\n    }}\n  }},\n  \"airflow_network\": {{\n    \"primary_exhaust_line\": {{\n      \"velocity_ms\": 0.0,\n      \"volume_m3min\": 0.0\n    }},\n    \"scavenger_forcing_line\": {{\n      \"velocity_ms\": 0.0,\n      \"volume_m3min\": 0.0\n    }},\n    \"face_sweep\": {{\n      \"velocity_ms\": 0.0,\n      \"volume_m3min\": 0.0\n    }}\n  }},\n  \"power_grid_load\": 0.0,\n  \"alarm_system\": {{\n    \"active_alarms\": [\n      \"VFD_SAFETY_LOCKOUT_EF101\",\n      \"CO_THRESHOLD_CRITICAL\",\n      \"AIRFLOW_FAILURE_HEADING_800\"\n    ],\n    \"is_emergency\": true\n  }}\n}}\n{{state_descriptions}}: {{\n  \"fans\": \"Status of all main and local ventilators including RPM, frequency, and operating pressure.\",\n  \"dampers\": \"Status of air doors and regulators, represented by percentage of openness.\",\n  \"air_quality_sensors\": \"Mapping of sensor IDs to current readings of Methane (CH4), Carbon Monoxide (CO), and Oxygen (O2).\",\n  \"airflow_network\": \"Airflow velocity (m/s) and volume (m3/min) at key monitoring branches.\",\n  \"power_grid_load\": \"Current total power consumption of the ventilation system in kW.\",\n  \"alarm_system\": \"Active alerts for gas exceedance or fan failure.\"\n}}\n{action_set_definitions}: {\n  \"inspect_ventilation_system\": {\n    \"description\": \"Retrieves the current telemetry and state of the ventilation system. This includes fan metrics (RPM, frequency, pressure), damper positions, gas concentrations (CO, CH4, O2), airflow volumes at various branches (face_sweep, exhaust_line, forcing_line), power load, and any active system alarms.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"fans\": {\n        \"EF-101\": {\n          \"status\": \"stopped\",\n          \"rpm\": 0,\n          \"frequency_hz\": 0,\n          \"operating_pressure_pa\": 0\n        },\n        \"SF-202\": {\n          \"status\": \"stopped\",\n          \"rpm\": 0,\n          \"frequency_hz\": 0\n        }\n      },\n      \"dampers\": {\n        \"D-01\": 50\n      },\n      \"air_quality_sensors\": {\n        \"S-CO-Face\": {\n          \"CO_ppm\": 120,\n          \"O2_pct\": 19.8\n        }\n      },\n      \"airflow_network\": {\n        \"face_sweep\": {\n          \"volume_m3s\": 12.5\n        },\n        \"exhaust_line\": {\n          \"volume_m3s\": 15.0\n        },\n        \"forcing_line\": {\n          \"volume_m3s\": 10.0\n        }\n      },\n      \"power_grid_load_kw\": 200.0,\n      \"alarm_system\": [\n        {\n          \"alert_id\": \"ALM-101\",\n          \"description\": \"EF-101 Interlock Active\"\n        }\n      ]\n    }\n  },\n  \"update_fan_settings\": {\n    \"description\": \"Adjusts the operational status and operating frequency of a designated fan. Frequency can be set up to 120 Hz to achieve high-volume airflow requirements.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"fan_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique ID of the fan (e.g., 'EF-101', 'SF-202').\"\n        },\n        \"power_state\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"ON\",\n            \"OFF\"\n          ],\n          \"description\": \"The target power state.\"\n        },\n        \"frequency_hz\": {\n          \"type\": \"number\",\n          \"minimum\": 0,\n          \"maximum\": 120,\n          \"description\": \"The operating frequency in Hz. Note: Higher frequencies increase airflow volume.\"\n        }\n      },\n      \"required\": [\n        \"fan_id\",\n        \"power_state\",\n        \"frequency_hz\"\n      ]\n    },\n    \"example_output\": {\n      \"success\": true,\n      \"new_frequency\": 90.0\n    }\n  },\n  \"update_damper_settings\": {\n    \"description\": \"Sets the openness percentage of air doors or regulators to control the path of the airflow network.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"damper_id\": {\n          \"type\": \"string\",\n          \"description\": \"ID of the damper/regulator.\"\n        },\n        \"openness_pct\": {\n          \"type\": \"number\",\n          \"minimum\": 0,\n          \"maximum\": 100,\n          \"description\": \"0 for fully closed, 100 for fully open.\"\n        }\n      },\n      \"required\": [\n        \"damper_id\",\n        \"openness_pct\"\n      ]\n    },\n    \"example_output\": {\n      \"success\": true,\n      \"current_position\": 100\n    }\n  },\n  \"resolve_system_alert\": {\n    \"description\": \"Acknowledges and clears system-level operational constraints or alarms to permit fan startup or adjustment.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"alert_id\": {\n          \"type\": \"string\",\n          \"description\": \"The identifier of the alarm to resolve.\"\n        }\n      },\n      \"required\": [\n        \"alert_id\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"cleared\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "inspect_ventilation_system",
+      "description": "Retrieves the current telemetry and state of the ventilation system. This includes fan metrics (RPM, frequency, pressure), damper positions, gas concentrations (CO, CH4, O2), airflow volumes at various branches (face_sweep, exhaust_line, forcing_line), power load, and any active system alarms.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "fans": {
+          "EF-101": {
+            "status": "stopped",
+            "rpm": 0,
+            "frequency_hz": 0,
+            "operating_pressure_pa": 0
+          },
+          "SF-202": {
+            "status": "stopped",
+            "rpm": 0,
+            "frequency_hz": 0
+          }
+        },
+        "dampers": {
+          "D-01": 50
+        },
+        "air_quality_sensors": {
+          "S-CO-Face": {
+            "CO_ppm": 120,
+            "O2_pct": 19.8
+          }
+        },
+        "airflow_network": {
+          "face_sweep": {
+            "volume_m3s": 12.5
+          },
+          "exhaust_line": {
+            "volume_m3s": 15.0
+          },
+          "forcing_line": {
+            "volume_m3s": 10.0
+          }
+        },
+        "power_grid_load_kw": 200.0,
+        "alarm_system": [
+          {
+            "alert_id": "ALM-101",
+            "description": "EF-101 Interlock Active"
+          }
+        ]
+      }
+    },
+    {
+      "name": "update_fan_settings",
+      "description": "Adjusts the operational status and operating frequency of a designated fan. Frequency can be set up to 120 Hz to achieve high-volume airflow requirements.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "fan_id": {
+            "type": "string",
+            "description": "The unique ID of the fan (e.g., 'EF-101', 'SF-202')."
+          },
+          "power_state": {
+            "type": "string",
+            "enum": [
+              "ON",
+              "OFF"
+            ],
+            "description": "The target power state."
+          },
+          "frequency_hz": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 120,
+            "description": "The operating frequency in Hz. Note: Higher frequencies increase airflow volume."
+          }
+        },
+        "required": [
+          "fan_id",
+          "power_state",
+          "frequency_hz"
+        ]
+      },
+      "example_output": {
+        "success": true,
+        "new_frequency": 90.0
+      }
+    },
+    {
+      "name": "update_damper_settings",
+      "description": "Sets the openness percentage of air doors or regulators to control the path of the airflow network.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "damper_id": {
+            "type": "string",
+            "description": "ID of the damper/regulator."
+          },
+          "openness_pct": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100,
+            "description": "0 for fully closed, 100 for fully open."
+          }
+        },
+        "required": [
+          "damper_id",
+          "openness_pct"
+        ]
+      },
+      "example_output": {
+        "success": true,
+        "current_position": 100
+      }
+    },
+    {
+      "name": "resolve_system_alert",
+      "description": "Acknowledges and clears system-level operational constraints or alarms to permit fan startup or adjustment.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "alert_id": {
+            "type": "string",
+            "description": "The identifier of the alarm to resolve."
+          }
+        },
+        "required": [
+          "alert_id"
+        ]
+      },
+      "example_output": {
+        "status": "cleared"
+      }
+    }
+  ],
+  "state_description": {
+    "fans": "Status of all main and local ventilators including RPM, frequency, and operating pressure.",
+    "dampers": "Status of air doors and regulators, represented by percentage of openness.",
+    "air_quality_sensors": "Mapping of sensor IDs to current readings of Methane (CH4), Carbon Monoxide (CO), and Oxygen (O2).",
+    "airflow_network": "Airflow velocity (m/s) and volume (m3/min) at key monitoring branches.",
+    "power_grid_load": "Current total power consumption of the ventilation system in kW.",
+    "alarm_system": "Active alerts for gas exceedance or fan failure."
+  },
+  "task_initial_state": {
+    "fans": [
+      {
+        "fan_id": "EF-101",
+        "role": "Primary Exhaust",
+        "rpm": 0,
+        "frequency_hz": 0.0,
+        "operating_pressure_pa": 0.0,
+        "interlock_status": "TRIPPED_HIGH_VACUUM",
+        "vfd_mode": "remote"
+      },
+      {
+        "fan_id": "SF-202",
+        "role": "Forcing Scavenger",
+        "rpm": 0,
+        "frequency_hz": 0.0,
+        "operating_pressure_pa": 0.0,
+        "interlock_status": "READY",
+        "vfd_mode": "remote"
+      }
+    ],
+    "dampers": [
+      {
+        "damper_id": "D-800-ALPHA",
+        "open_percentage": 100.0
+      }
+    ],
+    "air_quality_sensors": {
+      "FACE_SENSOR": {
+        "CH4_percent": 0.01,
+        "CO_ppm": 550.0,
+        "O2_percent": 19.2
+      },
+      "MID_RAMP_SENSOR": {
+        "CH4_percent": 0.0,
+        "CO_ppm": 45.0,
+        "O2_percent": 20.6
+      }
+    },
+    "airflow_network": {
+      "primary_exhaust_line": {
+        "velocity_ms": 0.0,
+        "volume_m3min": 0.0
+      },
+      "scavenger_forcing_line": {
+        "velocity_ms": 0.0,
+        "volume_m3min": 0.0
+      },
+      "face_sweep": {
+        "velocity_ms": 0.0,
+        "volume_m3min": 0.0
+      }
+    },
+    "power_grid_load": 0.0,
+    "alarm_system": {
+      "active_alarms": [
+        "VFD_SAFETY_LOCKOUT_EF101",
+        "CO_THRESHOLD_CRITICAL",
+        "AIRFLOW_FAILURE_HEADING_800"
+      ],
+      "is_emergency": true
+    }
+  }
+}

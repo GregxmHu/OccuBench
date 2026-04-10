@@ -1,0 +1,241 @@
+{
+  "environment_name": "env_b2e176735f1b",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: Based on the current internal network state $s_t$ and the security response action $a_t$ taken by the Agent, simulate the evolution of the network environment and predict the resulting observation $o_{{t+1}}$ (e.g., scan results, firewall logs, or system status).\n- **Emphasis**: You are a simulator of a network security environment. You do not perform real network operations; you maintain an internal representation of the network's security posture and generate realistic feedback based on cybersecurity logic.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation tracking network topology, service health, and intrusion progress. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nYou must maintain strict temporal and logical consistency. If an attacker has compromised a node in a previous step, that node remains compromised until a successful remediation action is simulated. If a firewall rule is added, subsequent traffic simulations must respect that rule.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the network by calling security response functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object representing the output of the security tool or system response.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. You must parse this JSON to determine the intended transition:\n- `\"name\"`: The security action function (e.g., \"block_ip\", \"quarantine_host\", \"get_ids_logs\").\n- The remaining fields are parameters required for that specific operation.\n\nExample Input:\n```json\n{{\n \"name\": \"isolate_vlan\",\n \"arguments\": {{\n    \"vlan_id\": \"VLAN_10\",\n    \"reason\": \"Detected lateral movement\"\n  }}\n}}\n```\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\n- If an action targets a non-existent IP or resource, return an error: `{{\"error\": \"Target resource not found\"}}`.\n- If an action is redundant (e.g., blocking an already blocked IP), return a relevant status: `{{\"status\": \"no_change\", \"detail\": \"IP already in blocklist\"}}`.\n- Do not fabricate network responses that violate the current internal state logic.\n\n##### Output Assembly\nFor every action, you must return a JSON object containing **ONLY** the observation fields defined in the action's specification. \n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the internal network state `s_t`, the updated state, or hidden variables like the \"attacker's current location\" unless that information is explicitly part of the action's return value (the Observation). State updates are managed internally by you and are hidden from the Agent.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to the JSON structure for all observations.\n- **Factuality**: Simulate realistic network behavior (e.g., blocking a port should result in connection timeouts in subsequent probes).\n- **Consistency**: Ensure that the intrusion's progress and the defense's efficacy follow a logical sequence.\n- **Realism**: The network dynamics should reflect real-world cybersecurity scenarios, including false positives or delays where appropriate.\n- **Quality**: Provide clear, technical, and structured observations.\n- **Encapsulation**: Never expose the full `internal_state` in the output. Only provide the specific feedback the Agent's action would realistically trigger.\n{{initial_state}}: {{\n  \"network_nodes\": {{\n    \"srv_mgmt_hub\": {{\n      \"status\": \"infected\",\n      \"services\": [\n        \"netmon-service\",\n        \"prod-sync-heartbeat\"\n      ]\n    }},\n    \"dc-01\": {{\n      \"status\": \"secure\",\n      \"services\": [\n        \"active-directory\",\n        \"kerberos\"\n      ]\n    }},\n    \"srv_prod_01\": {{\n      \"status\": \"secure\",\n      \"services\": [\n        \"database\",\n        \"sync-receiver\"\n      ]\n    }}\n  }},\n  \"firewall_rules\": [\n    {{\n      \"source\": \"ANY\",\n      \"destination\": \"ANY\",\n      \"port\": \"ANY\",\n      \"action\": \"allow\"\n    }}\n  ],\n  \"active_alerts\": [\n    \"NDR_LATERAL_MOVEMENT: srv_mgmt_hub attempting RDP to dc-01 using svc_adm_auto\",\n    \"C2_BEACON: srv_mgmt_hub outbound traffic to 203.0.113.10 detected\"\n  ],\n  \"intrusion_stage\": \"lateral_movement\",\n  \"compromised_credentials\": [\n    \"svc_adm_auto\"\n  ]\n}}\n{{state_descriptions}}: {{\n  \"network_nodes\": \"Mapping of host IDs to their current status (e.g., 'secure', 'infected', 'quarantined') and active services.\",\n  \"firewall_rules\": \"List of active access control rules (source, destination, port, action).\",\n  \"active_alerts\": \"Current security alerts generated by IDS/IPS systems.\",\n  \"intrusion_stage\": \"The current phase of the simulated attack (e.g., 'reconnaissance', 'exploitation', 'lateral_movement', 'exfiltration').\",\n  \"compromised_credentials\": \"List of user accounts or tokens currently flagged as compromised in the environment.\"\n}}\n{action_set_definitions}: {\n  \"inspect_network_connections\": {\n    \"description\": \"Retrieves active network connections for a specific host, including source/destination IPs, ports, and associated process IDs (PIDs).\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"host_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the host to inspect (e.g., 'srv_mgmt_hub').\"\n        }\n      },\n      \"required\": [\n        \"host_id\"\n      ]\n    },\n    \"example_output\": {\n      \"connections\": [\n        {\n          \"pid\": 1234,\n          \"local_address\": \"10.0.0.5:443\",\n          \"remote_address\": \"203.0.113.10:80\",\n          \"status\": \"ESTABLISHED\",\n          \"protocol\": \"TCP\"\n        }\n      ]\n    }\n  },\n  \"list_firewall_rules\": {\n    \"description\": \"Queries the current firewall configuration for all active rules.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"rules\": [\n        {\n          \"rule_id\": \"fw-99\",\n          \"source\": \"any\",\n          \"destination\": \"any\",\n          \"port\": \"8443\",\n          \"action\": \"ALLOW\"\n        }\n      ]\n    }\n  },\n  \"apply_firewall_rule\": {\n    \"description\": \"Creates or updates a firewall rule to allow or deny specific traffic. Can be used for containment.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"direction\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"INBOUND\",\n            \"OUTBOUND\"\n          ],\n          \"description\": \"Direction of traffic.\"\n        },\n        \"source\": {\n          \"type\": \"string\",\n          \"description\": \"Source IP or CIDR block.\"\n        },\n        \"destination\": {\n          \"type\": \"string\",\n          \"description\": \"Destination IP or CIDR block.\"\n        },\n        \"port\": {\n          \"type\": \"string\",\n          \"description\": \"The port number or 'any'.\"\n        },\n        \"protocol\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"TCP\",\n            \"UDP\",\n            \"ANY\"\n          ],\n          \"description\": \"The network protocol.\"\n        },\n        \"action\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"ALLOW\",\n            \"DENY\"\n          ],\n          \"description\": \"The action to take on matching traffic.\"\n        }\n      },\n      \"required\": [\n        \"direction\",\n        \"source\",\n        \"destination\",\n        \"port\",\n        \"protocol\",\n        \"action\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"success\",\n      \"rule_id\": \"rule_123\"\n    }\n  },\n  \"manage_process\": {\n    \"description\": \"Performs actions on host processes such as termination. Does NOT reboot the host.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"host_id\": {\n          \"type\": \"string\",\n          \"description\": \"Target host ID.\"\n        },\n        \"pid\": {\n          \"type\": \"integer\",\n          \"description\": \"The process ID to manage.\"\n        },\n        \"operation\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"KILL\",\n            \"SUSPEND\"\n          ],\n          \"description\": \"The operation to perform.\"\n        }\n      },\n      \"required\": [\n        \"host_id\",\n        \"pid\",\n        \"operation\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"terminated\",\n      \"pid\": 1234\n    }\n  },\n  \"remediate_user_account\": {\n    \"description\": \"Remediates a compromised account by resetting credentials or applying security restrictions. Does not delete the account.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"username\": {\n          \"type\": \"string\",\n          \"description\": \"The username of the account to remediate.\"\n        },\n        \"action\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"RESET_PASSWORD\",\n            \"ROTATE_KEYS\",\n            \"DISABLE_SESSION\"\n          ],\n          \"description\": \"The remediation action.\"\n        }\n      },\n      \"required\": [\n        \"username\",\n        \"action\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"credentials_rotated\",\n      \"username\": \"svc_adm_auto\"\n    }\n  },\n  \"get_host_inventory\": {\n    \"description\": \"Retrieves internal network topology information to identify specific host roles (e.g., Domain Controllers).\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"nodes\": [\n        {\n          \"id\": \"srv_dc_01\",\n          \"role\": \"primary_domain_controller\",\n          \"ip\": \"10.0.0.1\"\n        }\n      ]\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "inspect_network_connections",
+      "description": "Retrieves active network connections for a specific host, including source/destination IPs, ports, and associated process IDs (PIDs).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "host_id": {
+            "type": "string",
+            "description": "The unique identifier for the host to inspect (e.g., 'srv_mgmt_hub')."
+          }
+        },
+        "required": [
+          "host_id"
+        ]
+      },
+      "example_output": {
+        "connections": [
+          {
+            "pid": 1234,
+            "local_address": "10.0.0.5:443",
+            "remote_address": "203.0.113.10:80",
+            "status": "ESTABLISHED",
+            "protocol": "TCP"
+          }
+        ]
+      }
+    },
+    {
+      "name": "list_firewall_rules",
+      "description": "Queries the current firewall configuration for all active rules.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "rules": [
+          {
+            "rule_id": "fw-99",
+            "source": "any",
+            "destination": "any",
+            "port": "8443",
+            "action": "ALLOW"
+          }
+        ]
+      }
+    },
+    {
+      "name": "apply_firewall_rule",
+      "description": "Creates or updates a firewall rule to allow or deny specific traffic. Can be used for containment.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "direction": {
+            "type": "string",
+            "enum": [
+              "INBOUND",
+              "OUTBOUND"
+            ],
+            "description": "Direction of traffic."
+          },
+          "source": {
+            "type": "string",
+            "description": "Source IP or CIDR block."
+          },
+          "destination": {
+            "type": "string",
+            "description": "Destination IP or CIDR block."
+          },
+          "port": {
+            "type": "string",
+            "description": "The port number or 'any'."
+          },
+          "protocol": {
+            "type": "string",
+            "enum": [
+              "TCP",
+              "UDP",
+              "ANY"
+            ],
+            "description": "The network protocol."
+          },
+          "action": {
+            "type": "string",
+            "enum": [
+              "ALLOW",
+              "DENY"
+            ],
+            "description": "The action to take on matching traffic."
+          }
+        },
+        "required": [
+          "direction",
+          "source",
+          "destination",
+          "port",
+          "protocol",
+          "action"
+        ]
+      },
+      "example_output": {
+        "status": "success",
+        "rule_id": "rule_123"
+      }
+    },
+    {
+      "name": "manage_process",
+      "description": "Performs actions on host processes such as termination. Does NOT reboot the host.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "host_id": {
+            "type": "string",
+            "description": "Target host ID."
+          },
+          "pid": {
+            "type": "integer",
+            "description": "The process ID to manage."
+          },
+          "operation": {
+            "type": "string",
+            "enum": [
+              "KILL",
+              "SUSPEND"
+            ],
+            "description": "The operation to perform."
+          }
+        },
+        "required": [
+          "host_id",
+          "pid",
+          "operation"
+        ]
+      },
+      "example_output": {
+        "status": "terminated",
+        "pid": 1234
+      }
+    },
+    {
+      "name": "remediate_user_account",
+      "description": "Remediates a compromised account by resetting credentials or applying security restrictions. Does not delete the account.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "username": {
+            "type": "string",
+            "description": "The username of the account to remediate."
+          },
+          "action": {
+            "type": "string",
+            "enum": [
+              "RESET_PASSWORD",
+              "ROTATE_KEYS",
+              "DISABLE_SESSION"
+            ],
+            "description": "The remediation action."
+          }
+        },
+        "required": [
+          "username",
+          "action"
+        ]
+      },
+      "example_output": {
+        "status": "credentials_rotated",
+        "username": "svc_adm_auto"
+      }
+    },
+    {
+      "name": "get_host_inventory",
+      "description": "Retrieves internal network topology information to identify specific host roles (e.g., Domain Controllers).",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "nodes": [
+          {
+            "id": "srv_dc_01",
+            "role": "primary_domain_controller",
+            "ip": "10.0.0.1"
+          }
+        ]
+      }
+    }
+  ],
+  "state_description": {
+    "network_nodes": "Mapping of host IDs to their current status (e.g., 'secure', 'infected', 'quarantined') and active services.",
+    "firewall_rules": "List of active access control rules (source, destination, port, action).",
+    "active_alerts": "Current security alerts generated by IDS/IPS systems.",
+    "intrusion_stage": "The current phase of the simulated attack (e.g., 'reconnaissance', 'exploitation', 'lateral_movement', 'exfiltration').",
+    "compromised_credentials": "List of user accounts or tokens currently flagged as compromised in the environment."
+  },
+  "task_initial_state": {
+    "network_nodes": {
+      "srv_mgmt_hub": {
+        "status": "infected",
+        "services": [
+          "netmon-service",
+          "prod-sync-heartbeat"
+        ]
+      },
+      "dc-01": {
+        "status": "secure",
+        "services": [
+          "active-directory",
+          "kerberos"
+        ]
+      },
+      "srv_prod_01": {
+        "status": "secure",
+        "services": [
+          "database",
+          "sync-receiver"
+        ]
+      }
+    },
+    "firewall_rules": [
+      {
+        "source": "ANY",
+        "destination": "ANY",
+        "port": "ANY",
+        "action": "allow"
+      }
+    ],
+    "active_alerts": [
+      "NDR_LATERAL_MOVEMENT: srv_mgmt_hub attempting RDP to dc-01 using svc_adm_auto",
+      "C2_BEACON: srv_mgmt_hub outbound traffic to 203.0.113.10 detected"
+    ],
+    "intrusion_stage": "lateral_movement",
+    "compromised_credentials": [
+      "svc_adm_auto"
+    ]
+  }
+}

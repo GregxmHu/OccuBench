@@ -1,0 +1,145 @@
+{
+  "environment_name": "env_3653615589f2",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: Act as a high-fidelity simulator for the Retail Inventory Synchronization environment. Based on the current internal state $s_t$ and the action $a_t$ executed by the Agent, you must simulate the internal state evolution and predict the specific observation $o_{{t+1}}$ obtained by the Agent.\n- **Emphasis**: You are the environment itself. You do not perform task-solving logic; you process inputs, update internal variables, and return the resulting observations. The internal state and transition logic must remain hidden from the Agent except through defined action outputs.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nYou must maintain a consistent and continuous environment history. Every state transition must be logically derived from the previous state and the action taken. Ensure that inventory counts, transit statuses, and timestamps evolve realistically over the course of the interaction.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. You must parse this JSON to determine the action and parameters.\nExample format:\n```json\n{{\n \"name\": \"transfer_stock\",\n \"arguments\": {{\n    \"from_location\": \"Warehouse_A\",\n    \"to_location\": \"Store_01\",\n    \"sku\": \"ITEM_001\",\n    \"quantity\": 50\n  }}\n}}\n```\nYou must validate parameters against the current state (e.g., check if sufficient stock exists before allowing a transfer) and update the internal state accordingly.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nIf an action is invalid (e.g., requesting more stock than available, referencing a non-existent SKU, or providing malformed JSON), return a structured error response:\n`{{\"error\": \"Short description of the issue\"}}`\nDo not proceed with state updates if an error occurs.\n\n##### Output Assembly\nFor every action call, return **ONLY** the JSON object containing the fields defined in the action's return specification (the Observation). \n\n**CRITICAL CONSTRAINT**: You must **NOT** output the full internal state or a summary of state changes. The Agent only sees the result of the specific function call. State maintenance is performed internally and is persistent across turns.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to specified JSON formats for all outputs.\n- **Factuality**: Do not simulate stock levels or locations that haven't been defined or logically created.\n- **Consistency**: If 10 units are moved from A to B, A must decrease by 10 and B must increase by 10 (or enter a 'transit' state).\n- **Realism**: Simulate realistic delays or constraints if defined in the scenario (e.g., capacity limits).\n- **Quality**: Responses should be precise and structurally sound for programmatic parsing.\n- **Encapsulation**: Strictly hide the internal state structure. The Agent only receives the observation $o_{{t+1}}$.\n{{initial_state}}: {{\n  \"inventory_levels\": {{\n    \"warehouse_01\": {{\n      \"sku_001\": 500,\n      \"sku_002\": 300\n    }},\n    \"store_01\": {{\n      \"sku_001\": -15,\n      \"sku_002\": 85\n    }}\n  }},\n  \"transit_log\": [],\n  \"pending_orders\": [],\n  \"location_metadata\": {{\n    \"warehouse_01\": {{\n      \"capacity\": 2000\n    }},\n    \"store_01\": {{\n      \"capacity\": 100\n    }}\n  }},\n  \"current_step\": 0\n}}\n{{state_descriptions}}: {{\n  \"inventory_levels\": \"A nested mapping where keys are location_ids and values are objects mapping SKU_ids to their current quantity in stock.\",\n  \"transit_log\": \"List of active stock transfers between locations with expected arrival times or steps.\",\n  \"pending_orders\": \"List of purchase orders sent to external suppliers that have not yet arrived at the warehouse.\",\n  \"location_metadata\": \"Static constraints for locations, such as maximum storage capacity.\",\n  \"current_step\": \"Internal counter representing the passage of time or number of operations.\"\n}}\n{action_set_definitions}: {\n  \"inspect_inventory\": {\n    \"description\": \"Retrieves the current stock level for a specific SKU at a specific location.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"location_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the warehouse or store.\"\n        },\n        \"sku_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the product stock keeping unit.\"\n        }\n      },\n      \"required\": [\n        \"location_id\",\n        \"sku_id\"\n      ]\n    },\n    \"example_output\": {\n      \"quantity\": 15\n    }\n  },\n  \"list_location_inventory\": {\n    \"description\": \"Returns a comprehensive list of all SKUs and their respective quantities currently held at a specific location. Useful for calculating total capacity usage.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"location_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the location to query.\"\n        }\n      },\n      \"required\": [\n        \"location_id\"\n      ]\n    },\n    \"example_output\": {\n      \"inventory\": [\n        {\n          \"sku_id\": \"sku_001\",\n          \"quantity\": 10\n        },\n        {\n          \"sku_id\": \"sku_002\",\n          \"quantity\": 50\n        }\n      ]\n    }\n  },\n  \"inspect_location_constraints\": {\n    \"description\": \"Retrieves metadata and constraints for a specific location, such as maximum storage capacity.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"location_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the location.\"\n        }\n      },\n      \"required\": [\n        \"location_id\"\n      ]\n    },\n    \"example_output\": {\n      \"max_capacity\": 100,\n      \"location_type\": \"retail_store\"\n    }\n  },\n  \"initiate_stock_transfer\": {\n    \"description\": \"Moves a specified quantity of a SKU from a source location to a destination location. Updates inventory levels and logs the transit.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"from_location_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the source location.\"\n        },\n        \"to_location_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the destination location.\"\n        },\n        \"sku_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the SKU to be moved.\"\n        },\n        \"quantity\": {\n          \"type\": \"integer\",\n          \"description\": \"The number of units to transfer.\"\n        }\n      },\n      \"required\": [\n        \"from_location_id\",\n        \"to_location_id\",\n        \"sku_id\",\n        \"quantity\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"success\",\n      \"transfer_id\": \"TRX-101\",\n      \"new_source_balance\": 45,\n      \"new_destination_balance\": 30\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "inspect_inventory",
+      "description": "Retrieves the current stock level for a specific SKU at a specific location.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "location_id": {
+            "type": "string",
+            "description": "The unique identifier for the warehouse or store."
+          },
+          "sku_id": {
+            "type": "string",
+            "description": "The unique identifier for the product stock keeping unit."
+          }
+        },
+        "required": [
+          "location_id",
+          "sku_id"
+        ]
+      },
+      "example_output": {
+        "quantity": 15
+      }
+    },
+    {
+      "name": "list_location_inventory",
+      "description": "Returns a comprehensive list of all SKUs and their respective quantities currently held at a specific location. Useful for calculating total capacity usage.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "location_id": {
+            "type": "string",
+            "description": "The ID of the location to query."
+          }
+        },
+        "required": [
+          "location_id"
+        ]
+      },
+      "example_output": {
+        "inventory": [
+          {
+            "sku_id": "sku_001",
+            "quantity": 10
+          },
+          {
+            "sku_id": "sku_002",
+            "quantity": 50
+          }
+        ]
+      }
+    },
+    {
+      "name": "inspect_location_constraints",
+      "description": "Retrieves metadata and constraints for a specific location, such as maximum storage capacity.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "location_id": {
+            "type": "string",
+            "description": "The unique identifier for the location."
+          }
+        },
+        "required": [
+          "location_id"
+        ]
+      },
+      "example_output": {
+        "max_capacity": 100,
+        "location_type": "retail_store"
+      }
+    },
+    {
+      "name": "initiate_stock_transfer",
+      "description": "Moves a specified quantity of a SKU from a source location to a destination location. Updates inventory levels and logs the transit.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "from_location_id": {
+            "type": "string",
+            "description": "The ID of the source location."
+          },
+          "to_location_id": {
+            "type": "string",
+            "description": "The ID of the destination location."
+          },
+          "sku_id": {
+            "type": "string",
+            "description": "The ID of the SKU to be moved."
+          },
+          "quantity": {
+            "type": "integer",
+            "description": "The number of units to transfer."
+          }
+        },
+        "required": [
+          "from_location_id",
+          "to_location_id",
+          "sku_id",
+          "quantity"
+        ]
+      },
+      "example_output": {
+        "status": "success",
+        "transfer_id": "TRX-101",
+        "new_source_balance": 45,
+        "new_destination_balance": 30
+      }
+    }
+  ],
+  "state_description": {
+    "inventory_levels": "A nested mapping where keys are location_ids and values are objects mapping SKU_ids to their current quantity in stock.",
+    "transit_log": "List of active stock transfers between locations with expected arrival times or steps.",
+    "pending_orders": "List of purchase orders sent to external suppliers that have not yet arrived at the warehouse.",
+    "location_metadata": "Static constraints for locations, such as maximum storage capacity.",
+    "current_step": "Internal counter representing the passage of time or number of operations."
+  },
+  "task_initial_state": {
+    "inventory_levels": {
+      "warehouse_01": {
+        "sku_001": 500,
+        "sku_002": 300
+      },
+      "store_01": {
+        "sku_001": -15,
+        "sku_002": 85
+      }
+    },
+    "transit_log": [],
+    "pending_orders": [],
+    "location_metadata": {
+      "warehouse_01": {
+        "capacity": 2000
+      },
+      "store_01": {
+        "capacity": 100
+      }
+    },
+    "current_step": 0
+  }
+}

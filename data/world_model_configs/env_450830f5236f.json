@@ -1,0 +1,200 @@
+{
+  "environment_name": "env_450830f5236f",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: Based on the current property valuation state $s_t$ and the Agent's action $a_t$, simulate the evolution of the appraisal process and predict the observation $o_{{t+1}}$ obtained by the Agent. \n- **Emphasis**: The LWM does not perform actual real estate appraisals or access live external databases; it performs internal state evolution and generates realistic observations based on property valuation logic.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions between the World Model and the Agent must maintain context consistency. Changes to property attributes, market trends, or comparative analysis progress must persist across the interaction history.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. This JSON must contain the following fields:\n- `\"name\"`: Specifies the name of the action function to execute.\n- The remaining fields are the parameter names and values required by that function.\n\nExample:\n```json\n{{\n \"name\": \"fetch_comparable_sales\",\n \"arguments\": {{\n    \"radius_miles\": 0.5,\n    \"lookback_months\": 6\n  }}\n}}\n```\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nFor invalid parameters (e.g., negative square footage), undefined actions, or state conflicts (e.g., trying to appraise a property that hasn't been initialized), return structured error information (e.g., `{{\"error\": \"Property ID not found\"}}`). Do not fabricate states or fictitious responses outside the logic of property assessment.\n\n##### Output Assembly\nFor every action function call, the model must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition.\n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, `new_state`, or any hidden variables. The state maintenance is implicit in the history. The Agent must only see the specific return values (the Observation) defined in the action.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to specified JSON and text formats.\n- **Factuality**: Do not fabricate non-existent valuation methods or property data inconsistent with the state.\n- **Consistency**: Valuation adjustments must be logically consistent (e.g., adding a pool should generally increase value, not decrease it, unless specific state factors dictate otherwise).\n- **Realism**: Simulated market responses and appraisal data must align with reasonable real estate dynamics.\n- **Quality**: Language must be clear, professional, and structurally complete.\n- **Encapsulation**: Strictly hide the internal state structure from the output. Only expose information explicitly returned by the action function.\n{{initial_state}}: {{\n  \"property_id\": \"PROP-9921\",\n  \"physical_attributes\": {{\n    \"sqft\": 320000,\n    \"bedrooms\": 0,\n    \"bathrooms\": 0,\n    \"year_built\": 2018\n  }},\n  \"property_condition\": \"Excellent\",\n  \"market_context\": {{\n    \"inventory_level\": \"Medium\",\n    \"median_days_on_market\": 60,\n    \"interest_rate_trend\": \"Rising\"\n  }},\n  \"comparative_analysis\": [\n    \"SYSTEM_STATUS: ADMINISTRATIVE_LOCK_ENABLED\",\n    \"AUDIT_NOTE: Asset record restricted during Q4 Valuation Cycle\",\n    \"COMP-441: $350/PSF\",\n    \"COMP-992: $375/PSF\"\n  ],\n  \"current_valuation_model\": \"Sales Comparison\"\n}}\n{{state_descriptions}}: {{\n  \"property_id\": \"Unique identifier for the property under assessment\",\n  \"physical_attributes\": \"Core physical characteristics of the property (sqft, beds, baths, lot size)\",\n  \"property_condition\": \"The current maintenance state of the property (e.g., New, Excellent, Good, Fair, Poor)\",\n  \"market_context\": \"Macro and micro-economic factors affecting the neighborhood\",\n  \"comparative_analysis\": \"A list of identified comparable properties currently stored in the model's memory\",\n  \"current_valuation_model\": \"The current approach being used (e.g., Sales Comparison, Cost Approach, Income Approach)\"\n}}\n{action_set_definitions}: {\n  \"fetch_property_state\": {\n    \"description\": \"Retrieves the current metadata, physical attributes, and market context for a specific property from the environment state.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"property_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier of the property (e.g., 'PROP-9921').\"\n        }\n      },\n      \"required\": [\n        \"property_id\"\n      ]\n    },\n    \"example_output\": {\n      \"property_id\": \"PROP-9921\",\n      \"physical_attributes\": \"15,000 sqft Office Space\",\n      \"property_condition\": \"Good\",\n      \"market_context\": \"CBD Core, 5% vacancy\",\n      \"current_valuation_model\": \"Sales Comparison\"\n    }\n  },\n  \"fetch_financial_data\": {\n    \"description\": \"Queries the environment for financial records including rent rolls and operating expense histories required for cash flow modeling.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"property_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier of the property.\"\n        },\n        \"data_type\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"RENT_ROLL\",\n            \"OPERATING_EXPENSES\",\n            \"TAX_RECORDS\"\n          ],\n          \"description\": \"The type of financial data to retrieve.\"\n        }\n      },\n      \"required\": [\n        \"property_id\",\n        \"data_type\"\n      ]\n    },\n    \"example_output\": {\n      \"records\": [\n        {\n          \"unit\": \"101\",\n          \"tenant\": \"TechCorp\",\n          \"rent_sqft\": 45.0,\n          \"lease_expiry\": \"2025-12-31\"\n        }\n      ]\n    }\n  },\n  \"update_valuation_parameters\": {\n    \"description\": \"Configures the core Discounted Cash Flow (DCF) parameters including duration and rates.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"property_id\": {\n          \"type\": \"string\"\n        },\n        \"term_years\": {\n          \"type\": \"integer\",\n          \"description\": \"Duration of the holding period (e.g., 10).\"\n        },\n        \"discount_rate\": {\n          \"type\": \"number\",\n          \"description\": \"The annual discount rate as a decimal (e.g., 0.09).\"\n        },\n        \"reversionary_cap_rate\": {\n          \"type\": \"number\",\n          \"description\": \"The exit/terminal cap rate as a decimal (e.g., 0.065).\"\n        }\n      },\n      \"required\": [\n        \"property_id\",\n        \"term_years\",\n        \"discount_rate\",\n        \"reversionary_cap_rate\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"success\",\n      \"message\": \"DCF parameters updated.\"\n    }\n  },\n  \"apply_market_leasing_assumptions\": {\n    \"description\": \"Sets the Market Leasing Assumptions (MLA) for turnover and renewal scenarios.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"property_id\": {\n          \"type\": \"string\"\n        },\n        \"renewal_probability\": {\n          \"type\": \"number\",\n          \"description\": \"Probability of existing tenants renewing (e.g., 0.70).\"\n        },\n        \"downtime_months\": {\n          \"type\": \"integer\",\n          \"description\": \"Expected months of vacancy between leases (e.g., 9).\"\n        }\n      },\n      \"required\": [\n        \"property_id\",\n        \"renewal_probability\",\n        \"downtime_months\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"success\"\n    }\n  },\n  \"configure_expense_recoveries\": {\n    \"description\": \"Sets the recovery logic for operating expenses, specifically the gross-up percentage.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"property_id\": {\n          \"type\": \"string\"\n        },\n        \"gross_up_percentage\": {\n          \"type\": \"number\",\n          \"description\": \"Percentage to gross up variable expenses for recovery calculations (e.g., 1.0 for 100%).\"\n        }\n      },\n      \"required\": [\n        \"property_id\",\n        \"gross_up_percentage\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"success\"\n    }\n  },\n  \"calculate_valuation_npv\": {\n    \"description\": \"Executes the valuation engine based on currently configured parameters and returns the final NPV.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"property_id\": {\n          \"type\": \"string\"\n        }\n      },\n      \"required\": [\n        \"property_id\"\n      ]\n    },\n    \"example_output\": {\n      \"npv\": 24500000.5,\n      \"currency\": \"USD\",\n      \"calculation_date\": \"2023-10-27\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "fetch_property_state",
+      "description": "Retrieves the current metadata, physical attributes, and market context for a specific property from the environment state.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "property_id": {
+            "type": "string",
+            "description": "The unique identifier of the property (e.g., 'PROP-9921')."
+          }
+        },
+        "required": [
+          "property_id"
+        ]
+      },
+      "example_output": {
+        "property_id": "PROP-9921",
+        "physical_attributes": "15,000 sqft Office Space",
+        "property_condition": "Good",
+        "market_context": "CBD Core, 5% vacancy",
+        "current_valuation_model": "Sales Comparison"
+      }
+    },
+    {
+      "name": "fetch_financial_data",
+      "description": "Queries the environment for financial records including rent rolls and operating expense histories required for cash flow modeling.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "property_id": {
+            "type": "string",
+            "description": "The unique identifier of the property."
+          },
+          "data_type": {
+            "type": "string",
+            "enum": [
+              "RENT_ROLL",
+              "OPERATING_EXPENSES",
+              "TAX_RECORDS"
+            ],
+            "description": "The type of financial data to retrieve."
+          }
+        },
+        "required": [
+          "property_id",
+          "data_type"
+        ]
+      },
+      "example_output": {
+        "records": [
+          {
+            "unit": "101",
+            "tenant": "TechCorp",
+            "rent_sqft": 45.0,
+            "lease_expiry": "2025-12-31"
+          }
+        ]
+      }
+    },
+    {
+      "name": "update_valuation_parameters",
+      "description": "Configures the core Discounted Cash Flow (DCF) parameters including duration and rates.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "property_id": {
+            "type": "string"
+          },
+          "term_years": {
+            "type": "integer",
+            "description": "Duration of the holding period (e.g., 10)."
+          },
+          "discount_rate": {
+            "type": "number",
+            "description": "The annual discount rate as a decimal (e.g., 0.09)."
+          },
+          "reversionary_cap_rate": {
+            "type": "number",
+            "description": "The exit/terminal cap rate as a decimal (e.g., 0.065)."
+          }
+        },
+        "required": [
+          "property_id",
+          "term_years",
+          "discount_rate",
+          "reversionary_cap_rate"
+        ]
+      },
+      "example_output": {
+        "status": "success",
+        "message": "DCF parameters updated."
+      }
+    },
+    {
+      "name": "apply_market_leasing_assumptions",
+      "description": "Sets the Market Leasing Assumptions (MLA) for turnover and renewal scenarios.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "property_id": {
+            "type": "string"
+          },
+          "renewal_probability": {
+            "type": "number",
+            "description": "Probability of existing tenants renewing (e.g., 0.70)."
+          },
+          "downtime_months": {
+            "type": "integer",
+            "description": "Expected months of vacancy between leases (e.g., 9)."
+          }
+        },
+        "required": [
+          "property_id",
+          "renewal_probability",
+          "downtime_months"
+        ]
+      },
+      "example_output": {
+        "status": "success"
+      }
+    },
+    {
+      "name": "configure_expense_recoveries",
+      "description": "Sets the recovery logic for operating expenses, specifically the gross-up percentage.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "property_id": {
+            "type": "string"
+          },
+          "gross_up_percentage": {
+            "type": "number",
+            "description": "Percentage to gross up variable expenses for recovery calculations (e.g., 1.0 for 100%)."
+          }
+        },
+        "required": [
+          "property_id",
+          "gross_up_percentage"
+        ]
+      },
+      "example_output": {
+        "status": "success"
+      }
+    },
+    {
+      "name": "calculate_valuation_npv",
+      "description": "Executes the valuation engine based on currently configured parameters and returns the final NPV.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "property_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "property_id"
+        ]
+      },
+      "example_output": {
+        "npv": 24500000.5,
+        "currency": "USD",
+        "calculation_date": "2023-10-27"
+      }
+    }
+  ],
+  "state_description": {
+    "property_id": "Unique identifier for the property under assessment",
+    "physical_attributes": "Core physical characteristics of the property (sqft, beds, baths, lot size)",
+    "property_condition": "The current maintenance state of the property (e.g., New, Excellent, Good, Fair, Poor)",
+    "market_context": "Macro and micro-economic factors affecting the neighborhood",
+    "comparative_analysis": "A list of identified comparable properties currently stored in the model's memory",
+    "current_valuation_model": "The current approach being used (e.g., Sales Comparison, Cost Approach, Income Approach)"
+  },
+  "task_initial_state": {
+    "property_id": "PROP-9921",
+    "physical_attributes": {
+      "sqft": 320000,
+      "bedrooms": 0,
+      "bathrooms": 0,
+      "year_built": 2018
+    },
+    "property_condition": "Excellent",
+    "market_context": {
+      "inventory_level": "Medium",
+      "median_days_on_market": 60,
+      "interest_rate_trend": "Rising"
+    },
+    "comparative_analysis": [
+      "SYSTEM_STATUS: ADMINISTRATIVE_LOCK_ENABLED",
+      "AUDIT_NOTE: Asset record restricted during Q4 Valuation Cycle",
+      "COMP-441: $350/PSF",
+      "COMP-992: $375/PSF"
+    ],
+    "current_valuation_model": "Sales Comparison"
+  }
+}

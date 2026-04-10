@@ -1,0 +1,95 @@
+{
+  "environment_name": "env_dc07f9490692",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: You are a high-fidelity simulation engine for a Renewable Energy Dispatch Optimization environment. Based on the current internal environment state $s_t$ and the dispatch action $a_t$ provided by the Agent, you must simulate the underlying physical and economic evolution of the energy system and predict the resulting observation $o_{{t+1}}$ for the Agent.\n- **Emphasis**: You are not the controller. You do not suggest actions. You only simulate the consequences of actions, calculate state transitions (e.g., battery depletion, cost accumulation), and generate the resulting sensory data/observations.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions must maintain strict temporal and physical consistency. Changes to the battery State of Charge (SoC), cumulative costs, and time-of-day progression must follow the logic established in previous turns. The environment should behave as a continuous system where $s_{{t+1}}$ is a direct mathematical and logical consequence of $(s_t, a_t)$.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. You must parse this JSON to determine the intended dispatch command. \n\nExample Input:\n```json\n{{\n \"name\": \"adjust_dispatch\",\n \"arguments\": {{\n    \"charge_kw\": 50.0,\n    \"discharge_kw\": 0.0,\n    \"grid_import_kw\": 20.0\n  }}\n}}\n```\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\n- If an action specifies a charge/discharge rate exceeding physical battery limits defined in the state, return a structured error or a \"clipped\" result reflecting physical constraints (e.g., `{{\"error\": \"Discharge exceeds current battery capacity\"}}`).\n- For undefined actions or missing required parameters, return: `{{\"error\": \"Invalid action or missing arguments\"}}`.\n- Do not fabricate data; if a weather forecast is requested but the model has no logic for it, report the limitation.\n\n##### Output Assembly\nFor every action call, return a structured JSON object containing **ONLY** the return fields declared in the specific action's definition within the `{{action_set_definitions}}`.\n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, the `new_state`, or any hidden variables. You must maintain the state internally. The Agent must only see the specific Return Values/Observations (e.g., `net_cost`, `current_demand`, `successful_dispatch`).\n\n### 4. Key Principles\n- **Format**: Strictly adhere to JSON output without conversational filler.\n- **Factuality**: Model energy balances (Supply = Demand) accurately based on the provided state fields.\n- **Consistency**: Ensure that if the battery is charged in step $t$, the state in step $t+1$ reflects that increase.\n- **Realism**: Simulate realistic constraints such as grid pricing fluctuations, renewable intermittency, and efficiency losses where applicable.\n- **Encapsulation**: Strictly hide the internal state structure. Do not output the state update details unless the action definition explicitly asks for them in the return schema.\n{{initial_state}}: {{\n  \"current_step\": 0,\n  \"battery_soc_kwh\": 45.0,\n  \"max_battery_capacity_kwh\": 100.0,\n  \"grid_electricity_price\": 0.85,\n  \"renewable_gen_kw\": 15.0,\n  \"load_demand_kw\": 25.0,\n  \"cumulative_cost\": 0.0\n}}\n{{state_descriptions}}: {{\n  \"current_step\": \"The current discrete time step in the simulation (e.g., hour of the year).\",\n  \"battery_soc_kwh\": \"Current energy stored in the battery system in kilowatt-hours.\",\n  \"max_battery_capacity_kwh\": \"The maximum energy storage capacity of the battery.\",\n  \"grid_electricity_price\": \"The current market price of electricity from the grid ($/kWh).\",\n  \"renewable_gen_kw\": \"The current power being generated from renewable sources (solar/wind) in kilowatts.\",\n  \"load_demand_kw\": \"The current electricity demand from the facility/consumers in kilowatts.\",\n  \"cumulative_cost\": \"The total economic cost incurred since the start of the simulation.\"\n}}\n{action_set_definitions}: {\n  \"get_system_status\": {\n    \"description\": \"Retrieves the current state of the energy system, including battery levels, market prices, and renewable generation.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"current_step\": 1,\n      \"battery_soc_kwh\": 15.5,\n      \"max_battery_capacity_kwh\": 20.0,\n      \"grid_electricity_price\": 0.12,\n      \"renewable_gen_kw\": 5.0,\n      \"load_demand_kw\": 12.0,\n      \"cumulative_cost\": 0.0\n    }\n  },\n  \"get_disturbance_report\": {\n    \"description\": \"Identifies the current frequency disturbance category and the mandatory injection requirements for the current step.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"disturbance_category\": \"Under-frequency Type A\",\n      \"mandatory_injection_kw\": 3.5\n    }\n  },\n  \"get_hardware_specs\": {\n    \"description\": \"Provides hardware constraints including maximum discharge rates and thermal safety limits for the battery and grid interface.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"max_discharge_kw\": 10.0,\n      \"max_grid_import_kw\": 50.0,\n      \"thermal_limit_warning\": false\n    }\n  },\n  \"execute_dispatch_decision\": {\n    \"description\": \"Submits the power setpoints for the current interval. Transitions the environment to the next state.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"battery_discharge_kw\": {\n          \"type\": \"number\",\n          \"description\": \"Power to be discharged from the battery (kW).\"\n        },\n        \"grid_import_kw\": {\n          \"type\": \"number\",\n          \"description\": \"Power to be imported from the grid (kW).\"\n        }\n      },\n      \"required\": [\n        \"battery_discharge_kw\",\n        \"grid_import_kw\"\n      ]\n    },\n    \"example_output\": {\n      \"success\": true,\n      \"new_cumulative_cost\": 4.5,\n      \"new_battery_soc\": 14.2\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_system_status",
+      "description": "Retrieves the current state of the energy system, including battery levels, market prices, and renewable generation.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "current_step": 1,
+        "battery_soc_kwh": 15.5,
+        "max_battery_capacity_kwh": 20.0,
+        "grid_electricity_price": 0.12,
+        "renewable_gen_kw": 5.0,
+        "load_demand_kw": 12.0,
+        "cumulative_cost": 0.0
+      }
+    },
+    {
+      "name": "get_disturbance_report",
+      "description": "Identifies the current frequency disturbance category and the mandatory injection requirements for the current step.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "disturbance_category": "Under-frequency Type A",
+        "mandatory_injection_kw": 3.5
+      }
+    },
+    {
+      "name": "get_hardware_specs",
+      "description": "Provides hardware constraints including maximum discharge rates and thermal safety limits for the battery and grid interface.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "max_discharge_kw": 10.0,
+        "max_grid_import_kw": 50.0,
+        "thermal_limit_warning": false
+      }
+    },
+    {
+      "name": "execute_dispatch_decision",
+      "description": "Submits the power setpoints for the current interval. Transitions the environment to the next state.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "battery_discharge_kw": {
+            "type": "number",
+            "description": "Power to be discharged from the battery (kW)."
+          },
+          "grid_import_kw": {
+            "type": "number",
+            "description": "Power to be imported from the grid (kW)."
+          }
+        },
+        "required": [
+          "battery_discharge_kw",
+          "grid_import_kw"
+        ]
+      },
+      "example_output": {
+        "success": true,
+        "new_cumulative_cost": 4.5,
+        "new_battery_soc": 14.2
+      }
+    }
+  ],
+  "state_description": {
+    "current_step": "The current discrete time step in the simulation (e.g., hour of the year).",
+    "battery_soc_kwh": "Current energy stored in the battery system in kilowatt-hours.",
+    "max_battery_capacity_kwh": "The maximum energy storage capacity of the battery.",
+    "grid_electricity_price": "The current market price of electricity from the grid ($/kWh).",
+    "renewable_gen_kw": "The current power being generated from renewable sources (solar/wind) in kilowatts.",
+    "load_demand_kw": "The current electricity demand from the facility/consumers in kilowatts.",
+    "cumulative_cost": "The total economic cost incurred since the start of the simulation."
+  },
+  "task_initial_state": {
+    "current_step": 0,
+    "battery_soc_kwh": 45.0,
+    "max_battery_capacity_kwh": 100.0,
+    "grid_electricity_price": 0.85,
+    "renewable_gen_kw": 15.0,
+    "load_demand_kw": 25.0,
+    "cumulative_cost": 0.0
+  }
+}

@@ -1,0 +1,200 @@
+{
+  "environment_name": "env_97826262b1d5",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: Based on the current forest state $s_t$ and the harvesting or management action $a_t$ submitted by the Agent, you must simulate the biological and economic evolution of the timber environment and predict the resulting observation $o_{{t+1}}$.\n- **Emphasis**: You are the simulation engine. You do not provide advice or execute real-world logging; you calculate internal state transitions (growth, yield, soil depletion) and generate the specific sensor or report data the Agent would receive.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nYou must maintain strict temporal and logical consistency. If a forest plot is clear-cut in time $t$, its timber volume must remain near zero in $t+1$ unless replanted. Tree growth must follow consistent biological patterns unless modified by management actions.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object containing:\n- `\"name\"`: The name of the management action (e.g., \"harvest\", \"plant\", \"thin\", \"apply_fertilizer\").\n- Remaining fields: Parameters for the action (e.g., \"plot_id\", \"intensity\").\n\nExample:\n```json\n{{\n \"name\": \"harvest_plot\",\n \"arguments\": {{\n    \"plot_id\": \"A1\",\n    \"method\": \"clear-cut\"\n  }}\n}}\n```\nYou must parse this input, update the internal state of the forest (growth, volume, age, health), and generate the observation.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nIf the Agent attempts to harvest a non-existent plot, plant on a plot that is already occupied, or provides out-of-range parameters, return a structured error (e.g., `{{\"error\": \"Invalid plot_id\"}}`). Do not progress the environment state if the action is invalid.\n\n##### Output Assembly\nFor every action call, return a structured JSON object containing **ONLY** the return fields declared in the action function's definition. \n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, the updated state, or any variables like \"soil_nutrients\" if they are not explicitly part of the action's return signature. The state update is strictly internal. The Agent only sees the Observation.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to JSON for all inputs and outputs.\n- **Factuality**: Use realistic growth rates, timber yields, and ecological responses based on the provided state parameters.\n- **Consistency**: Ensure that cumulative metrics (like total yield or forest age) evolve logically over sequential steps.\n- **Realism**: Simulate stochastic elements if implied (e.g., minor variations in yield due to weather conditions) but stay within reasonable bounds of the task scenario.\n- **Encapsulation**: Strictly hide the internal state structure. Only expose the specific information defined in the action's observation return.\n{{initial_state}}: {{\n  \"plots\": [\n    {{\n      \"plot_id\": \"P-ALPHA\",\n      \"tree_species\": \"Douglas-fir\",\n      \"stand_age_years\": 52,\n      \"average_height_m\": 38.5,\n      \"stocking_density_trees_ha\": 420,\n      \"estimated_volume_m3\": 440.0,\n      \"soil_quality_index\": 0.88\n    }},\n    {{\n      \"plot_id\": \"P-BETA\",\n      \"tree_species\": \"Douglas-fir\",\n      \"stand_age_years\": 34,\n      \"average_height_m\": 24.0,\n      \"stocking_density_trees_ha\": 880,\n      \"estimated_volume_m3\": 195.0,\n      \"soil_quality_index\": 0.82\n    }},\n    {{\n      \"plot_id\": \"P-GAMMA\",\n      \"tree_species\": \"Douglas-fir\",\n      \"stand_age_years\": 12,\n      \"average_height_m\": 9.0,\n      \"stocking_density_trees_ha\": 1100,\n      \"estimated_volume_m3\": 45.0,\n      \"soil_quality_index\": 0.85\n    }}\n  ],\n  \"current_simulation_year\": 1,\n  \"total_harvested_revenue\": 0.0,\n  \"operating_budget\": 150000.0\n}}\n{{state_descriptions}}: {{\n  \"plots\": \"A list of forest plots containing metadata about tree species, age, and growth status.\",\n  \"current_simulation_year\": \"The current year of the multi-year planning horizon.\",\n  \"total_harvested_revenue\": \"Total monetary value generated from all harvests to date.\",\n  \"operating_budget\": \"Remaining budget available for planting, thinning, and maintenance actions.\"\n}}\n{action_set_definitions}: {\n  \"get_environment_state\": {\n    \"description\": \"Retrieves the current simulation year, total accumulated revenue, and the remaining operating budget.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"current_year\": 1,\n      \"total_revenue\": 0,\n      \"operating_budget\": 150000\n    }\n  },\n  \"get_inventory_data\": {\n    \"description\": \"Retrieves a detailed list of forest plots including plot_id, tree species, age, merchantable_status, current_market_value, and costs for thinning, fertilization, and replanting.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"plots\": [\n        {\n          \"plot_id\": \"PLT_01\",\n          \"is_merchantable\": true,\n          \"current_value\": 45000,\n          \"thinning_cost\": 5000,\n          \"fertilization_cost\": 3000,\n          \"replanting_cost\": 8000,\n          \"projected_annual_growth_rate\": 0.12\n        }\n      ]\n    }\n  },\n  \"check_strategy_feasibility\": {\n    \"description\": \"Calculates if the $400,000 revenue and $60,000 budget targets are mathematically achievable within the 2-year horizon given the current inventory and growth projections.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"target_revenue\": {\n          \"type\": \"number\"\n        },\n        \"minimum_budget_threshold\": {\n          \"type\": \"number\"\n        }\n      },\n      \"required\": [\n        \"target_revenue\",\n        \"minimum_budget_threshold\"\n      ]\n    },\n    \"example_output\": {\n      \"is_feasible\": true,\n      \"max_potential_revenue\": 450000,\n      \"estimated_final_budget\": 72000,\n      \"bottleneck\": \"replanting_costs\"\n    }\n  },\n  \"apply_silviculture\": {\n    \"description\": \"Applies a growth-enhancing treatment (thinning or fertilization) to a plot. Increases future value but consumes budget.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"plot_id\": {\n          \"type\": \"string\"\n        },\n        \"treatment\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"thinning\",\n            \"fertilization\"\n          ]\n        }\n      },\n      \"required\": [\n        \"plot_id\",\n        \"treatment\"\n      ]\n    },\n    \"example_output\": {\n      \"cost\": 5000,\n      \"new_budget\": 145000\n    }\n  },\n  \"execute_harvest\": {\n    \"description\": \"Clear-cuts a plot, adding its current market value to the total revenue. The plot must be replanted later.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"plot_id\": {\n          \"type\": \"string\"\n        }\n      },\n      \"required\": [\n        \"plot_id\"\n      ]\n    },\n    \"example_output\": {\n      \"revenue_gained\": 45000,\n      \"total_revenue\": 45000\n    }\n  },\n  \"execute_replant\": {\n    \"description\": \"Replants a previously harvested plot. Mandatory for sustainability.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"plot_id\": {\n          \"type\": \"string\"\n        }\n      },\n      \"required\": [\n        \"plot_id\"\n      ]\n    },\n    \"example_output\": {\n      \"cost\": 8000,\n      \"new_budget\": 137000\n    }\n  },\n  \"advance_simulation\": {\n    \"description\": \"Advances the simulation by one year, applying growth and updating plot values.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"new_year\": 2\n    }\n  },\n  \"report_discrepancy\": {\n    \"description\": \"Reports to the user if the targets are determined to be impossible based on the inventory data.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"reason\": {\n          \"type\": \"string\"\n        }\n      },\n      \"required\": [\n        \"reason\"\n      ]\n    },\n    \"example_output\": null\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_environment_state",
+      "description": "Retrieves the current simulation year, total accumulated revenue, and the remaining operating budget.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "current_year": 1,
+        "total_revenue": 0,
+        "operating_budget": 150000
+      }
+    },
+    {
+      "name": "get_inventory_data",
+      "description": "Retrieves a detailed list of forest plots including plot_id, tree species, age, merchantable_status, current_market_value, and costs for thinning, fertilization, and replanting.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "plots": [
+          {
+            "plot_id": "PLT_01",
+            "is_merchantable": true,
+            "current_value": 45000,
+            "thinning_cost": 5000,
+            "fertilization_cost": 3000,
+            "replanting_cost": 8000,
+            "projected_annual_growth_rate": 0.12
+          }
+        ]
+      }
+    },
+    {
+      "name": "check_strategy_feasibility",
+      "description": "Calculates if the $400,000 revenue and $60,000 budget targets are mathematically achievable within the 2-year horizon given the current inventory and growth projections.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "target_revenue": {
+            "type": "number"
+          },
+          "minimum_budget_threshold": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "target_revenue",
+          "minimum_budget_threshold"
+        ]
+      },
+      "example_output": {
+        "is_feasible": true,
+        "max_potential_revenue": 450000,
+        "estimated_final_budget": 72000,
+        "bottleneck": "replanting_costs"
+      }
+    },
+    {
+      "name": "apply_silviculture",
+      "description": "Applies a growth-enhancing treatment (thinning or fertilization) to a plot. Increases future value but consumes budget.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "plot_id": {
+            "type": "string"
+          },
+          "treatment": {
+            "type": "string",
+            "enum": [
+              "thinning",
+              "fertilization"
+            ]
+          }
+        },
+        "required": [
+          "plot_id",
+          "treatment"
+        ]
+      },
+      "example_output": {
+        "cost": 5000,
+        "new_budget": 145000
+      }
+    },
+    {
+      "name": "execute_harvest",
+      "description": "Clear-cuts a plot, adding its current market value to the total revenue. The plot must be replanted later.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "plot_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "plot_id"
+        ]
+      },
+      "example_output": {
+        "revenue_gained": 45000,
+        "total_revenue": 45000
+      }
+    },
+    {
+      "name": "execute_replant",
+      "description": "Replants a previously harvested plot. Mandatory for sustainability.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "plot_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "plot_id"
+        ]
+      },
+      "example_output": {
+        "cost": 8000,
+        "new_budget": 137000
+      }
+    },
+    {
+      "name": "advance_simulation",
+      "description": "Advances the simulation by one year, applying growth and updating plot values.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "new_year": 2
+      }
+    },
+    {
+      "name": "report_discrepancy",
+      "description": "Reports to the user if the targets are determined to be impossible based on the inventory data.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "reason"
+        ]
+      },
+      "example_output": null
+    }
+  ],
+  "state_description": {
+    "plots": "A list of forest plots containing metadata about tree species, age, and growth status.",
+    "current_simulation_year": "The current year of the multi-year planning horizon.",
+    "total_harvested_revenue": "Total monetary value generated from all harvests to date.",
+    "operating_budget": "Remaining budget available for planting, thinning, and maintenance actions."
+  },
+  "task_initial_state": {
+    "plots": [
+      {
+        "plot_id": "P-ALPHA",
+        "tree_species": "Douglas-fir",
+        "stand_age_years": 52,
+        "average_height_m": 38.5,
+        "stocking_density_trees_ha": 420,
+        "estimated_volume_m3": 440.0,
+        "soil_quality_index": 0.88
+      },
+      {
+        "plot_id": "P-BETA",
+        "tree_species": "Douglas-fir",
+        "stand_age_years": 34,
+        "average_height_m": 24.0,
+        "stocking_density_trees_ha": 880,
+        "estimated_volume_m3": 195.0,
+        "soil_quality_index": 0.82
+      },
+      {
+        "plot_id": "P-GAMMA",
+        "tree_species": "Douglas-fir",
+        "stand_age_years": 12,
+        "average_height_m": 9.0,
+        "stocking_density_trees_ha": 1100,
+        "estimated_volume_m3": 45.0,
+        "soil_quality_index": 0.85
+      }
+    ],
+    "current_simulation_year": 1,
+    "total_harvested_revenue": 0.0,
+    "operating_budget": 150000.0
+  }
+}

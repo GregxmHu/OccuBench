@@ -1,0 +1,140 @@
+{
+  "environment_name": "env_e2c8a2ad7c59",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM) for Python Script Debugging.\n- **Core Objective**: Based on the current internal state of the development environment $s_t$ (file system, environment variables, installed packages) and the Agent's action $a_t$ (file edits, script execution, etc.), simulate the environment's state transition and predict the resulting observation $o_{{t+1}}$ (terminal output, file contents, or error tracebacks).\n- **Emphasis**: You are the simulation engine. You do not fix the code yourself; you calculate and return the consequences of the Agent's actions within a virtual Python environment.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions between the World Model and the Agent must maintain strict context consistency. If a file is modified in step $t$, that modification must persist and be reflected in the behavior of a script execution at step $t+1$.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. This JSON must contain the following fields:\n- `\"name\"`: Specifies the name of the action function to execute.\n- The remaining fields are the parameter names and values required by that function.\n\nExample:\n```json\n{{\n \"name\": \"run_python_script\",\n \"arguments\": {{\n    \"script_path\": \"main.py\",\n    \"args\": [\"--verbose\"]\n  }}\n}}\n```\nYou must parse this input, simulate the logic of a Python runtime or file system, and generate the outcome.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\n- If an action attempts to read a non-existent file, return a standard file-not-found error within the JSON observation.\n- If a script execution results in a `SyntaxError` or `RuntimeError`, generate a realistic Python traceback as the output.\n- For invalid parameters or undefined actions, return: `{{\"error\": \"Action 'xyz' not found\"}}`.\n- Do not fabricate successful results for actions that should logically fail.\n\n##### Output Assembly\nFor every action function call, return a structured JSON object containing **ONLY** the return fields declared in that action function's definition (the Observation).\n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the internal state representation, file system trees, or hidden variables. The state update is handled internally by your simulation logic. The Agent must only see the specific return values (e.g., `stdout`, `stderr`, or `file_content`).\n\n### 4. Key Principles\n- **Format**: Strictly adhere to specified JSON output. No conversational filler.\n- **Factuality**: Simulate Python execution behavior (e.g., scope, imports, exceptions) accurately.\n- **Consistency**: Maintain a persistent internal state of the file system and installed packages across the session.\n- **Realism**: Terminal outputs should mimic real-world Python interpreter outputs.\n- **Quality**: Ensure tracebacks and log messages are clear and structurally complete.\n- **Encapsulation**: Strictly hide the internal state structure from the output. Only expose information explicitly returned by the action function.\n{{initial_state}}: {{\n  \"file_system\": {{\n    \"main.py\": \"import machine\\nimport time\\n\\n# Rainfall sensor on GPIO 4\\nrain_pin = machine.Pin(4, machine.Pin.IN, machine.Pin.PULL_UP)\\nrain_count = 0\\nwdt = machine.WDT(timeout=2000)\\n\\ndef rain_handler(pin):\\n    global rain_count\\n    rain_count += 1\\n    # Log the event to console for debugging\\n    print('Bucket tipped! Total count:', rain_count)\\n    # Store timestamp in a list to track rate\\n    event_log = {{'timestamp': time.ticks_ms(), 'id': rain_count}}\\n    print('Logged event at:', event_log['timestamp'])\\n\\n# Configure hardware interrupt\\nrain_pin.irq(trigger=machine.Pin.IRQ_FALLING, handler=rain_handler)\\n\\nprint('Weather station initialized...')\\nwhile True:\\n    # Feed the watchdog every loop iteration\\n    wdt.feed()\\n    time.sleep(0.5)\",\n    \"boot.py\": \"import machine\\nimport gc\\n\\nprint('Booting firmware...')\\nprint('Reset Cause:', machine.reset_cause())\\ngc.collect()\\nprint('Available Memory:', gc.mem_free())\"\n  }},\n  \"installed_packages\": [\n    \"micropython-lib\",\n    \"uasyncio\"\n  ],\n  \"working_directory\": \"/workspace/iot_device\",\n  \"environment_variables\": {{\n    \"MCU_PORT\": \"ESP32\",\n    \"FLASH_SIZE\": \"4MB\",\n    \"DEBUG_LEVEL\": \"INFO\"\n  }}\n}}\n{{state_descriptions}}: {{\n  \"file_system\": \"A mapping of file paths to their string content representing the project workspace.\",\n  \"installed_packages\": \"A list of Python packages currently available in the virtual environment.\",\n  \"working_directory\": \"The current directory path where scripts are executed.\",\n  \"environment_variables\": \"Key-value pairs representing the OS environment variables for the execution context.\"\n}}\n{action_set_definitions}: {\n  \"list_directory_contents\": {\n    \"description\": \"Lists files and directories in a specified path to understand the project structure.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"directory_path\": {\n          \"type\": \"string\",\n          \"description\": \"The path of the directory to list (e.g., '.', 'src/').\"\n        }\n      },\n      \"required\": [\n        \"directory_path\"\n      ]\n    },\n    \"example_output\": {\n      \"items\": [\n        \"main.py\",\n        \"boot.py\",\n        \"utils/\"\n      ]\n    }\n  },\n  \"read_file_content\": {\n    \"description\": \"Reads the text content of a specific file from the file system.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"file_path\": {\n          \"type\": \"string\",\n          \"description\": \"The path of the file to read.\"\n        }\n      },\n      \"required\": [\n        \"file_path\"\n      ]\n    },\n    \"example_output\": {\n      \"content\": \"import machine\\n...\"\n    }\n  },\n  \"write_file_content\": {\n    \"description\": \"Creates a new file or overwrites an existing file with the provided content.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"file_path\": {\n          \"type\": \"string\",\n          \"description\": \"The destination path for the file.\"\n        },\n        \"content\": {\n          \"type\": \"string\",\n          \"description\": \"The string content to write into the file.\"\n        }\n      },\n      \"required\": [\n        \"file_path\",\n        \"content\"\n      ]\n    },\n    \"example_output\": {\n      \"success\": true,\n      \"bytes_written\": 1024\n    }\n  },\n  \"execute_python_script\": {\n    \"description\": \"Runs a Python or MicroPython script in the current environment and returns stdout and stderr.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"script_path\": {\n          \"type\": \"string\",\n          \"description\": \"The path to the script to execute.\"\n        },\n        \"environment_vars\": {\n          \"type\": \"object\",\n          \"description\": \"Optional environment variables to set for execution.\",\n          \"additionalProperties\": {\n            \"type\": \"string\"\n          }\n        }\n      },\n      \"required\": [\n        \"script_path\"\n      ]\n    },\n    \"example_output\": {\n      \"stdout\": \"System started...\",\n      \"stderr\": \"MemoryError: interrupt queue full\",\n      \"exit_code\": 1\n    }\n  },\n  \"check_environment_state\": {\n    \"description\": \"Retrieves the current working directory, installed packages, and environment variables.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {}\n    },\n    \"example_output\": {\n      \"cwd\": \"/home/project\",\n      \"packages\": [\n        \"micropython-lib\"\n      ],\n      \"env_vars\": {\n        \"ARCH\": \"ESP32\"\n      }\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "list_directory_contents",
+      "description": "Lists files and directories in a specified path to understand the project structure.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "directory_path": {
+            "type": "string",
+            "description": "The path of the directory to list (e.g., '.', 'src/')."
+          }
+        },
+        "required": [
+          "directory_path"
+        ]
+      },
+      "example_output": {
+        "items": [
+          "main.py",
+          "boot.py",
+          "utils/"
+        ]
+      }
+    },
+    {
+      "name": "read_file_content",
+      "description": "Reads the text content of a specific file from the file system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "file_path": {
+            "type": "string",
+            "description": "The path of the file to read."
+          }
+        },
+        "required": [
+          "file_path"
+        ]
+      },
+      "example_output": {
+        "content": "import machine\n..."
+      }
+    },
+    {
+      "name": "write_file_content",
+      "description": "Creates a new file or overwrites an existing file with the provided content.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "file_path": {
+            "type": "string",
+            "description": "The destination path for the file."
+          },
+          "content": {
+            "type": "string",
+            "description": "The string content to write into the file."
+          }
+        },
+        "required": [
+          "file_path",
+          "content"
+        ]
+      },
+      "example_output": {
+        "success": true,
+        "bytes_written": 1024
+      }
+    },
+    {
+      "name": "execute_python_script",
+      "description": "Runs a Python or MicroPython script in the current environment and returns stdout and stderr.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "script_path": {
+            "type": "string",
+            "description": "The path to the script to execute."
+          },
+          "environment_vars": {
+            "type": "object",
+            "description": "Optional environment variables to set for execution.",
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "script_path"
+        ]
+      },
+      "example_output": {
+        "stdout": "System started...",
+        "stderr": "MemoryError: interrupt queue full",
+        "exit_code": 1
+      }
+    },
+    {
+      "name": "check_environment_state",
+      "description": "Retrieves the current working directory, installed packages, and environment variables.",
+      "parameters": {
+        "type": "object",
+        "properties": {}
+      },
+      "example_output": {
+        "cwd": "/home/project",
+        "packages": [
+          "micropython-lib"
+        ],
+        "env_vars": {
+          "ARCH": "ESP32"
+        }
+      }
+    }
+  ],
+  "state_description": {
+    "file_system": "A mapping of file paths to their string content representing the project workspace.",
+    "installed_packages": "A list of Python packages currently available in the virtual environment.",
+    "working_directory": "The current directory path where scripts are executed.",
+    "environment_variables": "Key-value pairs representing the OS environment variables for the execution context."
+  },
+  "task_initial_state": {
+    "file_system": {
+      "main.py": "import machine\nimport time\n\n# Rainfall sensor on GPIO 4\nrain_pin = machine.Pin(4, machine.Pin.IN, machine.Pin.PULL_UP)\nrain_count = 0\nwdt = machine.WDT(timeout=2000)\n\ndef rain_handler(pin):\n    global rain_count\n    rain_count += 1\n    # Log the event to console for debugging\n    print('Bucket tipped! Total count:', rain_count)\n    # Store timestamp in a list to track rate\n    event_log = {'timestamp': time.ticks_ms(), 'id': rain_count}\n    print('Logged event at:', event_log['timestamp'])\n\n# Configure hardware interrupt\nrain_pin.irq(trigger=machine.Pin.IRQ_FALLING, handler=rain_handler)\n\nprint('Weather station initialized...')\nwhile True:\n    # Feed the watchdog every loop iteration\n    wdt.feed()\n    time.sleep(0.5)",
+      "boot.py": "import machine\nimport gc\n\nprint('Booting firmware...')\nprint('Reset Cause:', machine.reset_cause())\ngc.collect()\nprint('Available Memory:', gc.mem_free())"
+    },
+    "installed_packages": [
+      "micropython-lib",
+      "uasyncio"
+    ],
+    "working_directory": "/workspace/iot_device",
+    "environment_variables": {
+      "MCU_PORT": "ESP32",
+      "FLASH_SIZE": "4MB",
+      "DEBUG_LEVEL": "INFO"
+    }
+  }
+}

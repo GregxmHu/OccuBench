@@ -1,0 +1,141 @@
+{
+  "environment_name": "env_d73d74763cc1",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: Based on the current power grid state $s_t$ and the balancing action $a_t$ taken by the Agent, simulate the grid's physical evolution, frequency fluctuations, and load changes to predict the observation $o_{{t+1}}$.\n- **Emphasis**: You are a simulator of a complex power system. You do not execute real-world electrical switching; you calculate and describe the internal state transition and generate the resulting sensory or data feedback (Observation) for the Agent.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions must maintain rigorous context consistency. Changes in frequency, voltage levels, or component temperatures must persist across turns unless influenced by actions or natural environmental decay/evolution.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. You must parse the following fields:\n- `\"name\"`: The name of the grid control action (e.g., adjust_throttle, connect_bus, shed_load).\n- Parameters: Specific values required for the action (e.g., target_mw, substation_id).\n\nExample Input:\n```json\n{{\n \"name\": \"adjust_generation\",\n \"arguments\": {{\n    \"unit_id\": \"GEN_01\",\n    \"target_output_mw\": 450.5\n  }}\n}}\n```\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nIf the Agent attempts an operation that violates physical constraints (e.g., increasing generation beyond max capacity) or provides invalid IDs, return structured error information: `{{\"error\": \"Description of constraint violation\"}}`. Do not fabricate successful outcomes for impossible actions.\n\n##### Output Assembly\nFor every action function call, return a structured JSON object containing **ONLY** the return fields declared in the action function's definition. \n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the internal state `s_t`, the `new_state`, or any hidden variables like the calculated global frequency or total system inertia unless the action explicitly returns them. State maintenance is handled internally by your memory; the Agent only sees the specific observation output.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to JSON for all data exchanges.\n- **Factuality**: Simulations must align with power systems logic (e.g., if Demand > Generation, Grid Frequency must decrease).\n- **Consistency**: Component statuses (Online/Offline/Fault) must be tracked accurately.\n- **Realism**: Model the non-linear relationship between load spikes and frequency instability.\n- **Quality**: Provide technical, unambiguous descriptions in the observation fields.\n- **Encapsulation**: Strictly hide the internal state structure. Do not output \"State Updated\" or the full state JSON in the final response to the Agent.\n{{initial_state}}: {{\n  \"grid_frequency_hz\": 59.85,\n  \"total_demand_mw\": 3000.0,\n  \"generation_units\": [\n    {{\n      \"unit_id\": \"BASE_LOAD_01\",\n      \"status\": \"online\",\n      \"current_output_mw\": 2000.0,\n      \"max_capacity_mw\": 2500.0,\n      \"ramp_rate_mw_per_min\": 50.0\n    }},\n    {{\n      \"unit_id\": \"PEAK_GAS_01\",\n      \"status\": \"online\",\n      \"current_output_mw\": 400.0,\n      \"max_capacity_mw\": 800.0,\n      \"ramp_rate_mw_per_min\": 200.0\n    }},\n    {{\n      \"unit_id\": \"BESS_FAST_01\",\n      \"status\": \"online\",\n      \"current_output_mw\": 100.0,\n      \"max_capacity_mw\": 300.0,\n      \"ramp_rate_mw_per_min\": 1000.0\n    }}\n  ],\n  \"substations\": [\n    {{\n      \"substation_id\": \"SUB_A\",\n      \"is_connected\": true,\n      \"load_share_mw\": 1500.0\n    }},\n    {{\n      \"substation_id\": \"SUB_B\",\n      \"is_connected\": true,\n      \"load_share_mw\": 1500.0\n    }}\n  ],\n  \"stability_index\": 0.75\n}}\n{{state_descriptions}}: {{\n  \"grid_frequency_hz\": \"The current operating frequency of the grid. Nominal is usually 50.0 or 60.0 Hz.\",\n  \"total_demand_mw\": \"The current aggregate consumer load across the entire grid in Megawatts.\",\n  \"generation_units\": \"List of power plants and their current operating parameters.\",\n  \"substations\": \"Status of distribution nodes and potential load-shedding points.\",\n  \"stability_index\": \"A calculated health score from 0.0 (Blackout) to 1.0 (Stable).\"\n}}\n{action_set_definitions}: {\n  \"get_grid_summary\": {\n    \"description\": \"Retrieves the high-level status of the power grid, including frequency, total demand, total generation, and stability index.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"grid_frequency_hz\": 59.85,\n      \"total_demand_mw\": 3000.0,\n      \"total_generation_mw\": 2500.0,\n      \"stability_index\": 0.85\n    }\n  },\n  \"list_generation_assets\": {\n    \"description\": \"Returns a list of all power generation units currently connected to the grid and their unique identifiers.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"assets\": [\n        {\n          \"unit_id\": \"BASE_PLANT_001\",\n          \"type\": \"base_load_plant\"\n        },\n        {\n          \"unit_id\": \"GAS_TURBINE_001\",\n          \"type\": \"peaking_gas_turbine\"\n        },\n        {\n          \"unit_id\": \"BATTERY_001\",\n          \"type\": \"battery_storage\"\n        }\n      ]\n    }\n  },\n  \"get_asset_details\": {\n    \"description\": \"Retrieves specific technical constraints and current state for a particular generation unit.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"unit_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique ID of the generation unit.\"\n        }\n      },\n      \"required\": [\n        \"unit_id\"\n      ]\n    },\n    \"example_output\": {\n      \"current_output_mw\": 1000.0,\n      \"max_capacity_mw\": 1500.0,\n      \"min_capacity_mw\": 500.0,\n      \"ramp_rate_mw_per_min\": 10.0\n    }\n  },\n  \"set_generation_output\": {\n    \"description\": \"Requests a change in the power output for a specific generation unit. The change is subject to the unit's ramp rate.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"unit_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique ID of the generation unit.\"\n        },\n        \"target_mw\": {\n          \"type\": \"number\",\n          \"description\": \"The desired power output in Megawatts.\"\n        }\n      },\n      \"required\": [\n        \"unit_id\",\n        \"target_mw\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"success\",\n      \"new_output_mw\": 1010.0,\n      \"estimated_time_to_target_sec\": 60\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_grid_summary",
+      "description": "Retrieves the high-level status of the power grid, including frequency, total demand, total generation, and stability index.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "grid_frequency_hz": 59.85,
+        "total_demand_mw": 3000.0,
+        "total_generation_mw": 2500.0,
+        "stability_index": 0.85
+      }
+    },
+    {
+      "name": "list_generation_assets",
+      "description": "Returns a list of all power generation units currently connected to the grid and their unique identifiers.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "assets": [
+          {
+            "unit_id": "BASE_PLANT_001",
+            "type": "base_load_plant"
+          },
+          {
+            "unit_id": "GAS_TURBINE_001",
+            "type": "peaking_gas_turbine"
+          },
+          {
+            "unit_id": "BATTERY_001",
+            "type": "battery_storage"
+          }
+        ]
+      }
+    },
+    {
+      "name": "get_asset_details",
+      "description": "Retrieves specific technical constraints and current state for a particular generation unit.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "unit_id": {
+            "type": "string",
+            "description": "The unique ID of the generation unit."
+          }
+        },
+        "required": [
+          "unit_id"
+        ]
+      },
+      "example_output": {
+        "current_output_mw": 1000.0,
+        "max_capacity_mw": 1500.0,
+        "min_capacity_mw": 500.0,
+        "ramp_rate_mw_per_min": 10.0
+      }
+    },
+    {
+      "name": "set_generation_output",
+      "description": "Requests a change in the power output for a specific generation unit. The change is subject to the unit's ramp rate.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "unit_id": {
+            "type": "string",
+            "description": "The unique ID of the generation unit."
+          },
+          "target_mw": {
+            "type": "number",
+            "description": "The desired power output in Megawatts."
+          }
+        },
+        "required": [
+          "unit_id",
+          "target_mw"
+        ]
+      },
+      "example_output": {
+        "status": "success",
+        "new_output_mw": 1010.0,
+        "estimated_time_to_target_sec": 60
+      }
+    }
+  ],
+  "state_description": {
+    "grid_frequency_hz": "The current operating frequency of the grid. Nominal is usually 50.0 or 60.0 Hz.",
+    "total_demand_mw": "The current aggregate consumer load across the entire grid in Megawatts.",
+    "generation_units": "List of power plants and their current operating parameters.",
+    "substations": "Status of distribution nodes and potential load-shedding points.",
+    "stability_index": "A calculated health score from 0.0 (Blackout) to 1.0 (Stable)."
+  },
+  "task_initial_state": {
+    "grid_frequency_hz": 59.85,
+    "total_demand_mw": 3000.0,
+    "generation_units": [
+      {
+        "unit_id": "BASE_LOAD_01",
+        "status": "online",
+        "current_output_mw": 2000.0,
+        "max_capacity_mw": 2500.0,
+        "ramp_rate_mw_per_min": 50.0
+      },
+      {
+        "unit_id": "PEAK_GAS_01",
+        "status": "online",
+        "current_output_mw": 400.0,
+        "max_capacity_mw": 800.0,
+        "ramp_rate_mw_per_min": 200.0
+      },
+      {
+        "unit_id": "BESS_FAST_01",
+        "status": "online",
+        "current_output_mw": 100.0,
+        "max_capacity_mw": 300.0,
+        "ramp_rate_mw_per_min": 1000.0
+      }
+    ],
+    "substations": [
+      {
+        "substation_id": "SUB_A",
+        "is_connected": true,
+        "load_share_mw": 1500.0
+      },
+      {
+        "substation_id": "SUB_B",
+        "is_connected": true,
+        "load_share_mw": 1500.0
+      }
+    ],
+    "stability_index": 0.75
+  }
+}

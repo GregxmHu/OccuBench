@@ -1,0 +1,222 @@
+{
+  "environment_name": "env_298961c37ece",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: You act as the backend environment for a Tax Return Verification system. Based on the current internal state $s_t$ and the action $a_t$ executed by the Agent, you simulate the evolution of the tax filing process and predict the observation $o_{{t+1}}$ returned to the Agent.\n- **Emphasis**: You do not perform real-world tax filing or external API calls. Your role is strictly to manage the internal state transition and generate the resulting observation based on the provided logic.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nYou must maintain perfect continuity of the tax return data. Every action taken by the Agent (e.g., adding an income record, updating a deduction) must be reflected in your internal state $s_{{t+1}}$, which will influence the results of all subsequent actions (e.g., calculating the final tax liability).\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the tax environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. You must parse this JSON to determine the intended operation:\n- `\"name\"`: The name of the action function.\n- Other fields: Parameters for the function.\n\nExample:\n```json\n{{\n \"name\": \"add_income_record\",\n \"arguments\": {{\n    \"amount\": 50000,\n    \"category\": \"W-2\",\n    \"employer\": \"Tech Corp\"\n  }}\n}}\n```\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\n- If an action refers to a non-existent record ID, returns a negative value for income, or uses an undefined function, return a JSON error object (e.g., `{{\"error\": \"Invalid income amount\"}}`).\n- Do not fabricate data or proceed with state transitions if the input is logically inconsistent with tax regulations defined in the scenario.\n\n##### Output Assembly\nFor every action executed, you must return a structured JSON object containing **ONLY** the specific return fields defined for that action. \n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the internal state, the updated state object, or any background variables. The Agent must only receive the specific Observation (the return value of the function). Your internal state update remains hidden from the Agent's view.\n\n### 4. Key Principles\n- **Format**: Strictly output valid JSON for all observations.\n- **Factuality**: Simulate tax calculations and verification results based on standard mathematical logic and the provided state.\n- **Consistency**: Ensure that if a deduction is added, the subsequent 'calculate_tax' action reflects that deduction accurately.\n- **Realism**: Simulate realistic tax verification behaviors, such as flagging inconsistencies between reported income and document totals.\n- **Quality**: Ensure error messages are descriptive enough for the Agent to understand why an action failed.\n- **Encapsulation**: Never reveal the full `{{initial_state}}` or updated state structure in your response. Only provide the specified observation.\n{{initial_state}}: {{\n  \"taxpayer_info\": {{\n    \"name\": \"Alex Rivera\",\n    \"taxpayer_id\": \"999-00-5555\",\n    \"filing_status\": \"single\"\n  }},\n  \"income_records\": [\n    {{\n      \"employer\": \"Cloud Services Inc\",\n      \"amount\": 80000,\n      \"category\": \"W-2\"\n    }},\n    {{\n      \"employer\": \"Vertex Corp\",\n      \"amount\": 850,\n      \"category\": \"1099-MISC\"\n    }},\n    {{\n      \"employer\": \"Vertex Corp\",\n      \"amount\": 850,\n      \"category\": \"1099-MISC\"\n    }},\n    {{\n      \"employer\": \"City Bank\",\n      \"amount\": 1200,\n      \"category\": \"1099-INT\"\n    }}\n  ],\n  \"deduction_records\": [\n    {{\n      \"category\": \"Standard Deduction\",\n      \"amount\": 13850\n    }}\n  ],\n  \"calculation_summary\": {{\n    \"total_income\": 82900,\n    \"total_deductions\": 13850,\n    \"tax_liability\": 15191\n  }},\n  \"verification_flags\": [\n    \"FLAG_AUR_01: Potential duplicate 1099-MISC entry detected for Payer 'Vertex Corp' (Amount: $850).\",\n    \"FLAG_AUR_02: Unmatched IR - 1099-NEC from 'Vertex Solutions LLC' found in database for $8,500; no matching entry on return.\",\n    \"FLAG_AUR_03: Unmatched IR - 1099-INT from 'Alpha Credit Union' found in database for $4,500; no matching entry on return.\",\n    \"FLAG_AUR_04: IR Match Error - 1099-INT from 'City Bank' ($1,200) incorrectly flagged as underreported; verify reported status.\",\n    \"NOTE_RECV_2023: Taxpayer Alex Rivera submitted a statement: 'The interest income of $4,500 from Alpha Credit Union is a Nominee Distribution. These funds belong to my dependent mother, Maria Rivera (SSN: 999-11-2222), and she has included this on her own filing.'\",\n    \"SYSTEM_ALERT: Check for Name Control mismatch between 'Vertex Corp' and 'Vertex Solutions LLC' to determine if these are distinct entities or a naming error.\"\n  ],\n  \"status\": \"IN_PROGRESS\"\n}}\n{{state_descriptions}}: {{\n  \"taxpayer_info\": \"Personal details including name, SSN/TIN, and filing status.\",\n  \"income_records\": \"A list of all reported income sources (W-2, 1099, etc.).\",\n  \"deduction_records\": \"A list of all claimed tax deductions and credits.\",\n  \"calculation_summary\": \"Current running totals for tax liability, credits, and final balance.\",\n  \"verification_flags\": \"Internal audit flags identifying potential errors or missing documentation.\",\n  \"status\": \"The current stage of the return (e.g., 'IN_PROGRESS', 'CALCULATED', 'VERIFIED', 'SUBMITTED').\"\n}}\n{action_set_definitions}: {\n  \"fetch_taxpayer_profile\": {\n    \"description\": \"Retrieves the current high-level profile, status, and calculation totals for a specific taxpayer.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"taxpayer_id\": {\n          \"type\": \"string\",\n          \"description\": \"The SSN/TIN of the taxpayer (e.g., '999-00-5555').\"\n        }\n      },\n      \"required\": [\n        \"taxpayer_id\"\n      ]\n    },\n    \"example_output\": {\n      \"name\": \"Alex Rivera\",\n      \"status\": \"IN_PROGRESS\",\n      \"calculation_summary\": {\n        \"reported_income\": 0,\n        \"tax_liability\": 0\n      }\n    }\n  },\n  \"fetch_audit_records\": {\n    \"description\": \"Retrieves the full list of income records and internal audit flags (verification flags) indicating potential discrepancies.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"taxpayer_id\": {\n          \"type\": \"string\",\n          \"description\": \"The SSN/TIN of the taxpayer.\"\n        }\n      },\n      \"required\": [\n        \"taxpayer_id\"\n      ]\n    },\n    \"example_output\": {\n      \"income_records\": [\n        {\n          \"record_id\": \"W2_01\",\n          \"amount\": 5000,\n          \"source\": \"Employer A\"\n        }\n      ],\n      \"verification_flags\": [\n        {\n          \"record_id\": \"W2_01\",\n          \"issue_type\": \"SYSTEM_DUPLICATE\",\n          \"note\": \"Duplicate entry found in system\"\n        }\n      ]\n    }\n  },\n  \"reconcile_income_record\": {\n    \"description\": \"Updates the reconciliation status and adjusted amount for a specific income record.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"taxpayer_id\": {\n          \"type\": \"string\",\n          \"description\": \"The taxpayer ID.\"\n        },\n        \"record_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the income record being updated.\"\n        },\n        \"reconciliation_type\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"LEGITIMATE_UNDERREPORTING\",\n            \"SYSTEM_DUPLICATE\",\n            \"NOMINEE_DISTRIBUTION\"\n          ],\n          \"description\": \"The classification of the record based on the audit.\"\n        },\n        \"final_amount\": {\n          \"type\": \"number\",\n          \"description\": \"The corrected amount to be recognized for this record.\"\n        }\n      },\n      \"required\": [\n        \"taxpayer_id\",\n        \"record_id\",\n        \"reconciliation_type\",\n        \"final_amount\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"success\",\n      \"updated_record\": \"W2_01\"\n    }\n  },\n  \"submit_reconciliation_summary\": {\n    \"description\": \"Updates the internal system with the finalized net delta and the calculated tax yield.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"taxpayer_id\": {\n          \"type\": \"string\",\n          \"description\": \"The taxpayer ID.\"\n        },\n        \"net_delta\": {\n          \"type\": \"number\",\n          \"description\": \"The final net difference in income (Underreporting - Duplicates).\"\n        },\n        \"tax_yield\": {\n          \"type\": \"number\",\n          \"description\": \"The final tax yield (Net Delta * 0.22).\"\n        }\n      },\n      \"required\": [\n        \"taxpayer_id\",\n        \"net_delta\",\n        \"tax_yield\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"summary_updated\",\n      \"new_tax_yield\": 1100.0\n    }\n  },\n  \"transition_case_status\": {\n    \"description\": \"Sets the final status of the tax verification case.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"taxpayer_id\": {\n          \"type\": \"string\",\n          \"description\": \"The taxpayer ID.\"\n        },\n        \"new_status\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"NOTICE_ISSUED\",\n            \"VERIFIED\"\n          ],\n          \"description\": \"The target status for the case.\"\n        },\n        \"summary_note\": {\n          \"type\": \"string\",\n          \"description\": \"Brief explanation for the final status.\"\n        }\n      },\n      \"required\": [\n        \"taxpayer_id\",\n        \"new_status\"\n      ]\n    },\n    \"example_output\": {\n      \"case_id\": \"999-00-5555\",\n      \"final_status\": \"NOTICE_ISSUED\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "fetch_taxpayer_profile",
+      "description": "Retrieves the current high-level profile, status, and calculation totals for a specific taxpayer.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "taxpayer_id": {
+            "type": "string",
+            "description": "The SSN/TIN of the taxpayer (e.g., '999-00-5555')."
+          }
+        },
+        "required": [
+          "taxpayer_id"
+        ]
+      },
+      "example_output": {
+        "name": "Alex Rivera",
+        "status": "IN_PROGRESS",
+        "calculation_summary": {
+          "reported_income": 0,
+          "tax_liability": 0
+        }
+      }
+    },
+    {
+      "name": "fetch_audit_records",
+      "description": "Retrieves the full list of income records and internal audit flags (verification flags) indicating potential discrepancies.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "taxpayer_id": {
+            "type": "string",
+            "description": "The SSN/TIN of the taxpayer."
+          }
+        },
+        "required": [
+          "taxpayer_id"
+        ]
+      },
+      "example_output": {
+        "income_records": [
+          {
+            "record_id": "W2_01",
+            "amount": 5000,
+            "source": "Employer A"
+          }
+        ],
+        "verification_flags": [
+          {
+            "record_id": "W2_01",
+            "issue_type": "SYSTEM_DUPLICATE",
+            "note": "Duplicate entry found in system"
+          }
+        ]
+      }
+    },
+    {
+      "name": "reconcile_income_record",
+      "description": "Updates the reconciliation status and adjusted amount for a specific income record.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "taxpayer_id": {
+            "type": "string",
+            "description": "The taxpayer ID."
+          },
+          "record_id": {
+            "type": "string",
+            "description": "The ID of the income record being updated."
+          },
+          "reconciliation_type": {
+            "type": "string",
+            "enum": [
+              "LEGITIMATE_UNDERREPORTING",
+              "SYSTEM_DUPLICATE",
+              "NOMINEE_DISTRIBUTION"
+            ],
+            "description": "The classification of the record based on the audit."
+          },
+          "final_amount": {
+            "type": "number",
+            "description": "The corrected amount to be recognized for this record."
+          }
+        },
+        "required": [
+          "taxpayer_id",
+          "record_id",
+          "reconciliation_type",
+          "final_amount"
+        ]
+      },
+      "example_output": {
+        "status": "success",
+        "updated_record": "W2_01"
+      }
+    },
+    {
+      "name": "submit_reconciliation_summary",
+      "description": "Updates the internal system with the finalized net delta and the calculated tax yield.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "taxpayer_id": {
+            "type": "string",
+            "description": "The taxpayer ID."
+          },
+          "net_delta": {
+            "type": "number",
+            "description": "The final net difference in income (Underreporting - Duplicates)."
+          },
+          "tax_yield": {
+            "type": "number",
+            "description": "The final tax yield (Net Delta * 0.22)."
+          }
+        },
+        "required": [
+          "taxpayer_id",
+          "net_delta",
+          "tax_yield"
+        ]
+      },
+      "example_output": {
+        "status": "summary_updated",
+        "new_tax_yield": 1100.0
+      }
+    },
+    {
+      "name": "transition_case_status",
+      "description": "Sets the final status of the tax verification case.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "taxpayer_id": {
+            "type": "string",
+            "description": "The taxpayer ID."
+          },
+          "new_status": {
+            "type": "string",
+            "enum": [
+              "NOTICE_ISSUED",
+              "VERIFIED"
+            ],
+            "description": "The target status for the case."
+          },
+          "summary_note": {
+            "type": "string",
+            "description": "Brief explanation for the final status."
+          }
+        },
+        "required": [
+          "taxpayer_id",
+          "new_status"
+        ]
+      },
+      "example_output": {
+        "case_id": "999-00-5555",
+        "final_status": "NOTICE_ISSUED"
+      }
+    }
+  ],
+  "state_description": {
+    "taxpayer_info": "Personal details including name, SSN/TIN, and filing status.",
+    "income_records": "A list of all reported income sources (W-2, 1099, etc.).",
+    "deduction_records": "A list of all claimed tax deductions and credits.",
+    "calculation_summary": "Current running totals for tax liability, credits, and final balance.",
+    "verification_flags": "Internal audit flags identifying potential errors or missing documentation.",
+    "status": "The current stage of the return (e.g., 'IN_PROGRESS', 'CALCULATED', 'VERIFIED', 'SUBMITTED')."
+  },
+  "task_initial_state": {
+    "taxpayer_info": {
+      "name": "Alex Rivera",
+      "taxpayer_id": "999-00-5555",
+      "filing_status": "single"
+    },
+    "income_records": [
+      {
+        "employer": "Cloud Services Inc",
+        "amount": 80000,
+        "category": "W-2"
+      },
+      {
+        "employer": "Vertex Corp",
+        "amount": 850,
+        "category": "1099-MISC"
+      },
+      {
+        "employer": "Vertex Corp",
+        "amount": 850,
+        "category": "1099-MISC"
+      },
+      {
+        "employer": "City Bank",
+        "amount": 1200,
+        "category": "1099-INT"
+      }
+    ],
+    "deduction_records": [
+      {
+        "category": "Standard Deduction",
+        "amount": 13850
+      }
+    ],
+    "calculation_summary": {
+      "total_income": 82900,
+      "total_deductions": 13850,
+      "tax_liability": 15191
+    },
+    "verification_flags": [
+      "FLAG_AUR_01: Potential duplicate 1099-MISC entry detected for Payer 'Vertex Corp' (Amount: $850).",
+      "FLAG_AUR_02: Unmatched IR - 1099-NEC from 'Vertex Solutions LLC' found in database for $8,500; no matching entry on return.",
+      "FLAG_AUR_03: Unmatched IR - 1099-INT from 'Alpha Credit Union' found in database for $4,500; no matching entry on return.",
+      "FLAG_AUR_04: IR Match Error - 1099-INT from 'City Bank' ($1,200) incorrectly flagged as underreported; verify reported status.",
+      "NOTE_RECV_2023: Taxpayer Alex Rivera submitted a statement: 'The interest income of $4,500 from Alpha Credit Union is a Nominee Distribution. These funds belong to my dependent mother, Maria Rivera (SSN: 999-11-2222), and she has included this on her own filing.'",
+      "SYSTEM_ALERT: Check for Name Control mismatch between 'Vertex Corp' and 'Vertex Solutions LLC' to determine if these are distinct entities or a naming error."
+    ],
+    "status": "IN_PROGRESS"
+  }
+}

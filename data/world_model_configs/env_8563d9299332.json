@@ -1,0 +1,172 @@
+{
+  "environment_name": "env_8563d9299332",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM) for Mine Ventilation Control.\n- **Core Objective**: Based on the current internal state $s_t$ and the Agent's control action $a_t$, simulate the physical evolution of the mine's ventilation environment (including airflow dynamics, gas concentrations, and power consumption) and predict the observation $o_{{t+1}}$ obtained by the Agent.\n- **Emphasis**: You are a simulator, not an executive controller. You must perform internal state evolution and generate sensor observations based on the physics of mine ventilation, without executing real-world hardware commands.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions between the World Model and the Agent must maintain temporal and physical consistency. Changes in fan speeds or regulator positions must logically result in gradual or immediate changes in airflow and gas concentrations in subsequent steps.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. This JSON must contain the following fields:\n- `\"name\"`: Specifies the name of the action function to execute (e.g., adjust_fan_speed, set_regulator).\n- The remaining fields are the parameter names and corresponding values required by that action function.\n\nExample:\n```json\n{{\n \"name\": \"adjust_fan_speed\",\n \"arguments\": {{\n    \"fan_id\": \"main_extractor_01\",\n    \"rpm\": 1200\n  }}\n}}\n```\n\nYou must correctly parse these JSON inputs and simulate the resulting environmental transition.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nFor invalid parameters (e.g., RPM out of physical bounds), undefined actions, or references to non-existent fan IDs/sensors, return structured error information (e.g., `{{\"error\": \"Fan ID 'fan_99' not found\"}}`). Do not fabricate states or allow the simulation to proceed with impossible parameters.\n\n##### Output Assembly\nFor every action function call, you must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition (the Observation).\n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state $s_t$, the updated state, or hidden variables like global air density or calculated resistance. The Agent must only see the specific return values (e.g., sensor readings) defined in the action function.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to specified JSON formats for all outputs.\n- **Factuality**: Use realistic estimations for gas dilution (CH4, CO) and airflow based on fan laws and fluid dynamics.\n- **Consistency**: Ensure that if power is cut or fans are slowed, gas concentrations rise logically over time.\n- **Realism**: Simulated sensor data should reflect realistic environmental noise and delay where appropriate for the scenario.\n- **Quality**: Responses must be structurally complete and free of conversational filler.\n- **Encapsulation**: Strictly hide the internal state structure. Only expose the \"Observation\" $o_{{t+1}}$ as defined by the action's return schema.\n{{initial_state}}: {{\n  \"fan_states\": {{\n    \"fan_north_primary\": {{\n      \"rpm\": 1350,\n      \"status\": \"running\"\n    }},\n    \"fan_south_auxiliary\": {{\n      \"rpm\": 400,\n      \"status\": \"running\"\n    }}\n  }},\n  \"gas_concentrations\": {{\n    \"zone_deep_production\": {{\n      \"CH4\": 0.08,\n      \"CO\": 2,\n      \"O2\": 20.9\n    }}\n  }},\n  \"airflow_data\": {{\n    \"intake_shaft_collar\": 12.5,\n    \"return_main_total\": 780.0\n  }},\n  \"regulator_positions\": {{\n    \"reg_lvl200_bypass\": 100,\n    \"reg_lvl1600_stope\": 30\n  }},\n  \"total_power_consumption\": 1580.0\n}}\n{{state_descriptions}}: {{\n  \"fan_states\": \"Current operational parameters for all ventilation fans, including speed (RPM) and power status.\",\n  \"gas_concentrations\": \"Current levels of CH4 (%), CO (ppm), and O2 (%) measured at various sensor nodes.\",\n  \"airflow_data\": \"Airflow velocity (m/s) and volumetric flow rate (m3/s) at specific intake and return points.\",\n  \"regulator_positions\": \"The opening percentage (0-100) of ventilation doors and air regulators.\",\n  \"total_power_consumption\": \"Total instantaneous power consumption of the ventilation system in kilowatts (kW).\"\n}}\n{action_set_definitions}: {\n  \"get_system_inventory\": {\n    \"description\": \"Retrieves a list of all ventilation infrastructure components including their IDs, locations, and static specifications (e.g., depth, rated max RPM).\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"category\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"fans\",\n            \"regulators\",\n            \"sensors\"\n          ],\n          \"description\": \"The type of equipment to list.\"\n        }\n      },\n      \"required\": [\n        \"category\"\n      ]\n    },\n    \"example_output\": {\n      \"items\": [\n        {\n          \"id\": \"FAN_01\",\n          \"location\": \"Surface_North\",\n          \"max_rated_rpm\": 1200\n        },\n        {\n          \"id\": \"REG_A\",\n          \"location\": \"Level_1\",\n          \"depth_meters\": 45\n        }\n      ]\n    }\n  },\n  \"get_sensor_readings\": {\n    \"description\": \"Retrieves current real-time data for specific sensor or component IDs, including gas levels, airflow velocities, and operational parameters.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"ids\": {\n          \"type\": \"array\",\n          \"items\": {\n            \"type\": \"string\"\n          },\n          \"description\": \"List of equipment or sensor IDs to query.\"\n        }\n      },\n      \"required\": [\n        \"ids\"\n      ]\n    },\n    \"example_output\": {\n      \"readings\": {\n        \"FAN_01\": {\n          \"rpm\": 1200,\n          \"power_kw\": 480\n        },\n        \"SENSOR_SHAFT_V\": {\n          \"velocity_ms\": 12.5\n        },\n        \"SENSOR_DEEP_CH4\": {\n          \"ch4_percent\": 0.3\n        }\n      }\n    }\n  },\n  \"get_aggregate_metrics\": {\n    \"description\": \"Provides global system metrics including total mine-wide power consumption and total return airflow volume.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"total_power_kw\": 1050,\n      \"total_return_flow_m3s\": 640\n    }\n  },\n  \"adjust_fan_speed\": {\n    \"description\": \"Modifies the RPM of a specific ventilation fan.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"fan_id\": {\n          \"type\": \"string\",\n          \"description\": \"ID of the fan to adjust.\"\n        },\n        \"new_rpm\": {\n          \"type\": \"number\",\n          \"description\": \"The target RPM.\"\n        }\n      },\n      \"required\": [\n        \"fan_id\",\n        \"new_rpm\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"updated\",\n      \"current_rpm\": 1100\n    }\n  },\n  \"adjust_regulator_opening\": {\n    \"description\": \"Changes the opening percentage of a specific ventilation regulator door.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"regulator_id\": {\n          \"type\": \"string\",\n          \"description\": \"ID of the regulator to adjust.\"\n        },\n        \"opening_percentage\": {\n          \"type\": \"number\",\n          \"description\": \"0-100 percentage of the door opening.\"\n        }\n      },\n      \"required\": [\n        \"regulator_id\",\n        \"opening_percentage\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"updated\",\n      \"current_opening\": 45\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_system_inventory",
+      "description": "Retrieves a list of all ventilation infrastructure components including their IDs, locations, and static specifications (e.g., depth, rated max RPM).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "category": {
+            "type": "string",
+            "enum": [
+              "fans",
+              "regulators",
+              "sensors"
+            ],
+            "description": "The type of equipment to list."
+          }
+        },
+        "required": [
+          "category"
+        ]
+      },
+      "example_output": {
+        "items": [
+          {
+            "id": "FAN_01",
+            "location": "Surface_North",
+            "max_rated_rpm": 1200
+          },
+          {
+            "id": "REG_A",
+            "location": "Level_1",
+            "depth_meters": 45
+          }
+        ]
+      }
+    },
+    {
+      "name": "get_sensor_readings",
+      "description": "Retrieves current real-time data for specific sensor or component IDs, including gas levels, airflow velocities, and operational parameters.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "List of equipment or sensor IDs to query."
+          }
+        },
+        "required": [
+          "ids"
+        ]
+      },
+      "example_output": {
+        "readings": {
+          "FAN_01": {
+            "rpm": 1200,
+            "power_kw": 480
+          },
+          "SENSOR_SHAFT_V": {
+            "velocity_ms": 12.5
+          },
+          "SENSOR_DEEP_CH4": {
+            "ch4_percent": 0.3
+          }
+        }
+      }
+    },
+    {
+      "name": "get_aggregate_metrics",
+      "description": "Provides global system metrics including total mine-wide power consumption and total return airflow volume.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "total_power_kw": 1050,
+        "total_return_flow_m3s": 640
+      }
+    },
+    {
+      "name": "adjust_fan_speed",
+      "description": "Modifies the RPM of a specific ventilation fan.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "fan_id": {
+            "type": "string",
+            "description": "ID of the fan to adjust."
+          },
+          "new_rpm": {
+            "type": "number",
+            "description": "The target RPM."
+          }
+        },
+        "required": [
+          "fan_id",
+          "new_rpm"
+        ]
+      },
+      "example_output": {
+        "status": "updated",
+        "current_rpm": 1100
+      }
+    },
+    {
+      "name": "adjust_regulator_opening",
+      "description": "Changes the opening percentage of a specific ventilation regulator door.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "regulator_id": {
+            "type": "string",
+            "description": "ID of the regulator to adjust."
+          },
+          "opening_percentage": {
+            "type": "number",
+            "description": "0-100 percentage of the door opening."
+          }
+        },
+        "required": [
+          "regulator_id",
+          "opening_percentage"
+        ]
+      },
+      "example_output": {
+        "status": "updated",
+        "current_opening": 45
+      }
+    }
+  ],
+  "state_description": {
+    "fan_states": "Current operational parameters for all ventilation fans, including speed (RPM) and power status.",
+    "gas_concentrations": "Current levels of CH4 (%), CO (ppm), and O2 (%) measured at various sensor nodes.",
+    "airflow_data": "Airflow velocity (m/s) and volumetric flow rate (m3/s) at specific intake and return points.",
+    "regulator_positions": "The opening percentage (0-100) of ventilation doors and air regulators.",
+    "total_power_consumption": "Total instantaneous power consumption of the ventilation system in kilowatts (kW)."
+  },
+  "task_initial_state": {
+    "fan_states": {
+      "fan_north_primary": {
+        "rpm": 1350,
+        "status": "running"
+      },
+      "fan_south_auxiliary": {
+        "rpm": 400,
+        "status": "running"
+      }
+    },
+    "gas_concentrations": {
+      "zone_deep_production": {
+        "CH4": 0.08,
+        "CO": 2,
+        "O2": 20.9
+      }
+    },
+    "airflow_data": {
+      "intake_shaft_collar": 12.5,
+      "return_main_total": 780.0
+    },
+    "regulator_positions": {
+      "reg_lvl200_bypass": 100,
+      "reg_lvl1600_stope": 30
+    },
+    "total_power_consumption": 1580.0
+  }
+}

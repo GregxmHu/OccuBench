@@ -1,0 +1,203 @@
+{
+  "environment_name": "env_f79942a223bc",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: Based on the current internal state $s_t$ and the action $a_t$ provided by the Agent, simulate the internal environment changes of the Search and Rescue Mission and predict the observation $o_{{t+1}}$ obtained by the Agent.\n- **Emphasis**: You are a simulator. You do not execute real-world rescue operations; you calculate the evolution of the mission environment (e.g., fuel consumption, movement, survivor health changes, weather shifts) and generate the resulting sensor data or reports for the Agent.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions between the World Model and the Agent must maintain rigorous context consistency. Every action must build upon the state resulting from the previous action. If a rescue unit moves, its position must persist in the state for subsequent steps.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. This JSON must contain the following fields:\n- `\"name\"`: Specifies the name of the action function to execute (e.g., `deploy_unit`, `scout_area`, `extract_survivor`).\n- The remaining fields are the parameter names and corresponding values required by that action function.\n\nExample:\n```json\n{{\n \"name\": \"move_unit\",\n \"arguments\": {{\n    \"unit_id\": \"DRONE_01\",\n    \"destination\": [45.5, -122.6]\n  }}\n}}\n```\n\nYou must correctly parse these JSON inputs and simulate the execution results based on the logic of a search and rescue operation.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nFor invalid parameters (e.g., moving a unit that doesn't exist), undefined actions, state conflicts (e.g., landing in a hazard zone), or empty inputs, return structured error information (e.g., `{{\"error\": \"Unit 'XYZ' has insufficient fuel for this distance\"}}`), and do not fabricate states or fictitious successful responses.\n\n##### Output Assembly\nFor every action function call, you must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition.\n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, `new_state`, or any hidden variables. You maintain the state internally. The Agent must only see the specific return values (the Observation) defined in the action. Do not output the state update process.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to specified JSON and text formats.\n- **Factuality**: Do not fabricate non-existent functions or mission assets.\n- **Consistency**: The mission timeline, survivor health decay, and resource consumption must be self-consistent.\n- **Realism**: Simulated behaviors (e.g., flight time, medical urgency, weather impact on visibility) must align with the physics and logistics of a rescue scenario.\n- **Quality**: Language must be clear and technical, reflecting a mission coordination center.\n- **Encapsulation**: Strictly hide the internal state structure from the output. Only expose information returned by the action function.\n{{initial_state}}: {{\n  \"mission_metadata\": {{\n    \"mission_id\": \"MARSAR-909-DELTA\",\n    \"elapsed_time_minutes\": 28\n  }},\n  \"weather_conditions\": {{\n    \"visibility\": \"Variable Fog\",\n    \"wind_speed_kph\": 35\n  }},\n  \"active_units\": [\n    {{\n      \"unit_id\": \"UNIT_H65_DOLPHIN\",\n      \"type\": \"Rotary-Wing\",\n      \"coordinates\": [\n        46.21,\n        -123.98\n      ],\n      \"fuel_level\": 38,\n      \"status\": \"idle\"\n    }},\n    {{\n      \"unit_id\": \"UNIT_RHIB_VALIANT\",\n      \"type\": \"Surface-Craft\",\n      \"coordinates\": [\n        46.185,\n        -123.96\n      ],\n      \"fuel_level\": 82,\n      \"status\": \"moving\"\n    }}\n  ],\n  \"survivors\": [\n    {{\n      \"survivor_id\": \"PIW_ALPHA\",\n      \"coordinates\": [\n        46.235,\n        -124.11\n      ],\n      \"health_score\": 74,\n      \"discovered\": false\n    }},\n    {{\n      \"survivor_id\": \"PIW_BRAVO\",\n      \"coordinates\": [\n        46.265,\n        -124.18\n      ],\n      \"health_score\": 19,\n      \"discovered\": false\n    }}\n  ],\n  \"resource_inventory\": {{\n    \"medical_kits\": 5,\n    \"rations\": 10\n  }}\n}}\n{{state_descriptions}}: {{\n  \"mission_metadata\": \"General information about the mission\",\n  \"weather_conditions\": \"Current environmental factors affecting operations\",\n  \"active_units\": \"List of rescue units (Ground, Air, Medical) currently deployed\",\n  \"survivors\": \"Information on known or suspected survivor locations and status\",\n  \"resource_inventory\": \"Global resources available for the mission\"\n}}\n{action_set_definitions}: {\n  \"get_mission_environment\": {\n    \"description\": \"Retrieves the overall mission metadata, environmental conditions (weather, drift, water temp), and available resource inventory.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"weather\": {\n        \"surface_drift\": \"4.5 knots\",\n        \"water_temp\": \"48F\",\n        \"visibility\": \"Low\"\n      },\n      \"resources\": [\n        \"Trauma Center Alpha\",\n        \"Air Base Zulu\"\n      ]\n    }\n  },\n  \"get_survivor_status\": {\n    \"description\": \"Retrieves detailed physiological data and locations for specific survivors.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"survivor_ids\": {\n          \"type\": \"array\",\n          \"items\": {\n            \"type\": \"string\"\n          },\n          \"description\": \"List of survivor names or IDs to check (e.g., ['Alpha', 'Bravo']).\"\n        }\n      },\n      \"required\": [\n        \"survivor_ids\"\n      ]\n    },\n    \"example_output\": {\n      \"Alpha\": {\n        \"core_temp\": \"32C\",\n        \"heart_rate\": \"45 bpm\",\n        \"status\": \"Critical/Unconscious\",\n        \"location\": [\n          46.2,\n          -123.9\n        ]\n      }\n    }\n  },\n  \"get_unit_readiness\": {\n    \"description\": \"Checks the current location, fuel levels, and operational status of all active rescue units.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"active_units\": [\n        {\n          \"unit_id\": \"HELO_01\",\n          \"type\": \"Air\",\n          \"fuel_percent\": 45,\n          \"position\": [\n            46.1,\n            -124.0\n          ]\n        }\n      ]\n    }\n  },\n  \"execute_rescue_extraction\": {\n    \"description\": \"Executes the physical extraction of a survivor using a specific protocol.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"unit_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the rescue unit performing the lift.\"\n        },\n        \"survivor_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the survivor to be extracted.\"\n        },\n        \"protocol\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"standard_vertical_hoist\",\n            \"horizontal_lift_als\"\n          ],\n          \"description\": \"The specific extraction method. Use 'horizontal_lift_als' for critical/hypothermic victims to prevent circum-rescue collapse.\"\n        }\n      },\n      \"required\": [\n        \"unit_id\",\n        \"survivor_id\",\n        \"protocol\"\n      ]\n    },\n    \"example_output\": {\n      \"success\": true,\n      \"extraction_time\": \"14:05 UTC\"\n    }\n  },\n  \"transport_to_medical_facility\": {\n    \"description\": \"Directs a rescue unit to transport a survivor to a trauma center or medical facility.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"unit_id\": {\n          \"type\": \"string\"\n        },\n        \"survivor_id\": {\n          \"type\": \"string\"\n        },\n        \"destination_id\": {\n          \"type\": \"string\",\n          \"description\": \"The name or ID of the medical facility (retrieved from resource inventory).\"\n        }\n      },\n      \"required\": [\n        \"unit_id\",\n        \"survivor_id\",\n        \"destination_id\"\n      ]\n    },\n    \"example_output\": {\n      \"eta\": \"12 minutes\",\n      \"fuel_remaining_at_arrival\": 15\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_mission_environment",
+      "description": "Retrieves the overall mission metadata, environmental conditions (weather, drift, water temp), and available resource inventory.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "weather": {
+          "surface_drift": "4.5 knots",
+          "water_temp": "48F",
+          "visibility": "Low"
+        },
+        "resources": [
+          "Trauma Center Alpha",
+          "Air Base Zulu"
+        ]
+      }
+    },
+    {
+      "name": "get_survivor_status",
+      "description": "Retrieves detailed physiological data and locations for specific survivors.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "survivor_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "List of survivor names or IDs to check (e.g., ['Alpha', 'Bravo'])."
+          }
+        },
+        "required": [
+          "survivor_ids"
+        ]
+      },
+      "example_output": {
+        "Alpha": {
+          "core_temp": "32C",
+          "heart_rate": "45 bpm",
+          "status": "Critical/Unconscious",
+          "location": [
+            46.2,
+            -123.9
+          ]
+        }
+      }
+    },
+    {
+      "name": "get_unit_readiness",
+      "description": "Checks the current location, fuel levels, and operational status of all active rescue units.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "active_units": [
+          {
+            "unit_id": "HELO_01",
+            "type": "Air",
+            "fuel_percent": 45,
+            "position": [
+              46.1,
+              -124.0
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "execute_rescue_extraction",
+      "description": "Executes the physical extraction of a survivor using a specific protocol.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "unit_id": {
+            "type": "string",
+            "description": "The ID of the rescue unit performing the lift."
+          },
+          "survivor_id": {
+            "type": "string",
+            "description": "The ID of the survivor to be extracted."
+          },
+          "protocol": {
+            "type": "string",
+            "enum": [
+              "standard_vertical_hoist",
+              "horizontal_lift_als"
+            ],
+            "description": "The specific extraction method. Use 'horizontal_lift_als' for critical/hypothermic victims to prevent circum-rescue collapse."
+          }
+        },
+        "required": [
+          "unit_id",
+          "survivor_id",
+          "protocol"
+        ]
+      },
+      "example_output": {
+        "success": true,
+        "extraction_time": "14:05 UTC"
+      }
+    },
+    {
+      "name": "transport_to_medical_facility",
+      "description": "Directs a rescue unit to transport a survivor to a trauma center or medical facility.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "unit_id": {
+            "type": "string"
+          },
+          "survivor_id": {
+            "type": "string"
+          },
+          "destination_id": {
+            "type": "string",
+            "description": "The name or ID of the medical facility (retrieved from resource inventory)."
+          }
+        },
+        "required": [
+          "unit_id",
+          "survivor_id",
+          "destination_id"
+        ]
+      },
+      "example_output": {
+        "eta": "12 minutes",
+        "fuel_remaining_at_arrival": 15
+      }
+    }
+  ],
+  "state_description": {
+    "mission_metadata": "General information about the mission",
+    "weather_conditions": "Current environmental factors affecting operations",
+    "active_units": "List of rescue units (Ground, Air, Medical) currently deployed",
+    "survivors": "Information on known or suspected survivor locations and status",
+    "resource_inventory": "Global resources available for the mission"
+  },
+  "task_initial_state": {
+    "mission_metadata": {
+      "mission_id": "MARSAR-909-DELTA",
+      "elapsed_time_minutes": 28
+    },
+    "weather_conditions": {
+      "visibility": "Variable Fog",
+      "wind_speed_kph": 35
+    },
+    "active_units": [
+      {
+        "unit_id": "UNIT_H65_DOLPHIN",
+        "type": "Rotary-Wing",
+        "coordinates": [
+          46.21,
+          -123.98
+        ],
+        "fuel_level": 38,
+        "status": "idle"
+      },
+      {
+        "unit_id": "UNIT_RHIB_VALIANT",
+        "type": "Surface-Craft",
+        "coordinates": [
+          46.185,
+          -123.96
+        ],
+        "fuel_level": 82,
+        "status": "moving"
+      }
+    ],
+    "survivors": [
+      {
+        "survivor_id": "PIW_ALPHA",
+        "coordinates": [
+          46.235,
+          -124.11
+        ],
+        "health_score": 74,
+        "discovered": false
+      },
+      {
+        "survivor_id": "PIW_BRAVO",
+        "coordinates": [
+          46.265,
+          -124.18
+        ],
+        "health_score": 19,
+        "discovered": false
+      }
+    ],
+    "resource_inventory": {
+      "medical_kits": 5,
+      "rations": 10
+    }
+  }
+}

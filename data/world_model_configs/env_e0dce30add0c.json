@@ -1,0 +1,173 @@
+{
+  "environment_name": "env_e0dce30add0c",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM) for Satellite Orbit Correction Planning.\n- **Core Objective**: Based on the current internal state $s_t$ and the action $a_t$ executed by the Agent, you simulate the physical and operational evolution of the satellite environment and predict the resulting observation $o_{{t+1}}$ for the Agent.\n- **Emphasis**: You are a simulator, not an executor of real hardware. Your task is internal state transition and observation generation based on orbital mechanics logic and satellite systems constraints.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nYou must maintain strict temporal and logical consistency throughout the interaction. Every action taken by the Agent must build upon the state resulting from the previous action. Changes in altitude, velocity, fuel reserves, and power levels must be tracked internally and reflected accurately in subsequent responses.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. You must parse this JSON to identify the action name and its parameters.\nExample input:\n```json\n{{\n \"name\": \"execute_thruster_burn\",\n \"arguments\": {{\n    \"direction\": \"prograde\",\n    \"duration_seconds\": 15.5\n  }}\n}}\n```\nYou must simulate the physical consequences of such actions (e.g., a prograde burn increases orbital altitude and consumes a specific amount of fuel based on duration).\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\n- If an action requires more fuel than available, return an error: `{{\"error\": \"Insufficient fuel for maneuver\"}}`.\n- If an action is called that is not defined in the action set, return: `{{\"error\": \"Action 'name' not recognized\"}}`.\n- If parameters are out of physical bounds (e.g., negative duration), return an error.\n- Do not fabricate satellite data; if a sensor is \"offline\" in the state, return a failure observation for that sensor.\n\n##### Output Assembly\nFor every action function call, you must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition.\n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, the `new_state`, or any hidden variables like the specific remaining fuel mass unless the action specifically requests a telemetry report. State maintenance is handled internally by you. The Agent must only see the specific Observation returned by the action.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to specified JSON formats for all outputs.\n- **Factuality**: Base the simulation on reasonable orbital mechanics and satellite engineering principles.\n- **Consistency**: Ensure that a sequence of maneuvers results in a mathematically and logically sound state (e.g., altitude cannot increase without a corresponding velocity change or fuel consumption).\n- **Realism**: Account for system lag, power consumption for sensors, and the vacuum environment.\n- **Quality**: Provide clear, unambiguous observations.\n- **Encapsulation**: Strictly hide the internal state structure. Only expose information that is explicitly defined as the return value of the executed action.\n{{initial_state}}: {{\n  \"satellite_id\": \"SAT-SSO-MLT-B\",\n  \"orbit_altitude_km\": 402.5,\n  \"orbital_velocity_kms\": 7.67,\n  \"fuel_level_kg\": 150.0,\n  \"battery_charge_percent\": 98.2,\n  \"attitude_status\": \"locked_standby\",\n  \"last_maneuver_timestamp\": \"2025-10-27T10:00:00Z\"\n}}\n{{state_descriptions}}: {{\n  \"satellite_id\": \"Unique identifier for the satellite being managed.\",\n  \"orbit_altitude_km\": \"Current altitude above the mean sea level in kilometers.\",\n  \"orbital_velocity_kms\": \"Current tangential velocity in kilometers per second.\",\n  \"fuel_level_kg\": \"Remaining propellant mass in kilograms.\",\n  \"battery_charge_percent\": \"Current energy storage level as a percentage of total capacity.\",\n  \"attitude_status\": \"Current orientation stability (e.g., 'stable', 'drifting', 'tumbling').\",\n  \"last_maneuver_timestamp\": \"ISO 8601 timestamp of the last executed orbital correction.\"\n}}\n{action_set_definitions}: {\n  \"get_satellite_telemetry\": {\n    \"description\": \"Retrieves the current orbital and system status of a specific satellite, including fuel levels, battery status, and altitude.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"satellite_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier of the satellite (e.g., 'SAT-SSO-MLT-B').\"\n        }\n      },\n      \"required\": [\n        \"satellite_id\"\n      ]\n    },\n    \"example_output\": {\n      \"fuel_level_kg\": 45.5,\n      \"battery_charge_percent\": 82.0,\n      \"orbit_altitude_km\": 550.2,\n      \"attitude_status\": \"stable\"\n    }\n  },\n  \"get_drift_rate\": {\n    \"description\": \"Measures the current Mean Local Time (MLT) drift rate of the satellite.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"satellite_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier of the satellite.\"\n        }\n      },\n      \"required\": [\n        \"satellite_id\"\n      ]\n    },\n    \"example_output\": {\n      \"drift_rate_s_per_day\": -3.2,\n      \"measurement_timestamp\": \"2023-10-27T10:00:00Z\"\n    }\n  },\n  \"calculate_maneuver_requirements\": {\n    \"description\": \"Calculates the required change in inclination (delta-i) to achieve a target drift rate and estimates propellant consumption.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"current_drift_rate\": {\n          \"type\": \"number\",\n          \"description\": \"The measured drift rate in seconds per day.\"\n        },\n        \"target_drift_rate_min\": {\n          \"type\": \"number\",\n          \"description\": \"The minimum desired positive drift rate.\"\n        }\n      },\n      \"required\": [\n        \"current_drift_rate\",\n        \"target_drift_rate_min\"\n      ]\n    },\n    \"example_output\": {\n      \"required_inclination_delta_deg\": 0.05,\n      \"estimated_fuel_usage_kg\": 12.4\n    }\n  },\n  \"request_fds_ca_clearance\": {\n    \"description\": \"Submits the proposed trajectory change to the Flight Dynamics System (FDS) for Conjunction Assessment (CA) clearance. Returns a clearance token if the path is safe.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"satellite_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier of the satellite.\"\n        },\n        \"inclination_delta\": {\n          \"type\": \"number\",\n          \"description\": \"The planned change in orbital inclination in degrees.\"\n        }\n      },\n      \"required\": [\n        \"satellite_id\",\n        \"inclination_delta\"\n      ]\n    },\n    \"example_output\": {\n      \"clearance_id\": \"CA-99283-B\",\n      \"status\": \"cleared\",\n      \"expires_at\": \"2023-10-28T00:00:00Z\"\n    }\n  },\n  \"execute_inclination_correction\": {\n    \"description\": \"Unlocks thrusters and executes the orbital burn to change inclination. Requires a valid CA clearance token.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"satellite_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier of the satellite.\"\n        },\n        \"inclination_delta\": {\n          \"type\": \"number\",\n          \"description\": \"The degrees of inclination change to apply.\"\n        },\n        \"clearance_id\": {\n          \"type\": \"string\",\n          \"description\": \"The valid CA clearance token provided by FDS.\"\n        }\n      },\n      \"required\": [\n        \"satellite_id\",\n        \"inclination_delta\",\n        \"clearance_id\"\n      ]\n    },\n    \"example_output\": {\n      \"execution_status\": \"success\",\n      \"final_fuel_level\": 33.1,\n      \"final_battery_level\": 74.5\n    }\n  },\n  \"wait_for_recharge\": {\n    \"description\": \"Suspends activities to allow the solar panels to charge the battery to a specific target percentage.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"satellite_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier of the satellite.\"\n        },\n        \"target_percent\": {\n          \"type\": \"number\",\n          \"description\": \"The battery percentage level to reach before resuming.\"\n        }\n      },\n      \"required\": [\n        \"satellite_id\",\n        \"target_percent\"\n      ]\n    },\n    \"example_output\": {\n      \"current_charge\": 75.0,\n      \"status\": \"ready\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_satellite_telemetry",
+      "description": "Retrieves the current orbital and system status of a specific satellite, including fuel levels, battery status, and altitude.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "satellite_id": {
+            "type": "string",
+            "description": "The unique identifier of the satellite (e.g., 'SAT-SSO-MLT-B')."
+          }
+        },
+        "required": [
+          "satellite_id"
+        ]
+      },
+      "example_output": {
+        "fuel_level_kg": 45.5,
+        "battery_charge_percent": 82.0,
+        "orbit_altitude_km": 550.2,
+        "attitude_status": "stable"
+      }
+    },
+    {
+      "name": "get_drift_rate",
+      "description": "Measures the current Mean Local Time (MLT) drift rate of the satellite.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "satellite_id": {
+            "type": "string",
+            "description": "The unique identifier of the satellite."
+          }
+        },
+        "required": [
+          "satellite_id"
+        ]
+      },
+      "example_output": {
+        "drift_rate_s_per_day": -3.2,
+        "measurement_timestamp": "2023-10-27T10:00:00Z"
+      }
+    },
+    {
+      "name": "calculate_maneuver_requirements",
+      "description": "Calculates the required change in inclination (delta-i) to achieve a target drift rate and estimates propellant consumption.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "current_drift_rate": {
+            "type": "number",
+            "description": "The measured drift rate in seconds per day."
+          },
+          "target_drift_rate_min": {
+            "type": "number",
+            "description": "The minimum desired positive drift rate."
+          }
+        },
+        "required": [
+          "current_drift_rate",
+          "target_drift_rate_min"
+        ]
+      },
+      "example_output": {
+        "required_inclination_delta_deg": 0.05,
+        "estimated_fuel_usage_kg": 12.4
+      }
+    },
+    {
+      "name": "request_fds_ca_clearance",
+      "description": "Submits the proposed trajectory change to the Flight Dynamics System (FDS) for Conjunction Assessment (CA) clearance. Returns a clearance token if the path is safe.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "satellite_id": {
+            "type": "string",
+            "description": "The unique identifier of the satellite."
+          },
+          "inclination_delta": {
+            "type": "number",
+            "description": "The planned change in orbital inclination in degrees."
+          }
+        },
+        "required": [
+          "satellite_id",
+          "inclination_delta"
+        ]
+      },
+      "example_output": {
+        "clearance_id": "CA-99283-B",
+        "status": "cleared",
+        "expires_at": "2023-10-28T00:00:00Z"
+      }
+    },
+    {
+      "name": "execute_inclination_correction",
+      "description": "Unlocks thrusters and executes the orbital burn to change inclination. Requires a valid CA clearance token.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "satellite_id": {
+            "type": "string",
+            "description": "The unique identifier of the satellite."
+          },
+          "inclination_delta": {
+            "type": "number",
+            "description": "The degrees of inclination change to apply."
+          },
+          "clearance_id": {
+            "type": "string",
+            "description": "The valid CA clearance token provided by FDS."
+          }
+        },
+        "required": [
+          "satellite_id",
+          "inclination_delta",
+          "clearance_id"
+        ]
+      },
+      "example_output": {
+        "execution_status": "success",
+        "final_fuel_level": 33.1,
+        "final_battery_level": 74.5
+      }
+    },
+    {
+      "name": "wait_for_recharge",
+      "description": "Suspends activities to allow the solar panels to charge the battery to a specific target percentage.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "satellite_id": {
+            "type": "string",
+            "description": "The unique identifier of the satellite."
+          },
+          "target_percent": {
+            "type": "number",
+            "description": "The battery percentage level to reach before resuming."
+          }
+        },
+        "required": [
+          "satellite_id",
+          "target_percent"
+        ]
+      },
+      "example_output": {
+        "current_charge": 75.0,
+        "status": "ready"
+      }
+    }
+  ],
+  "state_description": {
+    "satellite_id": "Unique identifier for the satellite being managed.",
+    "orbit_altitude_km": "Current altitude above the mean sea level in kilometers.",
+    "orbital_velocity_kms": "Current tangential velocity in kilometers per second.",
+    "fuel_level_kg": "Remaining propellant mass in kilograms.",
+    "battery_charge_percent": "Current energy storage level as a percentage of total capacity.",
+    "attitude_status": "Current orientation stability (e.g., 'stable', 'drifting', 'tumbling').",
+    "last_maneuver_timestamp": "ISO 8601 timestamp of the last executed orbital correction."
+  },
+  "task_initial_state": {
+    "satellite_id": "SAT-SSO-MLT-B",
+    "orbit_altitude_km": 402.5,
+    "orbital_velocity_kms": 7.67,
+    "fuel_level_kg": 150.0,
+    "battery_charge_percent": 98.2,
+    "attitude_status": "locked_standby",
+    "last_maneuver_timestamp": "2025-10-27T10:00:00Z"
+  }
+}

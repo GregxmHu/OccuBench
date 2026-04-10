@@ -1,0 +1,131 @@
+{
+  "environment_name": "env_4b5348d3182d",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: You act as the internal engine for a Game Strategy Simulation. Based on the current internal state $s_t$ and the action $a_t$ submitted by the Agent, you must simulate the evolution of the game environment and predict the resulting observation $o_{{t+1}}$ for the Agent.\n- **Emphasis**: You are a simulator, not a player. You do not make decisions for the Agent; you only calculate and describe the consequences of the Agent's actions within the game's logic.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nYou must maintain perfect temporal consistency. Every action results in a state transition that persists into the next turn. All environmental changes (e.g., health depletion, inventory changes, NPC movements) must be tracked internally and reflected in subsequent observations.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the game world by calling defined action functions. The available actions are defined below:\n```json\n{{action_set_definitions}}\n```\nThe `observation` returned for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests as structured JSON objects. You must parse the following format:\n- `\"name\"`: The name of the game action function to execute.\n- Parameters: Specific arguments required by the function.\n\nExample input:\n```json\n{{\n \"name\": \"attack_enemy\",\n \"arguments\": {{\n    \"enemy_id\": \"goblin_001\",\n    \"weapon\": \"iron_sword\"\n  }}\n}}\n```\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nIf the Agent attempts an invalid move (e.g., using an item they don't have, attacking a dead target, or providing malformed JSON), you must return a structured error message. Example: `{{\"error\": \"Insufficient MP to cast Fireball\"}}`. Do not proceed with the state transition or fabricate successful outcomes for failed actions.\n\n##### Output Assembly\nFor every action executed, you must return a structured JSON object containing **ONLY** the return fields specified in the action definition. \n\n**CRITICAL CONSTRAINT**: You must strictly hide the internal state structure. Your output must **NOT** contain the full state object or the updated variables unless they are explicitly defined as part of the action's observation return value. The Agent only sees the result of the action (the Observation), not the underlying database update.\n\n### 4. Key Principles\n- **Format**: Strictly JSON-only responses for observations and errors.\n- **Factuality**: Use the provided state and action definitions; do not invent game mechanics or items.\n- **Consistency**: If a player loses health in turn $T$, that health must remain lost in turn $T+1$ unless a healing action occurs.\n- **Realism**: Simulation must align with standard RPG/Strategy logic (e.g., distance requirements, resource costs).\n- **Encapsulation**: Never reveal the full `s_t` block to the Agent.\n{{initial_state}}: {{\n  \"player_stats\": {{\n    \"hp\": 85,\n    \"max_hp\": 100,\n    \"mp\": 40,\n    \"level\": 1\n  }},\n  \"inventory\": [\n    {{\n      \"item_id\": \"heavy_leather_ball_1974\",\n      \"quantity\": 1\n    }},\n    {{\n      \"item_id\": \"tactical_manual_fluidity\",\n      \"quantity\": 1\n    }}\n  ],\n  \"current_location\": \"pitch_midfield_zone\",\n  \"active_entities\": [\n    {{\n      \"entity_id\": \"west_german_libero_beckenbauer\",\n      \"hp\": 90,\n      \"hostile\": true\n    }},\n    {{\n      \"entity_id\": \"marking_defender_vogts\",\n      \"hp\": 88,\n      \"hostile\": true\n    }}\n  ],\n  \"quest_log\": {{\n    \"active_quest_id\": \"hmr_1974_total_football\",\n    \"progress_count\": 0\n  }}\n}}\n{{state_descriptions}}: {{\n  \"player_stats\": \"The current attributes of the player character.\",\n  \"inventory\": \"List of items currently held by the player.\",\n  \"current_location\": \"The unique identifier of the map or zone the player is in.\",\n  \"active_entities\": \"Nearby NPCs or enemies and their current status.\",\n  \"quest_log\": \"Progress tracking for active tasks.\"\n}}\n{action_set_definitions}: {\n  \"observe_status\": {\n    \"description\": \"Retrieves the current player attributes and location on the pitch.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"stamina\": 75,\n      \"tactical_focus\": 60,\n      \"current_zone\": \"midfield\"\n    }\n  },\n  \"check_tactical_progress\": {\n    \"description\": \"Checks the quest log for the current Tactical Fidelity count and the zone where the last tactical play occurred.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"fidelity_count\": 2,\n      \"last_play_zone\": \"midfield\"\n    }\n  },\n  \"execute_tactical_play\": {\n    \"description\": \"Performs a tactical play in the specified zone. Increases Tactical Fidelity count. Consumes stamina and focus.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"zone_id\": {\n          \"type\": \"string\",\n          \"description\": \"The zone where the play is performed.\"\n        }\n      },\n      \"required\": [\n        \"zone_id\"\n      ]\n    },\n    \"example_output\": {\n      \"success\": true,\n      \"new_fidelity\": 3\n    }\n  },\n  \"perform_positional_rotation\": {\n    \"description\": \"Executes a rotation action to satisfy the era's tactical constraints, allowing a consecutive play in the same zone. Consumes focus.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"success\": true,\n      \"rotation_complete\": true\n    }\n  },\n  \"recover_resources\": {\n    \"description\": \"Replenishes a specific resource (stamina or tactical_focus) to avoid simulation failure.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"resource_type\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"stamina\",\n            \"tactical_focus\"\n          ],\n          \"description\": \"The resource to recover.\"\n        }\n      },\n      \"required\": [\n        \"resource_type\"\n      ]\n    },\n    \"example_output\": {\n      \"recovered_value\": 100\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "observe_status",
+      "description": "Retrieves the current player attributes and location on the pitch.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "stamina": 75,
+        "tactical_focus": 60,
+        "current_zone": "midfield"
+      }
+    },
+    {
+      "name": "check_tactical_progress",
+      "description": "Checks the quest log for the current Tactical Fidelity count and the zone where the last tactical play occurred.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "fidelity_count": 2,
+        "last_play_zone": "midfield"
+      }
+    },
+    {
+      "name": "execute_tactical_play",
+      "description": "Performs a tactical play in the specified zone. Increases Tactical Fidelity count. Consumes stamina and focus.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "zone_id": {
+            "type": "string",
+            "description": "The zone where the play is performed."
+          }
+        },
+        "required": [
+          "zone_id"
+        ]
+      },
+      "example_output": {
+        "success": true,
+        "new_fidelity": 3
+      }
+    },
+    {
+      "name": "perform_positional_rotation",
+      "description": "Executes a rotation action to satisfy the era's tactical constraints, allowing a consecutive play in the same zone. Consumes focus.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "success": true,
+        "rotation_complete": true
+      }
+    },
+    {
+      "name": "recover_resources",
+      "description": "Replenishes a specific resource (stamina or tactical_focus) to avoid simulation failure.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "resource_type": {
+            "type": "string",
+            "enum": [
+              "stamina",
+              "tactical_focus"
+            ],
+            "description": "The resource to recover."
+          }
+        },
+        "required": [
+          "resource_type"
+        ]
+      },
+      "example_output": {
+        "recovered_value": 100
+      }
+    }
+  ],
+  "state_description": {
+    "player_stats": "The current attributes of the player character.",
+    "inventory": "List of items currently held by the player.",
+    "current_location": "The unique identifier of the map or zone the player is in.",
+    "active_entities": "Nearby NPCs or enemies and their current status.",
+    "quest_log": "Progress tracking for active tasks."
+  },
+  "task_initial_state": {
+    "player_stats": {
+      "hp": 85,
+      "max_hp": 100,
+      "mp": 40,
+      "level": 1
+    },
+    "inventory": [
+      {
+        "item_id": "heavy_leather_ball_1974",
+        "quantity": 1
+      },
+      {
+        "item_id": "tactical_manual_fluidity",
+        "quantity": 1
+      }
+    ],
+    "current_location": "pitch_midfield_zone",
+    "active_entities": [
+      {
+        "entity_id": "west_german_libero_beckenbauer",
+        "hp": 90,
+        "hostile": true
+      },
+      {
+        "entity_id": "marking_defender_vogts",
+        "hp": 88,
+        "hostile": true
+      }
+    ],
+    "quest_log": {
+      "active_quest_id": "hmr_1974_total_football",
+      "progress_count": 0
+    }
+  }
+}

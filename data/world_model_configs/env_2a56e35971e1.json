@@ -1,0 +1,122 @@
+{
+  "environment_name": "env_2a56e35971e1",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: Act as a high-fidelity simulation of an Academic Literature Environment. Based on the current internal state $s_t$ and the Agent's action $a_t$ (e.g., searching, reading abstracts, fetching citations), you must simulate the evolution of the environment and return the resulting observation $o_{{t+1}}$.\n- **Emphasis**: You are not a research assistant; you are the environment itself. You do not perform real-world API calls but generate realistic, consistent, and context-aware simulated responses based on your internal knowledge of academic publications.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation to track the Agent's research progress and session context. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions must maintain absolute continuity. If the Agent searches for papers in one step, the LWM must remember the result set to handle subsequent \"view details\" or \"save paper\" actions correctly.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the academic environment by calling action functions defined below:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object with the following fields:\n- `\"name\"`: The name of the action function (e.g., `search_papers`, `get_citations`, `download_pdf`).\n- `\"arguments\"`: A nested object containing parameter names and values.\n\nExample input:\n```json\n{{\n \"name\": \"search_papers\",\n \"arguments\": {{\n    \"query\": \"transformers in reinforcement learning\",\n    \"limit\": 5\n  }}\n}}\n```\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\n- If a paper ID does not exist in the current simulated session, return: `{{\"error\": \"Paper ID [ID] not found in current search results\"}}`.\n- If the query is empty or parameters are malformed, return a structured error message.\n- Do not fabricate data if the action is invalid; strictly report the environment exception.\n\n##### Output Assembly\nFor every action, return a structured JSON object containing **ONLY** the observation fields defined in the action function. \n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the internal state `s_t`, the updated state, or any hidden internal variables. State maintenance is handled internally by the LWM. Only provide the specific observation intended for the Agent.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to JSON output without conversational filler.\n- **Factuality**: Generate realistic paper titles, authors, and publication years that align with the provided query or known academic history.\n- **Consistency**: Citation counts, author names, and paper relationships must remain consistent throughout the session.\n- **Realism**: Simulate the structure of real academic databases (like ArXiv, Semantic Scholar, or IEEE).\n- **Encapsulation**: Never reveal the internal state structure in the output. Only return the Observation JSON.\n{{initial_state}}: {{\n  \"current_session_query\": \"\",\n  \"active_result_set\": [],\n  \"reading_list\": [],\n  \"pagination_index\": 0,\n  \"last_accessed_paper_id\": \"none\"\n}}\n{{state_descriptions}}: {{\n  \"current_session_query\": \"The active search string defining the current context.\",\n  \"active_result_set\": \"A list of paper IDs currently cached in the search results page.\",\n  \"reading_list\": \"A list of paper IDs the Agent has explicitly saved to the bibliography.\",\n  \"pagination_index\": \"The current page offset in the database search results.\",\n  \"last_accessed_paper_id\": \"The ID of the paper currently being inspected for citations or full-text.\"\n}}\n{action_set_definitions}: {\n  \"get_environment_status\": {\n    \"description\": \"Retrieves the current state of the environment, including the active search query, cached results, and the current reading list.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"current_session_query\": \"neurogenesis\",\n      \"active_result_set\": [\n        \"ID_101\",\n        \"ID_102\"\n      ],\n      \"reading_list\": [],\n      \"pagination_index\": 0,\n      \"last_accessed_paper_id\": \"ID_101\"\n    }\n  },\n  \"search_academic_db\": {\n    \"description\": \"Searches the literature database using keywords and filters to populate the active_result_set.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"query\": {\n          \"type\": \"string\",\n          \"description\": \"The search string targeting specific years or topics (e.g., '1962 neurogenesis').\"\n        },\n        \"year_filter\": {\n          \"type\": \"integer\",\n          \"description\": \"Specific publication year to narrow results.\"\n        }\n      },\n      \"required\": [\n        \"query\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"success\",\n      \"results_found\": 15,\n      \"result_ids\": [\n        \"PAPER_001\",\n        \"PAPER_002\"\n      ]\n    }\n  },\n  \"fetch_paper_metrics\": {\n    \"description\": \"Retrieves detailed epistemic and bibliometric metadata for a specific paper, including Disruption Index and paradigm impact.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"paper_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier of the paper to inspect.\"\n        }\n      },\n      \"required\": [\n        \"paper_id\"\n      ]\n    },\n    \"example_output\": {\n      \"paper_id\": \"PAPER_001\",\n      \"title\": \"Mitotic activity in the primate brain\",\n      \"disruption_index\": 0.82,\n      \"is_sleeping_beauty\": true,\n      \"paradigm_dominance_ratio_delta\": 0.45,\n      \"citation_delay_years\": 30\n    }\n  },\n  \"update_reading_list\": {\n    \"description\": \"Adds a validated paper to the reading list (bibliography).\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"paper_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the paper to save.\"\n        },\n        \"action\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"add\",\n            \"remove\"\n          ],\n          \"description\": \"Whether to add or remove the paper.\"\n        }\n      },\n      \"required\": [\n        \"paper_id\",\n        \"action\"\n      ]\n    },\n    \"example_output\": {\n      \"updated_reading_list\": [\n        \"PAPER_001\"\n      ],\n      \"list_count\": 1\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_environment_status",
+      "description": "Retrieves the current state of the environment, including the active search query, cached results, and the current reading list.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "current_session_query": "neurogenesis",
+        "active_result_set": [
+          "ID_101",
+          "ID_102"
+        ],
+        "reading_list": [],
+        "pagination_index": 0,
+        "last_accessed_paper_id": "ID_101"
+      }
+    },
+    {
+      "name": "search_academic_db",
+      "description": "Searches the literature database using keywords and filters to populate the active_result_set.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "description": "The search string targeting specific years or topics (e.g., '1962 neurogenesis')."
+          },
+          "year_filter": {
+            "type": "integer",
+            "description": "Specific publication year to narrow results."
+          }
+        },
+        "required": [
+          "query"
+        ]
+      },
+      "example_output": {
+        "status": "success",
+        "results_found": 15,
+        "result_ids": [
+          "PAPER_001",
+          "PAPER_002"
+        ]
+      }
+    },
+    {
+      "name": "fetch_paper_metrics",
+      "description": "Retrieves detailed epistemic and bibliometric metadata for a specific paper, including Disruption Index and paradigm impact.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "paper_id": {
+            "type": "string",
+            "description": "The unique identifier of the paper to inspect."
+          }
+        },
+        "required": [
+          "paper_id"
+        ]
+      },
+      "example_output": {
+        "paper_id": "PAPER_001",
+        "title": "Mitotic activity in the primate brain",
+        "disruption_index": 0.82,
+        "is_sleeping_beauty": true,
+        "paradigm_dominance_ratio_delta": 0.45,
+        "citation_delay_years": 30
+      }
+    },
+    {
+      "name": "update_reading_list",
+      "description": "Adds a validated paper to the reading list (bibliography).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "paper_id": {
+            "type": "string",
+            "description": "The ID of the paper to save."
+          },
+          "action": {
+            "type": "string",
+            "enum": [
+              "add",
+              "remove"
+            ],
+            "description": "Whether to add or remove the paper."
+          }
+        },
+        "required": [
+          "paper_id",
+          "action"
+        ]
+      },
+      "example_output": {
+        "updated_reading_list": [
+          "PAPER_001"
+        ],
+        "list_count": 1
+      }
+    }
+  ],
+  "state_description": {
+    "current_session_query": "The active search string defining the current context.",
+    "active_result_set": "A list of paper IDs currently cached in the search results page.",
+    "reading_list": "A list of paper IDs the Agent has explicitly saved to the bibliography.",
+    "pagination_index": "The current page offset in the database search results.",
+    "last_accessed_paper_id": "The ID of the paper currently being inspected for citations or full-text."
+  },
+  "task_initial_state": {
+    "current_session_query": "",
+    "active_result_set": [],
+    "reading_list": [],
+    "pagination_index": 0,
+    "last_accessed_paper_id": "none"
+  }
+}

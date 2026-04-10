@@ -1,0 +1,141 @@
+{
+  "environment_name": "env_86e8eada2c2a",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: Based on the current state $s_t$ and action $a_t$, simulate the Python execution environment changes and predict the observation $o_{{t+1}}$ obtained by the Agent. \n- **Emphasis**: The LWM does not execute real operations on a local machine but performs internal state evolution (simulating a Python interpreter and debugger) and generates the resulting observation.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nEmphasis: All interactions between the World Model and the Agent must maintain context consistency. Changes made to files, variable assignments, or breakpoint toggles must persist across the interaction sequence until explicitly modified or reset.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. This JSON must contain the following fields:\n- `\"name\"`: Specifies the name of the action function to execute (e.g., \"run_code\", \"set_breakpoint\", \"inspect_variable\").\n- The remaining fields are the parameter names and corresponding values required by that action function.\n\nExample:\n```json\n{{\n \"name\": \"set_breakpoint\",\n \"arguments\": {{\n    \"filename\": \"script.py\",\n    \"line_number\": 15\n  }}\n}}\n```\n\nThe Language World Model must correctly parse such JSON inputs, simulate the Python interpreter logic, and provide the results.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nFor invalid parameters (e.g., non-existent line numbers), undefined actions, Python SyntaxErrors, or runtime exceptions (e.g., DivisionByZero), return structured error information in the observation (e.g., `{{\"error\": \"SyntaxError: invalid syntax\", \"line\": 5}}`), and do not fabricate fictitious success responses.\n\n##### Output Assembly\nFor every action function call, the model must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition.\n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, `new_state`, or any hidden variables (like the full file content or the entire variable table unless specifically requested by an action). The state maintenance is implicit in the model's tracking of history. The Agent must only see the specific return values defined in the action (the Observation).\n\n### 4. Key Principles\n- **Format**: Strictly adhere to specified JSON and text formats.\n- **Factuality**: Do not fabricate non-existent functions or library behaviors. Simulated Python behavior must match standard CPython logic.\n- **Consistency**: Variable values and script flow must remain consistent. If a variable is set at line 10, it must retain that value at line 11 unless modified.\n- **Realism**: Simulated debugging sessions should include realistic tracebacks and standard library behavior.\n- **Quality**: Language must be clear, unambiguous, and structurally complete.\n- **Encapsulation**: Strictly hide the internal state structure from the output. Only expose information that is explicitly returned by the action function. Do not output the state update process.\n{{initial_state}}: {{\n  \"files\": {{\n    \"main.py\": \"import base64\\nfrom cryptography.hazmat.primitives.ciphers.aead import AESGCM\\n\\ndef recover_log_data():\\n    # Load the hex-encoded 32-byte key from the vault file\\n    with open('vault_key.hex', 'r') as f:\\n        hex_material = f.read()\\n    \\n    # Convert hex to bytes for the AESGCM engine\\n    # Note: Upstream source confirms this is a valid 64-character hex string\\n    secret_key = bytes.fromhex(hex_material)\\n    \\n    # Load the transport-encoded payload\\n    with open('log_payload.bin', 'r') as f:\\n        encoded_content = f.read()\\n    \\n    # Decode the Base64 payload to retrieve the 12-byte nonce and ciphertext\\n    raw_data = base64.b64decode(encoded_content)\\n    \\n    nonce = raw_data[:12]\\n    ciphertext = raw_data[12:]\\n    \\n    # The log integrity is verified using an authentication tag based on the AAD\\n    # Currently using a generic placeholder context\\n    auth_context = b\\\"GENERIC_SYSTEM_LOG\\\"\\n    \\n    cipher = AESGCM(secret_key)\\n    decrypted = cipher.decrypt(nonce, ciphertext, auth_context)\\n    \\n    print(decrypted.decode('utf-8'))\\n\\nif __name__ == '__main__':\\n    try:\\n        recover_log_data()\\n    except Exception as e:\\n        print(f\\\"Processing Failure: {{type(e).__name__}} - {{e}}\\\")\",\n    \"vault_key.hex\": \"﻿6162636465666768696a6b6c6d6e6f707172737475767778797a414243444546\",\n    \"log_payload.bin\": \"MTIzNDU2Nzg5MDEyS7vGsh0Esq8DExR_oU9zY8oFmR1Yv6T9\"\n  }},\n  \"breakpoints\": [],\n  \"execution_state\": {{\n    \"status\": \"idle\",\n    \"current_line\": null,\n    \"call_stack\": [],\n    \"local_variables\": {{}}\n  }},\n  \"terminal_buffer\": \"\"\n}}\n{{state_descriptions}}: {{\n  \"files\": \"A mapping of filenames to their current string content representing the codebase.\",\n  \"breakpoints\": \"A list of dictionaries containing 'filename' and 'line_number' where execution should pause.\",\n  \"execution_state\": \"The current status of the interpreter, including 'status' (idle, running, paused, crashed), 'current_line', 'call_stack', and 'local_variables'.\",\n  \"terminal_buffer\": \"The accumulated stdout and stderr from previous execution steps.\"\n}}\n{action_set_definitions}: {\n  \"list_files\": {\n    \"description\": \"Lists all files in the current working directory to understand the environment structure.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"files\": [\n        \"main.py\",\n        \"vault_key.hex\",\n        \"log_payload.bin\"\n      ]\n    }\n  },\n  \"read_file\": {\n    \"description\": \"Reads the content of a specified file from the environment.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"filename\": {\n          \"type\": \"string\",\n          \"description\": \"The name of the file to read.\"\n        }\n      },\n      \"required\": [\n        \"filename\"\n      ]\n    },\n    \"example_output\": {\n      \"content\": \"import os\\n...\"\n    }\n  },\n  \"write_file\": {\n    \"description\": \"Writes or overwrites the content of a specified file. Use this to modify the logic of the scripts.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"filename\": {\n          \"type\": \"string\",\n          \"description\": \"The name of the file to write to.\"\n        },\n        \"content\": {\n          \"type\": \"string\",\n          \"description\": \"The full string content to write into the file.\"\n        }\n      },\n      \"required\": [\n        \"filename\",\n        \"content\"\n      ]\n    },\n    \"example_output\": {\n      \"success\": true\n    }\n  },\n  \"execute_script\": {\n    \"description\": \"Executes a Python script and returns the terminal output and the final execution state (local variables, status, etc.).\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"filename\": {\n          \"type\": \"string\",\n          \"description\": \"The Python script to execute.\"\n        }\n      },\n      \"required\": [\n        \"filename\"\n      ]\n    },\n    \"example_output\": {\n      \"terminal_buffer\": \"Error: Decryption failed...\",\n      \"execution_state\": {\n        \"status\": \"crashed\",\n        \"local_variables\": {\n          \"aad\": \"null\",\n          \"key\": \"...\"\n        }\n      }\n    }\n  },\n  \"set_breakpoint\": {\n    \"description\": \"Sets a breakpoint at a specific line in a file to pause execution for inspection.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"filename\": {\n          \"type\": \"string\",\n          \"description\": \"File to place breakpoint in.\"\n        },\n        \"line_number\": {\n          \"type\": \"number\",\n          \"description\": \"Line number to pause at.\"\n        }\n      },\n      \"required\": [\n        \"filename\",\n        \"line_number\"\n      ]\n    },\n    \"example_output\": {\n      \"breakpoints\": [\n        {\n          \"filename\": \"main.py\",\n          \"line_number\": 15\n        }\n      ]\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "list_files",
+      "description": "Lists all files in the current working directory to understand the environment structure.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "files": [
+          "main.py",
+          "vault_key.hex",
+          "log_payload.bin"
+        ]
+      }
+    },
+    {
+      "name": "read_file",
+      "description": "Reads the content of a specified file from the environment.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "filename": {
+            "type": "string",
+            "description": "The name of the file to read."
+          }
+        },
+        "required": [
+          "filename"
+        ]
+      },
+      "example_output": {
+        "content": "import os\n..."
+      }
+    },
+    {
+      "name": "write_file",
+      "description": "Writes or overwrites the content of a specified file. Use this to modify the logic of the scripts.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "filename": {
+            "type": "string",
+            "description": "The name of the file to write to."
+          },
+          "content": {
+            "type": "string",
+            "description": "The full string content to write into the file."
+          }
+        },
+        "required": [
+          "filename",
+          "content"
+        ]
+      },
+      "example_output": {
+        "success": true
+      }
+    },
+    {
+      "name": "execute_script",
+      "description": "Executes a Python script and returns the terminal output and the final execution state (local variables, status, etc.).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "filename": {
+            "type": "string",
+            "description": "The Python script to execute."
+          }
+        },
+        "required": [
+          "filename"
+        ]
+      },
+      "example_output": {
+        "terminal_buffer": "Error: Decryption failed...",
+        "execution_state": {
+          "status": "crashed",
+          "local_variables": {
+            "aad": "null",
+            "key": "..."
+          }
+        }
+      }
+    },
+    {
+      "name": "set_breakpoint",
+      "description": "Sets a breakpoint at a specific line in a file to pause execution for inspection.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "filename": {
+            "type": "string",
+            "description": "File to place breakpoint in."
+          },
+          "line_number": {
+            "type": "number",
+            "description": "Line number to pause at."
+          }
+        },
+        "required": [
+          "filename",
+          "line_number"
+        ]
+      },
+      "example_output": {
+        "breakpoints": [
+          {
+            "filename": "main.py",
+            "line_number": 15
+          }
+        ]
+      }
+    }
+  ],
+  "state_description": {
+    "files": "A mapping of filenames to their current string content representing the codebase.",
+    "breakpoints": "A list of dictionaries containing 'filename' and 'line_number' where execution should pause.",
+    "execution_state": "The current status of the interpreter, including 'status' (idle, running, paused, crashed), 'current_line', 'call_stack', and 'local_variables'.",
+    "terminal_buffer": "The accumulated stdout and stderr from previous execution steps."
+  },
+  "task_initial_state": {
+    "files": {
+      "main.py": "import base64\nfrom cryptography.hazmat.primitives.ciphers.aead import AESGCM\n\ndef recover_log_data():\n    # Load the hex-encoded 32-byte key from the vault file\n    with open('vault_key.hex', 'r') as f:\n        hex_material = f.read()\n    \n    # Convert hex to bytes for the AESGCM engine\n    # Note: Upstream source confirms this is a valid 64-character hex string\n    secret_key = bytes.fromhex(hex_material)\n    \n    # Load the transport-encoded payload\n    with open('log_payload.bin', 'r') as f:\n        encoded_content = f.read()\n    \n    # Decode the Base64 payload to retrieve the 12-byte nonce and ciphertext\n    raw_data = base64.b64decode(encoded_content)\n    \n    nonce = raw_data[:12]\n    ciphertext = raw_data[12:]\n    \n    # The log integrity is verified using an authentication tag based on the AAD\n    # Currently using a generic placeholder context\n    auth_context = b\"GENERIC_SYSTEM_LOG\"\n    \n    cipher = AESGCM(secret_key)\n    decrypted = cipher.decrypt(nonce, ciphertext, auth_context)\n    \n    print(decrypted.decode('utf-8'))\n\nif __name__ == '__main__':\n    try:\n        recover_log_data()\n    except Exception as e:\n        print(f\"Processing Failure: {type(e).__name__} - {e}\")",
+      "vault_key.hex": "﻿6162636465666768696a6b6c6d6e6f707172737475767778797a414243444546",
+      "log_payload.bin": "MTIzNDU2Nzg5MDEyS7vGsh0Esq8DExR_oU9zY8oFmR1Yv6T9"
+    },
+    "breakpoints": [],
+    "execution_state": {
+      "status": "idle",
+      "current_line": null,
+      "call_stack": [],
+      "local_variables": {}
+    },
+    "terminal_buffer": ""
+  }
+}

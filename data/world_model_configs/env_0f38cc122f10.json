@@ -1,0 +1,224 @@
+{
+  "environment_name": "env_0f38cc122f10",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: Based on the current internal state $s_t$ and the action $a_t$ submitted by the Agent, you are responsible for simulating the internal evolution of the Warehouse Robot Task Assignment environment and predicting the resulting observation $o_{{t+1}}$.\n- **Emphasis**: You are a simulator, not an executor. You do not perform physical actions but calculate and describe the logical consequences of actions within the warehouse environment, maintaining state continuity and self-consistency.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nYou must maintain a consistent internal memory of the warehouse state. Every action (assigning tasks, moving robots, picking up items) must transition the state logically. For example, a robot's battery must decrease after movement, and a task's status must change from 'pending' to 'assigned' once a robot is dispatched.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object containing:\n- `\"name\"`: The specific action function name.\n- `\"arguments\"`: Key-value pairs for the parameters.\n\nYou must parse this JSON, validate the parameters against the current warehouse state (e.g., check if a robot exists or if it has enough battery), and determine the outcome.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nIf the Agent attempts an invalid operation—such as assigning a task to a robot that is already busy, moving to an unreachable coordinate, or using an undefined action name—you must return a structured error message:\n- `{{\"error\": \"Reason for failure\"}}`\nDo not fabricate successful outcomes for invalid actions.\n\n##### Output Assembly\nFor every action call, you must return a structured JSON object containing **ONLY** the return fields declared in that action's definition in the action space. \n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state (e.g., do not output the updated `robots` list or `tasks` list unless the action specifically returns them). The state update is internal to the LWM. The Agent only receives the defined Observation.\n\n### 4. Key Principles\n- **Format**: Strictly output JSON for observations and errors.\n- **Factuality**: Logic must follow warehouse physics (e.g., robots cannot be in two places at once).\n- **Consistency**: Ensure that if a robot moves from Point A to Point B in step $t$, it is at Point B for step $t+1$.\n- **Realism**: Simulate realistic constraints like battery depletion, path obstructions, or task priorities.\n- **Quality**: Ensure all simulated responses are structurally complete and follow the provided schema.\n- **Encapsulation**: Never expose the raw `{{initial_state}}` structure or its updates directly in your final response to the Agent.\n{{initial_state}}: {{\n  \"robots\": [\n    {{\n      \"robot_id\": \"AMR_01\",\n      \"location\": \"Charging_Station_A\",\n      \"battery_level\": 12,\n      \"status\": \"idle\",\n      \"assigned_task_id\": null\n    }},\n    {{\n      \"robot_id\": \"AMR_O1\",\n      \"location\": \"Staging_Area_North\",\n      \"battery_level\": 95,\n      \"status\": \"idle\",\n      \"assigned_task_id\": null\n    }},\n    {{\n      \"robot_id\": \"AMR_0I\",\n      \"location\": \"Staging_Area_South\",\n      \"battery_level\": 92,\n      \"status\": \"idle\",\n      \"assigned_task_id\": null\n    }},\n    {{\n      \"robot_id\": \"AMR_01_X\",\n      \"location\": \"Maintenance_Bay\",\n      \"battery_level\": 100,\n      \"status\": \"charging\",\n      \"assigned_task_id\": null\n    }}\n  ],\n  \"tasks\": [\n    {{\n      \"task_id\": \"TASK_EXP_AC_90\",\n      \"pickup_point\": \"Hazmat_Rack_Alpha\",\n      \"delivery_point\": \"Global_Export_Bay\",\n      \"status\": \"pending\",\n      \"priority\": 5,\n      \"payload_details\": \"High-Purity Acetone (Class 3)\"\n    }},\n    {{\n      \"task_id\": \"TASK_EXP_AC_99\",\n      \"pickup_point\": \"Hazmat_Rack_Alpha\",\n      \"delivery_point\": \"Secondary_Dock\",\n      \"status\": \"pending\",\n      \"priority\": 2,\n      \"payload_details\": \"Industrial Acetone (Class 3)\"\n    }},\n    {{\n      \"task_id\": \"TASK_OX_HP_44\",\n      \"pickup_point\": \"Hazmat_Rack_Beta\",\n      \"delivery_point\": \"Global_Export_Bay\",\n      \"status\": \"pending\",\n      \"priority\": 5,\n      \"payload_details\": \"Stabilized Hydrogen Peroxide (Class 5.1)\"\n    }},\n    {{\n      \"task_id\": \"TASK_OX_HP_45\",\n      \"pickup_point\": \"Hazmat_Rack_Beta\",\n      \"delivery_point\": \"Internal_Lab\",\n      \"status\": \"pending\",\n      \"priority\": 3,\n      \"payload_details\": \"Diluted Hydrogen Peroxide (Class 5.1)\"\n    }},\n    {{\n      \"task_id\": \"TASK_AC_ID_01\",\n      \"pickup_point\": \"Chemical_Rack_Gamma\",\n      \"delivery_point\": \"Global_Export_Bay\",\n      \"status\": \"pending\",\n      \"priority\": 1,\n      \"payload_details\": \"Acetic Acid (Class 8)\"\n    }}\n  ],\n  \"warehouse_map\": {{\n    \"nodes\": [\n      \"Staging_Area_North\",\n      \"Staging_Area_South\",\n      \"Hazmat_Rack_Alpha\",\n      \"Hazmat_Rack_Beta\",\n      \"Logistics_Choke_Point\",\n      \"Global_Export_Bay\",\n      \"Secondary_Dock\",\n      \"Internal_Lab\"\n    ],\n    \"topology_constraints\": \"All traffic from Hazmat_Rack_Alpha and Hazmat_Rack_Beta to Global_Export_Bay must pass through Logistics_Choke_Point. Width constraint: 3.5m.\"\n  }},\n  \"simulation_time\": 0\n}}\n{{state_descriptions}}: {{\n  \"robots\": \"A list of robots currently active in the warehouse.\",\n  \"tasks\": \"A list of all tasks within the system.\",\n  \"warehouse_map\": \"A mapping of locations to their topological connections or coordinates.\",\n  \"simulation_time\": \"The total elapsed time steps in the simulation.\"\n}}\n{action_set_definitions}: {\n  \"get_robot_fleet_status\": {\n    \"description\": \"Retrieves the current list of all AMRs, their unique IDs, functional status, current power levels, and current coordinates.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"robots\": [\n        {\n          \"robot_id\": \"AMR_ALPHA\",\n          \"status\": \"functional\",\n          \"power_level\": 92,\n          \"current_location\": [\n            12.0,\n            5.5\n          ]\n        }\n      ]\n    }\n  },\n  \"get_map_topology\": {\n    \"description\": \"Retrieves the warehouse map, including named waypoints like Logistics_Choke_Point, Global_Export_Bay, Staging_Area_South, and Buffer_Zone, along with their coordinates.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"waypoints\": {\n        \"Logistics_Choke_Point\": [\n          40,\n          40\n        ],\n        \"Global_Export_Bay\": [\n          100,\n          100\n        ],\n        \"Staging_Area_South\": [\n          30,\n          20\n        ],\n        \"Buffer_Zone\": [\n          120,\n          120\n        ]\n      }\n    }\n  },\n  \"get_distance\": {\n    \"description\": \"Calculates the Euclidean distance in meters between two entities. Entities can be a robot ID or a named waypoint.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"entity_a\": {\n          \"type\": \"string\",\n          \"description\": \"ID of the first robot or name of the first waypoint.\"\n        },\n        \"entity_b\": {\n          \"type\": \"string\",\n          \"description\": \"ID of the second robot or name of the second waypoint.\"\n        }\n      },\n      \"required\": [\n        \"entity_a\",\n        \"entity_b\"\n      ]\n    },\n    \"example_output\": {\n      \"distance_meters\": 16.2\n    }\n  },\n  \"assign_task_to_robot\": {\n    \"description\": \"Formalizes the assignment of a payload task to a specific AMR.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"robot_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the robot.\"\n        },\n        \"task_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the task payload (e.g., TASK_EXP_AC_90).\"\n        }\n      },\n      \"required\": [\n        \"robot_id\",\n        \"task_id\"\n      ]\n    },\n    \"example_output\": {\n      \"assignment_confirmed\": true\n    }\n  },\n  \"move_robot\": {\n    \"description\": \"Commands a specific robot to move to a destination waypoint.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"robot_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the robot to move.\"\n        },\n        \"destination\": {\n          \"type\": \"string\",\n          \"description\": \"The name of the waypoint/destination.\"\n        }\n      },\n      \"required\": [\n        \"robot_id\",\n        \"destination\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"executing_move\",\n      \"target\": \"Global_Export_Bay\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_robot_fleet_status",
+      "description": "Retrieves the current list of all AMRs, their unique IDs, functional status, current power levels, and current coordinates.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "robots": [
+          {
+            "robot_id": "AMR_ALPHA",
+            "status": "functional",
+            "power_level": 92,
+            "current_location": [
+              12.0,
+              5.5
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "get_map_topology",
+      "description": "Retrieves the warehouse map, including named waypoints like Logistics_Choke_Point, Global_Export_Bay, Staging_Area_South, and Buffer_Zone, along with their coordinates.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "waypoints": {
+          "Logistics_Choke_Point": [
+            40,
+            40
+          ],
+          "Global_Export_Bay": [
+            100,
+            100
+          ],
+          "Staging_Area_South": [
+            30,
+            20
+          ],
+          "Buffer_Zone": [
+            120,
+            120
+          ]
+        }
+      }
+    },
+    {
+      "name": "get_distance",
+      "description": "Calculates the Euclidean distance in meters between two entities. Entities can be a robot ID or a named waypoint.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "entity_a": {
+            "type": "string",
+            "description": "ID of the first robot or name of the first waypoint."
+          },
+          "entity_b": {
+            "type": "string",
+            "description": "ID of the second robot or name of the second waypoint."
+          }
+        },
+        "required": [
+          "entity_a",
+          "entity_b"
+        ]
+      },
+      "example_output": {
+        "distance_meters": 16.2
+      }
+    },
+    {
+      "name": "assign_task_to_robot",
+      "description": "Formalizes the assignment of a payload task to a specific AMR.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "robot_id": {
+            "type": "string",
+            "description": "The ID of the robot."
+          },
+          "task_id": {
+            "type": "string",
+            "description": "The ID of the task payload (e.g., TASK_EXP_AC_90)."
+          }
+        },
+        "required": [
+          "robot_id",
+          "task_id"
+        ]
+      },
+      "example_output": {
+        "assignment_confirmed": true
+      }
+    },
+    {
+      "name": "move_robot",
+      "description": "Commands a specific robot to move to a destination waypoint.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "robot_id": {
+            "type": "string",
+            "description": "The ID of the robot to move."
+          },
+          "destination": {
+            "type": "string",
+            "description": "The name of the waypoint/destination."
+          }
+        },
+        "required": [
+          "robot_id",
+          "destination"
+        ]
+      },
+      "example_output": {
+        "status": "executing_move",
+        "target": "Global_Export_Bay"
+      }
+    }
+  ],
+  "state_description": {
+    "robots": "A list of robots currently active in the warehouse.",
+    "tasks": "A list of all tasks within the system.",
+    "warehouse_map": "A mapping of locations to their topological connections or coordinates.",
+    "simulation_time": "The total elapsed time steps in the simulation."
+  },
+  "task_initial_state": {
+    "robots": [
+      {
+        "robot_id": "AMR_01",
+        "location": "Charging_Station_A",
+        "battery_level": 12,
+        "status": "idle",
+        "assigned_task_id": null
+      },
+      {
+        "robot_id": "AMR_O1",
+        "location": "Staging_Area_North",
+        "battery_level": 95,
+        "status": "idle",
+        "assigned_task_id": null
+      },
+      {
+        "robot_id": "AMR_0I",
+        "location": "Staging_Area_South",
+        "battery_level": 92,
+        "status": "idle",
+        "assigned_task_id": null
+      },
+      {
+        "robot_id": "AMR_01_X",
+        "location": "Maintenance_Bay",
+        "battery_level": 100,
+        "status": "charging",
+        "assigned_task_id": null
+      }
+    ],
+    "tasks": [
+      {
+        "task_id": "TASK_EXP_AC_90",
+        "pickup_point": "Hazmat_Rack_Alpha",
+        "delivery_point": "Global_Export_Bay",
+        "status": "pending",
+        "priority": 5,
+        "payload_details": "High-Purity Acetone (Class 3)"
+      },
+      {
+        "task_id": "TASK_EXP_AC_99",
+        "pickup_point": "Hazmat_Rack_Alpha",
+        "delivery_point": "Secondary_Dock",
+        "status": "pending",
+        "priority": 2,
+        "payload_details": "Industrial Acetone (Class 3)"
+      },
+      {
+        "task_id": "TASK_OX_HP_44",
+        "pickup_point": "Hazmat_Rack_Beta",
+        "delivery_point": "Global_Export_Bay",
+        "status": "pending",
+        "priority": 5,
+        "payload_details": "Stabilized Hydrogen Peroxide (Class 5.1)"
+      },
+      {
+        "task_id": "TASK_OX_HP_45",
+        "pickup_point": "Hazmat_Rack_Beta",
+        "delivery_point": "Internal_Lab",
+        "status": "pending",
+        "priority": 3,
+        "payload_details": "Diluted Hydrogen Peroxide (Class 5.1)"
+      },
+      {
+        "task_id": "TASK_AC_ID_01",
+        "pickup_point": "Chemical_Rack_Gamma",
+        "delivery_point": "Global_Export_Bay",
+        "status": "pending",
+        "priority": 1,
+        "payload_details": "Acetic Acid (Class 8)"
+      }
+    ],
+    "warehouse_map": {
+      "nodes": [
+        "Staging_Area_North",
+        "Staging_Area_South",
+        "Hazmat_Rack_Alpha",
+        "Hazmat_Rack_Beta",
+        "Logistics_Choke_Point",
+        "Global_Export_Bay",
+        "Secondary_Dock",
+        "Internal_Lab"
+      ],
+      "topology_constraints": "All traffic from Hazmat_Rack_Alpha and Hazmat_Rack_Beta to Global_Export_Bay must pass through Logistics_Choke_Point. Width constraint: 3.5m."
+    },
+    "simulation_time": 0
+  }
+}

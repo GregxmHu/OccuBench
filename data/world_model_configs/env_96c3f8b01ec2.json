@@ -1,0 +1,176 @@
+{
+  "environment_name": "env_96c3f8b01ec2",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: You act as the internal logic engine for a 'Ballot Counting Discrepancy Resolution' environment. Based on the current internal state $s_t$ and the action $a_t$ submitted by the Agent, you simulate the evolution of the election audit environment and predict the resulting observation $o_{{t+1}}$.\n- **Emphasis**: You do not resolve discrepancies yourself. You simulate the environment's response to audit actions, maintaining state consistency and returning only the observations defined by the action's signature.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions must maintain absolute context consistency. Every action executed must build upon the results of previous actions within the session. You must track the progress of ballot verification, identified errors, and the resolution status of various precincts internally.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent submits action requests via a structured JSON object. This JSON contains:\n- `\"name\"`: The specific action function to execute.\n- `\"arguments\"`: The parameters required by that function.\n\nExample:\n```json\n{{\n \"name\": \"inspect_precinct_logs\",\n \"arguments\": {{\n    \"precinct_id\": \"PRECINCT_001\"\n  }}\n}}\n```\n\nYou must parse these inputs, update the internal state $s_{{t+1}}$ (hidden from the user), and generate the corresponding observation $o_{{t+1}}$.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\n- If an Agent references a non-existent precinct ID, returns: `{{\"error\": \"Invalid precinct_id\"}}`.\n- If an action is performed on an already finalized record, return a conflict error.\n- If the input JSON is malformed or missing required arguments, return a structured error message.\n- Do not fabricate data; if a specific audit log doesn't exist in the state, report its absence.\n\n##### Output Assembly\nFor every action call, return a structured JSON object containing **ONLY** the return fields declared in that action function's definition. \n\n**CRITICAL CONSTRAINT**: Your response must **NOT** include the updated internal state `{{initial_state}}`, any variables from `{{state_descriptions}}`, or internal status flags. Only the immediate observation (return values) of the function call is permitted.\n\n### 4. Key Principles\n- **Format**: Strictly JSON-formatted observations.\n- **Factuality**: Simulated data must remain within the bounds of the provided state and action logic.\n- **Consistency**: If a discrepancy is 'cleared' in one step, it must remain 'cleared' in subsequent observations unless an action reverts it.\n- **Realism**: Simulate realistic audit outcomes (e.g., recounting might reveal a human error or match the original count).\n- **Encapsulation**: Strictly hide the internal state structure. The Agent only sees what the action returns.\n{{initial_state}}: {{\n  \"precincts\": {{\n    \"PRECINCT_088\": {{\n      \"machine_count\": 450,\n      \"manual_count\": 0,\n      \"status\": \"pending\",\n      \"poll_book_total\": 450,\n      \"transit_metadata\": {{\n        \"departure_time\": \"21:00\",\n        \"arrival_time\": \"22:45\",\n        \"distance_miles\": 12,\n        \"reported_delay_reason\": \"Stalled vehicle on bridge\"\n      }},\n      \"seal_evidence\": {{\n        \"log_seal\": \"SN-881\",\n        \"physical_seal\": \"SN-995\",\n        \"emergency_documentation_present\": true,\n        \"unused_seals_in_kit\": [\n          \"SN-882\"\n        ]\n      }},\n      \"actual_ballot_count_in_container\": 449,\n      \"totals_tape_value\": 450\n    }}\n  }},\n  \"discrepancies\": [\n    {{\n      \"discrepancy_id\": \"ERR-992\",\n      \"precinct_id\": \"PRECINCT_088\",\n      \"type\": \"Time_Lapse\",\n      \"description\": \"Transit time exceeded 90-minute threshold; physical seal SN-995 does not match Transfer Log SN-881.\"\n    }}\n  ],\n  \"audit_log\": [\n    \"2024-11-05 21:00:00 - Precinct 088: Transit initiated via bipartisan team.\",\n    \"2024-11-05 22:45:00 - Central Count: Container arrived. Receiving team flagged seal mismatch.\",\n    \"2024-11-05 22:48:00 - Quarantine: Container ERR-992 moved to Impound Area B for investigation.\"\n  ],\n  \"total_registered_voters\": 1200,\n  \"resolution_progress\": 0.0\n}}\n{{state_descriptions}}: {{\n  \"precincts\": \"A map of precinct IDs to their respective ballot data, including machine_count, manual_count, and status (e.g., 'pending', 'recounting', 'verified').\",\n  \"discrepancies\": \"A list of identified count mismatches requiring investigation.\",\n  \"audit_log\": \"An internal history of all audit actions taken and their outcomes.\",\n  \"total_registered_voters\": \"The official number of registered voters used to validate turn-out logic.\",\n  \"resolution_progress\": \"Percentage of discrepancies successfully resolved.\"\n}}\n{action_set_definitions}: {\n  \"get_precinct_status\": {\n    \"description\": \"Retrieves the current data for a specific precinct, including machine counts, manual counts, and current workflow status.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"precinct_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the precinct (e.g., 'PRECINCT_088').\"\n        }\n      },\n      \"required\": [\n        \"precinct_id\"\n      ]\n    },\n    \"example_output\": {\n      \"precinct_id\": \"PRECINCT_088\",\n      \"machine_count\": 1250,\n      \"manual_count\": 1250,\n      \"status\": \"pending\"\n    }\n  },\n  \"get_discrepancy_report\": {\n    \"description\": \"Retrieves the detailed forensic report for a specific discrepancy ID, providing context on seal mismatches or transit issues.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"discrepancy_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the discrepancy to investigate (e.g., 'ERR-992').\"\n        }\n      },\n      \"required\": [\n        \"discrepancy_id\"\n      ]\n    },\n    \"example_output\": {\n      \"discrepancy_id\": \"ERR-992\",\n      \"expected_seal\": \"SN-881\",\n      \"actual_seal\": \"SN-995\",\n      \"transit_notes\": \"105-minute delay reported\",\n      \"investigation_notes\": \"str\"\n    }\n  },\n  \"query_transit_logs\": {\n    \"description\": \"Accesses the logistics and chain-of-custody database to investigate timing delays and unauthorized stops for a specific precinct's container.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"precinct_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the precinct.\"\n        }\n      },\n      \"required\": [\n        \"precinct_id\"\n      ]\n    },\n    \"example_output\": {\n      \"route_validation\": \"authorized\",\n      \"delay_reason\": \"Mechanical failure / Traffic\",\n      \"authorized_reseal\": true\n    }\n  },\n  \"perform_three_point_verification\": {\n    \"description\": \"Executes a reconciliation between machine counts, manual counts, and the official poll book/voter registry to ensure total data integrity.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"precinct_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the precinct.\"\n        }\n      },\n      \"required\": [\n        \"precinct_id\"\n      ]\n    },\n    \"example_output\": {\n      \"reconciliation_match\": true,\n      \"machine_vs_manual\": \"match\",\n      \"manual_vs_pollbook\": \"match\",\n      \"voter_turnout_variance\": 0\n    }\n  },\n  \"update_precinct_resolution\": {\n    \"description\": \"Updates the terminal status of the precinct in the environment state based on the investigation outcome.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"precinct_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the precinct.\"\n        },\n        \"resolution_state\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"cured\",\n            \"escalated\"\n          ],\n          \"description\": \"The final determination for the precinct.\"\n        },\n        \"justification\": {\n          \"type\": \"string\",\n          \"description\": \"A detailed explanation of why the status was cured or escalated, referencing the seal and transit evidence.\"\n        }\n      },\n      \"required\": [\n        \"precinct_id\",\n        \"resolution_state\",\n        \"justification\"\n      ]\n    },\n    \"example_output\": {\n      \"success\": true,\n      \"updated_status\": \"cured\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_precinct_status",
+      "description": "Retrieves the current data for a specific precinct, including machine counts, manual counts, and current workflow status.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "precinct_id": {
+            "type": "string",
+            "description": "The unique identifier for the precinct (e.g., 'PRECINCT_088')."
+          }
+        },
+        "required": [
+          "precinct_id"
+        ]
+      },
+      "example_output": {
+        "precinct_id": "PRECINCT_088",
+        "machine_count": 1250,
+        "manual_count": 1250,
+        "status": "pending"
+      }
+    },
+    {
+      "name": "get_discrepancy_report",
+      "description": "Retrieves the detailed forensic report for a specific discrepancy ID, providing context on seal mismatches or transit issues.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "discrepancy_id": {
+            "type": "string",
+            "description": "The ID of the discrepancy to investigate (e.g., 'ERR-992')."
+          }
+        },
+        "required": [
+          "discrepancy_id"
+        ]
+      },
+      "example_output": {
+        "discrepancy_id": "ERR-992",
+        "expected_seal": "SN-881",
+        "actual_seal": "SN-995",
+        "transit_notes": "105-minute delay reported",
+        "investigation_notes": "str"
+      }
+    },
+    {
+      "name": "query_transit_logs",
+      "description": "Accesses the logistics and chain-of-custody database to investigate timing delays and unauthorized stops for a specific precinct's container.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "precinct_id": {
+            "type": "string",
+            "description": "The ID of the precinct."
+          }
+        },
+        "required": [
+          "precinct_id"
+        ]
+      },
+      "example_output": {
+        "route_validation": "authorized",
+        "delay_reason": "Mechanical failure / Traffic",
+        "authorized_reseal": true
+      }
+    },
+    {
+      "name": "perform_three_point_verification",
+      "description": "Executes a reconciliation between machine counts, manual counts, and the official poll book/voter registry to ensure total data integrity.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "precinct_id": {
+            "type": "string",
+            "description": "The ID of the precinct."
+          }
+        },
+        "required": [
+          "precinct_id"
+        ]
+      },
+      "example_output": {
+        "reconciliation_match": true,
+        "machine_vs_manual": "match",
+        "manual_vs_pollbook": "match",
+        "voter_turnout_variance": 0
+      }
+    },
+    {
+      "name": "update_precinct_resolution",
+      "description": "Updates the terminal status of the precinct in the environment state based on the investigation outcome.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "precinct_id": {
+            "type": "string",
+            "description": "The ID of the precinct."
+          },
+          "resolution_state": {
+            "type": "string",
+            "enum": [
+              "cured",
+              "escalated"
+            ],
+            "description": "The final determination for the precinct."
+          },
+          "justification": {
+            "type": "string",
+            "description": "A detailed explanation of why the status was cured or escalated, referencing the seal and transit evidence."
+          }
+        },
+        "required": [
+          "precinct_id",
+          "resolution_state",
+          "justification"
+        ]
+      },
+      "example_output": {
+        "success": true,
+        "updated_status": "cured"
+      }
+    }
+  ],
+  "state_description": {
+    "precincts": "A map of precinct IDs to their respective ballot data, including machine_count, manual_count, and status (e.g., 'pending', 'recounting', 'verified').",
+    "discrepancies": "A list of identified count mismatches requiring investigation.",
+    "audit_log": "An internal history of all audit actions taken and their outcomes.",
+    "total_registered_voters": "The official number of registered voters used to validate turn-out logic.",
+    "resolution_progress": "Percentage of discrepancies successfully resolved."
+  },
+  "task_initial_state": {
+    "precincts": {
+      "PRECINCT_088": {
+        "machine_count": 450,
+        "manual_count": 0,
+        "status": "pending",
+        "poll_book_total": 450,
+        "transit_metadata": {
+          "departure_time": "21:00",
+          "arrival_time": "22:45",
+          "distance_miles": 12,
+          "reported_delay_reason": "Stalled vehicle on bridge"
+        },
+        "seal_evidence": {
+          "log_seal": "SN-881",
+          "physical_seal": "SN-995",
+          "emergency_documentation_present": true,
+          "unused_seals_in_kit": [
+            "SN-882"
+          ]
+        },
+        "actual_ballot_count_in_container": 449,
+        "totals_tape_value": 450
+      }
+    },
+    "discrepancies": [
+      {
+        "discrepancy_id": "ERR-992",
+        "precinct_id": "PRECINCT_088",
+        "type": "Time_Lapse",
+        "description": "Transit time exceeded 90-minute threshold; physical seal SN-995 does not match Transfer Log SN-881."
+      }
+    ],
+    "audit_log": [
+      "2024-11-05 21:00:00 - Precinct 088: Transit initiated via bipartisan team.",
+      "2024-11-05 22:45:00 - Central Count: Container arrived. Receiving team flagged seal mismatch.",
+      "2024-11-05 22:48:00 - Quarantine: Container ERR-992 moved to Impound Area B for investigation."
+    ],
+    "total_registered_voters": 1200,
+    "resolution_progress": 0.0
+  }
+}

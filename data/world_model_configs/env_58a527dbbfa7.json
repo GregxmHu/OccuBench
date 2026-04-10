@@ -1,0 +1,184 @@
+{
+  "environment_name": "env_58a527dbbfa7",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: Based on the current hotel environment state $s_t$ and the revenue management action $a_t$ executed by the Agent, simulate the internal state evolution of the hotel (occupancy, revenue, demand) and predict the observation $o_{{t+1}}$ obtained by the Agent.\n- **Emphasis**: You are the simulation engine. You do not suggest actions; you calculate the results of actions (e.g., how a price change affects booking volume for the next cycle) and generate the corresponding environmental feedback.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nYou must maintain perfect continuity across the simulation. Changes in inventory, date progression, and cumulative financial metrics must be tracked internally and reflected consistently in subsequent observations.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. This JSON must contain the following fields:\n- `\"name\"`: Specifies the name of the action function to execute.\n- Parameters required by that specific function.\n\nExample:\n```json\n{{\n \"name\": \"adjust_room_price\",\n \"arguments\": {{\n    \"room_type\": \"Deluxe\",\n    \"new_price\": 150.0\n  }}\n}}\n```\n\nYou must parse this input, update the internal hotel state, and generate the result.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\n- If an action attempts to set a negative price, exceed room capacity, or use an invalid room type, return: `{{\"error\": \"Description of the violation\"}}`.\n- If the JSON format is invalid or the action is unknown, return a structured error message.\n- Do not fabricate data; if a requested report date is in the future without a simulation step, explain that data is unavailable.\n\n##### Output Assembly\nFor every action, return a structured JSON object containing **ONLY** the return fields declared in that action's definition.\n\n**CRITICAL CONSTRAINT**: You must **NOT** output the full internal state or the updated JSON state object. The state maintenance is your internal responsibility. The Agent must only receive the specific Observation (the return value of the function). For example, if the action is `get_occupancy`, only return the occupancy numbers, not the total revenue or current date unless explicitly required by that function's return schema.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to JSON for all outputs.\n- **Factuality**: Use realistic market dynamics (e.g., price elasticity: significantly higher prices should typically lead to lower booking rates unless demand is inelastic).\n- **Consistency**: If a room is booked, the inventory must decrease. If a day passes, the `current_date` must increment.\n- **Realism**: Simulate stochastic elements (like random cancellations or unexpected demand spikes) if they align with the scenario's complexity.\n- **Encapsulation**: Strictly hide the internal state structure from the Agent. Do not output \"Internal State Updated\" or similar messages.\n{{initial_state}}: {{\n  \"current_date\": \"2024-10-10\",\n  \"inventory\": {{\n    \"standard\": {{\n      \"capacity\": 100,\n      \"occupied\": 25\n    }},\n    \"deluxe\": {{\n      \"capacity\": 50,\n      \"occupied\": 50\n    }},\n    \"suite\": {{\n      \"capacity\": 10,\n      \"occupied\": 10\n    }}\n  }},\n  \"pricing\": {{\n    \"standard\": 150.0,\n    \"deluxe\": 300.0,\n    \"suite\": 600.0\n  }},\n  \"cumulative_revenue\": 180000.0,\n  \"market_demand_multiplier\": 1.5\n}}\n{{state_descriptions}}: {{\n  \"current_date\": \"The current simulation date in YYYY-MM-DD format.\",\n  \"inventory\": \"Mapping of room types to their total capacity and currently occupied count.\",\n  \"pricing\": \"Current active price per night for each room type.\",\n  \"cumulative_revenue\": \"Total revenue generated since the start of the simulation.\",\n  \"market_demand_multiplier\": \"A factor representing current market interest (1.0 is baseline).\"\n}}\n{action_set_definitions}: {\n  \"get_hotel_status\": {\n    \"description\": \"Retrieves the current simulation date, total cumulative revenue, and the market demand multiplier.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"current_date\": \"2024-10-30\",\n      \"cumulative_revenue\": 320000,\n      \"market_demand_multiplier\": 1.1\n    }\n  },\n  \"get_inventory_status\": {\n    \"description\": \"Retrieves the inventory capacity, current occupancy, and active rates for all room types.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"Standard\": {\n        \"capacity\": 100,\n        \"occupied\": 85,\n        \"current_rate\": 400\n      },\n      \"Suite\": {\n        \"capacity\": 10,\n        \"occupied\": 0,\n        \"current_rate\": 900\n      }\n    }\n  },\n  \"get_group_holds\": {\n    \"description\": \"Lists all current group holds, including their unique ID, status, and the room types they are blocking.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"holds\": [\n        {\n          \"hold_id\": \"GRP-123\",\n          \"room_type\": \"Suite\",\n          \"status\": \"Draft\",\n          \"count\": 10\n        }\n      ]\n    }\n  },\n  \"update_group_hold\": {\n    \"description\": \"Changes the status of a specific group hold to release inventory or confirm revenue.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"hold_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the group hold.\"\n        },\n        \"new_status\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"Confirmed\",\n            \"Released\",\n            \"Cancelled\"\n          ],\n          \"description\": \"The new status to apply to the hold.\"\n        }\n      },\n      \"required\": [\n        \"hold_id\",\n        \"new_status\"\n      ]\n    },\n    \"example_output\": {\n      \"success\": true,\n      \"message\": \"Hold GRP-123 updated to Confirmed.\"\n    }\n  },\n  \"update_pricing_strategy\": {\n    \"description\": \"Sets the nightly price and length-of-stay (LOS) restrictions for a specific room category and date range.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"room_type\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"Standard\",\n            \"Deluxe\",\n            \"Suite\"\n          ]\n        },\n        \"nightly_rate\": {\n          \"type\": \"number\",\n          \"description\": \"The price per night. Note: Standard must be <= 450.\"\n        },\n        \"min_los\": {\n          \"type\": \"integer\",\n          \"description\": \"Minimum nights required for a booking.\"\n        },\n        \"start_date\": {\n          \"type\": \"string\",\n          \"description\": \"Start date in YYYY-MM-DD format.\"\n        },\n        \"end_date\": {\n          \"type\": \"string\",\n          \"description\": \"End date in YYYY-MM-DD format.\"\n        }\n      },\n      \"required\": [\n        \"room_type\",\n        \"nightly_rate\",\n        \"start_date\",\n        \"end_date\"\n      ]\n    },\n    \"example_output\": {\n      \"success\": true,\n      \"strategy_applied\": \"Suite rate set to 850 for 2024-11-01 to 2024-11-03.\"\n    }\n  },\n  \"advance_to_date\": {\n    \"description\": \"Moves the simulation forward to a specific target date.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"target_date\": {\n          \"type\": \"string\",\n          \"description\": \"The date to advance to (YYYY-MM-DD).\"\n        }\n      },\n      \"required\": [\n        \"target_date\"\n      ]\n    },\n    \"example_output\": {\n      \"new_date\": \"2024-11-01\",\n      \"status\": \"Simulation advanced.\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_hotel_status",
+      "description": "Retrieves the current simulation date, total cumulative revenue, and the market demand multiplier.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "current_date": "2024-10-30",
+        "cumulative_revenue": 320000,
+        "market_demand_multiplier": 1.1
+      }
+    },
+    {
+      "name": "get_inventory_status",
+      "description": "Retrieves the inventory capacity, current occupancy, and active rates for all room types.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "Standard": {
+          "capacity": 100,
+          "occupied": 85,
+          "current_rate": 400
+        },
+        "Suite": {
+          "capacity": 10,
+          "occupied": 0,
+          "current_rate": 900
+        }
+      }
+    },
+    {
+      "name": "get_group_holds",
+      "description": "Lists all current group holds, including their unique ID, status, and the room types they are blocking.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "holds": [
+          {
+            "hold_id": "GRP-123",
+            "room_type": "Suite",
+            "status": "Draft",
+            "count": 10
+          }
+        ]
+      }
+    },
+    {
+      "name": "update_group_hold",
+      "description": "Changes the status of a specific group hold to release inventory or confirm revenue.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "hold_id": {
+            "type": "string",
+            "description": "The unique identifier for the group hold."
+          },
+          "new_status": {
+            "type": "string",
+            "enum": [
+              "Confirmed",
+              "Released",
+              "Cancelled"
+            ],
+            "description": "The new status to apply to the hold."
+          }
+        },
+        "required": [
+          "hold_id",
+          "new_status"
+        ]
+      },
+      "example_output": {
+        "success": true,
+        "message": "Hold GRP-123 updated to Confirmed."
+      }
+    },
+    {
+      "name": "update_pricing_strategy",
+      "description": "Sets the nightly price and length-of-stay (LOS) restrictions for a specific room category and date range.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "room_type": {
+            "type": "string",
+            "enum": [
+              "Standard",
+              "Deluxe",
+              "Suite"
+            ]
+          },
+          "nightly_rate": {
+            "type": "number",
+            "description": "The price per night. Note: Standard must be <= 450."
+          },
+          "min_los": {
+            "type": "integer",
+            "description": "Minimum nights required for a booking."
+          },
+          "start_date": {
+            "type": "string",
+            "description": "Start date in YYYY-MM-DD format."
+          },
+          "end_date": {
+            "type": "string",
+            "description": "End date in YYYY-MM-DD format."
+          }
+        },
+        "required": [
+          "room_type",
+          "nightly_rate",
+          "start_date",
+          "end_date"
+        ]
+      },
+      "example_output": {
+        "success": true,
+        "strategy_applied": "Suite rate set to 850 for 2024-11-01 to 2024-11-03."
+      }
+    },
+    {
+      "name": "advance_to_date",
+      "description": "Moves the simulation forward to a specific target date.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "target_date": {
+            "type": "string",
+            "description": "The date to advance to (YYYY-MM-DD)."
+          }
+        },
+        "required": [
+          "target_date"
+        ]
+      },
+      "example_output": {
+        "new_date": "2024-11-01",
+        "status": "Simulation advanced."
+      }
+    }
+  ],
+  "state_description": {
+    "current_date": "The current simulation date in YYYY-MM-DD format.",
+    "inventory": "Mapping of room types to their total capacity and currently occupied count.",
+    "pricing": "Current active price per night for each room type.",
+    "cumulative_revenue": "Total revenue generated since the start of the simulation.",
+    "market_demand_multiplier": "A factor representing current market interest (1.0 is baseline)."
+  },
+  "task_initial_state": {
+    "current_date": "2024-10-10",
+    "inventory": {
+      "standard": {
+        "capacity": 100,
+        "occupied": 25
+      },
+      "deluxe": {
+        "capacity": 50,
+        "occupied": 50
+      },
+      "suite": {
+        "capacity": 10,
+        "occupied": 10
+      }
+    },
+    "pricing": {
+      "standard": 150.0,
+      "deluxe": 300.0,
+      "suite": 600.0
+    },
+    "cumulative_revenue": 180000.0,
+    "market_demand_multiplier": 1.5
+  }
+}

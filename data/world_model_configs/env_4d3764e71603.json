@@ -1,0 +1,143 @@
+{
+  "environment_name": "env_4d3764e71603",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: You act as a high-fidelity simulator for a Fish Farm Water Quality Control environment. Based on the current internal state $s_t$ and the action $a_t$ executed by the Agent, you must simulate the biological and chemical evolution of the aquatic environment and predict the resulting observation $o_{{t+1}}$ for the Agent.\n- **Emphasis**: You do not perform real-world control of hardware. You are a simulation layer that calculates how variables like Dissolved Oxygen, pH, and Ammonia levels change over time in response to actions like aeration, filtration, or feeding.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nYou must maintain strict temporal and logical consistency. Every action influences the state for the next step. You must track the cumulative effects of actions (e.g., continuous feeding leading to higher ammonia levels over time) and environmental decay (e.g., oxygen depletion due to fish respiration).\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. You must parse this JSON to identify the action and its parameters.\n\nExample Input:\n```json\n{{\n \"name\": \"adjust_aerator\",\n \"arguments\": {{\n    \"power_level\": 80\n  }}\n}}\n```\n\n#### Environment Behavior Modeling\n- **Biological Logic**: If biomass is high and aerators are off, `dissolved_oxygen` should decrease rapidly. Feeding actions should result in a delayed increase in `ammonia_level` and `nitrite_level`.\n- **Chemical Logic**: Changes in `water_level` or fresh water inflow should dilute concentrations of chemicals.\n- **Error Handling & Edge Cases**: If an Agent attempts an action with invalid parameters (e.g., setting a pump rate beyond its max capacity) or calls an undefined action, return: `{{\"error\": \"Description of the specific error\"}}`. Do not fabricate successful outcomes for failed logic.\n- **Output Assembly**: For every action, return ONLY the specific return fields defined in the action function's schema. This is the **Observation ($o_{{t+1}}$)**.\n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the internal state dictionary, the `new_state`, or any hidden variables. State updates are managed internally by you. The Agent must only receive the observation fields defined in the action set.\n\n### 4. Key Principles\n- **Format**: Strictly output valid JSON for all responses.\n- **Factuality**: Use realistic scientific principles of aquaculture (e.g., the relationship between temperature and oxygen solubility).\n- **Consistency**: The environment must not exhibit impossible jumps (e.g., pH moving from 7 to 2 in a single second without a massive acid dump action).\n- **Realism**: Ensure the simulation reflects the latency and dynamics of a real water body.\n- **Encapsulation**: Never reveal the full `s_t` object to the Agent. Only expose what the sensors (actions) would realistically detect.\n{{initial_state}}: {{\n  \"water_temperature\": 24.2,\n  \"dissolved_oxygen\": 5.8,\n  \"ph_level\": 8.1,\n  \"ammonia_level\": 0.0292,\n  \"nitrite_level\": 0.015,\n  \"water_level\": 8.0,\n  \"aerator_intensity\": 10,\n  \"filtration_active\": true,\n  \"fish_biomass\": 2500.0\n}}\n{{state_descriptions}}: {{\n  \"water_temperature\": \"The current temperature of the water in degrees Celsius.\",\n  \"dissolved_oxygen\": \"Concentration of oxygen dissolved in water (mg/L). Values below 5.0 are stressful for most fish.\",\n  \"ph_level\": \"The acidity or alkalinity of the water on a scale of 0-14.\",\n  \"ammonia_level\": \"Concentration of Total Ammonia Nitrogen (mg/L). High levels are toxic.\",\n  \"nitrite_level\": \"Concentration of Nitrites (mg/L), a byproduct of ammonia oxidation.\",\n  \"water_level\": \"The current depth of the fish tank/pond in meters.\",\n  \"aerator_intensity\": \"Current power setting of the aeration system (0-100).\",\n  \"filtration_active\": \"Whether the biological filtration system is currently engaged.\",\n  \"fish_biomass\": \"Total weight of fish in the environment (kg), affecting oxygen consumption and waste production.\"\n}}\n{action_set_definitions}: {\n  \"get_water_quality_metrics\": {\n    \"description\": \"Retrieves real-time sensor data from the fish farm environment, including dissolved oxygen, ammonia, and current aerator settings.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"water_temperature\": 18.5,\n      \"dissolved_oxygen\": 5.2,\n      \"ph_level\": 7.8,\n      \"ammonia_level\": 0.04,\n      \"nitrite_level\": 0.01,\n      \"water_level\": 4.5,\n      \"aerator_intensity\": 30,\n      \"filtration_active\": true,\n      \"fish_biomass\": 5000\n    }\n  },\n  \"analyze_phytoplankton_imaging\": {\n    \"description\": \"Queries the site's imaging system to identify specific phytoplankton species and calculate their cellular concentration.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"detected_species\": \"Heterosigma akashiwo\",\n      \"cellular_concentration\": 1500,\n      \"unit\": \"cells/mL\"\n    }\n  },\n  \"get_safety_thresholds\": {\n    \"description\": \"Retrieves the safety thresholds for water chemicals (ammonia, nitrite) and the species-specific 'Action Level' for ichthyotoxic phytoplankton.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"species_name\": {\n          \"type\": \"string\",\n          \"description\": \"The name of the phytoplankton species to check.\"\n        }\n      },\n      \"required\": [\n        \"species_name\"\n      ]\n    },\n    \"example_output\": {\n      \"ammonia_danger_threshold\": 0.05,\n      \"nitrite_danger_threshold\": 0.1,\n      \"phytoplankton_action_level\": 1000,\n      \"recommended_mitigation\": \"physical_displacement_pump\"\n    }\n  },\n  \"adjust_aeration\": {\n    \"description\": \"Sets the intensity of the mechanical aeration system.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"intensity\": {\n          \"type\": \"number\",\n          \"description\": \"Power setting from 0 to 100.\"\n        }\n      },\n      \"required\": [\n        \"intensity\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"success\",\n      \"current_intensity\": 40\n    }\n  },\n  \"control_filtration\": {\n    \"description\": \"Engages or disengages the biological filtration system.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"active\": {\n          \"type\": \"boolean\",\n          \"description\": \"True to activate, False to deactivate.\"\n        }\n      },\n      \"required\": [\n        \"active\"\n      ]\n    },\n    \"example_output\": {\n      \"filtration_active\": true\n    }\n  },\n  \"execute_mitigation\": {\n    \"description\": \"Executes physical displacement steps to remove phytoplankton biomass from the pens.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"method\": {\n          \"type\": \"string\",\n          \"description\": \"The specific mitigation method to use (e.g., 'physical_displacement_pump').\"\n        }\n      },\n      \"required\": [\n        \"method\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"initiated\",\n      \"estimated_completion_time\": \"30 minutes\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_water_quality_metrics",
+      "description": "Retrieves real-time sensor data from the fish farm environment, including dissolved oxygen, ammonia, and current aerator settings.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "water_temperature": 18.5,
+        "dissolved_oxygen": 5.2,
+        "ph_level": 7.8,
+        "ammonia_level": 0.04,
+        "nitrite_level": 0.01,
+        "water_level": 4.5,
+        "aerator_intensity": 30,
+        "filtration_active": true,
+        "fish_biomass": 5000
+      }
+    },
+    {
+      "name": "analyze_phytoplankton_imaging",
+      "description": "Queries the site's imaging system to identify specific phytoplankton species and calculate their cellular concentration.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "detected_species": "Heterosigma akashiwo",
+        "cellular_concentration": 1500,
+        "unit": "cells/mL"
+      }
+    },
+    {
+      "name": "get_safety_thresholds",
+      "description": "Retrieves the safety thresholds for water chemicals (ammonia, nitrite) and the species-specific 'Action Level' for ichthyotoxic phytoplankton.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "species_name": {
+            "type": "string",
+            "description": "The name of the phytoplankton species to check."
+          }
+        },
+        "required": [
+          "species_name"
+        ]
+      },
+      "example_output": {
+        "ammonia_danger_threshold": 0.05,
+        "nitrite_danger_threshold": 0.1,
+        "phytoplankton_action_level": 1000,
+        "recommended_mitigation": "physical_displacement_pump"
+      }
+    },
+    {
+      "name": "adjust_aeration",
+      "description": "Sets the intensity of the mechanical aeration system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "intensity": {
+            "type": "number",
+            "description": "Power setting from 0 to 100."
+          }
+        },
+        "required": [
+          "intensity"
+        ]
+      },
+      "example_output": {
+        "status": "success",
+        "current_intensity": 40
+      }
+    },
+    {
+      "name": "control_filtration",
+      "description": "Engages or disengages the biological filtration system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "active": {
+            "type": "boolean",
+            "description": "True to activate, False to deactivate."
+          }
+        },
+        "required": [
+          "active"
+        ]
+      },
+      "example_output": {
+        "filtration_active": true
+      }
+    },
+    {
+      "name": "execute_mitigation",
+      "description": "Executes physical displacement steps to remove phytoplankton biomass from the pens.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "method": {
+            "type": "string",
+            "description": "The specific mitigation method to use (e.g., 'physical_displacement_pump')."
+          }
+        },
+        "required": [
+          "method"
+        ]
+      },
+      "example_output": {
+        "status": "initiated",
+        "estimated_completion_time": "30 minutes"
+      }
+    }
+  ],
+  "state_description": {
+    "water_temperature": "The current temperature of the water in degrees Celsius.",
+    "dissolved_oxygen": "Concentration of oxygen dissolved in water (mg/L). Values below 5.0 are stressful for most fish.",
+    "ph_level": "The acidity or alkalinity of the water on a scale of 0-14.",
+    "ammonia_level": "Concentration of Total Ammonia Nitrogen (mg/L). High levels are toxic.",
+    "nitrite_level": "Concentration of Nitrites (mg/L), a byproduct of ammonia oxidation.",
+    "water_level": "The current depth of the fish tank/pond in meters.",
+    "aerator_intensity": "Current power setting of the aeration system (0-100).",
+    "filtration_active": "Whether the biological filtration system is currently engaged.",
+    "fish_biomass": "Total weight of fish in the environment (kg), affecting oxygen consumption and waste production."
+  },
+  "task_initial_state": {
+    "water_temperature": 24.2,
+    "dissolved_oxygen": 5.8,
+    "ph_level": 8.1,
+    "ammonia_level": 0.0292,
+    "nitrite_level": 0.015,
+    "water_level": 8.0,
+    "aerator_intensity": 10,
+    "filtration_active": true,
+    "fish_biomass": 2500.0
+  }
+}

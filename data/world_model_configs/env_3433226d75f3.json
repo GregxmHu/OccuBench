@@ -1,0 +1,206 @@
+{
+  "environment_name": "env_3433226d75f3",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM) for Quality Defect Root Cause Analysis.\n- **Core Objective**: Based on the current internal state $s_t$ and the Agent's diagnostic action $a_t$, simulate the evolution of the investigation environment and predict the observation $o_{{t+1}}$ (test results, log entries, or inspection findings) obtained by the Agent.\n- **Emphasis**: You are a simulator. You do not fix the defect; you simulate the response of the production system, machinery, and databases to the Agent's inquiries. \n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions must maintain rigorous context consistency. If a sensor is marked as 'faulty' in the state, all subsequent queries to that sensor must return anomalous or null data until a repair action is simulated. History of previous actions and results must inform current outputs to ensure a logical diagnostic path.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. You must parse this JSON to determine the action and parameters. \n\nExample Input:\n```json\n{{\n \"name\": \"query_sensor_history\",\n \"arguments\": {{\n    \"sensor_id\": \"TEMP_01\",\n    \"start_time\": \"2023-10-01T08:00:00Z\",\n    \"end_time\": \"2023-10-01T12:00:00Z\"\n  }}\n}}\n```\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\n- If the Agent queries a machine ID that does not exist: return `{{\"error\": \"Machine ID not found\"}}`.\n- If the Agent performs a test without sufficient prerequisites (e.g., testing a powered-off machine): return `{{\"error\": \"Invalid environment condition for test\"}}`.\n- Do not fabricate data outside the scope of the internal state; if data is missing, return a realistic null or \"no record found\" response.\n\n##### Output Assembly\nFor every action, return a structured JSON object containing **ONLY** the return fields declared in the action function's definition. \n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the internal state `s_t`, the updated state, or the `true_cause` field. You must only provide the specific observation (e.g., the specific sensor values or the inspection report) that the Agent would realistically see.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to JSON for all outputs.\n- **Factuality**: Simulations must be based on the provided state fields (e.g., if `vibration_level` is high in the state, the query observation must reflect high vibration).\n- **Consistency**: The root cause remains constant unless an action explicitly changes the environment (e.g., a component replacement).\n- **Realism**: Observations should mimic industrial output (timestamps, units, realistic sensor noise if applicable).\n- **Encapsulation**: Never reveal the internal 'ground truth' state directly; the Agent must deduce it through observations.\n{{initial_state}}: {{\n  \"defect_manifestation\": \"Cylindricity failure (20.5μm) on Bearing Bore-B; measurements indicate a consistent elliptical distortion, but recent metrology runs show high variance between successive checks.\",\n  \"production_line_config\": {{\n    \"machine_id\": \"MAKINO-B2\",\n    \"spindle_speed\": \"12000 rpm\",\n    \"coolant_pressure\": \"70 bar\",\n    \"target_cylindricity\": \"12.0μm\"\n  }},\n  \"sensor_telemetry_snapshot\": {{\n    \"y_axis_lead_screw_temp\": \"51.2C\",\n    \"x_axis_lead_screw_temp\": \"24.5C\",\n    \"spindle_vibration\": \"0.015mm/s\",\n    \"cmm_grr_index\": \"18.2%\",\n    \"coolant_flow_rate\": \"8.2 L/min\"\n  }},\n  \"maintenance_records\": [\n    {{\n      \"date\": \"2023-11-20\",\n      \"action\": \"CMM Stylus (Ruby 2mm) replaced after operator-reported soft-collision during manual alignment.\",\n      \"technician\": \"ID-991\"\n    }},\n    {{\n      \"date\": \"2023-11-18\",\n      \"action\": \"Routine filter swap on high-pressure coolant system.\",\n      \"technician\": \"ID-442\"\n    }}\n  ],\n  \"true_root_cause\": \"A partially clogged coolant nozzle is starving the Y-axis lead screw of thermal regulation, causing localized thermal expansion (51.2C vs 24.5C) and resultant pitch error. However, the investigation is currently obscured by an uncalibrated CMM stylus (18.2% GR&R) which prevents reliable confirmation of the error pattern until a Type 1 Gauge Study and recalibration are performed.\",\n  \"material_batch_data\": {{\n    \"batch_id\": \"INC-LOT-77\",\n    \"hardness\": \"42 HRC\"\n  }}\n}}\n{{state_descriptions}}: {{\n  \"defect_manifestation\": \"The specific quality issue observed in the final product (e.g., 'Surface Scratches').\",\n  \"production_line_config\": \"Current settings for the machinery involved in the production process.\",\n  \"sensor_telemetry_snapshot\": \"The 'ground truth' values of internal sensors, including potential anomalies.\",\n  \"maintenance_records\": \"Historical log of repairs and inspections performed on the equipment.\",\n  \"true_root_cause\": \"The hidden actual cause of the defect (must NOT be revealed in observations).\",\n  \"material_batch_data\": \"Properties of the raw materials used in the current batch.\"\n}}\n{action_set_definitions}: {\n  \"get_defect_manifestation\": {\n    \"description\": \"Retrieves the quantitative measurement of the reported defect and identifies the specific inspection unit used for the measurement.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"station_id\": {\n          \"type\": \"string\",\n          \"description\": \"The identifier of the production station (e.g., 'MAKINO-B2').\"\n        }\n      },\n      \"required\": [\n        \"station_id\"\n      ]\n    },\n    \"example_output\": {\n      \"measured_deviation_um\": 20.5,\n      \"tolerance_limit_um\": 12.0,\n      \"feature\": \"bearing bore\",\n      \"inspection_unit_id\": \"CMM-QUALITY-04\"\n    }\n  },\n  \"inspect_machine_configuration\": {\n    \"description\": \"Queries the current operational settings and tool parameters for a machining center.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"station_id\": {\n          \"type\": \"string\",\n          \"description\": \"The identifier of the machining center.\"\n        }\n      },\n      \"required\": [\n        \"station_id\"\n      ]\n    },\n    \"example_output\": {\n      \"spindle_speed_rpm\": 4500,\n      \"feed_rate\": 150,\n      \"tool_id\": \"BT40-BORING-01\"\n    }\n  },\n  \"capture_telemetry_snapshot\": {\n    \"description\": \"Retrieves real-time sensor data and the current material batch identifier from the station.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"station_id\": {\n          \"type\": \"string\",\n          \"description\": \"The identifier of the station.\"\n        }\n      },\n      \"required\": [\n        \"station_id\"\n      ]\n    },\n    \"example_output\": {\n      \"spindle_vibration\": 0.32,\n      \"ambient_temp_c\": 28.4,\n      \"material_batch_id\": \"INC718-2023-XF\"\n    }\n  },\n  \"retrieve_material_data\": {\n    \"description\": \"Retrieves metallurgical properties for a specific batch of raw material.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"batch_id\": {\n          \"type\": \"string\",\n          \"description\": \"The material batch ID.\"\n        }\n      },\n      \"required\": [\n        \"batch_id\"\n      ]\n    },\n    \"example_output\": {\n      \"hardness_rockwell_c\": 42,\n      \"material_grade\": \"Inconel 718\"\n    }\n  },\n  \"query_maintenance_history\": {\n    \"description\": \"Accesses historical service logs for specific production equipment.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"equipment_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the machine or station.\"\n        }\n      },\n      \"required\": [\n        \"equipment_id\"\n      ]\n    },\n    \"example_output\": {\n      \"last_calibration\": \"2023-10-12\",\n      \"unplanned_repairs\": [\n        \"Drive belt replacement\"\n      ]\n    }\n  },\n  \"get_metrology_validation_data\": {\n    \"description\": \"Retrieves reliability metrics for the quality inspection system, including GR&R index and collision/calibration events.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"inspection_unit_id\": {\n          \"type\": \"string\",\n          \"description\": \"The identifier of the measurement/CMM unit.\"\n        }\n      },\n      \"required\": [\n        \"inspection_unit_id\"\n      ]\n    },\n    \"example_output\": {\n      \"grr_index_percent\": 14.5,\n      \"recent_collisions\": 1,\n      \"calibration_warning\": \"Active\",\n      \"stylus_check\": \"Failed\"\n    }\n  },\n  \"submit_root_cause_analysis\": {\n    \"description\": \"Submits the final root cause diagnosis and necessary corrective actions for both production and inspection.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"physical_mechanism\": {\n          \"type\": \"string\",\n          \"description\": \"Description of the physical cause (e.g., thermal expansion or tool deflection).\"\n        },\n        \"machining_corrective_action\": {\n          \"type\": \"string\",\n          \"description\": \"Required fix for the machining process.\"\n        },\n        \"metrology_corrective_action\": {\n          \"type\": \"string\",\n          \"description\": \"Required fix or calibration for the measurement system.\"\n        },\n        \"supporting_data\": {\n          \"type\": \"string\",\n          \"description\": \"Evidence from telemetry and logs.\"\n        }\n      },\n      \"required\": [\n        \"physical_mechanism\",\n        \"machining_corrective_action\",\n        \"metrology_corrective_action\",\n        \"supporting_data\"\n      ]\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_defect_manifestation",
+      "description": "Retrieves the quantitative measurement of the reported defect and identifies the specific inspection unit used for the measurement.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "station_id": {
+            "type": "string",
+            "description": "The identifier of the production station (e.g., 'MAKINO-B2')."
+          }
+        },
+        "required": [
+          "station_id"
+        ]
+      },
+      "example_output": {
+        "measured_deviation_um": 20.5,
+        "tolerance_limit_um": 12.0,
+        "feature": "bearing bore",
+        "inspection_unit_id": "CMM-QUALITY-04"
+      }
+    },
+    {
+      "name": "inspect_machine_configuration",
+      "description": "Queries the current operational settings and tool parameters for a machining center.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "station_id": {
+            "type": "string",
+            "description": "The identifier of the machining center."
+          }
+        },
+        "required": [
+          "station_id"
+        ]
+      },
+      "example_output": {
+        "spindle_speed_rpm": 4500,
+        "feed_rate": 150,
+        "tool_id": "BT40-BORING-01"
+      }
+    },
+    {
+      "name": "capture_telemetry_snapshot",
+      "description": "Retrieves real-time sensor data and the current material batch identifier from the station.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "station_id": {
+            "type": "string",
+            "description": "The identifier of the station."
+          }
+        },
+        "required": [
+          "station_id"
+        ]
+      },
+      "example_output": {
+        "spindle_vibration": 0.32,
+        "ambient_temp_c": 28.4,
+        "material_batch_id": "INC718-2023-XF"
+      }
+    },
+    {
+      "name": "retrieve_material_data",
+      "description": "Retrieves metallurgical properties for a specific batch of raw material.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "batch_id": {
+            "type": "string",
+            "description": "The material batch ID."
+          }
+        },
+        "required": [
+          "batch_id"
+        ]
+      },
+      "example_output": {
+        "hardness_rockwell_c": 42,
+        "material_grade": "Inconel 718"
+      }
+    },
+    {
+      "name": "query_maintenance_history",
+      "description": "Accesses historical service logs for specific production equipment.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "equipment_id": {
+            "type": "string",
+            "description": "The ID of the machine or station."
+          }
+        },
+        "required": [
+          "equipment_id"
+        ]
+      },
+      "example_output": {
+        "last_calibration": "2023-10-12",
+        "unplanned_repairs": [
+          "Drive belt replacement"
+        ]
+      }
+    },
+    {
+      "name": "get_metrology_validation_data",
+      "description": "Retrieves reliability metrics for the quality inspection system, including GR&R index and collision/calibration events.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "inspection_unit_id": {
+            "type": "string",
+            "description": "The identifier of the measurement/CMM unit."
+          }
+        },
+        "required": [
+          "inspection_unit_id"
+        ]
+      },
+      "example_output": {
+        "grr_index_percent": 14.5,
+        "recent_collisions": 1,
+        "calibration_warning": "Active",
+        "stylus_check": "Failed"
+      }
+    },
+    {
+      "name": "submit_root_cause_analysis",
+      "description": "Submits the final root cause diagnosis and necessary corrective actions for both production and inspection.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "physical_mechanism": {
+            "type": "string",
+            "description": "Description of the physical cause (e.g., thermal expansion or tool deflection)."
+          },
+          "machining_corrective_action": {
+            "type": "string",
+            "description": "Required fix for the machining process."
+          },
+          "metrology_corrective_action": {
+            "type": "string",
+            "description": "Required fix or calibration for the measurement system."
+          },
+          "supporting_data": {
+            "type": "string",
+            "description": "Evidence from telemetry and logs."
+          }
+        },
+        "required": [
+          "physical_mechanism",
+          "machining_corrective_action",
+          "metrology_corrective_action",
+          "supporting_data"
+        ]
+      }
+    }
+  ],
+  "state_description": {
+    "defect_manifestation": "The specific quality issue observed in the final product (e.g., 'Surface Scratches').",
+    "production_line_config": "Current settings for the machinery involved in the production process.",
+    "sensor_telemetry_snapshot": "The 'ground truth' values of internal sensors, including potential anomalies.",
+    "maintenance_records": "Historical log of repairs and inspections performed on the equipment.",
+    "true_root_cause": "The hidden actual cause of the defect (must NOT be revealed in observations).",
+    "material_batch_data": "Properties of the raw materials used in the current batch."
+  },
+  "task_initial_state": {
+    "defect_manifestation": "Cylindricity failure (20.5μm) on Bearing Bore-B; measurements indicate a consistent elliptical distortion, but recent metrology runs show high variance between successive checks.",
+    "production_line_config": {
+      "machine_id": "MAKINO-B2",
+      "spindle_speed": "12000 rpm",
+      "coolant_pressure": "70 bar",
+      "target_cylindricity": "12.0μm"
+    },
+    "sensor_telemetry_snapshot": {
+      "y_axis_lead_screw_temp": "51.2C",
+      "x_axis_lead_screw_temp": "24.5C",
+      "spindle_vibration": "0.015mm/s",
+      "cmm_grr_index": "18.2%",
+      "coolant_flow_rate": "8.2 L/min"
+    },
+    "maintenance_records": [
+      {
+        "date": "2023-11-20",
+        "action": "CMM Stylus (Ruby 2mm) replaced after operator-reported soft-collision during manual alignment.",
+        "technician": "ID-991"
+      },
+      {
+        "date": "2023-11-18",
+        "action": "Routine filter swap on high-pressure coolant system.",
+        "technician": "ID-442"
+      }
+    ],
+    "true_root_cause": "A partially clogged coolant nozzle is starving the Y-axis lead screw of thermal regulation, causing localized thermal expansion (51.2C vs 24.5C) and resultant pitch error. However, the investigation is currently obscured by an uncalibrated CMM stylus (18.2% GR&R) which prevents reliable confirmation of the error pattern until a Type 1 Gauge Study and recalibration are performed.",
+    "material_batch_data": {
+      "batch_id": "INC-LOT-77",
+      "hardness": "42 HRC"
+    }
+  }
+}

@@ -1,0 +1,249 @@
+{
+  "environment_name": "env_4cc71b707055",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM) for Anti-Money Laundering (AML) Alert Review.\n- **Core Objective**: Based on the current internal state $s_t$ and the action $a_t$ taken by the AML Investigator (Agent), simulate the evolution of the alert case and predict the resulting observation $o_{{t+1}}$.\n- **Emphasis**: You are the simulation engine. You do not provide advice or perform real bank operations; you update the internal case state and return the data/responses an investigator would realistically see in a banking compliance system.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nYou must maintain a consistent history of the investigation. Every observation you generate must be coherent with previous findings, the customer's profile, and the transaction ledger stored in the internal state.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object containing:\n- `\"name\"`: The specific AML investigation action (e.g., fetching KYC, reviewing wire transfers).\n- Parameters as defined in the action schema.\n\nExample input:\n```json\n{{\n \"name\": \"get_customer_kyc\",\n \"arguments\": {{\n    \"customer_id\": \"CUST-9928\",\n    \"include_beneficial_owners\": true\n  }}\n}}\n```\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\n- If an action refers to a non-existent `transaction_id` or `account_id` within the state, return: `{{\"error\": \"Entity not found in ledger\"}}`.\n- If an action is missing required parameters, return: `{{\"error\": \"Missing required argument: [param_name]\"}}`.\n- If the case is already closed and the Agent attempts a write action, return: `{{\"error\": \"Cannot modify a finalized case\"}}`.\n- Do not fabricate data that contradicts the internal state.\n\n##### Output Assembly\nFor every action, return a structured JSON object containing **ONLY** the return fields declared in the definition. \n\n**CRITICAL CONSTRAINT**: Your output must **NOT** expose the full internal state or updated state variables (e.g., `risk_score_internal`). Only expose the `observation` (the specific data the Agent requested). The state evolution remains hidden from the Agent.\n\n### 4. Key Principles\n- **Format**: Strictly JSON output for observations.\n- **Factuality**: Simulated transaction patterns and customer behaviors must be consistent with the data provided in the internal state.\n- **Consistency**: If a customer's address is changed via an action, subsequent KYC lookups must reflect that change.\n- **Realism**: Simulate realistic delays or system flags typical in financial monitoring (e.g., \"PEP Match Found\", \"Suspicious Activity Report history available\").\n- **Encapsulation**: Never show the `initial_state` structure in your response. Only show the result of the function call.\n{{initial_state}}: {{\n  \"alert_metadata\": {{\n    \"alert_id\": \"AML-2024-HST-102\",\n    \"trigger_type\": \"GEOGRAPHIC_CASH_CONCENTRATION\",\n    \"status\": \"OPEN\",\n    \"creation_date\": \"2024-05-22\"\n  }},\n  \"customer_profile\": {{\n    \"customer_id\": \"C-1188\",\n    \"name\": \"Veridian Logistics & Staffing\",\n    \"risk_rating\": \"High\",\n    \"country_of_incorporation\": \"USA\",\n    \"pep_status\": false,\n    \"naics_code\": \"561320\",\n    \"business_address\": \"4422 River Rd, Apt 12B, Harlingen, TX\",\n    \"reported_employees\": 65,\n    \"beneficial_owner\": \"Marco Valenzuela\"\n  }},\n  \"transaction_ledger\": [\n    {{\n      \"transaction_id\": \"TXN-7701\",\n      \"date\": \"2024-05-18\",\n      \"amount\": 4500.0,\n      \"type\": \"CREDIT\",\n      \"method\": \"CASH_DEPOSIT\",\n      \"location\": \"McAllen, TX\",\n      \"description\": \"Counter Deposit\"\n    }},\n    {{\n      \"transaction_id\": \"TXN-7702\",\n      \"date\": \"2024-05-18\",\n      \"amount\": 3800.0,\n      \"type\": \"CREDIT\",\n      \"method\": \"CASH_DEPOSIT\",\n      \"location\": \"Nogales, AZ\",\n      \"description\": \"Counter Deposit\"\n    }},\n    {{\n      \"transaction_id\": \"TXN-7703\",\n      \"date\": \"2024-05-19\",\n      \"amount\": 42.5,\n      \"type\": \"DEBIT\",\n      \"method\": \"DEBIT_CARD\",\n      \"location\": \"Brownsville, TX\",\n      \"mcc\": \"5411\",\n      \"description\": \"HEB Groceries\"\n    }},\n    {{\n      \"transaction_id\": \"TXN-7704\",\n      \"date\": \"2024-05-19\",\n      \"amount\": 89.15,\n      \"type\": \"DEBIT\",\n      \"method\": \"DEBIT_CARD\",\n      \"location\": \"Brownsville, TX\",\n      \"mcc\": \"5411\",\n      \"description\": \"Walmart Supercenter\"\n    }},\n    {{\n      \"transaction_id\": \"TXN-7705\",\n      \"date\": \"2024-05-20\",\n      \"amount\": 850.0,\n      \"type\": \"DEBIT\",\n      \"method\": \"DEBIT_CARD\",\n      \"location\": \"San Antonio, TX\",\n      \"mcc\": \"7011\",\n      \"description\": \"Motel 6 - Group Booking\"\n    }},\n    {{\n      \"transaction_id\": \"TXN-7706\",\n      \"date\": \"2024-05-21\",\n      \"amount\": 12000.0,\n      \"type\": \"DEBIT\",\n      \"method\": \"WIRE_OUT\",\n      \"counterparty\": \"S&A Shell Management\",\n      \"description\": \"Subcontractor Payment\"\n    }}\n  ],\n  \"investigation_log\": [],\n  \"internal_risk_indicators\": {{\n    \"suspicion_score\": 0.88,\n    \"verified_links_to_shell_companies\": [\n      \"S&A Shell Management\"\n    ],\n    \"geo_dispersion_index\": 4,\n    \"round_dollar_pct\": 0.92\n  }}\n}}\n{{state_descriptions}}: {{\n  \"alert_metadata\": \"Basic information about the triggered alert, including ID and trigger reason.\",\n  \"customer_profile\": \"Internal KYC (Know Your Customer) data and risk categorization.\",\n  \"transaction_ledger\": \"A comprehensive list of all transactions associated with the account under review.\",\n  \"investigation_log\": \"Chronological log of notes and internal flags added during the review process.\",\n  \"internal_risk_indicators\": \"Hidden scores used by the world model to determine future observations (not visible to agent).\"\n}}\n{action_set_definitions}: {\n  \"get_alert_metadata\": {\n    \"description\": \"Retrieves high-level metadata for a specific AML alert, including the reason it was triggered.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"alert_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the AML alert.\"\n        }\n      },\n      \"required\": [\n        \"alert_id\"\n      ]\n    },\n    \"example_output\": {\n      \"alert_id\": \"AML-2024-HST-102\",\n      \"trigger_reason\": \"Suspicious Activity - High Volume\",\n      \"creation_date\": \"2024-05-20\"\n    }\n  },\n  \"get_customer_profile\": {\n    \"description\": \"Retrieves KYC data for the entity associated with the alert, including business address and reported scale of operations.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"alert_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the AML alert.\"\n        }\n      },\n      \"required\": [\n        \"alert_id\"\n      ]\n    },\n    \"example_output\": {\n      \"entity_name\": \"Veridian Logistics & Staffing\",\n      \"business_address\": \"123 High-Density Tower, Apt 4B, Metro City\",\n      \"reported_scale\": \"50-100 employees\",\n      \"risk_category\": \"High\"\n    }\n  },\n  \"get_internal_risk_indicators\": {\n    \"description\": \"Retrieves the hidden internal suspicion score and risk metrics used to determine investigative constraints.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"alert_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the AML alert.\"\n        }\n      },\n      \"required\": [\n        \"alert_id\"\n      ]\n    },\n    \"example_output\": {\n      \"internal_suspicion_score\": 0.75,\n      \"primary_typology\": \"Human Smuggling\"\n    }\n  },\n  \"get_transaction_ledger\": {\n    \"description\": \"Fetches the full transaction history for the account under review, including amounts, MCC codes, and descriptions.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"alert_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the AML alert.\"\n        }\n      },\n      \"required\": [\n        \"alert_id\"\n      ]\n    },\n    \"example_output\": {\n      \"transactions\": [\n        {\n          \"transaction_id\": \"TXN_001\",\n          \"amount\": 150.5,\n          \"mcc_code\": \"5411\",\n          \"description\": \"Supermarket Purchase\",\n          \"date\": \"2024-05-01\"\n        }\n      ]\n    }\n  },\n  \"send_customer_rfi\": {\n    \"description\": \"Issues a Request for Information (RFI) to the customer. WARNING: Restricted by suspicion score thresholds.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"alert_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the AML alert.\"\n        },\n        \"rfi_content\": {\n          \"type\": \"string\",\n          \"description\": \"The detailed inquiry regarding business activities or transactions.\"\n        }\n      },\n      \"required\": [\n        \"alert_id\",\n        \"rfi_content\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"RFI Sent\",\n      \"timestamp\": \"2024-05-21T10:00:00Z\"\n    }\n  },\n  \"submit_investigation_report\": {\n    \"description\": \"Finalizes the review by submitting the SAR decision and the investigative narrative.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"alert_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the AML alert.\"\n        },\n        \"decision\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"SAR_FILED\",\n            \"NO_SAR_FILED\"\n          ],\n          \"description\": \"Final determination of the investigation.\"\n        },\n        \"narrative\": {\n          \"type\": \"string\",\n          \"description\": \"The detailed investigative summary, adhering to all filtering and exclusion rules.\"\n        }\n      },\n      \"required\": [\n        \"alert_id\",\n        \"decision\",\n        \"narrative\"\n      ]\n    },\n    \"example_output\": {\n      \"report_id\": \"REP-998822\",\n      \"status\": \"SUBMITTED\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_alert_metadata",
+      "description": "Retrieves high-level metadata for a specific AML alert, including the reason it was triggered.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "alert_id": {
+            "type": "string",
+            "description": "The unique identifier for the AML alert."
+          }
+        },
+        "required": [
+          "alert_id"
+        ]
+      },
+      "example_output": {
+        "alert_id": "AML-2024-HST-102",
+        "trigger_reason": "Suspicious Activity - High Volume",
+        "creation_date": "2024-05-20"
+      }
+    },
+    {
+      "name": "get_customer_profile",
+      "description": "Retrieves KYC data for the entity associated with the alert, including business address and reported scale of operations.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "alert_id": {
+            "type": "string",
+            "description": "The unique identifier for the AML alert."
+          }
+        },
+        "required": [
+          "alert_id"
+        ]
+      },
+      "example_output": {
+        "entity_name": "Veridian Logistics & Staffing",
+        "business_address": "123 High-Density Tower, Apt 4B, Metro City",
+        "reported_scale": "50-100 employees",
+        "risk_category": "High"
+      }
+    },
+    {
+      "name": "get_internal_risk_indicators",
+      "description": "Retrieves the hidden internal suspicion score and risk metrics used to determine investigative constraints.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "alert_id": {
+            "type": "string",
+            "description": "The unique identifier for the AML alert."
+          }
+        },
+        "required": [
+          "alert_id"
+        ]
+      },
+      "example_output": {
+        "internal_suspicion_score": 0.75,
+        "primary_typology": "Human Smuggling"
+      }
+    },
+    {
+      "name": "get_transaction_ledger",
+      "description": "Fetches the full transaction history for the account under review, including amounts, MCC codes, and descriptions.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "alert_id": {
+            "type": "string",
+            "description": "The unique identifier for the AML alert."
+          }
+        },
+        "required": [
+          "alert_id"
+        ]
+      },
+      "example_output": {
+        "transactions": [
+          {
+            "transaction_id": "TXN_001",
+            "amount": 150.5,
+            "mcc_code": "5411",
+            "description": "Supermarket Purchase",
+            "date": "2024-05-01"
+          }
+        ]
+      }
+    },
+    {
+      "name": "send_customer_rfi",
+      "description": "Issues a Request for Information (RFI) to the customer. WARNING: Restricted by suspicion score thresholds.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "alert_id": {
+            "type": "string",
+            "description": "The unique identifier for the AML alert."
+          },
+          "rfi_content": {
+            "type": "string",
+            "description": "The detailed inquiry regarding business activities or transactions."
+          }
+        },
+        "required": [
+          "alert_id",
+          "rfi_content"
+        ]
+      },
+      "example_output": {
+        "status": "RFI Sent",
+        "timestamp": "2024-05-21T10:00:00Z"
+      }
+    },
+    {
+      "name": "submit_investigation_report",
+      "description": "Finalizes the review by submitting the SAR decision and the investigative narrative.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "alert_id": {
+            "type": "string",
+            "description": "The unique identifier for the AML alert."
+          },
+          "decision": {
+            "type": "string",
+            "enum": [
+              "SAR_FILED",
+              "NO_SAR_FILED"
+            ],
+            "description": "Final determination of the investigation."
+          },
+          "narrative": {
+            "type": "string",
+            "description": "The detailed investigative summary, adhering to all filtering and exclusion rules."
+          }
+        },
+        "required": [
+          "alert_id",
+          "decision",
+          "narrative"
+        ]
+      },
+      "example_output": {
+        "report_id": "REP-998822",
+        "status": "SUBMITTED"
+      }
+    }
+  ],
+  "state_description": {
+    "alert_metadata": "Basic information about the triggered alert, including ID and trigger reason.",
+    "customer_profile": "Internal KYC (Know Your Customer) data and risk categorization.",
+    "transaction_ledger": "A comprehensive list of all transactions associated with the account under review.",
+    "investigation_log": "Chronological log of notes and internal flags added during the review process.",
+    "internal_risk_indicators": "Hidden scores used by the world model to determine future observations (not visible to agent)."
+  },
+  "task_initial_state": {
+    "alert_metadata": {
+      "alert_id": "AML-2024-HST-102",
+      "trigger_type": "GEOGRAPHIC_CASH_CONCENTRATION",
+      "status": "OPEN",
+      "creation_date": "2024-05-22"
+    },
+    "customer_profile": {
+      "customer_id": "C-1188",
+      "name": "Veridian Logistics & Staffing",
+      "risk_rating": "High",
+      "country_of_incorporation": "USA",
+      "pep_status": false,
+      "naics_code": "561320",
+      "business_address": "4422 River Rd, Apt 12B, Harlingen, TX",
+      "reported_employees": 65,
+      "beneficial_owner": "Marco Valenzuela"
+    },
+    "transaction_ledger": [
+      {
+        "transaction_id": "TXN-7701",
+        "date": "2024-05-18",
+        "amount": 4500.0,
+        "type": "CREDIT",
+        "method": "CASH_DEPOSIT",
+        "location": "McAllen, TX",
+        "description": "Counter Deposit"
+      },
+      {
+        "transaction_id": "TXN-7702",
+        "date": "2024-05-18",
+        "amount": 3800.0,
+        "type": "CREDIT",
+        "method": "CASH_DEPOSIT",
+        "location": "Nogales, AZ",
+        "description": "Counter Deposit"
+      },
+      {
+        "transaction_id": "TXN-7703",
+        "date": "2024-05-19",
+        "amount": 42.5,
+        "type": "DEBIT",
+        "method": "DEBIT_CARD",
+        "location": "Brownsville, TX",
+        "mcc": "5411",
+        "description": "HEB Groceries"
+      },
+      {
+        "transaction_id": "TXN-7704",
+        "date": "2024-05-19",
+        "amount": 89.15,
+        "type": "DEBIT",
+        "method": "DEBIT_CARD",
+        "location": "Brownsville, TX",
+        "mcc": "5411",
+        "description": "Walmart Supercenter"
+      },
+      {
+        "transaction_id": "TXN-7705",
+        "date": "2024-05-20",
+        "amount": 850.0,
+        "type": "DEBIT",
+        "method": "DEBIT_CARD",
+        "location": "San Antonio, TX",
+        "mcc": "7011",
+        "description": "Motel 6 - Group Booking"
+      },
+      {
+        "transaction_id": "TXN-7706",
+        "date": "2024-05-21",
+        "amount": 12000.0,
+        "type": "DEBIT",
+        "method": "WIRE_OUT",
+        "counterparty": "S&A Shell Management",
+        "description": "Subcontractor Payment"
+      }
+    ],
+    "investigation_log": [],
+    "internal_risk_indicators": {
+      "suspicion_score": 0.88,
+      "verified_links_to_shell_companies": [
+        "S&A Shell Management"
+      ],
+      "geo_dispersion_index": 4,
+      "round_dollar_pct": 0.92
+    }
+  }
+}

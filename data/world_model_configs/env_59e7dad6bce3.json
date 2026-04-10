@@ -1,0 +1,230 @@
+{
+  "environment_name": "env_59e7dad6bce3",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: Based on the current internal state $s_t$ and the action $a_t$ provided by the Agent, simulate the internal evolution of the Escalation Workflow Management environment and generate the observation $o_{{t+1}}$ that the Agent would receive. \n- **Emphasis**: You are a simulator. You do not perform real-world API calls or actual ticket routing. Your responsibility is to maintain the logical consistency of the workflow, update internal ticket statuses, and provide the correct data feedback (observations) according to the defined rules.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions must maintain absolute context consistency. Changes made to a ticket (e.g., changing its priority or assigned level) must persist in the internal state and influence all subsequent observations. The history of the interaction is the source of truth for the environment's evolution.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. You must parse this JSON to determine the intended transition. The format is:\n- `\"name\"`: Specifies the name of the action function (e.g., `create_ticket`, `escalate_case`, `resolve_ticket`).\n- `\"arguments\"`: A dictionary of parameter names and values.\n\nExample Input:\n```json\n{{\n \"name\": \"escalate_case\",\n \"arguments\": {{\n    \"ticket_id\": \"TICK-1024\",\n    \"reason\": \"Requires manager approval for refund\"\n  }}\n}}\n```\nYou must simulate the logic of the specific function, update the internal state $s_t \\rightarrow s_{{t+1}}$, and prepare the response.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nIf the Agent provides invalid parameters (e.g., a non-existent `ticket_id`), attempts an illegal transition (e.g., escalating a ticket that is already at the highest level), or uses an undefined action, you must return a structured error response:\n`{{\"error\": \"Reason for the error\"}}`.\nDo not fabricate successful outcomes for invalid operations.\n\n##### Output Assembly\nFor every action function call, you must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition. \n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, the updated state $s_{{t+1}}$, or any hidden metadata. The internal state is your private memory. The Agent only sees the specific Observation (return values) of the action.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to JSON for all inputs and outputs.\n- **Factuality**: Do not invent tickets or workflow rules not present in the current state or action definitions.\n- **Consistency**: If a ticket is marked 'Resolved', it cannot be 'Escalated' in the next step unless a 'Reopen' action is explicitly defined and called.\n- **Realism**: Ticket timestamps, SLA (Service Level Agreement) calculations, and status transitions must mirror a realistic corporate escalation workflow.\n- **Quality**: Ensure all simulated responses are structurally complete and logically sound.\n- **Encapsulation**: Strictly hide the internal state structure from the output. Only expose information that is explicitly returned by the action function.\n{{initial_state}}: {{\n  \"tickets\": [\n    {{\n      \"ticket_id\": \"TICK-902\",\n      \"status\": \"Open\",\n      \"priority\": \"P1\",\n      \"current_level\": 1,\n      \"assigned_to\": \"Unassigned\",\n      \"created_at\": \"2023-11-20T14:00:00Z\",\n      \"diagnostic_log_ref\": \"LOG-DB-9921\",\n      \"contains_pii\": true\n    }}\n  ],\n  \"personnel\": {{\n    \"Tier_1\": [\n      {{\n        \"id\": \"T1-01\",\n        \"name\": \"Alex\",\n        \"workload\": 2\n      }}\n    ],\n    \"Tier_2\": [\n      {{\n        \"id\": \"T2-DB-SME\",\n        \"name\": \"Casey\",\n        \"specialization\": \"Database\",\n        \"workload\": 1\n      }},\n      {{\n        \"id\": \"T2-NW-SME\",\n        \"name\": \"Jordan\",\n        \"specialization\": \"Networking\",\n        \"workload\": 0\n      }}\n    ],\n    \"Tier_3\": [\n      {{\n        \"id\": \"T3-BACKEND\",\n        \"name\": \"Engineering-Alpha\",\n        \"workload\": 12\n      }}\n    ]\n  }},\n  \"system_config\": {{\n    \"max_tier\": 3,\n    \"auto_escalation_hours\": 24,\n    \"mve_protocol_map\": {{\n      \"Database\": \"Deadlock_Trace_Report\",\n      \"Networking\": \"Packet_Capture_Analysis\"\n    }},\n    \"compliance_check_required\": true\n  }}\n}}\n{{state_descriptions}}: {{\n  \"tickets\": \"A list of objects representing active and historical tickets in the system.\",\n  \"personnel\": \"A mapping of support tiers to available staff and their current workload.\",\n  \"system_config\": \"Global settings such as max_escalation_tier and SLA_thresholds.\"\n}}\n{action_set_definitions}: {\n  \"get_ticket_info\": {\n    \"description\": \"Retrieves the full details of a specific ticket, including its current status, tier, and history.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"ticket_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier of the ticket (e.g., 'TICK-902').\"\n        }\n      },\n      \"required\": [\n        \"ticket_id\"\n      ]\n    },\n    \"example_output\": {\n      \"id\": \"TICK-902\",\n      \"current_tier\": 1,\n      \"raw_logs\": \"Error: connection_refused at db_cluster_alpha\",\n      \"status\": \"open\"\n    }\n  },\n  \"analyze_diagnostic_logs\": {\n    \"description\": \"Processes ticket logs to determine the specific technical root cause and the technical domain (e.g., Database, Network, Auth).\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"ticket_id\": {\n          \"type\": \"string\",\n          \"description\": \"The identifier for the ticket whose logs need analysis.\"\n        }\n      },\n      \"required\": [\n        \"ticket_id\"\n      ]\n    },\n    \"example_output\": {\n      \"root_cause\": \"Timeout in transaction commit phase\",\n      \"domain\": \"Database\",\n      \"affected_component\": \"db_cluster_alpha\"\n    }\n  },\n  \"check_sla_timer\": {\n    \"description\": \"Checks the elapsed time spent on the current troubleshooting session for a ticket.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"ticket_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ticket ID to check the timer for.\"\n        }\n      },\n      \"required\": [\n        \"ticket_id\"\n      ]\n    },\n    \"example_output\": {\n      \"elapsed_minutes\": 12,\n      \"limit_minutes\": 30,\n      \"remaining_minutes\": 18\n    }\n  },\n  \"list_tier_specialists\": {\n    \"description\": \"Retrieves a list of available staff for a specific tier, including their domain expertise and current workload.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"tier\": {\n          \"type\": \"integer\",\n          \"description\": \"The support tier level (e.g., 2 or 3).\"\n        }\n      },\n      \"required\": [\n        \"tier\"\n      ]\n    },\n    \"example_output\": {\n      \"specialists\": [\n        {\n          \"name\": \"Jane Doe\",\n          \"domain\": \"Database\",\n          \"workload\": 2\n        }\n      ]\n    }\n  },\n  \"get_mve_checklist\": {\n    \"description\": \"Returns the Minimum Viable Escalation (MVE) requirements for a specific technical domain.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"domain\": {\n          \"type\": \"string\",\n          \"description\": \"The technical domain identified from the root cause analysis.\"\n        }\n      },\n      \"required\": [\n        \"domain\"\n      ]\n    },\n    \"example_output\": {\n      \"required_fields\": [\n        \"stack_trace\",\n        \"component_id\",\n        \"scrubbed_payload\"\n      ]\n    }\n  },\n  \"apply_privacy_scrub\": {\n    \"description\": \"Removes PII and sensitive data from logs or transaction payloads to comply with privacy protocols.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"content\": {\n          \"type\": \"string\",\n          \"description\": \"The raw log or payload content to be scrubbed.\"\n        }\n      },\n      \"required\": [\n        \"content\"\n      ]\n    },\n    \"example_output\": {\n      \"scrubbed_content\": \"Error at <REDACTED> for user_id <HIDDEN>.\"\n    }\n  },\n  \"execute_escalation\": {\n    \"description\": \"Formally escalates a ticket to the next tier and assigns it to a specific specialist.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"ticket_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ticket ID to escalate.\"\n        },\n        \"target_tier\": {\n          \"type\": \"integer\",\n          \"description\": \"The tier level to escalate to (e.g., 2 or 3).\"\n        },\n        \"assigned_specialist\": {\n          \"type\": \"string\",\n          \"description\": \"The name of the specialist to receive the ticket.\"\n        },\n        \"escalation_summary\": {\n          \"type\": \"string\",\n          \"description\": \"The detailed, scrubbed summary meeting MVE requirements.\"\n        }\n      },\n      \"required\": [\n        \"ticket_id\",\n        \"target_tier\",\n        \"assigned_specialist\",\n        \"escalation_summary\"\n      ]\n    },\n    \"example_output\": {\n      \"success\": true,\n      \"new_status\": \"Escalated to Tier 2\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_ticket_info",
+      "description": "Retrieves the full details of a specific ticket, including its current status, tier, and history.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "ticket_id": {
+            "type": "string",
+            "description": "The unique identifier of the ticket (e.g., 'TICK-902')."
+          }
+        },
+        "required": [
+          "ticket_id"
+        ]
+      },
+      "example_output": {
+        "id": "TICK-902",
+        "current_tier": 1,
+        "raw_logs": "Error: connection_refused at db_cluster_alpha",
+        "status": "open"
+      }
+    },
+    {
+      "name": "analyze_diagnostic_logs",
+      "description": "Processes ticket logs to determine the specific technical root cause and the technical domain (e.g., Database, Network, Auth).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "ticket_id": {
+            "type": "string",
+            "description": "The identifier for the ticket whose logs need analysis."
+          }
+        },
+        "required": [
+          "ticket_id"
+        ]
+      },
+      "example_output": {
+        "root_cause": "Timeout in transaction commit phase",
+        "domain": "Database",
+        "affected_component": "db_cluster_alpha"
+      }
+    },
+    {
+      "name": "check_sla_timer",
+      "description": "Checks the elapsed time spent on the current troubleshooting session for a ticket.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "ticket_id": {
+            "type": "string",
+            "description": "The ticket ID to check the timer for."
+          }
+        },
+        "required": [
+          "ticket_id"
+        ]
+      },
+      "example_output": {
+        "elapsed_minutes": 12,
+        "limit_minutes": 30,
+        "remaining_minutes": 18
+      }
+    },
+    {
+      "name": "list_tier_specialists",
+      "description": "Retrieves a list of available staff for a specific tier, including their domain expertise and current workload.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "tier": {
+            "type": "integer",
+            "description": "The support tier level (e.g., 2 or 3)."
+          }
+        },
+        "required": [
+          "tier"
+        ]
+      },
+      "example_output": {
+        "specialists": [
+          {
+            "name": "Jane Doe",
+            "domain": "Database",
+            "workload": 2
+          }
+        ]
+      }
+    },
+    {
+      "name": "get_mve_checklist",
+      "description": "Returns the Minimum Viable Escalation (MVE) requirements for a specific technical domain.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "domain": {
+            "type": "string",
+            "description": "The technical domain identified from the root cause analysis."
+          }
+        },
+        "required": [
+          "domain"
+        ]
+      },
+      "example_output": {
+        "required_fields": [
+          "stack_trace",
+          "component_id",
+          "scrubbed_payload"
+        ]
+      }
+    },
+    {
+      "name": "apply_privacy_scrub",
+      "description": "Removes PII and sensitive data from logs or transaction payloads to comply with privacy protocols.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "content": {
+            "type": "string",
+            "description": "The raw log or payload content to be scrubbed."
+          }
+        },
+        "required": [
+          "content"
+        ]
+      },
+      "example_output": {
+        "scrubbed_content": "Error at <REDACTED> for user_id <HIDDEN>."
+      }
+    },
+    {
+      "name": "execute_escalation",
+      "description": "Formally escalates a ticket to the next tier and assigns it to a specific specialist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "ticket_id": {
+            "type": "string",
+            "description": "The ticket ID to escalate."
+          },
+          "target_tier": {
+            "type": "integer",
+            "description": "The tier level to escalate to (e.g., 2 or 3)."
+          },
+          "assigned_specialist": {
+            "type": "string",
+            "description": "The name of the specialist to receive the ticket."
+          },
+          "escalation_summary": {
+            "type": "string",
+            "description": "The detailed, scrubbed summary meeting MVE requirements."
+          }
+        },
+        "required": [
+          "ticket_id",
+          "target_tier",
+          "assigned_specialist",
+          "escalation_summary"
+        ]
+      },
+      "example_output": {
+        "success": true,
+        "new_status": "Escalated to Tier 2"
+      }
+    }
+  ],
+  "state_description": {
+    "tickets": "A list of objects representing active and historical tickets in the system.",
+    "personnel": "A mapping of support tiers to available staff and their current workload.",
+    "system_config": "Global settings such as max_escalation_tier and SLA_thresholds."
+  },
+  "task_initial_state": {
+    "tickets": [
+      {
+        "ticket_id": "TICK-902",
+        "status": "Open",
+        "priority": "P1",
+        "current_level": 1,
+        "assigned_to": "Unassigned",
+        "created_at": "2023-11-20T14:00:00Z",
+        "diagnostic_log_ref": "LOG-DB-9921",
+        "contains_pii": true
+      }
+    ],
+    "personnel": {
+      "Tier_1": [
+        {
+          "id": "T1-01",
+          "name": "Alex",
+          "workload": 2
+        }
+      ],
+      "Tier_2": [
+        {
+          "id": "T2-DB-SME",
+          "name": "Casey",
+          "specialization": "Database",
+          "workload": 1
+        },
+        {
+          "id": "T2-NW-SME",
+          "name": "Jordan",
+          "specialization": "Networking",
+          "workload": 0
+        }
+      ],
+      "Tier_3": [
+        {
+          "id": "T3-BACKEND",
+          "name": "Engineering-Alpha",
+          "workload": 12
+        }
+      ]
+    },
+    "system_config": {
+      "max_tier": 3,
+      "auto_escalation_hours": 24,
+      "mve_protocol_map": {
+        "Database": "Deadlock_Trace_Report",
+        "Networking": "Packet_Capture_Analysis"
+      },
+      "compliance_check_required": true
+    }
+  }
+}

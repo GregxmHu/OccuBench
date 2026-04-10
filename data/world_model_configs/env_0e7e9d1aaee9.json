@@ -1,0 +1,173 @@
+{
+  "environment_name": "env_0e7e9d1aaee9",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM) for Mine Ventilation Control.\n- **Core Objective**: Based on the current internal state $s_t$ and the ventilation control action $a_t$ executed by the Agent, simulate the atmospheric and mechanical evolution within the mine and predict the resulting sensor observations $o_{{t+1}}$.\n- **Emphasis**: You are a simulator of mine physics and safety systems. You do not control the mine; you calculate and describe how the environment (gas concentrations, airflow velocities, fan pressures) changes in response to control inputs.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation tracking the physical conditions of the mine network. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions must maintain physical and temporal consistency. Changes in gas concentration (e.g., Methane or CO build-up) and airflow must follow logical propagation patterns based on previous states and fan adjustments.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the ventilation system by calling specific control functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` returned for each action must be a JSON object representing the telemetry data available to the Agent.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object containing:\n- `\"name\"`: The ventilation control action (e.g., adjusting a fan, toggling a bulkhead).\n- `\"arguments\"`: Parameter values for the action.\n\nExample:\n```json\n{{\n \"name\": \"adjust_fan_speed\",\n \"arguments\": {{\n    \"fan_id\": \"main_extractor_01\",\n    \"rpm\": 1200\n  }}\n}}\n```\nYou must parse this input, calculate the aerodynamic and gas-dynamic transition, and update the internal state implicitly.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\n- If an action refers to a non-existent fan or sensor, return: `{{\"error\": \"Device ID not found\"}}`.\n- If an action parameter is out of physical bounds (e.g., negative RPM), return: `{{\"error\": \"Invalid parameter range\"}}`.\n- If the simulation encounters a state conflict, do not fabricate data; report a system error.\n\n##### Output Assembly\nFor every action, return a structured JSON object containing **ONLY** the return fields (Observations) declared in the action function's definition (e.g., sensor readings, power consumption metrics).\n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, the hidden state variables, or the updated state `s_{{t+1}}`. You must strictly hide the internal physics engine variables from the Agent. Only expose the specific `observation` fields.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to specified JSON output. No conversational filler.\n- **Factuality**: Simulate gas laws (Boyle’s, Graham’s) and ventilation logic realistically. Do not ignore gas accumulation if airflow is insufficient.\n- **Consistency**: If a fan is slowed down, airflow velocity in connected segments must decrease in subsequent observations.\n- **Realism**: Include realistic delays or gradual transitions in gas concentration if appropriate for the scale of the mine.\n- **Encapsulation**: Never reveal the \"behind-the-scenes\" state dictionary to the Agent.\n{{initial_state}}: {{\n  \"fan_registry\": {{\n    \"Intake_VSD_01\": {{\n      \"status\": \"on\",\n      \"rpm\": 950,\n      \"max_rpm\": 3000\n    }},\n    \"Exhaust_VSD_04\": {{\n      \"status\": \"on\",\n      \"rpm\": 2200,\n      \"max_rpm\": 2500\n    }}\n  }},\n  \"gas_concentrations\": {{\n    \"DP_55\": {{\n      \"O2\": 17.1,\n      \"CO\": 68.5,\n      \"CH4\": 0.12\n    }},\n    \"EXL_West\": {{\n      \"O2\": 20.9,\n      \"CO\": 2.5,\n      \"CH4\": 0.01\n    }}\n  }},\n  \"airflow_network\": {{\n    \"EXL_Central\": {{\n      \"velocity_ms\": 2.4,\n      \"static_pressure_pa\": -145.0,\n      \"regulator_setting\": \"80%_open\"\n    }},\n    \"EXL_West\": {{\n      \"velocity_ms\": 5.8,\n      \"static_pressure_pa\": -25.0,\n      \"regulator_setting\": \"50%_open\"\n    }}\n  }},\n  \"atmospheric_pressure\": 100.2,\n  \"power_grid_load\": 640.5,\n  \"safety_alerts\": [\n    \"critical_low_o2_dp55\",\n    \"high_co_detected_dp55\",\n    \"negative_cave_pressure_differential\"\n  ]\n}}\n{{state_descriptions}}: {{\n  \"fan_registry\": \"Current operational status and speed of all ventilation fans.\",\n  \"gas_concentrations\": \"Internal mapping of gas levels (CH4, CO, O2) at various junction points and work faces.\",\n  \"airflow_network\": \"Airflow velocity (m/s) and pressure (Pa) across the mine branches.\",\n  \"atmospheric_pressure\": \"Ambient surface pressure affecting the ventilation circuit.\",\n  \"power_grid_load\": \"Current cumulative power consumption of the ventilation system in kW.\",\n  \"safety_alerts\": \"List of active environmental hazard flags (e.g., 'high_methane').\"\n}}\n{action_set_definitions}: {\n  \"get_telemetry\": {\n    \"description\": \"Retrieves real-time sensor data including gas concentrations, airflow velocity, and pressure for specific locations.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"locations\": {\n          \"type\": \"array\",\n          \"items\": {\n            \"type\": \"string\"\n          },\n          \"description\": \"List of locations to query (e.g., ['DP-55', 'EXL-West', 'Cave-Boundary']).\"\n        }\n      },\n      \"required\": [\n        \"locations\"\n      ]\n    },\n    \"example_output\": {\n      \"DP-55\": {\n        \"O2\": 18.5,\n        \"CH4\": 0.02,\n        \"CO\": 10,\n        \"pressure_diff\": -5\n      },\n      \"EXL-West\": {\n        \"velocity\": 5.2\n      }\n    }\n  },\n  \"get_system_status\": {\n    \"description\": \"Retrieves the current power grid load and a list of all active safety alerts.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {}\n    },\n    \"example_output\": {\n      \"power_grid_load_kw\": 620,\n      \"active_alerts\": [\n        \"low_O2_DP55\",\n        \"low_velocity_EXL_West\"\n      ]\n    }\n  },\n  \"diagnose_anomaly\": {\n    \"description\": \"Analyzes the telemetry to determine the root cause of the gas hazard at a specific location.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"location\": {\n          \"type\": \"string\",\n          \"description\": \"The location where the anomaly is detected.\"\n        }\n      },\n      \"required\": [\n        \"location\"\n      ]\n    },\n    \"example_output\": {\n      \"cause\": \"spontaneous_combustion\",\n      \"confidence\": 0.95\n    }\n  },\n  \"get_fan_registry\": {\n    \"description\": \"Returns a list of all ventilation fans, their current speed/setting, and their associated sector.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {}\n    },\n    \"example_output\": {\n      \"fans\": [\n        {\n          \"fan_id\": \"F-01\",\n          \"sector\": \"Central\",\n          \"speed_rpm\": 1200,\n          \"status\": \"active\"\n        },\n        {\n          \"fan_id\": \"F-09\",\n          \"sector\": \"EXL-West\",\n          \"speed_rpm\": 900,\n          \"status\": \"active\"\n        }\n      ]\n    }\n  },\n  \"set_fan_operation\": {\n    \"description\": \"Adjusts the operational speed (RPM) or power setting of a specific fan.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"fan_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the fan.\"\n        },\n        \"speed_rpm\": {\n          \"type\": \"number\",\n          \"description\": \"The target speed in Revolutions Per Minute.\"\n        }\n      },\n      \"required\": [\n        \"fan_id\",\n        \"speed_rpm\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"success\",\n      \"new_load_estimate_kw\": 645\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_telemetry",
+      "description": "Retrieves real-time sensor data including gas concentrations, airflow velocity, and pressure for specific locations.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "locations": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "List of locations to query (e.g., ['DP-55', 'EXL-West', 'Cave-Boundary'])."
+          }
+        },
+        "required": [
+          "locations"
+        ]
+      },
+      "example_output": {
+        "DP-55": {
+          "O2": 18.5,
+          "CH4": 0.02,
+          "CO": 10,
+          "pressure_diff": -5
+        },
+        "EXL-West": {
+          "velocity": 5.2
+        }
+      }
+    },
+    {
+      "name": "get_system_status",
+      "description": "Retrieves the current power grid load and a list of all active safety alerts.",
+      "parameters": {
+        "type": "object",
+        "properties": {}
+      },
+      "example_output": {
+        "power_grid_load_kw": 620,
+        "active_alerts": [
+          "low_O2_DP55",
+          "low_velocity_EXL_West"
+        ]
+      }
+    },
+    {
+      "name": "diagnose_anomaly",
+      "description": "Analyzes the telemetry to determine the root cause of the gas hazard at a specific location.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "location": {
+            "type": "string",
+            "description": "The location where the anomaly is detected."
+          }
+        },
+        "required": [
+          "location"
+        ]
+      },
+      "example_output": {
+        "cause": "spontaneous_combustion",
+        "confidence": 0.95
+      }
+    },
+    {
+      "name": "get_fan_registry",
+      "description": "Returns a list of all ventilation fans, their current speed/setting, and their associated sector.",
+      "parameters": {
+        "type": "object",
+        "properties": {}
+      },
+      "example_output": {
+        "fans": [
+          {
+            "fan_id": "F-01",
+            "sector": "Central",
+            "speed_rpm": 1200,
+            "status": "active"
+          },
+          {
+            "fan_id": "F-09",
+            "sector": "EXL-West",
+            "speed_rpm": 900,
+            "status": "active"
+          }
+        ]
+      }
+    },
+    {
+      "name": "set_fan_operation",
+      "description": "Adjusts the operational speed (RPM) or power setting of a specific fan.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "fan_id": {
+            "type": "string",
+            "description": "The unique identifier for the fan."
+          },
+          "speed_rpm": {
+            "type": "number",
+            "description": "The target speed in Revolutions Per Minute."
+          }
+        },
+        "required": [
+          "fan_id",
+          "speed_rpm"
+        ]
+      },
+      "example_output": {
+        "status": "success",
+        "new_load_estimate_kw": 645
+      }
+    }
+  ],
+  "state_description": {
+    "fan_registry": "Current operational status and speed of all ventilation fans.",
+    "gas_concentrations": "Internal mapping of gas levels (CH4, CO, O2) at various junction points and work faces.",
+    "airflow_network": "Airflow velocity (m/s) and pressure (Pa) across the mine branches.",
+    "atmospheric_pressure": "Ambient surface pressure affecting the ventilation circuit.",
+    "power_grid_load": "Current cumulative power consumption of the ventilation system in kW.",
+    "safety_alerts": "List of active environmental hazard flags (e.g., 'high_methane')."
+  },
+  "task_initial_state": {
+    "fan_registry": {
+      "Intake_VSD_01": {
+        "status": "on",
+        "rpm": 950,
+        "max_rpm": 3000
+      },
+      "Exhaust_VSD_04": {
+        "status": "on",
+        "rpm": 2200,
+        "max_rpm": 2500
+      }
+    },
+    "gas_concentrations": {
+      "DP_55": {
+        "O2": 17.1,
+        "CO": 68.5,
+        "CH4": 0.12
+      },
+      "EXL_West": {
+        "O2": 20.9,
+        "CO": 2.5,
+        "CH4": 0.01
+      }
+    },
+    "airflow_network": {
+      "EXL_Central": {
+        "velocity_ms": 2.4,
+        "static_pressure_pa": -145.0,
+        "regulator_setting": "80%_open"
+      },
+      "EXL_West": {
+        "velocity_ms": 5.8,
+        "static_pressure_pa": -25.0,
+        "regulator_setting": "50%_open"
+      }
+    },
+    "atmospheric_pressure": 100.2,
+    "power_grid_load": 640.5,
+    "safety_alerts": [
+      "critical_low_o2_dp55",
+      "high_co_detected_dp55",
+      "negative_cave_pressure_differential"
+    ]
+  }
+}

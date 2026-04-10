@@ -1,0 +1,151 @@
+{
+  "environment_name": "env_59a9c8e91e48",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM) for Tax Return Verification.\n- **Core Objective**: Based on the current internal state $s_t$ and the action $a_t$ taken by the verification agent, simulate the environment's internal logic evolution and predict the observation $o_{{t+1}}$ (the feedback from the tax system).\n- **Emphasis**: You are the simulation engine. You do not offer advice or execute real-world tax filings. You maintain the 'ground truth' of the tax case and provide realistic responses to queries, document submissions, and audit actions.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions must maintain absolute continuity. If a document was uploaded in step $t$, it must remain present in the state for all subsequent steps until explicitly removed or modified. Verification progress must follow logical tax processing sequences.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. This JSON must contain:\n- `\"name\"`: The name of the action function (e.g., `upload_document`, `verify_ssn`, `calculate_tax`).\n- Parameters required by that specific action.\n\nExample:\n```json\n{{\n \"name\": \"verify_income_source\",\n \"arguments\": {{\n    \"source_id\": \"W2_EMPLOYER_001\",\n    \"reported_amount\": 55000\n  }}\n}}\n```\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\n- If an action references a non-existent document ID or an invalid tax year, return: `{{\"error\": \"Invalid document ID or record not found\"}}`.\n- If the input JSON is malformed, return: `{{\"error\": \"Malformed JSON input\"}}`.\n- Do not fabricate data; if a field is unknown in the current state, reflect that in the observation.\n\n##### Output Assembly\nFor every action function call, return a structured JSON object containing **ONLY** the return fields declared in the action function's definition. \n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state or the `new_state` object. Only the observation (the result of the action) is visible to the Agent. Hide all internal flags and backend calculations unless they are explicitly part of the function's return value.\n\n### 4. Key Principles\n- **Format**: Output strictly valid JSON.\n- **Factuality**: Simulations must adhere to the provided state; do not hallucinate taxpayer data.\n- **Consistency**: Tax totals (Income - Deductions = Taxable Income) must remain mathematically consistent across interactions.\n- **Realism**: Responses should mimic an official tax authority's verification system (e.g., specific error codes or verification confirmations).\n- **Encapsulation**: Never reveal the internal `s_t` structure. Provide only the specific `observation` requested.\n{{initial_state}}: {{\n  \"submission_id\": \"TAX-MNE-2024-002\",\n  \"verification_status\": \"UNDER_REVIEW\",\n  \"document_registry\": {{\n    \"Form-5472\": \"RECEIVED\",\n    \"Local-File-TP-Study\": \"RECEIVED\",\n    \"Financial-Statements\": \"RECEIVED\",\n    \"Form-872-SOL-Extension\": \"MISSING\"\n  }},\n  \"reported_income_total\": 50000000.0,\n  \"verified_income_total\": 50000000.0,\n  \"deduction_claims\": [\n    {{\n      \"type\": \"Intercompany-Management-Fees\",\n      \"amount\": 1200000.0,\n      \"status\": \"UNVERIFIED\"\n    }}\n  ],\n  \"audit_flags\": [\n    \"LOW_MARGIN_ALERT\",\n    \"STATUTE_OF_LIMITATIONS_CRITICAL\"\n  ],\n  \"taxpayer_identity_verified\": true\n}}\n{{state_descriptions}}: {{\n  \"submission_id\": \"Unique identifier for the tax return submission.\",\n  \"verification_status\": \"Current processing stage: 'PENDING', 'UNDER_REVIEW', 'FLAGGED_FOR_AUDIT', 'ACCEPTED', or 'REJECTED'.\",\n  \"document_registry\": \"A map of document types to their current status (e.g., 'W-2': 'RECEIVED', '1099': 'MISSING').\",\n  \"reported_income_total\": \"The sum of all income reported by the taxpayer.\",\n  \"verified_income_total\": \"The sum of income confirmed against official third-party records (e.g., IRS transcripts).\",\n  \"deduction_claims\": \"List of deduction objects containing amount and verification status.\",\n  \"audit_flags\": \"Specific reasons why the return has been flagged (e.g., 'Income mismatch', 'Invalid SSN').\",\n  \"taxpayer_identity_verified\": \"True if the SSN/ITIN and name match government records.\"\n}}\n{action_set_definitions}: {\n  \"get_submission_data\": {\n    \"description\": \"Retrieves the full current state of a specific tax submission, including verification status, financial data, and identity verification status.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"submission_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the tax return (e.g., 'TAX-MNE-2024-002').\"\n        }\n      },\n      \"required\": [\n        \"submission_id\"\n      ]\n    },\n    \"example_output\": {\n      \"submission_id\": \"TAX-MNE-2024-002\",\n      \"verification_status\": \"UNDER_REVIEW\",\n      \"document_registry\": {\n        \"W-2\": \"RECEIVED\",\n        \"Form-5471\": \"MISSING\"\n      },\n      \"reported_income_total\": 5000000,\n      \"taxpayer_identity_verified\": true\n    }\n  },\n  \"get_market_benchmarks\": {\n    \"description\": \"Retrieves industry-standard financial benchmarks (Q1, Median, Q3) for a specific NAICS code to perform arm's-length analysis.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"naics_code\": {\n          \"type\": \"string\",\n          \"description\": \"The NAICS code for the industry classification (e.g., '423450').\"\n        }\n      },\n      \"required\": [\n        \"naics_code\"\n      ]\n    },\n    \"example_output\": {\n      \"naics_code\": \"423450\",\n      \"q1_margin\": 4.0,\n      \"median_margin\": 5.8,\n      \"q3_margin\": 7.2\n    }\n  },\n  \"apply_margin_adjustment\": {\n    \"description\": \"Updates the submission's financial records by adjusting the operating margin to a target benchmark value.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"submission_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the tax return.\"\n        },\n        \"target_margin\": {\n          \"type\": \"number\",\n          \"description\": \"The new operating margin to be applied (e.g., the median value).\"\n        },\n        \"adjustment_reason\": {\n          \"type\": \"string\",\n          \"description\": \"Explanation for the adjustment.\"\n        }\n      },\n      \"required\": [\n        \"submission_id\",\n        \"target_margin\"\n      ]\n    },\n    \"example_output\": {\n      \"success\": true,\n      \"new_verified_income_total\": 5250000\n    }\n  },\n  \"finalize_submission_status\": {\n    \"description\": \"Transitions the tax return to its final processing state (ACCEPTED or REJECTED).\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"submission_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the tax return.\"\n        },\n        \"status\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"ACCEPTED\",\n            \"REJECTED\"\n          ],\n          \"description\": \"The final determination status.\"\n        },\n        \"comments\": {\n          \"type\": \"string\",\n          \"description\": \"Final notes regarding the determination.\"\n        }\n      },\n      \"required\": [\n        \"submission_id\",\n        \"status\"\n      ]\n    },\n    \"example_output\": {\n      \"submission_id\": \"TAX-MNE-2024-002\",\n      \"final_status\": \"ACCEPTED\",\n      \"timestamp\": \"2024-05-20T10:00:00Z\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_submission_data",
+      "description": "Retrieves the full current state of a specific tax submission, including verification status, financial data, and identity verification status.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "submission_id": {
+            "type": "string",
+            "description": "The unique identifier for the tax return (e.g., 'TAX-MNE-2024-002')."
+          }
+        },
+        "required": [
+          "submission_id"
+        ]
+      },
+      "example_output": {
+        "submission_id": "TAX-MNE-2024-002",
+        "verification_status": "UNDER_REVIEW",
+        "document_registry": {
+          "W-2": "RECEIVED",
+          "Form-5471": "MISSING"
+        },
+        "reported_income_total": 5000000,
+        "taxpayer_identity_verified": true
+      }
+    },
+    {
+      "name": "get_market_benchmarks",
+      "description": "Retrieves industry-standard financial benchmarks (Q1, Median, Q3) for a specific NAICS code to perform arm's-length analysis.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "naics_code": {
+            "type": "string",
+            "description": "The NAICS code for the industry classification (e.g., '423450')."
+          }
+        },
+        "required": [
+          "naics_code"
+        ]
+      },
+      "example_output": {
+        "naics_code": "423450",
+        "q1_margin": 4.0,
+        "median_margin": 5.8,
+        "q3_margin": 7.2
+      }
+    },
+    {
+      "name": "apply_margin_adjustment",
+      "description": "Updates the submission's financial records by adjusting the operating margin to a target benchmark value.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "submission_id": {
+            "type": "string",
+            "description": "The unique identifier for the tax return."
+          },
+          "target_margin": {
+            "type": "number",
+            "description": "The new operating margin to be applied (e.g., the median value)."
+          },
+          "adjustment_reason": {
+            "type": "string",
+            "description": "Explanation for the adjustment."
+          }
+        },
+        "required": [
+          "submission_id",
+          "target_margin"
+        ]
+      },
+      "example_output": {
+        "success": true,
+        "new_verified_income_total": 5250000
+      }
+    },
+    {
+      "name": "finalize_submission_status",
+      "description": "Transitions the tax return to its final processing state (ACCEPTED or REJECTED).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "submission_id": {
+            "type": "string",
+            "description": "The unique identifier for the tax return."
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ACCEPTED",
+              "REJECTED"
+            ],
+            "description": "The final determination status."
+          },
+          "comments": {
+            "type": "string",
+            "description": "Final notes regarding the determination."
+          }
+        },
+        "required": [
+          "submission_id",
+          "status"
+        ]
+      },
+      "example_output": {
+        "submission_id": "TAX-MNE-2024-002",
+        "final_status": "ACCEPTED",
+        "timestamp": "2024-05-20T10:00:00Z"
+      }
+    }
+  ],
+  "state_description": {
+    "submission_id": "Unique identifier for the tax return submission.",
+    "verification_status": "Current processing stage: 'PENDING', 'UNDER_REVIEW', 'FLAGGED_FOR_AUDIT', 'ACCEPTED', or 'REJECTED'.",
+    "document_registry": "A map of document types to their current status (e.g., 'W-2': 'RECEIVED', '1099': 'MISSING').",
+    "reported_income_total": "The sum of all income reported by the taxpayer.",
+    "verified_income_total": "The sum of income confirmed against official third-party records (e.g., IRS transcripts).",
+    "deduction_claims": "List of deduction objects containing amount and verification status.",
+    "audit_flags": "Specific reasons why the return has been flagged (e.g., 'Income mismatch', 'Invalid SSN').",
+    "taxpayer_identity_verified": "True if the SSN/ITIN and name match government records."
+  },
+  "task_initial_state": {
+    "submission_id": "TAX-MNE-2024-002",
+    "verification_status": "UNDER_REVIEW",
+    "document_registry": {
+      "Form-5472": "RECEIVED",
+      "Local-File-TP-Study": "RECEIVED",
+      "Financial-Statements": "RECEIVED",
+      "Form-872-SOL-Extension": "MISSING"
+    },
+    "reported_income_total": 50000000.0,
+    "verified_income_total": 50000000.0,
+    "deduction_claims": [
+      {
+        "type": "Intercompany-Management-Fees",
+        "amount": 1200000.0,
+        "status": "UNVERIFIED"
+      }
+    ],
+    "audit_flags": [
+      "LOW_MARGIN_ALERT",
+      "STATUTE_OF_LIMITATIONS_CRITICAL"
+    ],
+    "taxpayer_identity_verified": true
+  }
+}

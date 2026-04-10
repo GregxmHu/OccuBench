@@ -1,0 +1,99 @@
+{
+  "environment_name": "env_7ba0f1d90057",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM) for Wastewater Treatment Optimization.\n- **Core Objective**: Based on the current biological and physical state $s_t$ of the wastewater treatment plant and the control action $a_t$ executed by the Agent, simulate the biochemical evolution of the environment and predict the resulting sensor observations $o_{{t+1}}$.\n- **Emphasis**: You are a simulator. You do not control the plant; you model its response. You maintain an internal representation of hydraulic flows, bacterial populations, and chemical concentrations to ensure realistic and consistent transitions.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation tracking tank levels, pollutant concentrations, and microbial health. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions must maintain temporal and physical consistency. Changes in pollutant levels must follow mass balance principles and reaction kinetics (e.g., Monod kinetics for biomass growth). Previous actions directly influence the current state.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions (e.g., adjusting pump speeds, aeration intensity, or chemical dosing). The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. You must parse this JSON to determine the transition.\nExample:\n```json\n{{\n \"name\": \"adjust_aeration\",\n \"arguments\": {{\n    \"tank_id\": \"aeration_tank_01\",\n    \"blower_speed\": 85.0\n  }}\n}}\n```\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\n- If an action parameter is out of physical bounds (e.g., negative flow rate), return an error: `{{\"error\": \"Invalid parameter: blower_speed cannot be negative\"}}`.\n- If a state conflict occurs (e.g., tank overflow), reflect this in the observation and potentially trigger a system alarm observation.\n- Do not fabricate data; if an action is not defined in the action set, return an error.\n\n##### Output Assembly\nFor every action function call, return a structured JSON object containing **ONLY** the return fields (Observations) declared in that action function's definition.\n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t` or the updated `s_{{t+1}}`. You must only expose the specific sensor readings or status reports defined as the action's return values. The state is managed internally and persists in the conversation history.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to JSON for both inputs and outputs.\n- **Factuality**: Model the biochemical process realistically (e.g., increasing Dissolved Oxygen should eventually reduce Ammonia levels given sufficient biomass).\n- **Consistency**: The environment must not \"forget\" its state; if a tank is filling up, it must remain full until an action drains it.\n- **Realism**: Responses should reflect real-world lag times and non-linear dynamics inherent in wastewater treatment.\n- **Encapsulation**: Strictly hide the internal state structure from the output. Only expose information that is explicitly returned by the action function as an observation.\n{{initial_state}}: {{\n  \"influent_flow_rate\": 720.0,\n  \"dissolved_oxygen_mg_L\": 1.4,\n  \"mixed_liquor_suspended_solids_mg_L\": 3250.0,\n  \"internal_ammonia_concentration\": 16.8,\n  \"sludge_recycle_rate\": 180.0,\n  \"chemical_tank_level_percent\": 80.5\n}}\n{{state_descriptions}}: {{\n  \"influent_flow_rate\": \"The current rate of wastewater entering the plant in cubic meters per hour.\",\n  \"dissolved_oxygen_mg_L\": \"Concentration of oxygen dissolved in the aeration tank, critical for microbial activity.\",\n  \"mixed_liquor_suspended_solids_mg_L\": \"Concentration of suspended solids (biomass) in the aeration tank (MLSS).\",\n  \"internal_ammonia_concentration\": \"Current concentration of Ammonia (NH3-N) within the biological reactor.\",\n  \"sludge_recycle_rate\": \"Rate at which settled sludge is returned from the clarifier to the aeration tank.\",\n  \"chemical_tank_level_percent\": \"The remaining percentage of phosphorus-precipitating chemicals in the storage tank.\"\n}}\n{action_set_definitions}: {\n  \"get_plant_status\": {\n    \"description\": \"Retrieves the current real-time sensor data from the wastewater treatment plant, including influent flow, oxygen levels, biomass concentration (MLSS), ammonia concentration, and chemical storage levels.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"influent_flow_rate\": 1250.0,\n      \"dissolved_oxygen_mg_L\": 1.5,\n      \"mixed_liquor_suspended_solids_mg_L\": 3100.0,\n      \"internal_ammonia_concentration\": 4.2,\n      \"sludge_recycle_rate\": 400.0,\n      \"chemical_tank_level_percent\": 80.0\n    }\n  },\n  \"set_aeration_setpoint\": {\n    \"description\": \"Adjusts the target dissolved oxygen (DO) concentration in the biological reactor to facilitate nitrification.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"do_target_mg_L\": {\n          \"type\": \"number\",\n          \"description\": \"The target concentration of dissolved oxygen in mg/L. Optimal range for this task is 1.8 to 2.6 mg/L.\"\n        }\n      },\n      \"required\": [\n        \"do_target_mg_L\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"success\",\n      \"new_do_setpoint\": 2.2\n    }\n  },\n  \"set_sludge_recycle_rate\": {\n    \"description\": \"Controls the return activated sludge (RAS) flow rate to maintain the biomass (MLSS) concentration in the aeration tank.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"recycle_rate_m3_h\": {\n          \"type\": \"number\",\n          \"description\": \"The flow rate for returning sludge from the clarifier to the reactor in cubic meters per hour.\"\n        }\n      },\n      \"required\": [\n        \"recycle_rate_m3_h\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"success\",\n      \"new_recycle_rate\": 550.0\n    }\n  },\n  \"set_chemical_dosing_rate\": {\n    \"description\": \"Adjusts the dosage rate of phosphorus-precipitating chemicals to manage the storage tank level while meeting effluent requirements.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"dosing_rate_liters_h\": {\n          \"type\": \"number\",\n          \"description\": \"The amount of chemical to be injected per hour.\"\n        }\n      },\n      \"required\": [\n        \"dosing_rate_liters_h\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"success\",\n      \"new_dosing_rate\": 12.0\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_plant_status",
+      "description": "Retrieves the current real-time sensor data from the wastewater treatment plant, including influent flow, oxygen levels, biomass concentration (MLSS), ammonia concentration, and chemical storage levels.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "influent_flow_rate": 1250.0,
+        "dissolved_oxygen_mg_L": 1.5,
+        "mixed_liquor_suspended_solids_mg_L": 3100.0,
+        "internal_ammonia_concentration": 4.2,
+        "sludge_recycle_rate": 400.0,
+        "chemical_tank_level_percent": 80.0
+      }
+    },
+    {
+      "name": "set_aeration_setpoint",
+      "description": "Adjusts the target dissolved oxygen (DO) concentration in the biological reactor to facilitate nitrification.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "do_target_mg_L": {
+            "type": "number",
+            "description": "The target concentration of dissolved oxygen in mg/L. Optimal range for this task is 1.8 to 2.6 mg/L."
+          }
+        },
+        "required": [
+          "do_target_mg_L"
+        ]
+      },
+      "example_output": {
+        "status": "success",
+        "new_do_setpoint": 2.2
+      }
+    },
+    {
+      "name": "set_sludge_recycle_rate",
+      "description": "Controls the return activated sludge (RAS) flow rate to maintain the biomass (MLSS) concentration in the aeration tank.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "recycle_rate_m3_h": {
+            "type": "number",
+            "description": "The flow rate for returning sludge from the clarifier to the reactor in cubic meters per hour."
+          }
+        },
+        "required": [
+          "recycle_rate_m3_h"
+        ]
+      },
+      "example_output": {
+        "status": "success",
+        "new_recycle_rate": 550.0
+      }
+    },
+    {
+      "name": "set_chemical_dosing_rate",
+      "description": "Adjusts the dosage rate of phosphorus-precipitating chemicals to manage the storage tank level while meeting effluent requirements.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "dosing_rate_liters_h": {
+            "type": "number",
+            "description": "The amount of chemical to be injected per hour."
+          }
+        },
+        "required": [
+          "dosing_rate_liters_h"
+        ]
+      },
+      "example_output": {
+        "status": "success",
+        "new_dosing_rate": 12.0
+      }
+    }
+  ],
+  "state_description": {
+    "influent_flow_rate": "The current rate of wastewater entering the plant in cubic meters per hour.",
+    "dissolved_oxygen_mg_L": "Concentration of oxygen dissolved in the aeration tank, critical for microbial activity.",
+    "mixed_liquor_suspended_solids_mg_L": "Concentration of suspended solids (biomass) in the aeration tank (MLSS).",
+    "internal_ammonia_concentration": "Current concentration of Ammonia (NH3-N) within the biological reactor.",
+    "sludge_recycle_rate": "Rate at which settled sludge is returned from the clarifier to the aeration tank.",
+    "chemical_tank_level_percent": "The remaining percentage of phosphorus-precipitating chemicals in the storage tank."
+  },
+  "task_initial_state": {
+    "influent_flow_rate": 720.0,
+    "dissolved_oxygen_mg_L": 1.4,
+    "mixed_liquor_suspended_solids_mg_L": 3250.0,
+    "internal_ammonia_concentration": 16.8,
+    "sludge_recycle_rate": 180.0,
+    "chemical_tank_level_percent": 80.5
+  }
+}

@@ -1,0 +1,200 @@
+{
+  "environment_name": "env_3c7fa64dfe3b",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM) for Policy Underwriting Review.\n- **Core Objective**: Based on the current internal state $s_t$ and the action $a_t$ executed by the Agent, simulate the evolution of the insurance application environment and predict the resulting observation $o_{{t+1}}$.\n- **Emphasis**: You are a simulator. You do not perform real-world underwriting or contact actual customers. You calculate how the state changes internally and generate the specific data (observation) the Agent would see in a real underwriting system.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nYou must maintain strict context consistency throughout the interaction. Every action performed by the Agent should result in a logical state transition (e.g., if a document is uploaded, the state must reflect that the requirement is now satisfied). Your responses must align with the historical progression of the underwriting file.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. You must parse these requests to determine the next state and observation. The input format is:\n- `\"name\"`: Specifies the name of the action function to execute.\n- The remaining fields are the parameters for that function.\n\nExample:\n```json\n{{\n \"name\": \"retrieve_medical_report\",\n \"arguments\": {{\n    \"application_id\": \"APP-12345\",\n    \"report_type\": \"blood_work\"\n  }}\n}}\n```\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nIf the Agent provides invalid parameters (e.g., an application ID that doesn't match the state), calls undefined actions, or performs an action that conflicts with the current state (e.g., trying to approve a policy that is already rejected), return a structured error message: `{{\"error\": \"Description of the issue\"}}`. Do not fabricate successful outcomes for failed logic.\n\n##### Output Assembly\nFor every action call, return a structured JSON object containing **ONLY** the return fields declared in that action function's definition. \n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the internal state `$s_t$`, the updated state, or any internal variables. State maintenance is handled internally by your simulation. The Agent must only receive the specific observation data defined in the action's schema.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to specified JSON formats for both input parsing and output generation.\n- **Factuality**: Do not fabricate non-existent policy data, medical codes, or system functions.\n- **Consistency**: The underwriting logic must remain self-consistent (e.g., a high-risk flag should not disappear without a corrective action/document).\n- **Realism**: Simulated observations (e.g., medical reports, risk scores) must align with the professional standards of insurance underwriting.\n- **Quality**: Ensure clear, unambiguous observations that provide necessary information for the Agent's next decision.\n- **Encapsulation**: Strictly hide the internal state structure. Do not output \"State Updated\" messages or the JSON of the state itself. Only expose the `observation`.\n{{initial_state}}: {{\n  \"application_id\": \"POL-882-MFG\",\n  \"underwriting_status\": \"UNDER_REVIEW\",\n  \"applicant_profile\": {{\n    \"company_name\": \"Precision Metalworks Corp\",\n    \"industry\": \"Metal Fabrication\",\n    \"state\": \"Illinois\",\n    \"manual_premium\": 80000,\n    \"experience_mod\": 1.1,\n    \"uw_authority_limit\": 0.1,\n    \"state_irpm_cap\": 0.25\n  }},\n  \"risk_flags\": [\n    \"High_Loss_Frequency_Historical\"\n  ],\n  \"satisfied_requirements\": [\n    \"Broker_Submission_Package\",\n    \"Experience_Rating_Worksheet\",\n    \"LCR_Upload\"\n  ],\n  \"pending_requirements\": [\n    \"LCR_Review\",\n    \"IRPM_Justification_Note\",\n    \"Premium_Finalization\"\n  ],\n  \"internal_audit_log\": [\n    \"2024-11-01: Application received and assigned.\",\n    \"2024-11-02: Experience Mod 1.10 applied based on 3-year loss run data.\",\n    \"2024-11-03: Loss Control Report (LCR-2024) received and attached to file.\"\n  ]\n}}\n{{state_descriptions}}: {{\n  \"application_id\": \"Unique identifier for the insurance application.\",\n  \"underwriting_status\": \"Current status of the review (e.g., PENDING_INFO, UNDER_REVIEW, COMPLETED).\",\n  \"applicant_profile\": \"Aggregated data about the applicant including age, occupation, and basic health metrics.\",\n  \"risk_flags\": \"List of identified risk indicators or medical red flags.\",\n  \"satisfied_requirements\": \"List of documents or verifications successfully received and processed.\",\n  \"pending_requirements\": \"List of outstanding documents or data points required to finalize the decision.\",\n  \"internal_audit_log\": \"Internal chronological record of actions taken within the environment for consistency tracking.\"\n}}\n{action_set_definitions}: {\n  \"fetch_application_state\": {\n    \"description\": \"Retrieves the current state of a specific insurance application, including status, applicant profile, base premium, and audit logs.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"application_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the policy (e.g., 'POL-882-MFG').\"\n        }\n      },\n      \"required\": [\n        \"application_id\"\n      ]\n    },\n    \"example_output\": {\n      \"application_id\": \"POL-882-MFG\",\n      \"underwriting_status\": \"UNDER_REVIEW\",\n      \"base_premium\": 5000,\n      \"internal_audit_log\": [\n        {\n          \"timestamp\": \"2024-01-01\",\n          \"event\": \"Application received\"\n        }\n      ]\n    }\n  },\n  \"get_document_content\": {\n    \"description\": \"Retrieves the text content of a specific report or document associated with an application.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"document_id\": {\n          \"type\": \"string\",\n          \"description\": \"The name or ID of the document (e.g., 'LCR-2024').\"\n        },\n        \"application_id\": {\n          \"type\": \"string\",\n          \"description\": \"The policy identifier.\"\n        }\n      },\n      \"required\": [\n        \"document_id\",\n        \"application_id\"\n      ]\n    },\n    \"example_output\": {\n      \"content\": \"Risk assessment details: Fire safety systems are upgraded (+5% credit)...\"\n    }\n  },\n  \"submit_irpm_evaluation\": {\n    \"description\": \"Records the Individual Risk Premium Modification (IRPM) details, including specific credits/debits and their justifications based on risk characteristics.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"application_id\": {\n          \"type\": \"string\",\n          \"description\": \"The policy identifier.\"\n        },\n        \"modifications\": {\n          \"type\": \"array\",\n          \"items\": {\n            \"type\": \"object\",\n            \"properties\": {\n              \"category\": {\n                \"type\": \"string\",\n                \"description\": \"e.g., 'Management', 'Location', 'Safety'\"\n              },\n              \"percentage\": {\n                \"type\": \"number\",\n                \"description\": \"The decimal modification (e.g., -0.05 for 5% credit, 0.03 for 3% debit).\"\n              },\n              \"justification\": {\n                \"type\": \"string\",\n                \"description\": \"Evidence from the LCR report.\"\n              }\n            }\n          }\n        },\n        \"total_schedule_mod\": {\n          \"type\": \"number\",\n          \"description\": \"The sum of all modification percentages.\"\n        }\n      },\n      \"required\": [\n        \"application_id\",\n        \"modifications\",\n        \"total_schedule_mod\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"IRPM_RECORDED\"\n    }\n  },\n  \"request_management_escalation\": {\n    \"description\": \"Requests management approval for modifications exceeding the Agent's 10% authority limit.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"application_id\": {\n          \"type\": \"string\"\n        },\n        \"requested_total_mod\": {\n          \"type\": \"number\"\n        },\n        \"reason\": {\n          \"type\": \"string\"\n        }\n      },\n      \"required\": [\n        \"application_id\",\n        \"requested_total_mod\",\n        \"reason\"\n      ]\n    },\n    \"example_output\": {\n      \"escalation_id\": \"ESC-992\",\n      \"status\": \"PENDING_APPROVAL\"\n    }\n  },\n  \"finalize_underwriting\": {\n    \"description\": \"Sets the final standard premium and transitions the policy status.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"application_id\": {\n          \"type\": \"string\"\n        },\n        \"final_premium\": {\n          \"type\": \"number\"\n        },\n        \"new_status\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"READY_TO_QUOTE\",\n            \"DECLINED\"\n          ]\n        }\n      },\n      \"required\": [\n        \"application_id\",\n        \"final_premium\",\n        \"new_status\"\n      ]\n    },\n    \"example_output\": {\n      \"result\": \"SUCCESS\",\n      \"current_status\": \"READY_TO_QUOTE\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "fetch_application_state",
+      "description": "Retrieves the current state of a specific insurance application, including status, applicant profile, base premium, and audit logs.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "application_id": {
+            "type": "string",
+            "description": "The unique identifier for the policy (e.g., 'POL-882-MFG')."
+          }
+        },
+        "required": [
+          "application_id"
+        ]
+      },
+      "example_output": {
+        "application_id": "POL-882-MFG",
+        "underwriting_status": "UNDER_REVIEW",
+        "base_premium": 5000,
+        "internal_audit_log": [
+          {
+            "timestamp": "2024-01-01",
+            "event": "Application received"
+          }
+        ]
+      }
+    },
+    {
+      "name": "get_document_content",
+      "description": "Retrieves the text content of a specific report or document associated with an application.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "document_id": {
+            "type": "string",
+            "description": "The name or ID of the document (e.g., 'LCR-2024')."
+          },
+          "application_id": {
+            "type": "string",
+            "description": "The policy identifier."
+          }
+        },
+        "required": [
+          "document_id",
+          "application_id"
+        ]
+      },
+      "example_output": {
+        "content": "Risk assessment details: Fire safety systems are upgraded (+5% credit)..."
+      }
+    },
+    {
+      "name": "submit_irpm_evaluation",
+      "description": "Records the Individual Risk Premium Modification (IRPM) details, including specific credits/debits and their justifications based on risk characteristics.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "application_id": {
+            "type": "string",
+            "description": "The policy identifier."
+          },
+          "modifications": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "category": {
+                  "type": "string",
+                  "description": "e.g., 'Management', 'Location', 'Safety'"
+                },
+                "percentage": {
+                  "type": "number",
+                  "description": "The decimal modification (e.g., -0.05 for 5% credit, 0.03 for 3% debit)."
+                },
+                "justification": {
+                  "type": "string",
+                  "description": "Evidence from the LCR report."
+                }
+              }
+            }
+          },
+          "total_schedule_mod": {
+            "type": "number",
+            "description": "The sum of all modification percentages."
+          }
+        },
+        "required": [
+          "application_id",
+          "modifications",
+          "total_schedule_mod"
+        ]
+      },
+      "example_output": {
+        "status": "IRPM_RECORDED"
+      }
+    },
+    {
+      "name": "request_management_escalation",
+      "description": "Requests management approval for modifications exceeding the Agent's 10% authority limit.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "application_id": {
+            "type": "string"
+          },
+          "requested_total_mod": {
+            "type": "number"
+          },
+          "reason": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "application_id",
+          "requested_total_mod",
+          "reason"
+        ]
+      },
+      "example_output": {
+        "escalation_id": "ESC-992",
+        "status": "PENDING_APPROVAL"
+      }
+    },
+    {
+      "name": "finalize_underwriting",
+      "description": "Sets the final standard premium and transitions the policy status.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "application_id": {
+            "type": "string"
+          },
+          "final_premium": {
+            "type": "number"
+          },
+          "new_status": {
+            "type": "string",
+            "enum": [
+              "READY_TO_QUOTE",
+              "DECLINED"
+            ]
+          }
+        },
+        "required": [
+          "application_id",
+          "final_premium",
+          "new_status"
+        ]
+      },
+      "example_output": {
+        "result": "SUCCESS",
+        "current_status": "READY_TO_QUOTE"
+      }
+    }
+  ],
+  "state_description": {
+    "application_id": "Unique identifier for the insurance application.",
+    "underwriting_status": "Current status of the review (e.g., PENDING_INFO, UNDER_REVIEW, COMPLETED).",
+    "applicant_profile": "Aggregated data about the applicant including age, occupation, and basic health metrics.",
+    "risk_flags": "List of identified risk indicators or medical red flags.",
+    "satisfied_requirements": "List of documents or verifications successfully received and processed.",
+    "pending_requirements": "List of outstanding documents or data points required to finalize the decision.",
+    "internal_audit_log": "Internal chronological record of actions taken within the environment for consistency tracking."
+  },
+  "task_initial_state": {
+    "application_id": "POL-882-MFG",
+    "underwriting_status": "UNDER_REVIEW",
+    "applicant_profile": {
+      "company_name": "Precision Metalworks Corp",
+      "industry": "Metal Fabrication",
+      "state": "Illinois",
+      "manual_premium": 80000,
+      "experience_mod": 1.1,
+      "uw_authority_limit": 0.1,
+      "state_irpm_cap": 0.25
+    },
+    "risk_flags": [
+      "High_Loss_Frequency_Historical"
+    ],
+    "satisfied_requirements": [
+      "Broker_Submission_Package",
+      "Experience_Rating_Worksheet",
+      "LCR_Upload"
+    ],
+    "pending_requirements": [
+      "LCR_Review",
+      "IRPM_Justification_Note",
+      "Premium_Finalization"
+    ],
+    "internal_audit_log": [
+      "2024-11-01: Application received and assigned.",
+      "2024-11-02: Experience Mod 1.10 applied based on 3-year loss run data.",
+      "2024-11-03: Loss Control Report (LCR-2024) received and attached to file."
+    ]
+  }
+}

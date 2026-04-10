@@ -1,0 +1,218 @@
+{
+  "environment_name": "env_a40a488b4d18",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: Based on the current state $s_t$ and the action $a_t$ executed by the Agent in the Import Declaration Review process, simulate the internal environment changes and predict the observation $o_{{t+1}}$ obtained by the Agent. \n- **Emphasis**: The LWM acts as the customs backend and document management system. It does not perform the review itself but simulates the results of actions (e.g., database lookups, validation checks, status updates) and maintains the logical consistency of the declaration file.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation tracking the declaration details, validation flags, and processing stage. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions between the World Model and the Agent must maintain strict context consistency. If an item is flagged in a previous step, that flag must persist in the internal state unless a corrective action is simulated. The evolution of the declaration status must follow logical customs procedures.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. This JSON will contain:\n- `\"name\"`: The name of the action function to execute.\n- The specific parameters required by that action.\n\nExample:\n```json\n{{\n \"name\": \"validate_hs_code\",\n \"arguments\": {{\n    \"item_index\": 0,\n    \"hs_code\": \"8471.30.00\"\n  }}\n}}\n```\n\nAs the Language World Model, you must parse this input, update the internal environment state accordingly, and generate the resulting observation.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nIf the Agent provides an invalid `item_index`, an undefined `action_name`, or attempts to approve a declaration that has critical missing fields in the current state, return structured error information: e.g., `{{\"error\": \"Invalid item index: 5\", \"code\": 404}}`. Do not fabricate successful outcomes for invalid transitions.\n\n##### Output Assembly\nFor every action function call, the model must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition (the Observation).\n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, `new_state`, or any hidden variables. You must encapsulate the state. The Agent should only see the specific return values (e.g., validation results, lookup data, or success confirmations) defined in the action.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to JSON for both input parsing simulation and output generation.\n- **Factuality**: Use realistic customs logic (e.g., tax calculations should be mathematically consistent with value and rate).\n- **Consistency**: The internal state must track changes (e.g., once a 'duty_paid' flag is set, it remains set until the session ends or a refund action is simulated).\n- **Realism**: Responses should reflect typical customs system behaviors, including latency errors or data mismatches if appropriate for the scenario.\n- **Quality**: Observations should be professional and clear.\n- **Encapsulation**: Never reveal the background state JSON structure in the final response to the Agent.\n{{initial_state}}: {{\n  \"declaration_id\": \"DEC-ROO-882\",\n  \"review_status\": \"PENDING\",\n  \"line_items\": [\n    {{\n      \"item_index\": 0,\n      \"description\": \"Industrial Centrifugal Pumps\",\n      \"hs_code_declared\": \"8413.70\",\n      \"quantity\": 5000,\n      \"declared_value\": 500000.0,\n      \"mfn_rate\": 0.15,\n      \"applicable_fta_rate\": 0.0\n    }}\n  ],\n  \"validation_errors\": [],\n  \"total_calculated_duties\": 75000.0,\n  \"supporting_documents\": [\n    {{\n      \"doc_type\": \"CERTIFICATE_OF_ORIGIN\",\n      \"doc_id\": \"COO-2024-Y-7781\",\n      \"issuing_authority\": \"Ministry of Trade, Country Y\",\n      \"origin_criterion\": \"RVC 40%\",\n      \"hs_code_on_doc\": \"8413.11\",\n      \"fob_value_declared\": 480000.0,\n      \"third_party_invoicing_indicated\": true,\n      \"verification_status\": \"UNVERIFIED\"\n    }},\n    {{\n      \"doc_type\": \"COMMERCIAL_INVOICE\",\n      \"doc_id\": \"INV-9921-HK\",\n      \"seller\": \"Global Traders Ltd, Hong Kong\",\n      \"amount\": 500000.0,\n      \"verification_status\": \"PENDING\"\n    }},\n    {{\n      \"doc_type\": \"BILL_OF_LADING\",\n      \"doc_id\": \"BL-MAERSK-001\",\n      \"port_of_loading\": \"Port of Country Y\",\n      \"transshipment_port\": \"Singapore\",\n      \"port_of_discharge\": \"Port of Country X\",\n      \"consignment_status\": \"INDIRECT_ROUTE\"\n    }}\n  ]\n}}\n{{state_descriptions}}: {{\n  \"declaration_id\": \"Unique identifier for the import declaration document.\",\n  \"review_status\": \"Current workflow stage of the declaration (e.g., PENDING, IN_REVIEW, FLAGGED, APPROVED).\",\n  \"line_items\": \"List of goods being imported, including HS codes, declared value, and quantities.\",\n  \"validation_errors\": \"A list of identified discrepancies or compliance issues found during the session.\",\n  \"total_calculated_duties\": \"The running total of calculated taxes and duties based on current item validations.\",\n  \"supporting_documents\": \"List of attached files like Invoices or Certificates of Origin and their verification status.\"\n}}\n{action_set_definitions}: {\n  \"get_declaration_data\": {\n    \"description\": \"Retrieves the current metadata and state of a specific import declaration, including line items, current status, and HS codes.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"declaration_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique ID of the declaration (e.g., DEC-ROO-882).\"\n        }\n      },\n      \"required\": [\n        \"declaration_id\"\n      ]\n    },\n    \"example_output\": {\n      \"declaration_id\": \"DEC-ROO-882\",\n      \"line_items\": [\n        {\n          \"hs_code\": \"8413.70\",\n          \"value\": 50000,\n          \"currency\": \"USD\"\n        }\n      ],\n      \"review_status\": \"PENDING\"\n    }\n  },\n  \"retrieve_document_content\": {\n    \"description\": \"Fetches the text content or metadata of supporting documents attached to a declaration, such as the Certificate of Origin (CoO), Invoices, or Bill of Lading.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"declaration_id\": {\n          \"type\": \"string\",\n          \"description\": \"The declaration ID associated with the documents.\"\n        },\n        \"document_type\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"CERTIFICATE_OF_ORIGIN\",\n            \"COMMERCIAL_INVOICE\",\n            \"BILL_OF_LADING\",\n            \"TRANSSHIPMENT_CERTIFICATE\"\n          ],\n          \"description\": \"The type of document to retrieve.\"\n        }\n      },\n      \"required\": [\n        \"declaration_id\",\n        \"document_type\"\n      ]\n    },\n    \"example_output\": {\n      \"document_id\": \"DOC-123\",\n      \"content\": \"HS Code listed: 8413.11. Origin: Country X. Invoiced by: HK Entity...\",\n      \"verification_status\": \"UNVERIFIED\"\n    }\n  },\n  \"consult_fta_handbook\": {\n    \"description\": \"Queries the Handbook on Preferential Rules of Origin for specific Product-Specific Rules (PSR) or consignment requirements (Non-manipulation).\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"fta_name\": {\n          \"type\": \"string\",\n          \"description\": \"The name of the Free Trade Agreement.\"\n        },\n        \"hs_code\": {\n          \"type\": \"string\",\n          \"description\": \"The HS code to look up (6-digit level recommended).\"\n        },\n        \"topic\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"PSR\",\n            \"NON_MANIPULATION\",\n            \"THIRD_PARTY_INVOICING\"\n          ],\n          \"description\": \"The specific regulatory topic to research.\"\n        }\n      },\n      \"required\": [\n        \"fta_name\",\n        \"hs_code\",\n        \"topic\"\n      ]\n    },\n    \"example_output\": {\n      \"rule_description\": \"A change to subheading 8413.11-8413.80 from any other heading...\",\n      \"compliance_requirement\": \"Evidence of customs supervision in transshipment port required.\"\n    }\n  },\n  \"validate_and_record_discrepancy\": {\n    \"description\": \"Logs an identified discrepancy or validation result into the environment state and updates the validation_errors list.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"declaration_id\": {\n          \"type\": \"string\",\n          \"description\": \"The declaration ID.\"\n        },\n        \"issue_type\": {\n          \"type\": \"string\",\n          \"description\": \"Category of the issue (e.g., HS_CODE_MISMATCH).\"\n        },\n        \"description\": {\n          \"type\": \"string\",\n          \"description\": \"Detailed explanation of the discrepancy and its resolution.\"\n        },\n        \"is_resolved\": {\n          \"type\": \"boolean\",\n          \"description\": \"Whether the discrepancy has been legally accounted for.\"\n        }\n      },\n      \"required\": [\n        \"declaration_id\",\n        \"issue_type\",\n        \"description\",\n        \"is_resolved\"\n      ]\n    },\n    \"example_output\": null\n  },\n  \"finalize_review\": {\n    \"description\": \"Updates the total calculated duties and sets the final review status of the declaration.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"declaration_id\": {\n          \"type\": \"string\",\n          \"description\": \"The declaration ID.\"\n        },\n        \"final_status\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"APPROVED\",\n            \"REJECTED\"\n          ],\n          \"description\": \"The final determination for the tariff claim.\"\n        },\n        \"adjusted_duty_total\": {\n          \"type\": \"number\",\n          \"description\": \"The final calculated duty amount after the review.\"\n        }\n      },\n      \"required\": [\n        \"declaration_id\",\n        \"final_status\",\n        \"adjusted_duty_total\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"SUCCESS\",\n      \"new_state\": \"APPROVED\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_declaration_data",
+      "description": "Retrieves the current metadata and state of a specific import declaration, including line items, current status, and HS codes.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "declaration_id": {
+            "type": "string",
+            "description": "The unique ID of the declaration (e.g., DEC-ROO-882)."
+          }
+        },
+        "required": [
+          "declaration_id"
+        ]
+      },
+      "example_output": {
+        "declaration_id": "DEC-ROO-882",
+        "line_items": [
+          {
+            "hs_code": "8413.70",
+            "value": 50000,
+            "currency": "USD"
+          }
+        ],
+        "review_status": "PENDING"
+      }
+    },
+    {
+      "name": "retrieve_document_content",
+      "description": "Fetches the text content or metadata of supporting documents attached to a declaration, such as the Certificate of Origin (CoO), Invoices, or Bill of Lading.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "declaration_id": {
+            "type": "string",
+            "description": "The declaration ID associated with the documents."
+          },
+          "document_type": {
+            "type": "string",
+            "enum": [
+              "CERTIFICATE_OF_ORIGIN",
+              "COMMERCIAL_INVOICE",
+              "BILL_OF_LADING",
+              "TRANSSHIPMENT_CERTIFICATE"
+            ],
+            "description": "The type of document to retrieve."
+          }
+        },
+        "required": [
+          "declaration_id",
+          "document_type"
+        ]
+      },
+      "example_output": {
+        "document_id": "DOC-123",
+        "content": "HS Code listed: 8413.11. Origin: Country X. Invoiced by: HK Entity...",
+        "verification_status": "UNVERIFIED"
+      }
+    },
+    {
+      "name": "consult_fta_handbook",
+      "description": "Queries the Handbook on Preferential Rules of Origin for specific Product-Specific Rules (PSR) or consignment requirements (Non-manipulation).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "fta_name": {
+            "type": "string",
+            "description": "The name of the Free Trade Agreement."
+          },
+          "hs_code": {
+            "type": "string",
+            "description": "The HS code to look up (6-digit level recommended)."
+          },
+          "topic": {
+            "type": "string",
+            "enum": [
+              "PSR",
+              "NON_MANIPULATION",
+              "THIRD_PARTY_INVOICING"
+            ],
+            "description": "The specific regulatory topic to research."
+          }
+        },
+        "required": [
+          "fta_name",
+          "hs_code",
+          "topic"
+        ]
+      },
+      "example_output": {
+        "rule_description": "A change to subheading 8413.11-8413.80 from any other heading...",
+        "compliance_requirement": "Evidence of customs supervision in transshipment port required."
+      }
+    },
+    {
+      "name": "validate_and_record_discrepancy",
+      "description": "Logs an identified discrepancy or validation result into the environment state and updates the validation_errors list.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "declaration_id": {
+            "type": "string",
+            "description": "The declaration ID."
+          },
+          "issue_type": {
+            "type": "string",
+            "description": "Category of the issue (e.g., HS_CODE_MISMATCH)."
+          },
+          "description": {
+            "type": "string",
+            "description": "Detailed explanation of the discrepancy and its resolution."
+          },
+          "is_resolved": {
+            "type": "boolean",
+            "description": "Whether the discrepancy has been legally accounted for."
+          }
+        },
+        "required": [
+          "declaration_id",
+          "issue_type",
+          "description",
+          "is_resolved"
+        ]
+      },
+      "example_output": null
+    },
+    {
+      "name": "finalize_review",
+      "description": "Updates the total calculated duties and sets the final review status of the declaration.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "declaration_id": {
+            "type": "string",
+            "description": "The declaration ID."
+          },
+          "final_status": {
+            "type": "string",
+            "enum": [
+              "APPROVED",
+              "REJECTED"
+            ],
+            "description": "The final determination for the tariff claim."
+          },
+          "adjusted_duty_total": {
+            "type": "number",
+            "description": "The final calculated duty amount after the review."
+          }
+        },
+        "required": [
+          "declaration_id",
+          "final_status",
+          "adjusted_duty_total"
+        ]
+      },
+      "example_output": {
+        "status": "SUCCESS",
+        "new_state": "APPROVED"
+      }
+    }
+  ],
+  "state_description": {
+    "declaration_id": "Unique identifier for the import declaration document.",
+    "review_status": "Current workflow stage of the declaration (e.g., PENDING, IN_REVIEW, FLAGGED, APPROVED).",
+    "line_items": "List of goods being imported, including HS codes, declared value, and quantities.",
+    "validation_errors": "A list of identified discrepancies or compliance issues found during the session.",
+    "total_calculated_duties": "The running total of calculated taxes and duties based on current item validations.",
+    "supporting_documents": "List of attached files like Invoices or Certificates of Origin and their verification status."
+  },
+  "task_initial_state": {
+    "declaration_id": "DEC-ROO-882",
+    "review_status": "PENDING",
+    "line_items": [
+      {
+        "item_index": 0,
+        "description": "Industrial Centrifugal Pumps",
+        "hs_code_declared": "8413.70",
+        "quantity": 5000,
+        "declared_value": 500000.0,
+        "mfn_rate": 0.15,
+        "applicable_fta_rate": 0.0
+      }
+    ],
+    "validation_errors": [],
+    "total_calculated_duties": 75000.0,
+    "supporting_documents": [
+      {
+        "doc_type": "CERTIFICATE_OF_ORIGIN",
+        "doc_id": "COO-2024-Y-7781",
+        "issuing_authority": "Ministry of Trade, Country Y",
+        "origin_criterion": "RVC 40%",
+        "hs_code_on_doc": "8413.11",
+        "fob_value_declared": 480000.0,
+        "third_party_invoicing_indicated": true,
+        "verification_status": "UNVERIFIED"
+      },
+      {
+        "doc_type": "COMMERCIAL_INVOICE",
+        "doc_id": "INV-9921-HK",
+        "seller": "Global Traders Ltd, Hong Kong",
+        "amount": 500000.0,
+        "verification_status": "PENDING"
+      },
+      {
+        "doc_type": "BILL_OF_LADING",
+        "doc_id": "BL-MAERSK-001",
+        "port_of_loading": "Port of Country Y",
+        "transshipment_port": "Singapore",
+        "port_of_discharge": "Port of Country X",
+        "consignment_status": "INDIRECT_ROUTE"
+      }
+    ]
+  }
+}

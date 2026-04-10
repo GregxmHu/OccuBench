@@ -1,0 +1,180 @@
+{
+  "environment_name": "env_6a1216ee4f8c",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM) for Network Capacity Planning.\n- **Core Objective**: Based on the current network state $s_t$ and the planning action $a_t$ executed by the Agent, simulate the internal evolution of the network environment and predict the resulting observation $o_{{t+1}}$.\n- **Emphasis**: You are a simulator of network dynamics. You do not perform real-world network configurations; you evolve an internal representation of network topology, traffic flows, and performance metrics to provide realistic feedback to the Agent.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation tracking the network's physical and logical configuration. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nYou must maintain strict context consistency throughout the session. Every action taken by the Agent permanently modifies the internal environment state (e.g., increasing link capacity, adding traffic demands). Subsequent observations must reflect the cumulative history of all previous state transitions.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the network environment by calling action functions defined below:\n```json\n{{action_set_definitions}}\n```\nThe `observation` returned for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. You must parse this JSON to identify the action and its parameters.\n\nExample Input:\n```json\n{{\n \"name\": \"upgrade_link_capacity\",\n \"arguments\": {{\n    \"link_id\": \"L101\",\n    \"new_capacity_gbps\": 100\n  }}\n}}\n```\nYou must simulate the consequences of this action on the network (e.g., reducing utilization percentages, updating available budget, potentially lowering latency) and generate the specified observation.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\n- If an action references a non-existent `link_id` or `node_id`, return: `{{\"error\": \"Resource not found\"}}`.\n- If an action would violate physical constraints (e.g., exceeding total budget, setting negative capacity), return: `{{\"error\": \"Constraint violation: [Reason]\"}}`.\n- Do not fabricate network responses or states if the input is malformed.\n\n##### Output Assembly\nFor every action call, return a structured JSON object containing **ONLY** the return fields declared in that action's definition. \n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, the `new_state`, or hidden variables like the entire topology database. The Agent must only receive the specific `observation` fields (e.g., `success_status`, `new_utilization_rate`, `latency_report`). State updates are internal to the model logic.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to JSON output. No conversational filler.\n- **Factuality**: Model network behavior based on standard engineering principles (e.g., Queuing Theory for latency, Flow conservation for traffic).\n- **Consistency**: If a link is upgraded, subsequent traffic simulations must reflect the higher bandwidth.\n- **Realism**: Simulate realistic impacts such as congestion-induced packet loss if demand exceeds capacity.\n- **Quality**: Ensure all calculated metrics are technically plausible for a network planning scenario.\n- **Encapsulation**: Never reveal the internal state structure `s_t` in the output. Provide only the defined observation values.\n{{initial_state}}: {{\n  \"topology\": {{\n    \"LINK_N2_SIGNaling\": {{\n      \"source\": \"RAN_Aggregation_ME\",\n      \"destination\": \"AMF_Cluster_A\",\n      \"current_capacity_tps\": 1000,\n      \"node_type\": \"Control_Plane\",\n      \"status\": \"Active\"\n    }},\n    \"LINK_N3_DATA\": {{\n      \"source\": \"RAN_Aggregation_ME\",\n      \"destination\": \"UPF_Cluster_B\",\n      \"current_capacity_gbps\": 200,\n      \"pps_limit_mpps\": 25,\n      \"node_type\": \"User_Plane\",\n      \"status\": \"Active\"\n    }}\n  }},\n  \"traffic_matrix\": [\n    {{\n      \"source\": \"RAN_Aggregation_ME\",\n      \"destination\": \"AMF_Cluster_A\",\n      \"demand_tps\": 1450,\n      \"traffic_type\": \"Signaling\"\n    }},\n    {{\n      \"source\": \"RAN_Aggregation_ME\",\n      \"destination\": \"UPF_Cluster_B\",\n      \"demand_gbps\": 140,\n      \"demand_pps_mpps\": 32,\n      \"traffic_type\": \"User_Data\"\n    }}\n  ],\n  \"link_utilization\": {{\n    \"LINK_N2_SIGNaling\": 145.0,\n    \"LINK_N3_DATA\": 128.0\n  }},\n  \"network_metrics\": {{\n    \"avg_latency_ms\": 142.5,\n    \"packet_loss_rate\": 3.8,\n    \"registration_success_rate\": 74.2,\n    \"active_pdu_sessions\": 450000\n  }},\n  \"budget_remaining\": 150000\n}}\n{{state_descriptions}}: {{\n  \"topology\": \"A map of link IDs to their properties including source, destination, and current capacity.\",\n  \"traffic_matrix\": \"List of source-destination pairs and their current traffic demand in Gbps.\",\n  \"link_utilization\": \"Real-time utilization percentage for each link ID.\",\n  \"network_metrics\": \"Global performance indicators such as average latency (ms) and packet loss rate (%).\",\n  \"budget_remaining\": \"The remaining financial resources for network upgrades.\"\n}}\n{action_set_definitions}: {\n  \"query_network_health\": {\n    \"description\": \"Retrieves the high-level health metrics for a network segment, including the Registration Success Rate, Global Packet Loss Rate, and the current remaining budget.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"segment_id\": {\n          \"type\": \"string\",\n          \"description\": \"The target network segment (e.g., 'Metro-East').\"\n        }\n      },\n      \"required\": [\n        \"segment_id\"\n      ]\n    },\n    \"example_output\": {\n      \"registration_success_rate\": 0.982,\n      \"packet_loss_rate\": 0.0012,\n      \"budget_remaining\": 150000\n    }\n  },\n  \"get_link_inventory\": {\n    \"description\": \"Returns a list of link IDs and their current utilization percentages within a specific segment to identify physical bottlenecks.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"segment_id\": {\n          \"type\": \"string\",\n          \"description\": \"The target network segment.\"\n        }\n      },\n      \"required\": [\n        \"segment_id\"\n      ]\n    },\n    \"example_output\": {\n      \"links\": [\n        {\n          \"link_id\": \"LNK-99\",\n          \"gbps_utilization\": 0.94,\n          \"pps_utilization\": 0.82\n        }\n      ]\n    }\n  },\n  \"scale_signaling_plane\": {\n    \"description\": \"Increases signaling plane capacity (CP) to restore Registration Success Rates. To ensure budget feasibility, each unit costs 15,000 units and provides a significant boost to the registration rate.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"segment_id\": {\n          \"type\": \"string\",\n          \"description\": \"The segment where signaling resources are needed.\"\n        },\n        \"units\": {\n          \"type\": \"integer\",\n          \"description\": \"Number of units to scale.\"\n        }\n      },\n      \"required\": [\n        \"segment_id\",\n        \"units\"\n      ]\n    },\n    \"example_output\": {\n      \"new_registration_rate\": 0.9992,\n      \"cost_incurred\": 30000\n    }\n  },\n  \"scale_user_plane_resources\": {\n    \"description\": \"Increases the User Plane Function (UPF) packet processing capacity (PPS throughput) for the segment. Use this if global packet loss is high despite individual links having bandwidth. Each unit costs 20,000 units.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"segment_id\": {\n          \"type\": \"string\",\n          \"description\": \"The target network segment.\"\n        },\n        \"units\": {\n          \"type\": \"integer\",\n          \"description\": \"Number of processing units to add.\"\n        }\n      },\n      \"required\": [\n        \"segment_id\",\n        \"units\"\n      ]\n    },\n    \"example_output\": {\n      \"new_packet_loss_rate\": 0.0004,\n      \"cost_incurred\": 40000\n    }\n  },\n  \"upgrade_link_capacity\": {\n    \"description\": \"Upgrades a specific link's bandwidth (Gbps) and packet-per-second (PPS) handling limits. Cost is optimized at 5,000 units per upgrade increment.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"link_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique ID of the link.\"\n        },\n        \"increment_level\": {\n          \"type\": \"integer\",\n          \"description\": \"Number of capacity increments to apply.\"\n        }\n      },\n      \"required\": [\n        \"link_id\",\n        \"increment_level\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"Success\",\n      \"new_gbps_limit\": 200,\n      \"cost_incurred\": 5000\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "query_network_health",
+      "description": "Retrieves the high-level health metrics for a network segment, including the Registration Success Rate, Global Packet Loss Rate, and the current remaining budget.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "segment_id": {
+            "type": "string",
+            "description": "The target network segment (e.g., 'Metro-East')."
+          }
+        },
+        "required": [
+          "segment_id"
+        ]
+      },
+      "example_output": {
+        "registration_success_rate": 0.982,
+        "packet_loss_rate": 0.0012,
+        "budget_remaining": 150000
+      }
+    },
+    {
+      "name": "get_link_inventory",
+      "description": "Returns a list of link IDs and their current utilization percentages within a specific segment to identify physical bottlenecks.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "segment_id": {
+            "type": "string",
+            "description": "The target network segment."
+          }
+        },
+        "required": [
+          "segment_id"
+        ]
+      },
+      "example_output": {
+        "links": [
+          {
+            "link_id": "LNK-99",
+            "gbps_utilization": 0.94,
+            "pps_utilization": 0.82
+          }
+        ]
+      }
+    },
+    {
+      "name": "scale_signaling_plane",
+      "description": "Increases signaling plane capacity (CP) to restore Registration Success Rates. To ensure budget feasibility, each unit costs 15,000 units and provides a significant boost to the registration rate.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "segment_id": {
+            "type": "string",
+            "description": "The segment where signaling resources are needed."
+          },
+          "units": {
+            "type": "integer",
+            "description": "Number of units to scale."
+          }
+        },
+        "required": [
+          "segment_id",
+          "units"
+        ]
+      },
+      "example_output": {
+        "new_registration_rate": 0.9992,
+        "cost_incurred": 30000
+      }
+    },
+    {
+      "name": "scale_user_plane_resources",
+      "description": "Increases the User Plane Function (UPF) packet processing capacity (PPS throughput) for the segment. Use this if global packet loss is high despite individual links having bandwidth. Each unit costs 20,000 units.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "segment_id": {
+            "type": "string",
+            "description": "The target network segment."
+          },
+          "units": {
+            "type": "integer",
+            "description": "Number of processing units to add."
+          }
+        },
+        "required": [
+          "segment_id",
+          "units"
+        ]
+      },
+      "example_output": {
+        "new_packet_loss_rate": 0.0004,
+        "cost_incurred": 40000
+      }
+    },
+    {
+      "name": "upgrade_link_capacity",
+      "description": "Upgrades a specific link's bandwidth (Gbps) and packet-per-second (PPS) handling limits. Cost is optimized at 5,000 units per upgrade increment.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "link_id": {
+            "type": "string",
+            "description": "The unique ID of the link."
+          },
+          "increment_level": {
+            "type": "integer",
+            "description": "Number of capacity increments to apply."
+          }
+        },
+        "required": [
+          "link_id",
+          "increment_level"
+        ]
+      },
+      "example_output": {
+        "status": "Success",
+        "new_gbps_limit": 200,
+        "cost_incurred": 5000
+      }
+    }
+  ],
+  "state_description": {
+    "topology": "A map of link IDs to their properties including source, destination, and current capacity.",
+    "traffic_matrix": "List of source-destination pairs and their current traffic demand in Gbps.",
+    "link_utilization": "Real-time utilization percentage for each link ID.",
+    "network_metrics": "Global performance indicators such as average latency (ms) and packet loss rate (%).",
+    "budget_remaining": "The remaining financial resources for network upgrades."
+  },
+  "task_initial_state": {
+    "topology": {
+      "LINK_N2_SIGNaling": {
+        "source": "RAN_Aggregation_ME",
+        "destination": "AMF_Cluster_A",
+        "current_capacity_tps": 1000,
+        "node_type": "Control_Plane",
+        "status": "Active"
+      },
+      "LINK_N3_DATA": {
+        "source": "RAN_Aggregation_ME",
+        "destination": "UPF_Cluster_B",
+        "current_capacity_gbps": 200,
+        "pps_limit_mpps": 25,
+        "node_type": "User_Plane",
+        "status": "Active"
+      }
+    },
+    "traffic_matrix": [
+      {
+        "source": "RAN_Aggregation_ME",
+        "destination": "AMF_Cluster_A",
+        "demand_tps": 1450,
+        "traffic_type": "Signaling"
+      },
+      {
+        "source": "RAN_Aggregation_ME",
+        "destination": "UPF_Cluster_B",
+        "demand_gbps": 140,
+        "demand_pps_mpps": 32,
+        "traffic_type": "User_Data"
+      }
+    ],
+    "link_utilization": {
+      "LINK_N2_SIGNaling": 145.0,
+      "LINK_N3_DATA": 128.0
+    },
+    "network_metrics": {
+      "avg_latency_ms": 142.5,
+      "packet_loss_rate": 3.8,
+      "registration_success_rate": 74.2,
+      "active_pdu_sessions": 450000
+    },
+    "budget_remaining": 150000
+  }
+}

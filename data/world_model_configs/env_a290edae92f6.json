@@ -1,0 +1,161 @@
+{
+  "environment_name": "env_a290edae92f6",
+  "world_model_system_prompt": "### 1. Role and Objective\n- Clear Role: Language World Model (LWM)\n- Core Objective: Based on current state $s_t$ and action $a_t$, simulate environment changes and predict the observation $o_{{t+1}}$ obtained by the Agent for the Satellite Orbit Correction Planning scenario.\n- Emphasis: The LWM does not execute real operations, but only performs internal state evolution and observation generation. It simulates orbital mechanics, fuel consumption, and hardware telemetry responses.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions between the World Model and the Agent must maintain context consistency. The model must track cumulative changes to the satellite's trajectory, fuel levels, and power consumption over the sequence of interactions.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will not send actions in the form of function call strings, but will always submit action requests via a structured JSON object. This JSON must contain the following fields:\n- `\"name\"`: Specifies the name of the action function to execute (e.g., \"apply_prograde_burn\").\n- The remaining fields are the parameter names and corresponding values required by that action function.\n\nExample:\n```json\n{{\n \"name\": \"apply_burn\",\n \"arguments\": {{\n    \"delta_v\": 0.5,\n    \"direction\": \"prograde\",\n    \"duration_seconds\": 12\n  }}\n}}\n```\n\nThe Language World Model must correctly parse such JSON inputs and simulate the execution results based on the current orbital state.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nFor invalid parameters (e.g., negative fuel consumption), undefined actions, state conflicts (e.g., performing a burn while in safe mode), or empty inputs, return structured error information (e.g., `{{\"error\": \"Insufficient fuel for requested Delta-V\"}}`), and do not fabricate states or fictitious responses.\n\n##### Output Assembly\nFor every action function call, the model must return a structured JSON object containing ONLY the return fields declared in that action function's definition. \n\n**CRITICAL CONSTRAINT**: The output JSON must NOT contain the full internal state `s_t`, `new_state`, or any hidden variables. The state maintenance is implicit in the history. The Agent must only see the specific return values (Observations) such as telemetry readings, sensor data, or success flags.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to specified JSON and text formats.\n- **Factuality**: Do not fabricate non-existent orbital parameters, satellite functions, or physics responses.\n- **Consistency**: State evolution logic must be self-consistent (e.g., decreasing fuel after a burn, changing altitude based on Keplerian dynamics).\n- **Realism**: Simulated behaviors must align with the reasonable dynamics of orbital mechanics and satellite engineering.\n- **Quality**: Language must be clear, unambiguous, and structurally complete.\n- **Encapsulation**: Strictly hide the internal state structure from the output. Only expose information that is explicitly returned by the action function. Do not output the state update.\n{{initial_state}}: {{\n  \"altitude_km\": 35784.2,\n  \"orbital_velocity_kms\": 3.07,\n  \"inclination_deg\": 0.12,\n  \"fuel_mass_kg\": 45.0,\n  \"battery_charge_pct\": 68.0,\n  \"attitude_stabilized\": false,\n  \"system_mode\": \"SAFE\"\n}}\n{{state_descriptions}}: {{\n  \"altitude_km\": \"Current altitude of the satellite above the planet surface in kilometers.\",\n  \"orbital_velocity_kms\": \"Current orbital velocity in kilometers per second.\",\n  \"inclination_deg\": \"Orbital inclination relative to the equatorial plane in degrees.\",\n  \"fuel_mass_kg\": \"Remaining propellant mass in kilograms.\",\n  \"battery_charge_pct\": \"Current battery charge percentage (0-100).\",\n  \"attitude_stabilized\": \"Whether the satellite's 3-axis orientation is stable and correctly pointed.\",\n  \"system_mode\": \"Current operating mode of the satellite (e.g., 'NORMAL', 'SAFE', 'MANEUVER').\"\n}}\n{action_set_definitions}: {\n  \"get_telemetry\": {\n    \"description\": \"Retrieves the current orbital and system status of the satellite, including altitude, inclination, battery levels, attitude status, and operating mode.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"altitude_km\": 35784.2,\n      \"orbital_velocity_kms\": 3.07,\n      \"inclination_deg\": 0.08,\n      \"fuel_mass_kg\": 150.5,\n      \"battery_charge_pct\": 65.0,\n      \"attitude_stabilized\": false,\n      \"system_mode\": \"SAFE\"\n    }\n  },\n  \"recharge_battery\": {\n    \"description\": \"Orients solar panels and suspends non-essential systems to increase battery charge to a specified target percentage.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"target_pct\": {\n          \"type\": \"number\",\n          \"description\": \"The target battery percentage to reach before resuming operations.\"\n        }\n      },\n      \"required\": [\n        \"target_pct\"\n      ]\n    },\n    \"example_output\": {\n      \"final_charge_pct\": 75.0,\n      \"status\": \"success\"\n    }\n  },\n  \"activate_attitude_control\": {\n    \"description\": \"Engages reaction wheels and star trackers to stabilize the satellite's 3-axis orientation.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"attitude_stabilized\": true,\n      \"pointing_error_deg\": 0.001\n    }\n  },\n  \"request_safety_clearance\": {\n    \"description\": \"Submits a proposed maneuver to the debris tracking network and performs a post-maneuver trajectory collision screening to obtain a mandatory Safety Clearance ID.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"maneuver_type\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"altitude_adjustment\",\n            \"inclination_correction\"\n          ]\n        },\n        \"target_value\": {\n          \"type\": \"number\",\n          \"description\": \"The target value for the maneuver (e.g., target altitude in km or degrees).\"\n        }\n      },\n      \"required\": [\n        \"maneuver_type\",\n        \"target_value\"\n      ]\n    },\n    \"example_output\": {\n      \"clearance_id\": \"CLR-SPACE-7721\",\n      \"screening_status\": \"passed\"\n    }\n  },\n  \"execute_propulsion_command\": {\n    \"description\": \"Executes a thruster burn to adjust orbital parameters. Requires a valid Safety Clearance ID.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"clearance_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID obtained from the safety clearance request.\"\n        },\n        \"maneuver_type\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"altitude_adjustment\",\n            \"inclination_correction\"\n          ]\n        },\n        \"target_value\": {\n          \"type\": \"number\",\n          \"description\": \"The specific value to achieve.\"\n        }\n      },\n      \"required\": [\n        \"clearance_id\",\n        \"maneuver_type\",\n        \"target_value\"\n      ]\n    },\n    \"example_output\": {\n      \"burn_duration_sec\": 12.4,\n      \"new_value\": 35786.0,\n      \"battery_consumed_pct\": 2.5\n    }\n  },\n  \"set_system_mode\": {\n    \"description\": \"Transitions the satellite's operating software to a specific mode.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"mode\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"SAFE\",\n            \"MANEUVER\",\n            \"NORMAL\"\n          ]\n        }\n      },\n      \"required\": [\n        \"mode\"\n      ]\n    },\n    \"example_output\": {\n      \"current_mode\": \"NORMAL\",\n      \"subsystem_status\": \"all_functional\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_telemetry",
+      "description": "Retrieves the current orbital and system status of the satellite, including altitude, inclination, battery levels, attitude status, and operating mode.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "altitude_km": 35784.2,
+        "orbital_velocity_kms": 3.07,
+        "inclination_deg": 0.08,
+        "fuel_mass_kg": 150.5,
+        "battery_charge_pct": 65.0,
+        "attitude_stabilized": false,
+        "system_mode": "SAFE"
+      }
+    },
+    {
+      "name": "recharge_battery",
+      "description": "Orients solar panels and suspends non-essential systems to increase battery charge to a specified target percentage.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "target_pct": {
+            "type": "number",
+            "description": "The target battery percentage to reach before resuming operations."
+          }
+        },
+        "required": [
+          "target_pct"
+        ]
+      },
+      "example_output": {
+        "final_charge_pct": 75.0,
+        "status": "success"
+      }
+    },
+    {
+      "name": "activate_attitude_control",
+      "description": "Engages reaction wheels and star trackers to stabilize the satellite's 3-axis orientation.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "attitude_stabilized": true,
+        "pointing_error_deg": 0.001
+      }
+    },
+    {
+      "name": "request_safety_clearance",
+      "description": "Submits a proposed maneuver to the debris tracking network and performs a post-maneuver trajectory collision screening to obtain a mandatory Safety Clearance ID.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "maneuver_type": {
+            "type": "string",
+            "enum": [
+              "altitude_adjustment",
+              "inclination_correction"
+            ]
+          },
+          "target_value": {
+            "type": "number",
+            "description": "The target value for the maneuver (e.g., target altitude in km or degrees)."
+          }
+        },
+        "required": [
+          "maneuver_type",
+          "target_value"
+        ]
+      },
+      "example_output": {
+        "clearance_id": "CLR-SPACE-7721",
+        "screening_status": "passed"
+      }
+    },
+    {
+      "name": "execute_propulsion_command",
+      "description": "Executes a thruster burn to adjust orbital parameters. Requires a valid Safety Clearance ID.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "clearance_id": {
+            "type": "string",
+            "description": "The ID obtained from the safety clearance request."
+          },
+          "maneuver_type": {
+            "type": "string",
+            "enum": [
+              "altitude_adjustment",
+              "inclination_correction"
+            ]
+          },
+          "target_value": {
+            "type": "number",
+            "description": "The specific value to achieve."
+          }
+        },
+        "required": [
+          "clearance_id",
+          "maneuver_type",
+          "target_value"
+        ]
+      },
+      "example_output": {
+        "burn_duration_sec": 12.4,
+        "new_value": 35786.0,
+        "battery_consumed_pct": 2.5
+      }
+    },
+    {
+      "name": "set_system_mode",
+      "description": "Transitions the satellite's operating software to a specific mode.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "mode": {
+            "type": "string",
+            "enum": [
+              "SAFE",
+              "MANEUVER",
+              "NORMAL"
+            ]
+          }
+        },
+        "required": [
+          "mode"
+        ]
+      },
+      "example_output": {
+        "current_mode": "NORMAL",
+        "subsystem_status": "all_functional"
+      }
+    }
+  ],
+  "state_description": {
+    "altitude_km": "Current altitude of the satellite above the planet surface in kilometers.",
+    "orbital_velocity_kms": "Current orbital velocity in kilometers per second.",
+    "inclination_deg": "Orbital inclination relative to the equatorial plane in degrees.",
+    "fuel_mass_kg": "Remaining propellant mass in kilograms.",
+    "battery_charge_pct": "Current battery charge percentage (0-100).",
+    "attitude_stabilized": "Whether the satellite's 3-axis orientation is stable and correctly pointed.",
+    "system_mode": "Current operating mode of the satellite (e.g., 'NORMAL', 'SAFE', 'MANEUVER')."
+  },
+  "task_initial_state": {
+    "altitude_km": 35784.2,
+    "orbital_velocity_kms": 3.07,
+    "inclination_deg": 0.12,
+    "fuel_mass_kg": 45.0,
+    "battery_charge_pct": 68.0,
+    "attitude_stabilized": false,
+    "system_mode": "SAFE"
+  }
+}

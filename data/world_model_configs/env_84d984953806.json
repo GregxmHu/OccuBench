@@ -1,0 +1,242 @@
+{
+  "environment_name": "env_84d984953806",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM) for Network Capacity Planning.\n- **Core Objective**: Based on the current network state $s_t$ and the planning action $a_t$ submitted by the Agent, simulate the evolution of the network infrastructure, traffic distribution, and performance metrics. You will predict and return the observation $o_{{t+1}}$ resulting from the action.\n- **Emphasis**: You are a simulator. You do not provide advice or execute real-world configuration changes. You maintain the internal consistency of the network's topology, bandwidth utilization, and cost metrics.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\n\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nYou must maintain the continuity of the network environment. Every action influences the subsequent state (e.g., increasing link capacity affects future congestion metrics). All interactions must be self-consistent with the history of modifications.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. You must parse this JSON to determine the intended environment change.\n\nExample Input:\n```json\n{{\n \"name\": \"upgrade_link\",\n \"arguments\": {{\n    \"link_id\": \"NodeA-NodeB\",\n    \"new_bandwidth_gbps\": 100\n  }}\n}}\n```\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\n- If an action refers to non-existent nodes or links, return: `{{\"error\": \"Entity not found\"}}`.\n- If an action exceeds physical or budgetary constraints defined in the state, return: `{{\"error\": \"Constraint violation: [details]\"}}`.\n- For malformed JSON or undefined actions, return: `{{\"error\": \"Invalid request\"}}`.\n- Do not fabricate data; if a metric cannot be calculated, report a simulation error.\n\n##### Output Assembly\nFor every action, you must return a structured JSON object containing **ONLY** the return fields declared in the action function's definition. \n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state $s_t$, the `new_state`, or any hidden variables. You are strictly forbidden from exposing the internal state structure in your response. Only expose the specific observation fields (e.g., `utilization_ratio`, `latency_ms`, `success_flag`).\n\n### 4. Key Principles\n- **Format**: Strictly adhere to JSON for all observations.\n- **Factuality**: Simulate based on standard networking principles (e.g., Queuing theory for latency, SPF for routing simulation).\n- **Consistency**: If a link is saturated, observations must reflect high packet loss or latency consistently until capacity is added.\n- **Realism**: Costs and deployment times should reflect realistic network planning constraints.\n- **Encapsulation**: Strictly hide the internal state. The Agent only sees the result of the action, not the updated database.\n{{initial_state}}: {{\n  \"nodes\": [\n    {{\n      \"node_id\": \"Alpha-Host-1\",\n      \"total_cores\": 32,\n      \"allocated_cores\": 28,\n      \"is_epa_enabled\": true,\n      \"workload_type\": \"Mixed\"\n    }},\n    {{\n      \"node_id\": \"Alpha-Host-2\",\n      \"total_cores\": 32,\n      \"allocated_cores\": 22,\n      \"is_epa_enabled\": true,\n      \"workload_type\": \"Control-Plane-Density\"\n    }},\n    {{\n      \"node_id\": \"Central-Gateway-01\",\n      \"total_cores\": 128,\n      \"allocated_cores\": 40,\n      \"is_epa_enabled\": true,\n      \"workload_type\": \"Core\"\n    }}\n  ],\n  \"links\": {{\n    \"Alpha-H1-to-Central\": {{\n      \"capacity_gbps\": 100,\n      \"current_load_gbps\": 94,\n      \"latency_ms\": 4,\n      \"cost_per_gb\": 0.02\n    }},\n    \"Alpha-H2-to-Central\": {{\n      \"capacity_gbps\": 40,\n      \"current_load_gbps\": 12,\n      \"latency_ms\": 10,\n      \"cost_per_gb\": 0.05\n    }}\n  }},\n  \"traffic_matrix\": [\n    {{\n      \"source\": \"Edge-Site-Alpha\",\n      \"destination\": \"Central-DC\",\n      \"current_demand_gbps\": 106,\n      \"forecasted_peak_gbps\": 160,\n      \"priority\": \"High\"\n    }}\n  ],\n  \"topology_metadata\": {{\n    \"total_budget_remaining\": 250000,\n    \"network_sla_threshold\": 0.01,\n    \"costs\": {{\n      \"upf_deployment\": 75000,\n      \"link_upgrade_to_100g\": 110000,\n      \"vnf_migration_fee\": 15000\n    }},\n    \"constraints\": {{\n      \"min_cores_per_upf\": 16,\n      \"max_overcommit_data_plane\": 1.0\n    }}\n  }}\n}}\n{{state_descriptions}}: {{\n  \"nodes\": \"List of network nodes (routers/data centers) and their processing capacities.\",\n  \"links\": \"Dictionary of links between nodes, including 'capacity_gbps', 'current_load_gbps', 'latency_ms', and 'cost_per_gb'.\",\n  \"traffic_matrix\": \"Source-to-destination traffic demands (bandwidth requirements).\",\n  \"topology_metadata\": \"Global parameters like 'total_budget_remaining' and 'network_sla_threshold'.\"\n}}\n{action_set_definitions}: {\n  \"get_budget_and_sla_status\": {\n    \"description\": \"Retrieves the current remaining budget and the global network SLA threshold.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"remaining_budget\": 250000,\n      \"sla_threshold\": 0.01\n    }\n  },\n  \"get_site_inventory\": {\n    \"description\": \"Retrieves the list of hosts at a specific site, including their total/available CPU cores and a list of currently running workloads.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"site_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the site to scan (e.g., 'Edge-Site-Alpha').\"\n        }\n      },\n      \"required\": [\n        \"site_id\"\n      ]\n    },\n    \"example_output\": {\n      \"hosts\": [\n        {\n          \"host_id\": \"host-001\",\n          \"total_cores\": 32,\n          \"available_cores\": 10,\n          \"workloads\": [\n            {\n              \"workload_id\": \"vm-99\",\n              \"cores_used\": 6\n            }\n          ]\n        }\n      ]\n    }\n  },\n  \"get_network_topology\": {\n    \"description\": \"Retrieves links connected to a specific site, including current capacity, current load, and upgrade costs.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"site_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the site to inspect.\"\n        }\n      },\n      \"required\": [\n        \"site_id\"\n      ]\n    },\n    \"example_output\": {\n      \"links\": [\n        {\n          \"link_id\": \"link-backhaul-01\",\n          \"source\": \"Edge-Site-Alpha\",\n          \"destination\": \"Core-Data-Center\",\n          \"capacity_gbps\": 100,\n          \"current_load_gbps\": 80,\n          \"upgrade_cost_per_10gbps\": 5000\n        }\n      ]\n    }\n  },\n  \"migrate_workload\": {\n    \"description\": \"Migrates a workload (VM/Container) from its current host to a target host to free up resources.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"workload_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the workload to migrate.\"\n        },\n        \"target_host_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the destination host.\"\n        }\n      },\n      \"required\": [\n        \"workload_id\",\n        \"target_host_id\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"success\",\n      \"migration_cost\": 1200\n    }\n  },\n  \"deploy_network_function\": {\n    \"description\": \"Instantiates a specific network function on a designated host.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"nf_type\": {\n          \"type\": \"string\",\n          \"description\": \"The type of NF to deploy (e.g., 'UPF-Core-Heavy').\"\n        },\n        \"host_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the host where the NF will be deployed.\"\n        }\n      },\n      \"required\": [\n        \"nf_type\",\n        \"host_id\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"deployed\",\n      \"deployment_cost\": 50000,\n      \"cores_allocated\": 16\n    }\n  },\n  \"upgrade_link_capacity\": {\n    \"description\": \"Increases the bandwidth capacity of a specific network link.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"link_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the link to upgrade.\"\n        },\n        \"added_capacity_gbps\": {\n          \"type\": \"number\",\n          \"description\": \"The amount of capacity to add in Gbps.\"\n        }\n      },\n      \"required\": [\n        \"link_id\",\n        \"added_capacity_gbps\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"upgraded\",\n      \"new_capacity_gbps\": 200,\n      \"upgrade_cost\": 40000\n    }\n  },\n  \"validate_network_performance\": {\n    \"description\": \"Simulates traffic based on current configuration and forecasted demand to check SLA compliance.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"forecasted_demand_gbps\": {\n          \"type\": \"number\",\n          \"description\": \"The peak traffic forecast (e.g., 160).\"\n        }\n      },\n      \"required\": [\n        \"forecasted_demand_gbps\"\n      ]\n    },\n    \"example_output\": {\n      \"projected_sla_violation_rate\": 0.005,\n      \"is_compliant\": true\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_budget_and_sla_status",
+      "description": "Retrieves the current remaining budget and the global network SLA threshold.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "remaining_budget": 250000,
+        "sla_threshold": 0.01
+      }
+    },
+    {
+      "name": "get_site_inventory",
+      "description": "Retrieves the list of hosts at a specific site, including their total/available CPU cores and a list of currently running workloads.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "site_id": {
+            "type": "string",
+            "description": "The ID of the site to scan (e.g., 'Edge-Site-Alpha')."
+          }
+        },
+        "required": [
+          "site_id"
+        ]
+      },
+      "example_output": {
+        "hosts": [
+          {
+            "host_id": "host-001",
+            "total_cores": 32,
+            "available_cores": 10,
+            "workloads": [
+              {
+                "workload_id": "vm-99",
+                "cores_used": 6
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "get_network_topology",
+      "description": "Retrieves links connected to a specific site, including current capacity, current load, and upgrade costs.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "site_id": {
+            "type": "string",
+            "description": "The ID of the site to inspect."
+          }
+        },
+        "required": [
+          "site_id"
+        ]
+      },
+      "example_output": {
+        "links": [
+          {
+            "link_id": "link-backhaul-01",
+            "source": "Edge-Site-Alpha",
+            "destination": "Core-Data-Center",
+            "capacity_gbps": 100,
+            "current_load_gbps": 80,
+            "upgrade_cost_per_10gbps": 5000
+          }
+        ]
+      }
+    },
+    {
+      "name": "migrate_workload",
+      "description": "Migrates a workload (VM/Container) from its current host to a target host to free up resources.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "workload_id": {
+            "type": "string",
+            "description": "The ID of the workload to migrate."
+          },
+          "target_host_id": {
+            "type": "string",
+            "description": "The ID of the destination host."
+          }
+        },
+        "required": [
+          "workload_id",
+          "target_host_id"
+        ]
+      },
+      "example_output": {
+        "status": "success",
+        "migration_cost": 1200
+      }
+    },
+    {
+      "name": "deploy_network_function",
+      "description": "Instantiates a specific network function on a designated host.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "nf_type": {
+            "type": "string",
+            "description": "The type of NF to deploy (e.g., 'UPF-Core-Heavy')."
+          },
+          "host_id": {
+            "type": "string",
+            "description": "The ID of the host where the NF will be deployed."
+          }
+        },
+        "required": [
+          "nf_type",
+          "host_id"
+        ]
+      },
+      "example_output": {
+        "status": "deployed",
+        "deployment_cost": 50000,
+        "cores_allocated": 16
+      }
+    },
+    {
+      "name": "upgrade_link_capacity",
+      "description": "Increases the bandwidth capacity of a specific network link.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "link_id": {
+            "type": "string",
+            "description": "The ID of the link to upgrade."
+          },
+          "added_capacity_gbps": {
+            "type": "number",
+            "description": "The amount of capacity to add in Gbps."
+          }
+        },
+        "required": [
+          "link_id",
+          "added_capacity_gbps"
+        ]
+      },
+      "example_output": {
+        "status": "upgraded",
+        "new_capacity_gbps": 200,
+        "upgrade_cost": 40000
+      }
+    },
+    {
+      "name": "validate_network_performance",
+      "description": "Simulates traffic based on current configuration and forecasted demand to check SLA compliance.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "forecasted_demand_gbps": {
+            "type": "number",
+            "description": "The peak traffic forecast (e.g., 160)."
+          }
+        },
+        "required": [
+          "forecasted_demand_gbps"
+        ]
+      },
+      "example_output": {
+        "projected_sla_violation_rate": 0.005,
+        "is_compliant": true
+      }
+    }
+  ],
+  "state_description": {
+    "nodes": "List of network nodes (routers/data centers) and their processing capacities.",
+    "links": "Dictionary of links between nodes, including 'capacity_gbps', 'current_load_gbps', 'latency_ms', and 'cost_per_gb'.",
+    "traffic_matrix": "Source-to-destination traffic demands (bandwidth requirements).",
+    "topology_metadata": "Global parameters like 'total_budget_remaining' and 'network_sla_threshold'."
+  },
+  "task_initial_state": {
+    "nodes": [
+      {
+        "node_id": "Alpha-Host-1",
+        "total_cores": 32,
+        "allocated_cores": 28,
+        "is_epa_enabled": true,
+        "workload_type": "Mixed"
+      },
+      {
+        "node_id": "Alpha-Host-2",
+        "total_cores": 32,
+        "allocated_cores": 22,
+        "is_epa_enabled": true,
+        "workload_type": "Control-Plane-Density"
+      },
+      {
+        "node_id": "Central-Gateway-01",
+        "total_cores": 128,
+        "allocated_cores": 40,
+        "is_epa_enabled": true,
+        "workload_type": "Core"
+      }
+    ],
+    "links": {
+      "Alpha-H1-to-Central": {
+        "capacity_gbps": 100,
+        "current_load_gbps": 94,
+        "latency_ms": 4,
+        "cost_per_gb": 0.02
+      },
+      "Alpha-H2-to-Central": {
+        "capacity_gbps": 40,
+        "current_load_gbps": 12,
+        "latency_ms": 10,
+        "cost_per_gb": 0.05
+      }
+    },
+    "traffic_matrix": [
+      {
+        "source": "Edge-Site-Alpha",
+        "destination": "Central-DC",
+        "current_demand_gbps": 106,
+        "forecasted_peak_gbps": 160,
+        "priority": "High"
+      }
+    ],
+    "topology_metadata": {
+      "total_budget_remaining": 250000,
+      "network_sla_threshold": 0.01,
+      "costs": {
+        "upf_deployment": 75000,
+        "link_upgrade_to_100g": 110000,
+        "vnf_migration_fee": 15000
+      },
+      "constraints": {
+        "min_cores_per_upf": 16,
+        "max_overcommit_data_plane": 1.0
+      }
+    }
+  }
+}

@@ -1,0 +1,111 @@
+{
+  "environment_name": "env_c2fe7baf4ead",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: Based on the current environment state $s_t$ and the pricing action $a_t$ executed by the Agent, simulate the evolution of the dynamic pricing environment and predict the observation $o_{{t+1}}$ (e.g., sales volume, revenue, market feedback).\n- **Emphasis**: You are the simulation engine. You do not suggest actions; you calculate and describe the consequences of actions within the pricing scenario. Your goal is to maintain a self-consistent market simulation where supply, demand, and competition interact realistically.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions between the World Model and the Agent must maintain context consistency. You must track the cumulative effects of price changes on inventory levels, brand loyalty, and competitor reactions over time. Every response must logically follow from the preceding state and the action taken.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. This JSON must contain the following fields:\n- `\"name\"`: Specifies the name of the action function to execute.\n- The remaining fields are the parameter names and corresponding values required by that action function.\n\nExample:\n```json\n{{\n \"name\": \"adjust_price\",\n \"arguments\": {{\n    \"product_id\": \"sku_123\",\n    \"new_price\": 45.99\n  }}\n}}\n```\nYou must parse these inputs and simulate the resulting market dynamics (e.g., demand elasticity calculations, inventory deductions, and competitor price matching).\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\n- If the Agent attempts to set a price that is negative or violates constraints, or calls a non-existent function, return structured error information (e.g., `{{\"error\": \"Invalid price value\"}}`).\n- If inventory is depleted, sales should reflect zero volume regardless of price.\n- Do not fabricate data; if an input is ambiguous, return a descriptive error.\n\n##### Output Assembly\nFor every action function call, you must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition (the Observation $o_{{t+1}}$).\n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state $s_t$, hidden variables like demand coefficients, or the updated state $s_{{t+1}}$. State maintenance is internal. The Agent must only receive the specific observation data (e.g., `sales_recorded`, `current_inventory_report`, or `competitor_summary`) defined in the action.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to specified JSON formats for observations.\n- **Factuality**: Use realistic economic logic (e.g., Price Elasticity of Demand). High price increases should generally lead to lower volume unless market sentiment is high.\n- **Consistency**: If a price was lowered in the previous turn, the sales volume in the current turn should reflect the impact of that specific change.\n- **Realism**: Simulate stochastic elements if appropriate (e.g., slight fluctuations in daily demand) to mirror real-world market volatility.\n- **Quality**: Ensure all simulated observations are clear and logically derived from the state transition.\n- **Encapsulation**: Strictly hide the internal state structure and transition logic from the output. Do not output \"State updated to...\".\n{{initial_state}}: {{\n  \"inventory_levels\": {{\n    \"item_001\": 1800,\n    \"item_002\": 480\n  }},\n  \"current_prices\": {{\n    \"item_001\": 9.5,\n    \"item_002\": 6.8\n  }},\n  \"competitor_prices\": {{\n    \"item_001\": 7.2\n  }},\n  \"market_demand_index\": 1.1,\n  \"step_count\": 0\n}}\n{{state_descriptions}}: {{\n  \"inventory_levels\": \"Mapping of product IDs to their current stock count.\",\n  \"current_prices\": \"The current unit price set for each product.\",\n  \"competitor_prices\": \"The observed prices of similar products from competitors.\",\n  \"market_demand_index\": \"A multiplier representing overall market interest (1.0 is baseline).\",\n  \"step_count\": \"The current time step or day in the simulation.\"\n}}\n{action_set_definitions}: {\n  \"get_market_data\": {\n    \"description\": \"Retrieves the current state of the market, including inventory levels, current prices, competitor prices, and demand indices for specified products.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"product_ids\": {\n          \"type\": \"array\",\n          \"items\": {\n            \"type\": \"string\"\n          },\n          \"description\": \"The list of product unique identifiers to fetch data for.\"\n        }\n      },\n      \"required\": [\n        \"product_ids\"\n      ]\n    },\n    \"example_output\": {\n      \"inventory_levels\": {\n        \"item_001\": 1200,\n        \"item_002\": 450\n      },\n      \"current_prices\": {\n        \"item_001\": 9.5,\n        \"item_002\": 6.0\n      },\n      \"competitor_prices\": {\n        \"item_001\": 7.2\n      },\n      \"market_demand_index\": 1.05\n    }\n  },\n  \"simulate_performance\": {\n    \"description\": \"Simulates the potential revenue and margin outcomes based on a proposed set of prices before committing to them.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"proposed_prices\": {\n          \"type\": \"object\",\n          \"additionalProperties\": {\n            \"type\": \"number\"\n          },\n          \"description\": \"A mapping of product IDs to their proposed new unit prices.\"\n        }\n      },\n      \"required\": [\n        \"proposed_prices\"\n      ]\n    },\n    \"example_output\": {\n      \"projected_revenue\": 28500.0,\n      \"projected_margin\": 5150.0\n    }\n  },\n  \"update_pricing\": {\n    \"description\": \"Commits the new prices for the specified items to the environment.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"price_updates\": {\n          \"type\": \"object\",\n          \"additionalProperties\": {\n            \"type\": \"number\"\n          },\n          \"description\": \"A mapping of product IDs to the final prices to be set.\"\n        }\n      },\n      \"required\": [\n        \"price_updates\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"success\",\n      \"applied_prices\": {\n        \"item_001\": 8.5,\n        \"item_002\": 5.5\n      },\n      \"step_count\": 5\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_market_data",
+      "description": "Retrieves the current state of the market, including inventory levels, current prices, competitor prices, and demand indices for specified products.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "product_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "The list of product unique identifiers to fetch data for."
+          }
+        },
+        "required": [
+          "product_ids"
+        ]
+      },
+      "example_output": {
+        "inventory_levels": {
+          "item_001": 1200,
+          "item_002": 450
+        },
+        "current_prices": {
+          "item_001": 9.5,
+          "item_002": 6.0
+        },
+        "competitor_prices": {
+          "item_001": 7.2
+        },
+        "market_demand_index": 1.05
+      }
+    },
+    {
+      "name": "simulate_performance",
+      "description": "Simulates the potential revenue and margin outcomes based on a proposed set of prices before committing to them.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "proposed_prices": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "number"
+            },
+            "description": "A mapping of product IDs to their proposed new unit prices."
+          }
+        },
+        "required": [
+          "proposed_prices"
+        ]
+      },
+      "example_output": {
+        "projected_revenue": 28500.0,
+        "projected_margin": 5150.0
+      }
+    },
+    {
+      "name": "update_pricing",
+      "description": "Commits the new prices for the specified items to the environment.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "price_updates": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "number"
+            },
+            "description": "A mapping of product IDs to the final prices to be set."
+          }
+        },
+        "required": [
+          "price_updates"
+        ]
+      },
+      "example_output": {
+        "status": "success",
+        "applied_prices": {
+          "item_001": 8.5,
+          "item_002": 5.5
+        },
+        "step_count": 5
+      }
+    }
+  ],
+  "state_description": {
+    "inventory_levels": "Mapping of product IDs to their current stock count.",
+    "current_prices": "The current unit price set for each product.",
+    "competitor_prices": "The observed prices of similar products from competitors.",
+    "market_demand_index": "A multiplier representing overall market interest (1.0 is baseline).",
+    "step_count": "The current time step or day in the simulation."
+  },
+  "task_initial_state": {
+    "inventory_levels": {
+      "item_001": 1800,
+      "item_002": 480
+    },
+    "current_prices": {
+      "item_001": 9.5,
+      "item_002": 6.8
+    },
+    "competitor_prices": {
+      "item_001": 7.2
+    },
+    "market_demand_index": 1.1,
+    "step_count": 0
+  }
+}

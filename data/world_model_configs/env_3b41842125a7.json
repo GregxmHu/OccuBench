@@ -1,0 +1,188 @@
+{
+  "environment_name": "env_3b41842125a7",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM) for Train Dispatch Conflict Resolution.\n- **Core Objective**: Based on the current railway state $s_t$ and the dispatcher's action $a_t$, simulate the evolution of the railway environment (movement, time progression, safety logic) and predict the observation $o_{{t+1}}$ obtained by the Agent.\n- **Emphasis**: The LWM does not make dispatching decisions. It acts as a physics and logic engine that calculates how trains move, how signals change, and whether conflicts (e.g., potential collisions or delays) are resolved or created based on the input actions.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions between the World Model and the Agent must maintain strict temporal and spatial consistency. The model must track the movement of every train and the occupancy of every track segment across turns, ensuring that a train cannot teleport or exist in two places simultaneously.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. This JSON must contain the following fields:\n- `\"name\"`: Specifies the name of the action function to execute (e.g., \"set_signal\", \"adjust_speed\").\n- The remaining fields are the parameter names and corresponding values required by that action function.\n\nExample:\n```json\n{{\n \"name\": \"adjust_speed\",\n \"arguments\": {{\n    \"train_id\": \"G102\",\n    \"target_speed\": 250\n  }}\n}}\n```\n\nThe Language World Model must parse this JSON, update the internal movement logic of the trains, and return the resulting observation.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nIf an action is physically impossible (e.g., commanding a train to move to a broken track) or logically invalid (e.g., referencing a non-existent train ID), return a structured error response: `{{\"error\": \"Reason for failure\"}}`. Do not execute the state change for invalid actions.\n\n##### Output Assembly\nFor every action function call, the model must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition.\n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, `new_state`, or hidden variables like global coordinates. The state maintenance is internal. The Agent must only see the specific return values (Observations) defined in the action function (e.g., current speed, signal status, or arrival time).\n\n### 4. Key Principles\n- **Format**: Strictly adhere to JSON output without conversational filler.\n- **Factuality**: Adhere to railway operational logic; do not simulate unrealistic accelerations or ignore track signaling rules.\n- **Consistency**: If a track is occupied by Train A, it cannot be occupied by Train B in the next observation unless Train A has cleared the block.\n- **Realism**: Simulate the impact of actions on secondary metrics like schedule delay and energy consumption where applicable.\n- **Encapsulation**: Strictly hide the internal state structure from the output. Only expose information that is explicitly returned by the action function. Do not output the internal state update log.\n{{initial_state}}: {{\n  \"current_timestamp\": \"08:10:00\",\n  \"train_statuses\": [\n    {{\n      \"train_id\": \"Z-PRIORITY\",\n      \"current_segment\": \"MT1-MP100\",\n      \"current_speed\": 55,\n      \"delay_minutes\": 0,\n      \"next_scheduled_stop\": \"West-Exit\"\n    }},\n    {{\n      \"train_id\": \"M-LOCAL\",\n      \"current_segment\": \"MT2-MP115\",\n      \"current_speed\": 40,\n      \"delay_minutes\": 15,\n      \"next_scheduled_stop\": \"East-Yard\"\n    }}\n  ],\n  \"track_segments\": [\n    {{\n      \"segment_id\": \"MT1-MP105-110\",\n      \"is_occupied\": false,\n      \"signal_aspect\": \"RED\",\n      \"speed_limit\": 0\n    }},\n    {{\n      \"segment_id\": \"MT2-MP105-110\",\n      \"is_occupied\": false,\n      \"signal_aspect\": \"GREEN\",\n      \"speed_limit\": 60\n    }},\n    {{\n      \"segment_id\": \"Siding-Alpha\",\n      \"is_occupied\": false,\n      \"signal_aspect\": \"RED\",\n      \"speed_limit\": 15\n    }},\n    {{\n      \"segment_id\": \"CP-East-Crossover\",\n      \"is_occupied\": false,\n      \"signal_aspect\": \"RED\",\n      \"speed_limit\": 25\n    }},\n    {{\n      \"segment_id\": \"CP-West-Crossover\",\n      \"is_occupied\": false,\n      \"signal_aspect\": \"RED\",\n      \"speed_limit\": 25\n    }}\n  ],\n  \"active_conflicts\": [\n    {{\n      \"conflict_id\": \"BR-992\",\n      \"type\": \"Broken Rail\",\n      \"severity\": \"CRITICAL\",\n      \"involved_trains\": []\n    }}\n  ]\n}}\n{{state_descriptions}}: {{\n  \"current_timestamp\": \"The current simulation time in HH:MM:SS format.\",\n  \"train_statuses\": \"A list of all trains currently active in the sector, including their positions and delays.\",\n  \"track_segments\": \"Status of the physical infrastructure.\",\n  \"active_conflicts\": \"Detected dispatching conflicts (e.g., head-on, rear-end, or schedule overlap).\"\n}}\n{action_set_definitions}: {\n  \"get_environment_snapshot\": {\n    \"description\": \"Retrieves the current simulation time, positions (mileposts) and tracks of all trains, and identifies current infrastructure outages or track statuses.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"current_timestamp\": \"08:30:00\",\n      \"train_statuses\": [\n        {\n          \"train_id\": \"Z-PRIORITY\",\n          \"milepost\": 115.0,\n          \"track\": \"MT1\",\n          \"direction\": \"Westbound\",\n          \"length_ft\": 9200\n        },\n        {\n          \"train_id\": \"M-LOCAL\",\n          \"milepost\": 90.0,\n          \"track\": \"MT2\",\n          \"direction\": \"Eastbound\",\n          \"length_ft\": 7400\n        }\n      ],\n      \"track_segments\": [\n        {\n          \"segment_id\": \"MT1_105_110\",\n          \"status\": \"impassable\",\n          \"start_mp\": 105,\n          \"end_mp\": 110\n        }\n      ]\n    }\n  },\n  \"get_infrastructure_details\": {\n    \"description\": \"Retrieves physical characteristics of specific locations like sidings or control points, including milepost locations and standing capacities.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"location_id\": {\n          \"type\": \"string\",\n          \"description\": \"The name of the siding or control point (e.g., 'Siding-Alpha', 'West-Exit').\"\n        }\n      },\n      \"required\": [\n        \"location_id\"\n      ]\n    },\n    \"example_output\": {\n      \"milepost\": 102.5,\n      \"standing_capacity_ft\": 8000,\n      \"connected_tracks\": [\n        \"MT1\",\n        \"MT2\"\n      ]\n    }\n  },\n  \"dispatch_train_instruction\": {\n    \"description\": \"Issues movement authority or routing commands to a train. Returns the expected time the train will complete the movement.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"train_id\": {\n          \"type\": \"string\",\n          \"description\": \"ID of the train.\"\n        },\n        \"command\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"DIVERGE_TO_TRACK\",\n            \"ENTER_SIDING\",\n            \"PROCEED_TO_EXIT\",\n            \"STOP\"\n          ],\n          \"description\": \"The specific dispatch action.\"\n        },\n        \"destination_id\": {\n          \"type\": \"string\",\n          \"description\": \"The target track, siding name, or control point name.\"\n        }\n      },\n      \"required\": [\n        \"train_id\",\n        \"command\",\n        \"destination_id\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"Instruction Transmitted\",\n      \"estimated_arrival_at_target\": \"08:55:00\"\n    }\n  },\n  \"advance_simulation\": {\n    \"description\": \"Advances the environment's internal clock to a specific time or by a specific duration. Returns the full state of the environment at that new time.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"until_timestamp\": {\n          \"type\": \"string\",\n          \"description\": \"The target time in HH:MM:SS format.\"\n        }\n      },\n      \"required\": [\n        \"until_timestamp\"\n      ]\n    },\n    \"example_output\": {\n      \"current_timestamp\": \"08:55:00\",\n      \"train_statuses\": [],\n      \"track_segments\": []\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_environment_snapshot",
+      "description": "Retrieves the current simulation time, positions (mileposts) and tracks of all trains, and identifies current infrastructure outages or track statuses.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "current_timestamp": "08:30:00",
+        "train_statuses": [
+          {
+            "train_id": "Z-PRIORITY",
+            "milepost": 115.0,
+            "track": "MT1",
+            "direction": "Westbound",
+            "length_ft": 9200
+          },
+          {
+            "train_id": "M-LOCAL",
+            "milepost": 90.0,
+            "track": "MT2",
+            "direction": "Eastbound",
+            "length_ft": 7400
+          }
+        ],
+        "track_segments": [
+          {
+            "segment_id": "MT1_105_110",
+            "status": "impassable",
+            "start_mp": 105,
+            "end_mp": 110
+          }
+        ]
+      }
+    },
+    {
+      "name": "get_infrastructure_details",
+      "description": "Retrieves physical characteristics of specific locations like sidings or control points, including milepost locations and standing capacities.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "location_id": {
+            "type": "string",
+            "description": "The name of the siding or control point (e.g., 'Siding-Alpha', 'West-Exit')."
+          }
+        },
+        "required": [
+          "location_id"
+        ]
+      },
+      "example_output": {
+        "milepost": 102.5,
+        "standing_capacity_ft": 8000,
+        "connected_tracks": [
+          "MT1",
+          "MT2"
+        ]
+      }
+    },
+    {
+      "name": "dispatch_train_instruction",
+      "description": "Issues movement authority or routing commands to a train. Returns the expected time the train will complete the movement.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "train_id": {
+            "type": "string",
+            "description": "ID of the train."
+          },
+          "command": {
+            "type": "string",
+            "enum": [
+              "DIVERGE_TO_TRACK",
+              "ENTER_SIDING",
+              "PROCEED_TO_EXIT",
+              "STOP"
+            ],
+            "description": "The specific dispatch action."
+          },
+          "destination_id": {
+            "type": "string",
+            "description": "The target track, siding name, or control point name."
+          }
+        },
+        "required": [
+          "train_id",
+          "command",
+          "destination_id"
+        ]
+      },
+      "example_output": {
+        "status": "Instruction Transmitted",
+        "estimated_arrival_at_target": "08:55:00"
+      }
+    },
+    {
+      "name": "advance_simulation",
+      "description": "Advances the environment's internal clock to a specific time or by a specific duration. Returns the full state of the environment at that new time.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "until_timestamp": {
+            "type": "string",
+            "description": "The target time in HH:MM:SS format."
+          }
+        },
+        "required": [
+          "until_timestamp"
+        ]
+      },
+      "example_output": {
+        "current_timestamp": "08:55:00",
+        "train_statuses": [],
+        "track_segments": []
+      }
+    }
+  ],
+  "state_description": {
+    "current_timestamp": "The current simulation time in HH:MM:SS format.",
+    "train_statuses": "A list of all trains currently active in the sector, including their positions and delays.",
+    "track_segments": "Status of the physical infrastructure.",
+    "active_conflicts": "Detected dispatching conflicts (e.g., head-on, rear-end, or schedule overlap)."
+  },
+  "task_initial_state": {
+    "current_timestamp": "08:10:00",
+    "train_statuses": [
+      {
+        "train_id": "Z-PRIORITY",
+        "current_segment": "MT1-MP100",
+        "current_speed": 55,
+        "delay_minutes": 0,
+        "next_scheduled_stop": "West-Exit"
+      },
+      {
+        "train_id": "M-LOCAL",
+        "current_segment": "MT2-MP115",
+        "current_speed": 40,
+        "delay_minutes": 15,
+        "next_scheduled_stop": "East-Yard"
+      }
+    ],
+    "track_segments": [
+      {
+        "segment_id": "MT1-MP105-110",
+        "is_occupied": false,
+        "signal_aspect": "RED",
+        "speed_limit": 0
+      },
+      {
+        "segment_id": "MT2-MP105-110",
+        "is_occupied": false,
+        "signal_aspect": "GREEN",
+        "speed_limit": 60
+      },
+      {
+        "segment_id": "Siding-Alpha",
+        "is_occupied": false,
+        "signal_aspect": "RED",
+        "speed_limit": 15
+      },
+      {
+        "segment_id": "CP-East-Crossover",
+        "is_occupied": false,
+        "signal_aspect": "RED",
+        "speed_limit": 25
+      },
+      {
+        "segment_id": "CP-West-Crossover",
+        "is_occupied": false,
+        "signal_aspect": "RED",
+        "speed_limit": 25
+      }
+    ],
+    "active_conflicts": [
+      {
+        "conflict_id": "BR-992",
+        "type": "Broken Rail",
+        "severity": "CRITICAL",
+        "involved_trains": []
+      }
+    ]
+  }
+}

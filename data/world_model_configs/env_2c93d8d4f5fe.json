@@ -1,0 +1,170 @@
+{
+  "environment_name": "env_2c93d8d4f5fe",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: You are a high-fidelity simulator for a Regulatory Filing Submission environment. Based on the current internal state $s_t$ and the action $a_t$ performed by the Agent, your task is to simulate the internal environment evolution and generate the specific observation $o_{{t+1}}$ that the Agent would receive.\n- **Emphasis**: You are not the Agent; you are the environment itself. You do not perform actions, you respond to them by evolving the state internally and predicting the feedback (observations) based on regulatory logic and system constraints.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions must maintain absolute context consistency. Changes to the filing status, document integrity, or authentication session must persist throughout the interaction history. The environment must remember previously uploaded documents, validation results, and authorization tokens to ensure the simulation behaves like a persistent regulatory system.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. This JSON will contain:\n- `\"name\"`: Specifies the name of the action function (e.g., `upload_document`, `validate_filing`, `submit_to_regulator`).\n- `\"arguments\"`: A nested object containing the parameter names and values.\n\nExample Agent Input:\n```json\n{{\n \"name\": \"upload_document\",\n \"arguments\": {{\n    \"file_name\": \"annual_report_2023.pdf\",\n    \"file_type\": \"financial_statement\"\n  }}\n}}\n```\nYou must parse this input, apply the logic of the regulatory filing system to update the internal state, and generate the corresponding observation.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nIf the Agent attempts an invalid operation—such as submitting before validation, uploading corrupted-looking metadata, or calling an undefined function—you must return a structured error message within the observation. \nExample: `{{\"status\": \"error\", \"message\": \"Validation failed: Missing signature field in document.\"}}`\nDo not fabricate successful responses for failed logic.\n\n##### Output Assembly\nFor every action call, you must return a structured JSON object containing **ONLY** the return fields declared in that specific action function's definition. \n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state or any hidden system variables. You are the environment's engine; keep the internal state hidden. The Agent must only see the specific results/observations defined by the action (e.g., a success boolean, a submission ID, or a list of validation errors).\n\n### 4. Key Principles\n- **Format**: Strictly adhere to the JSON structure for all outputs.\n- **Factuality**: Simulate realistic regulatory behavior (e.g., mandatory fields, sequence of operations: Authenticate -> Upload -> Validate -> Sign -> Submit).\n- **Consistency**: If a document is deleted in state $s_t$, it must not be present in state $s_{{t+1}}$.\n- **Realism**: Responses should reflect typical system latency or standard regulatory feedback messages.\n- **Quality**: Ensure error messages are clear and follow professional system standards.\n- **Encapsulation**: Strictly hide the internal state structure from the output. Only expose information that is explicitly returned by the action function.\n{{initial_state}}: {{\n  \"filing_id\": \"FIL-SEC-9283-SJ\",\n  \"workflow_status\": \"DRAFT\",\n  \"authenticated_session\": false,\n  \"uploaded_documents\": [],\n  \"validation_checklist\": {{\n    \"signature_present\": false,\n    \"financial_data_integrity\": false,\n    \"identity_verified\": false\n  }},\n  \"submission_timestamp\": null\n}}\n{{state_descriptions}}: {{\n  \"filing_id\": \"Unique identifier for the current regulatory filing session.\",\n  \"workflow_status\": \"Current stage in the submission lifecycle (e.g., UNINITIALIZED, DRAFT, VALIDATED, SUBMITTED).\",\n  \"authenticated_session\": \"Indicates if the agent has successfully logged into the regulatory portal.\",\n  \"uploaded_documents\": \"List of file names currently stored in the filing buffer.\",\n  \"validation_checklist\": \"A map of mandatory regulatory requirements and their current fulfillment status.\",\n  \"submission_timestamp\": \"The ISO 8601 timestamp of final submission, null if not yet submitted.\"\n}}\n{action_set_definitions}: {\n  \"get_filing_status\": {\n    \"description\": \"Retrieves the current state of a specific regulatory filing, including workflow stage, authentication status, and validation requirements.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"filing_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the regulatory filing session (e.g., 'FIL-SEC-9283-SJ').\"\n        }\n      },\n      \"required\": [\n        \"filing_id\"\n      ]\n    },\n    \"example_output\": {\n      \"workflow_status\": \"DRAFT\",\n      \"authenticated_session\": false,\n      \"uploaded_documents\": [],\n      \"validation_checklist\": {\n        \"signature_present\": false,\n        \"data_integrity\": false\n      }\n    }\n  },\n  \"authenticate_portal\": {\n    \"description\": \"Establishes an authenticated session with the regulatory portal using system credentials.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"authenticated_session\": true,\n      \"session_expiry\": \"2023-12-31T23:59:59Z\"\n    }\n  },\n  \"update_form_data\": {\n    \"description\": \"Updates the transaction details within the filing form, such as share counts and prices.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"filing_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the filing.\"\n        },\n        \"shares\": {\n          \"type\": \"number\",\n          \"description\": \"The number of shares disposed or acquired.\"\n        },\n        \"price\": {\n          \"type\": \"number\",\n          \"description\": \"The price per share.\"\n        },\n        \"owner_name\": {\n          \"type\": \"string\",\n          \"description\": \"The name of the officer/CFO.\"\n        }\n      },\n      \"required\": [\n        \"filing_id\",\n        \"shares\",\n        \"price\",\n        \"owner_name\"\n      ]\n    },\n    \"example_output\": {\n      \"update_success\": true,\n      \"current_status\": \"DRAFT\"\n    }\n  },\n  \"upload_filing_document\": {\n    \"description\": \"Uploads a required document (e.g., signature block, verification data) to the filing buffer.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"filing_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the filing.\"\n        },\n        \"file_name\": {\n          \"type\": \"string\",\n          \"description\": \"The name of the file to be uploaded.\"\n        },\n        \"document_type\": {\n          \"type\": \"string\",\n          \"description\": \"The type of document (e.g., 'SIGNATURE_BLOCK', 'ID_VERIFICATION').\"\n        }\n      },\n      \"required\": [\n        \"filing_id\",\n        \"file_name\",\n        \"document_type\"\n      ]\n    },\n    \"example_output\": {\n      \"uploaded_documents\": [\n        \"signature_jenkins.pdf\"\n      ]\n    }\n  },\n  \"trigger_validation\": {\n    \"description\": \"Executes system-level data integrity and regulatory compliance checks on the current filing draft.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"filing_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the filing.\"\n        }\n      },\n      \"required\": [\n        \"filing_id\"\n      ]\n    },\n    \"example_output\": {\n      \"workflow_status\": \"VALIDATED\",\n      \"errors\": []\n    }\n  },\n  \"submit_final_filing\": {\n    \"description\": \"Finalizes the submission of a validated filing to the regulatory body.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"filing_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the filing.\"\n        }\n      },\n      \"required\": [\n        \"filing_id\"\n      ]\n    },\n    \"example_output\": {\n      \"workflow_status\": \"SUBMITTED\",\n      \"submission_timestamp\": \"2023-10-27T10:00:00Z\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_filing_status",
+      "description": "Retrieves the current state of a specific regulatory filing, including workflow stage, authentication status, and validation requirements.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "filing_id": {
+            "type": "string",
+            "description": "The unique identifier for the regulatory filing session (e.g., 'FIL-SEC-9283-SJ')."
+          }
+        },
+        "required": [
+          "filing_id"
+        ]
+      },
+      "example_output": {
+        "workflow_status": "DRAFT",
+        "authenticated_session": false,
+        "uploaded_documents": [],
+        "validation_checklist": {
+          "signature_present": false,
+          "data_integrity": false
+        }
+      }
+    },
+    {
+      "name": "authenticate_portal",
+      "description": "Establishes an authenticated session with the regulatory portal using system credentials.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "authenticated_session": true,
+        "session_expiry": "2023-12-31T23:59:59Z"
+      }
+    },
+    {
+      "name": "update_form_data",
+      "description": "Updates the transaction details within the filing form, such as share counts and prices.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "filing_id": {
+            "type": "string",
+            "description": "The unique identifier for the filing."
+          },
+          "shares": {
+            "type": "number",
+            "description": "The number of shares disposed or acquired."
+          },
+          "price": {
+            "type": "number",
+            "description": "The price per share."
+          },
+          "owner_name": {
+            "type": "string",
+            "description": "The name of the officer/CFO."
+          }
+        },
+        "required": [
+          "filing_id",
+          "shares",
+          "price",
+          "owner_name"
+        ]
+      },
+      "example_output": {
+        "update_success": true,
+        "current_status": "DRAFT"
+      }
+    },
+    {
+      "name": "upload_filing_document",
+      "description": "Uploads a required document (e.g., signature block, verification data) to the filing buffer.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "filing_id": {
+            "type": "string",
+            "description": "The unique identifier for the filing."
+          },
+          "file_name": {
+            "type": "string",
+            "description": "The name of the file to be uploaded."
+          },
+          "document_type": {
+            "type": "string",
+            "description": "The type of document (e.g., 'SIGNATURE_BLOCK', 'ID_VERIFICATION')."
+          }
+        },
+        "required": [
+          "filing_id",
+          "file_name",
+          "document_type"
+        ]
+      },
+      "example_output": {
+        "uploaded_documents": [
+          "signature_jenkins.pdf"
+        ]
+      }
+    },
+    {
+      "name": "trigger_validation",
+      "description": "Executes system-level data integrity and regulatory compliance checks on the current filing draft.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "filing_id": {
+            "type": "string",
+            "description": "The unique identifier for the filing."
+          }
+        },
+        "required": [
+          "filing_id"
+        ]
+      },
+      "example_output": {
+        "workflow_status": "VALIDATED",
+        "errors": []
+      }
+    },
+    {
+      "name": "submit_final_filing",
+      "description": "Finalizes the submission of a validated filing to the regulatory body.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "filing_id": {
+            "type": "string",
+            "description": "The unique identifier for the filing."
+          }
+        },
+        "required": [
+          "filing_id"
+        ]
+      },
+      "example_output": {
+        "workflow_status": "SUBMITTED",
+        "submission_timestamp": "2023-10-27T10:00:00Z"
+      }
+    }
+  ],
+  "state_description": {
+    "filing_id": "Unique identifier for the current regulatory filing session.",
+    "workflow_status": "Current stage in the submission lifecycle (e.g., UNINITIALIZED, DRAFT, VALIDATED, SUBMITTED).",
+    "authenticated_session": "Indicates if the agent has successfully logged into the regulatory portal.",
+    "uploaded_documents": "List of file names currently stored in the filing buffer.",
+    "validation_checklist": "A map of mandatory regulatory requirements and their current fulfillment status.",
+    "submission_timestamp": "The ISO 8601 timestamp of final submission, null if not yet submitted."
+  },
+  "task_initial_state": {
+    "filing_id": "FIL-SEC-9283-SJ",
+    "workflow_status": "DRAFT",
+    "authenticated_session": false,
+    "uploaded_documents": [],
+    "validation_checklist": {
+      "signature_present": false,
+      "financial_data_integrity": false,
+      "identity_verified": false
+    },
+    "submission_timestamp": null
+  }
+}

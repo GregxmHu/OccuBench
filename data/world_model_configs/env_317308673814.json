@@ -1,0 +1,188 @@
+{
+  "environment_name": "env_317308673814",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: You are a simulation engine for the \"Drug Interaction Screening\" scenario. Based on the current internal state $s_t$ and the Agent's action $a_t$, you must simulate the biological and pharmacological evolution of the environment and predict the resulting observation $o_{{t+1}}$ for the Agent.\n- **Emphasis**: You do not execute real-world lab tests or clinical trials. Your role is to perform internal state evolution and generate structured pharmacological observations based on established medical logic and the provided state.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions between the World Model and the Agent must maintain rigorous context consistency. The evolution of the drug screening batch, patient reactions, and interaction logs must follow a logical temporal sequence. Previous interactions directly influence the validity and outcomes of future actions.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. You must parse this JSON to determine the action to simulate. The input format is:\n- `\"name\"`: The name of the action (e.g., `add_drug_to_batch`, `check_contraindications`).\n- Additional fields for parameters as defined in the action set.\n\nExample:\n```json\n{{\n \"name\": \"check_interaction\",\n \"arguments\": {{\n    \"drug_a\": \"Warfarin\",\n    \"drug_b\": \"Aspirin\"\n  }}\n}}\n```\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nIf the Agent provides invalid drug identifiers, undefined action names, contradictory parameters (e.g., dosage out of range), or attempts to interact with an empty state, return a structured error JSON:\nExample: `{{\"error\": \"Drug ID 'XYZ' not found in database\", \"code\": 404}}`.\n**Do not fabricate fictional data or hallucinations if an action cannot be logically fulfilled.**\n\n##### Output Assembly\nFor every action function call, you must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition (the Observation $o_{{t+1}}$).\n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the internal state fields (`s_t` or `s_{{t+1}}`), hidden system variables, or the logic used for the update. The Agent must only receive the specific observation data. State updates are maintained by you internally.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to the specified JSON structure. No conversational filler.\n- **Factuality**: Simulations must align with pharmacological principles (e.g., synergistic effects, competitive inhibition) and established drug-drug interaction (DDI) knowledge.\n- **Consistency**: If a drug is added to the batch in step $t$, it must be present for interaction checks in step $t+1$ unless explicitly removed.\n- **Realism**: Simulated interactions should reflect realistic outcomes, including severity levels (Minor, Moderate, Major, Contraindicated).\n- **Quality**: Ensure medical terminology is used accurately and structural integrity of the JSON is maintained.\n- **Encapsulation**: Strictly hide the internal state structure from the output. Only expose information that is explicitly defined as a return value of the action.\n{{initial_state}}: {{\n  \"active_screening_batch\": [\n    \"Warfarin\",\n    \"Amiodarone\",\n    \"Paxlovid\",\n    \"Naproxen\"\n  ],\n  \"patient_physiology_profile\": {{\n    \"age\": 68,\n    \"renal_clearance\": \"decreased_GFR_45\",\n    \"existing_conditions\": [\n      \"Atrial Fibrillation\",\n      \"Chronic Kidney Disease Stage 3\"\n    ]\n  }},\n  \"simulation_sensitivity\": \"standard\",\n  \"interaction_history\": []\n}}\n{{state_descriptions}}: {{\n  \"active_screening_batch\": \"A list of drug compounds currently being combined in the virtual testing environment.\",\n  \"patient_physiology_profile\": \"Metadata regarding the simulated patient (e.g., age, renal function, liver enzymes) that affects drug metabolism.\",\n  \"simulation_sensitivity\": \"The detection threshold for minor biochemical interactions.\",\n  \"interaction_history\": \"A record of all identified interactions discovered in the current session to ensure incremental knowledge.\"\n}}\n{action_set_definitions}: {\n  \"get_environment_state\": {\n    \"description\": \"Retrieves the current environment state, including the active drug batch, patient profile, and simulation settings.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"active_screening_batch\": [\n        \"DrugA\",\n        \"DrugB\"\n      ],\n      \"patient_physiology_profile\": {\n        \"age\": 68,\n        \"conditions\": [\n          \"CKD Stage 3\",\n          \"Atrial Fibrillation\"\n        ]\n      },\n      \"simulation_sensitivity\": \"low\",\n      \"interaction_history\": []\n    }\n  },\n  \"update_simulation_sensitivity\": {\n    \"description\": \"Sets the biochemical detection threshold for the simulation environment.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"level\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"low\",\n            \"medium\",\n            \"high\"\n          ],\n          \"description\": \"The sensitivity level to set.\"\n        }\n      },\n      \"required\": [\n        \"level\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"success\",\n      \"current_sensitivity\": \"high\"\n    }\n  },\n  \"analyze_drug_interactions\": {\n    \"description\": \"Runs a pharmacological simulation to identify biochemical interactions based on the current batch and patient profile.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"batch\": {\n          \"type\": \"array\",\n          \"items\": {\n            \"type\": \"string\"\n          },\n          \"description\": \"List of drugs to analyze.\"\n        },\n        \"patient_profile\": {\n          \"type\": \"object\",\n          \"description\": \"The physiological data of the patient.\"\n        },\n        \"sensitivity\": {\n          \"type\": \"string\",\n          \"description\": \"The threshold for detection.\"\n        }\n      },\n      \"required\": [\n        \"batch\",\n        \"patient_profile\",\n        \"sensitivity\"\n      ]\n    },\n    \"example_output\": {\n      \"level_1_hard_stops\": [\n        \"DrugA\"\n      ],\n      \"level_2_soft_stops\": [\n        \"DrugB\"\n      ],\n      \"level_3_passive_alerts\": [\n        \"DrugC\"\n      ]\n    }\n  },\n  \"remove_drug_from_batch\": {\n    \"description\": \"Removes a specific drug compound from the active screening batch to resolve contraindications.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"drug_name\": {\n          \"type\": \"string\",\n          \"description\": \"Name of the drug to remove.\"\n        }\n      },\n      \"required\": [\n        \"drug_name\"\n      ]\n    },\n    \"example_output\": {\n      \"updated_batch\": [\n        \"DrugB\"\n      ]\n    }\n  },\n  \"update_interaction_history\": {\n    \"description\": \"Records identified interactions into the persistent session history log.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"interactions\": {\n          \"type\": \"array\",\n          \"items\": {\n            \"type\": \"object\",\n            \"properties\": {\n              \"level\": {\n                \"type\": \"integer\"\n              },\n              \"description\": {\n                \"type\": \"string\"\n              },\n              \"compounds\": {\n                \"type\": \"array\",\n                \"items\": {\n                  \"type\": \"string\"\n                }\n              }\n            }\n          },\n          \"description\": \"List of interaction objects to record.\"\n        }\n      },\n      \"required\": [\n        \"interactions\"\n      ]\n    },\n    \"example_output\": {\n      \"history_count\": 5\n    }\n  },\n  \"finalize_screening_session\": {\n    \"description\": \"Submits the final safe batch and closes the screening session.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"final_status\": \"certified_safe\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_environment_state",
+      "description": "Retrieves the current environment state, including the active drug batch, patient profile, and simulation settings.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "active_screening_batch": [
+          "DrugA",
+          "DrugB"
+        ],
+        "patient_physiology_profile": {
+          "age": 68,
+          "conditions": [
+            "CKD Stage 3",
+            "Atrial Fibrillation"
+          ]
+        },
+        "simulation_sensitivity": "low",
+        "interaction_history": []
+      }
+    },
+    {
+      "name": "update_simulation_sensitivity",
+      "description": "Sets the biochemical detection threshold for the simulation environment.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "level": {
+            "type": "string",
+            "enum": [
+              "low",
+              "medium",
+              "high"
+            ],
+            "description": "The sensitivity level to set."
+          }
+        },
+        "required": [
+          "level"
+        ]
+      },
+      "example_output": {
+        "status": "success",
+        "current_sensitivity": "high"
+      }
+    },
+    {
+      "name": "analyze_drug_interactions",
+      "description": "Runs a pharmacological simulation to identify biochemical interactions based on the current batch and patient profile.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "batch": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "List of drugs to analyze."
+          },
+          "patient_profile": {
+            "type": "object",
+            "description": "The physiological data of the patient."
+          },
+          "sensitivity": {
+            "type": "string",
+            "description": "The threshold for detection."
+          }
+        },
+        "required": [
+          "batch",
+          "patient_profile",
+          "sensitivity"
+        ]
+      },
+      "example_output": {
+        "level_1_hard_stops": [
+          "DrugA"
+        ],
+        "level_2_soft_stops": [
+          "DrugB"
+        ],
+        "level_3_passive_alerts": [
+          "DrugC"
+        ]
+      }
+    },
+    {
+      "name": "remove_drug_from_batch",
+      "description": "Removes a specific drug compound from the active screening batch to resolve contraindications.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "drug_name": {
+            "type": "string",
+            "description": "Name of the drug to remove."
+          }
+        },
+        "required": [
+          "drug_name"
+        ]
+      },
+      "example_output": {
+        "updated_batch": [
+          "DrugB"
+        ]
+      }
+    },
+    {
+      "name": "update_interaction_history",
+      "description": "Records identified interactions into the persistent session history log.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "interactions": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "level": {
+                  "type": "integer"
+                },
+                "description": {
+                  "type": "string"
+                },
+                "compounds": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
+            },
+            "description": "List of interaction objects to record."
+          }
+        },
+        "required": [
+          "interactions"
+        ]
+      },
+      "example_output": {
+        "history_count": 5
+      }
+    },
+    {
+      "name": "finalize_screening_session",
+      "description": "Submits the final safe batch and closes the screening session.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "final_status": "certified_safe"
+      }
+    }
+  ],
+  "state_description": {
+    "active_screening_batch": "A list of drug compounds currently being combined in the virtual testing environment.",
+    "patient_physiology_profile": "Metadata regarding the simulated patient (e.g., age, renal function, liver enzymes) that affects drug metabolism.",
+    "simulation_sensitivity": "The detection threshold for minor biochemical interactions.",
+    "interaction_history": "A record of all identified interactions discovered in the current session to ensure incremental knowledge."
+  },
+  "task_initial_state": {
+    "active_screening_batch": [
+      "Warfarin",
+      "Amiodarone",
+      "Paxlovid",
+      "Naproxen"
+    ],
+    "patient_physiology_profile": {
+      "age": 68,
+      "renal_clearance": "decreased_GFR_45",
+      "existing_conditions": [
+        "Atrial Fibrillation",
+        "Chronic Kidney Disease Stage 3"
+      ]
+    },
+    "simulation_sensitivity": "standard",
+    "interaction_history": []
+  }
+}

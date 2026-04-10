@@ -1,0 +1,120 @@
+{
+  "environment_name": "env_ef4bc012701c",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM) for Satellite Orbit Correction Planning.\n- **Core Objective**: Act as a high-fidelity environment simulator. Based on the current internal state $s_t$ and the Agent's action $a_t$, you must calculate the physics-based evolution of the satellite's environment and generate the resulting observation $o_{{t+1}}$ for the Agent.\n- **Emphasis**: You are the environment, not the controller. You simulate the consequences of actions (e.g., fuel consumption, orbital shifts, sensor readings) without executing real-world hardware operations.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nYou must maintain strict temporal and logical consistency. Every action updates the hidden internal state $s_t$. Subsequent observations must reflect the cumulative effects of all previous actions (e.g., if fuel was spent in step $t-1$, it remains spent in step $t$).\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. You must parse this JSON to determine the transition.\nExample Input:\n```json\n{{\n \"name\": \"fire_thrusters\",\n \"arguments\": {{\n    \"direction\": \"prograde\",\n    \"duration_seconds\": 10.5\n  }}\n}}\n```\nYou must validate that the action exists and parameters are within valid ranges before calculating the state transition.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\n- If an action is requested that would exceed physical limits (e.g., firing thrusters with zero fuel) or uses invalid parameters, return a structured error: `{{\"error\": \"reason_for_failure\"}}`.\n- Do not fabricate data; if an action is undefined, report it.\n\n##### Output Assembly\nFor every action, return a structured JSON object containing **ONLY** the specific return fields (observations) defined for that action. \n\n**CRITICAL CONSTRAINT**: You must NOT include the internal state object, state update logs, or hidden variables in your response. The Agent must only receive the observation $o_{{t+1}}$. Encapsulation is mandatory.\n\n### 4. Key Principles\n- **Format**: Strictly JSON-only for observations.\n- **Factuality**: Simulations must follow basic orbital mechanics logic (e.g., prograde burns increase altitude/velocity).\n- **Consistency**: The environment must not reset unless explicitly commanded.\n- **Realism**: Account for minor sensor noise or orbital decay if implied by the scenario dynamics.\n- **Encapsulation**: Never reveal the underlying `{{initial_state}}` structure in your output after the interaction begins.\n{{initial_state}}: {{\n  \"altitude_km\": 402.5,\n  \"orbital_velocity_kms\": 7.67,\n  \"fuel_reserve_kg\": 149.8,\n  \"battery_level_percent\": 21.2,\n  \"attitude_quaternion\": [\n    0.0,\n    1.0,\n    0.0,\n    0.0\n  ],\n  \"is_stabilized\": true\n}}\n{{state_descriptions}}: {{\n  \"altitude_km\": \"The current height of the satellite above the planet's surface.\",\n  \"orbital_velocity_kms\": \"Current speed of the satellite in kilometers per second.\",\n  \"fuel_reserve_kg\": \"Remaining propellant mass in kilograms.\",\n  \"battery_level_percent\": \"Current power storage as a percentage of maximum capacity.\",\n  \"attitude_quaternion\": \"The orientation of the satellite represented as a [w, x, y, z] quaternion.\",\n  \"is_stabilized\": \"Indicates if the satellite's rotation is within operational tolerances.\"\n}}\n{action_set_definitions}: {\n  \"get_satellite_telemetry\": {\n    \"description\": \"Retrieves the current orbital and system status including altitude, velocity, fuel reserves, battery levels, and orientation. This must be used to initialize the mission state and monitor progress.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"altitude_km\": 398.2,\n      \"orbital_velocity_kms\": 7.66,\n      \"fuel_reserve_kg\": 45.5,\n      \"battery_level_percent\": 82.0,\n      \"attitude_quaternion\": [\n        1.0,\n        0.0,\n        0.0,\n        0.0\n      ],\n      \"is_stabilized\": true\n    }\n  },\n  \"align_to_prograde\": {\n    \"description\": \"Adjusts the satellite's attitude to a specific quaternion. Aligning to the prograde vector is critical for maximizing the efficiency of orbital raising maneuvers, ensuring the highest altitude gain per kilogram of fuel.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"target_quaternion\": {\n          \"type\": \"array\",\n          \"items\": {\n            \"type\": \"number\"\n          },\n          \"minItems\": 4,\n          \"maxItems\": 4,\n          \"description\": \"The orientation [w, x, y, z] to align the satellite thrusters with the velocity vector.\"\n        }\n      },\n      \"required\": [\n        \"target_quaternion\"\n      ]\n    },\n    \"example_output\": {\n      \"is_stabilized\": true,\n      \"current_attitude\": [\n        1.0,\n        0.0,\n        0.0,\n        0.0\n      ]\n    }\n  },\n  \"execute_thrust_burn\": {\n    \"description\": \"Fires the main engines for a specified duration. Note: Longer burns are generally more fuel-efficient than multiple short pulses due to reduced engine startup/shutdown overhead.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"duration_seconds\": {\n          \"type\": \"number\",\n          \"description\": \"Duration of the thrust in seconds. Use larger values (e.g., 20-60s) for better fuel efficiency.\"\n        }\n      },\n      \"required\": [\n        \"duration_seconds\"\n      ]\n    },\n    \"example_output\": {\n      \"fuel_consumed_kg\": 0.85,\n      \"battery_drain_percent\": 18.0,\n      \"new_altitude_km\": 402.5\n    }\n  },\n  \"wait_for_recharge\": {\n    \"description\": \"Suspends maneuvers and orientates solar panels to the sun to replenish the power bus. Essential for preventing under-voltage resets during power-intensive burn sequences.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"wait_duration_minutes\": {\n          \"type\": \"number\",\n          \"description\": \"Time to wait in minutes to reach safe battery levels.\"\n        }\n      },\n      \"required\": [\n        \"wait_duration_minutes\"\n      ]\n    },\n    \"example_output\": {\n      \"battery_level_percent\": 98.0,\n      \"is_operational\": true\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_satellite_telemetry",
+      "description": "Retrieves the current orbital and system status including altitude, velocity, fuel reserves, battery levels, and orientation. This must be used to initialize the mission state and monitor progress.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "altitude_km": 398.2,
+        "orbital_velocity_kms": 7.66,
+        "fuel_reserve_kg": 45.5,
+        "battery_level_percent": 82.0,
+        "attitude_quaternion": [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "is_stabilized": true
+      }
+    },
+    {
+      "name": "align_to_prograde",
+      "description": "Adjusts the satellite's attitude to a specific quaternion. Aligning to the prograde vector is critical for maximizing the efficiency of orbital raising maneuvers, ensuring the highest altitude gain per kilogram of fuel.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "target_quaternion": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            },
+            "minItems": 4,
+            "maxItems": 4,
+            "description": "The orientation [w, x, y, z] to align the satellite thrusters with the velocity vector."
+          }
+        },
+        "required": [
+          "target_quaternion"
+        ]
+      },
+      "example_output": {
+        "is_stabilized": true,
+        "current_attitude": [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      }
+    },
+    {
+      "name": "execute_thrust_burn",
+      "description": "Fires the main engines for a specified duration. Note: Longer burns are generally more fuel-efficient than multiple short pulses due to reduced engine startup/shutdown overhead.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "duration_seconds": {
+            "type": "number",
+            "description": "Duration of the thrust in seconds. Use larger values (e.g., 20-60s) for better fuel efficiency."
+          }
+        },
+        "required": [
+          "duration_seconds"
+        ]
+      },
+      "example_output": {
+        "fuel_consumed_kg": 0.85,
+        "battery_drain_percent": 18.0,
+        "new_altitude_km": 402.5
+      }
+    },
+    {
+      "name": "wait_for_recharge",
+      "description": "Suspends maneuvers and orientates solar panels to the sun to replenish the power bus. Essential for preventing under-voltage resets during power-intensive burn sequences.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "wait_duration_minutes": {
+            "type": "number",
+            "description": "Time to wait in minutes to reach safe battery levels."
+          }
+        },
+        "required": [
+          "wait_duration_minutes"
+        ]
+      },
+      "example_output": {
+        "battery_level_percent": 98.0,
+        "is_operational": true
+      }
+    }
+  ],
+  "state_description": {
+    "altitude_km": "The current height of the satellite above the planet's surface.",
+    "orbital_velocity_kms": "Current speed of the satellite in kilometers per second.",
+    "fuel_reserve_kg": "Remaining propellant mass in kilograms.",
+    "battery_level_percent": "Current power storage as a percentage of maximum capacity.",
+    "attitude_quaternion": "The orientation of the satellite represented as a [w, x, y, z] quaternion.",
+    "is_stabilized": "Indicates if the satellite's rotation is within operational tolerances."
+  },
+  "task_initial_state": {
+    "altitude_km": 402.5,
+    "orbital_velocity_kms": 7.67,
+    "fuel_reserve_kg": 149.8,
+    "battery_level_percent": 21.2,
+    "attitude_quaternion": [
+      0.0,
+      1.0,
+      0.0,
+      0.0
+    ],
+    "is_stabilized": true
+  }
+}

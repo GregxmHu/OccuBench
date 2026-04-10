@@ -1,0 +1,227 @@
+{
+  "environment_name": "env_9d12e02a1e82",
+  "world_model_system_prompt": "### 1. Role and Objective\n\n**Role**: Language World Model (LWM)\n**Core Objective**: You are a Language World Model simulating a Ballot Counting Discrepancy Resolution environment. Based on the current internal state $s_t$ and the action $a_t$ submitted by the Agent, your task is to simulate the internal evolution of the environment and predict the resulting observation $o_{{t+1}}$ obtained by the Agent.\n**Emphasis**: You do not perform real-world ballot counting or auditing. You are an internal simulator that ensures the logic of the voting data remains self-consistent, maintaining an audit trail and state transitions based on the Agent's investigative actions.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation tracking ballot counts, batch statuses, and audit logs. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nYou must maintain strict context consistency. Every action taken by the Agent (e.g., recounting a batch, comparing logs) must update the internal state of the discrepancy resolution process, and subsequent observations must reflect these changes (e.g., if a batch is marked 'Resolved', it remains 'Resolved' in future steps).\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` returned for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. This JSON will contain:\n- `\"name\"`: The name of the action function to execute.\n- `\"arguments\"`: A dictionary of parameter names and values.\n\nExample Input:\n```json\n{{\n \"name\": \"compare_batch_counts\",\n \"arguments\": {{\n    \"batch_id\": \"B-101\",\n    \"source_a\": \"machine_tally\",\n    \"source_b\": \"manual_audit\"\n  }}\n}}\n```\nYou must parse this input, apply the logic to the internal state, and generate the corresponding observation.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\n- If the Agent attempts to access a `batch_id` that does not exist, return an error: `{{\"error\": \"Batch ID not found\"}}`.\n- If an action is called with missing or invalid parameters, return a structured error message.\n- Do not fabricate data or resolutions that have not been explicitly triggered by an action.\n\n##### Output Assembly\nFor every action function call, you must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition. \n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, the updated state, or any hidden system variables. You are the environment; the Agent only sees the result of its specific query or physical interaction (the Observation). State maintenance is your internal responsibility.\n\n### 4. Key Principles\n- **Format**: Strictly output valid JSON for the observation.\n- **Factuality**: Ensure the numerical consistency of ballots. Total counts must equal the sum of batches; discrepancies must be mathematically logical.\n- **Consistency**: Once a discrepancy is resolved or a count is updated, it must persist in the world history.\n- **Realism**: Simulate realistic errors (e.g., human counting variance vs. machine precision) if the scenario logic dictates.\n- **Encapsulation**: Strictly hide the internal state structure from the output. Only expose the specific observation result.\n{{initial_state}}: {{\n  \"precinct_metadata\": {{\n    \"precinct_id\": \"P-305\",\n    \"total_registered_voters\": 850\n  }},\n  \"ballot_batches\": [\n    {{\n      \"batch_id\": \"B-901\",\n      \"machine_count\": 400,\n      \"manual_count\": 398,\n      \"status\": \"In_Discrepancy\"\n    }},\n    {{\n      \"batch_id\": \"B-902\",\n      \"machine_count\": 420,\n      \"manual_count\": 420,\n      \"status\": \"In_Discrepancy\"\n    }}\n  ],\n  \"audit_log\": [\n    \"Precinct P-305 audit session initiated.\",\n    \"DRE Unit #9921 quarantined for discrepancy review.\",\n    \"Initial canvass report generated: B-901 shows 2-vote deficit; B-902 requires verification due to poll-worker log mismatch.\",\n    \"System Status: Security Layer 'Pending'. Integrity Checksums not yet validated for DRE #9921.\",\n    \"Chain of custody for VVPAT rolls verified by bipartisan board.\"\n  ],\n  \"reconciliation_summary\": {{\n    \"total_discrepancies_identified\": 2,\n    \"total_discrepancies_resolved\": 0\n  }}\n}}\n{{state_descriptions}}: {{\n  \"precinct_metadata\": \"General information about the precinct being audited.\",\n  \"ballot_batches\": \"A list of ballot batches and their respective tallies from different sources.\",\n  \"audit_log\": \"A chronological record of actions taken to resolve discrepancies.\",\n  \"reconciliation_summary\": \"Aggregated stats for the entire resolution process.\"\n}}\n{action_set_definitions}: {\n  \"get_precinct_details\": {\n    \"description\": \"Retrieves the metadata for a specific precinct to understand its configuration and requirements.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"precinct_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the precinct (e.g., 'P-305').\"\n        }\n      },\n      \"required\": [\n        \"precinct_id\"\n      ]\n    },\n    \"example_output\": {\n      \"precinct_id\": \"P-305\",\n      \"security_level\": \"High\",\n      \"dre_model\": \"DRE-X2\",\n      \"is_certified\": false\n    }\n  },\n  \"list_ballot_batches\": {\n    \"description\": \"Returns a list of all ballot batches associated with the precinct, including their current status and tally variances.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"precinct_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the precinct.\"\n        }\n      },\n      \"required\": [\n        \"precinct_id\"\n      ]\n    },\n    \"example_output\": {\n      \"batches\": [\n        {\n          \"batch_id\": \"B-001\",\n          \"status\": \"Flagged\",\n          \"variance\": 12\n        },\n        {\n          \"batch_id\": \"B-002\",\n          \"status\": \"Resolved\",\n          \"variance\": 0\n        }\n      ]\n    }\n  },\n  \"execute_security_protocol_step\": {\n    \"description\": \"Executes a specific mandatory security sequence required by the precinct's DRE units. Must be called before auditing actions are permitted.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"precinct_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the precinct.\"\n        },\n        \"step_number\": {\n          \"type\": \"integer\",\n          \"description\": \"The sequence number of the protocol step (e.g., 1, 2, 3).\"\n        },\n        \"protocol_code\": {\n          \"type\": \"string\",\n          \"description\": \"The security code or operation name required for this step.\"\n        }\n      },\n      \"required\": [\n        \"precinct_id\",\n        \"step_number\",\n        \"protocol_code\"\n      ]\n    },\n    \"example_output\": {\n      \"step_status\": \"Authorized\",\n      \"next_required_step\": 2\n    }\n  },\n  \"investigate_discrepancy\": {\n    \"description\": \"Retrieves detailed diagnostic information for a specific flagged ballot batch to determine the source of the variance.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"batch_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the ballot batch.\"\n        }\n      },\n      \"required\": [\n        \"batch_id\"\n      ]\n    },\n    \"example_output\": {\n      \"variance_reason\": \"Double-fed scan in unit #4\",\n      \"suggested_adjustment\": -1\n    }\n  },\n  \"update_batch_resolution\": {\n    \"description\": \"Updates a ballot batch status and records the resolution details. This tool adjusts the tally to match verified physical counts.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"batch_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the ballot batch.\"\n        },\n        \"new_status\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"Resolved\",\n            \"Unresolved\"\n          ],\n          \"description\": \"The target status for the batch.\"\n        },\n        \"resolution_notes\": {\n          \"type\": \"string\",\n          \"description\": \"Explanation of the correction made.\"\n        },\n        \"adjustment_value\": {\n          \"type\": \"number\",\n          \"description\": \"The numerical adjustment applied to resolve the variance.\"\n        }\n      },\n      \"required\": [\n        \"batch_id\",\n        \"new_status\",\n        \"resolution_notes\",\n        \"adjustment_value\"\n      ]\n    },\n    \"example_output\": {\n      \"batch_id\": \"B-001\",\n      \"new_status\": \"Resolved\",\n      \"updated_at\": \"2023-10-27T10:00:00Z\"\n    }\n  },\n  \"get_reconciliation_summary\": {\n    \"description\": \"Retrieves the aggregated reconciliation stats to verify if all discrepancies have been cleared.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"precinct_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the precinct.\"\n        }\n      },\n      \"required\": [\n        \"precinct_id\"\n      ]\n    },\n    \"example_output\": {\n      \"total_batches\": 10,\n      \"resolved_batches\": 10,\n      \"flagged_batches\": 0,\n      \"total_variance\": 0\n    }\n  },\n  \"certify_precinct\": {\n    \"description\": \"Finalizes the audit and moves the precinct into a certified state. Only allowed if all discrepancies are resolved.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"precinct_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the precinct.\"\n        }\n      },\n      \"required\": [\n        \"precinct_id\"\n      ]\n    },\n    \"example_output\": {\n      \"certification_status\": \"Certified\",\n      \"timestamp\": \"2023-10-27T11:00:00Z\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_precinct_details",
+      "description": "Retrieves the metadata for a specific precinct to understand its configuration and requirements.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "precinct_id": {
+            "type": "string",
+            "description": "The unique identifier for the precinct (e.g., 'P-305')."
+          }
+        },
+        "required": [
+          "precinct_id"
+        ]
+      },
+      "example_output": {
+        "precinct_id": "P-305",
+        "security_level": "High",
+        "dre_model": "DRE-X2",
+        "is_certified": false
+      }
+    },
+    {
+      "name": "list_ballot_batches",
+      "description": "Returns a list of all ballot batches associated with the precinct, including their current status and tally variances.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "precinct_id": {
+            "type": "string",
+            "description": "The unique identifier for the precinct."
+          }
+        },
+        "required": [
+          "precinct_id"
+        ]
+      },
+      "example_output": {
+        "batches": [
+          {
+            "batch_id": "B-001",
+            "status": "Flagged",
+            "variance": 12
+          },
+          {
+            "batch_id": "B-002",
+            "status": "Resolved",
+            "variance": 0
+          }
+        ]
+      }
+    },
+    {
+      "name": "execute_security_protocol_step",
+      "description": "Executes a specific mandatory security sequence required by the precinct's DRE units. Must be called before auditing actions are permitted.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "precinct_id": {
+            "type": "string",
+            "description": "The unique identifier for the precinct."
+          },
+          "step_number": {
+            "type": "integer",
+            "description": "The sequence number of the protocol step (e.g., 1, 2, 3)."
+          },
+          "protocol_code": {
+            "type": "string",
+            "description": "The security code or operation name required for this step."
+          }
+        },
+        "required": [
+          "precinct_id",
+          "step_number",
+          "protocol_code"
+        ]
+      },
+      "example_output": {
+        "step_status": "Authorized",
+        "next_required_step": 2
+      }
+    },
+    {
+      "name": "investigate_discrepancy",
+      "description": "Retrieves detailed diagnostic information for a specific flagged ballot batch to determine the source of the variance.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "batch_id": {
+            "type": "string",
+            "description": "The unique identifier for the ballot batch."
+          }
+        },
+        "required": [
+          "batch_id"
+        ]
+      },
+      "example_output": {
+        "variance_reason": "Double-fed scan in unit #4",
+        "suggested_adjustment": -1
+      }
+    },
+    {
+      "name": "update_batch_resolution",
+      "description": "Updates a ballot batch status and records the resolution details. This tool adjusts the tally to match verified physical counts.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "batch_id": {
+            "type": "string",
+            "description": "The unique identifier for the ballot batch."
+          },
+          "new_status": {
+            "type": "string",
+            "enum": [
+              "Resolved",
+              "Unresolved"
+            ],
+            "description": "The target status for the batch."
+          },
+          "resolution_notes": {
+            "type": "string",
+            "description": "Explanation of the correction made."
+          },
+          "adjustment_value": {
+            "type": "number",
+            "description": "The numerical adjustment applied to resolve the variance."
+          }
+        },
+        "required": [
+          "batch_id",
+          "new_status",
+          "resolution_notes",
+          "adjustment_value"
+        ]
+      },
+      "example_output": {
+        "batch_id": "B-001",
+        "new_status": "Resolved",
+        "updated_at": "2023-10-27T10:00:00Z"
+      }
+    },
+    {
+      "name": "get_reconciliation_summary",
+      "description": "Retrieves the aggregated reconciliation stats to verify if all discrepancies have been cleared.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "precinct_id": {
+            "type": "string",
+            "description": "The unique identifier for the precinct."
+          }
+        },
+        "required": [
+          "precinct_id"
+        ]
+      },
+      "example_output": {
+        "total_batches": 10,
+        "resolved_batches": 10,
+        "flagged_batches": 0,
+        "total_variance": 0
+      }
+    },
+    {
+      "name": "certify_precinct",
+      "description": "Finalizes the audit and moves the precinct into a certified state. Only allowed if all discrepancies are resolved.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "precinct_id": {
+            "type": "string",
+            "description": "The unique identifier for the precinct."
+          }
+        },
+        "required": [
+          "precinct_id"
+        ]
+      },
+      "example_output": {
+        "certification_status": "Certified",
+        "timestamp": "2023-10-27T11:00:00Z"
+      }
+    }
+  ],
+  "state_description": {
+    "precinct_metadata": "General information about the precinct being audited.",
+    "ballot_batches": "A list of ballot batches and their respective tallies from different sources.",
+    "audit_log": "A chronological record of actions taken to resolve discrepancies.",
+    "reconciliation_summary": "Aggregated stats for the entire resolution process."
+  },
+  "task_initial_state": {
+    "precinct_metadata": {
+      "precinct_id": "P-305",
+      "total_registered_voters": 850
+    },
+    "ballot_batches": [
+      {
+        "batch_id": "B-901",
+        "machine_count": 400,
+        "manual_count": 398,
+        "status": "In_Discrepancy"
+      },
+      {
+        "batch_id": "B-902",
+        "machine_count": 420,
+        "manual_count": 420,
+        "status": "In_Discrepancy"
+      }
+    ],
+    "audit_log": [
+      "Precinct P-305 audit session initiated.",
+      "DRE Unit #9921 quarantined for discrepancy review.",
+      "Initial canvass report generated: B-901 shows 2-vote deficit; B-902 requires verification due to poll-worker log mismatch.",
+      "System Status: Security Layer 'Pending'. Integrity Checksums not yet validated for DRE #9921.",
+      "Chain of custody for VVPAT rolls verified by bipartisan board."
+    ],
+    "reconciliation_summary": {
+      "total_discrepancies_identified": 2,
+      "total_discrepancies_resolved": 0
+    }
+  }
+}

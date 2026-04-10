@@ -1,0 +1,176 @@
+{
+  "environment_name": "env_cae875ceba85",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: Based on the current network state $s_t$ and the capacity planning action $a_t$ taken by the Agent, simulate the evolution of the network infrastructure and predict the observation $o_{{t+1}}$ (e.g., performance metrics, congestion reports, or budget updates).\n- **Emphasis**: The LWM does not execute real network configuration changes. It performs internal state evolution of the network topology and traffic flows to generate realistic observations for the Agent.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation representing the network topology, traffic demands, and resource allocations. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions between the World Model and the Agent must maintain context consistency. The model must track the cumulative effects of capacity upgrades, rerouting, and traffic growth over time to ensure that link loads and latency metrics remain logically consistent with the established topology.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions (e.g., upgrading link bandwidth, adding new nodes, or modifying routing weights). The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. This JSON must contain the following fields:\n- `\"name\"`: Specifies the name of the planning action to execute (e.g., \"upgrade_link\", \"deploy_node\").\n- The remaining fields are the parameter names and corresponding values required by that action function (e.g., \"link_id\", \"new_capacity\").\n\nExample:\n```json\n{{\n \"name\": \"upgrade_link\",\n \"arguments\": {{\n    \"link_id\": \"SEA-SFO-01\",\n    \"target_bandwidth_gbps\": 100\n  }}\n}}\n```\n\nThe Language World Model must correctly parse such JSON inputs and simulate the resulting network metrics and state changes.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nFor invalid parameters (e.g., non-existent Link IDs), undefined actions, budget violations, or physically impossible configurations, return structured error information (e.g., `{{\"error\": \"Insufficient budget for upgrade\"}}` or `{{\"error\": \"Link ID not found\"}}`). Do not fabricate network states or fictitious successful responses if the logic dictates a failure.\n\n##### Output Assembly\nFor every action function call, the model must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition. \n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, `new_state`, or hidden variables like the full topology map unless explicitly requested by an observation function. The Agent must only see the specific return values (Observations) such as link utilization ratios, packet loss percentages, or latency measurements.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to specified JSON and text formats.\n- **Factuality**: Do not fabricate non-existent network functions, equipment specs, or traffic data.\n- **Consistency**: The network state must evolve logically; if bandwidth is added, congestion on that specific link must decrease given constant traffic.\n- **Realism**: Simulated behaviors must align with network engineering principles (e.g., queuing theory, propagation delay, and hardware constraints).\n- **Quality**: Language must be technical, clear, and structurally complete.\n- **Encapsulation**: Strictly hide the internal state structure. Only expose information that is explicitly returned by the action function as an observation. Do not output internal state updates or delta logs.\n{{initial_state}}: {{\n  \"topology_map\": {{\n    \"LINK_BACKHAUL_A\": {{\n      \"node_pair\": [\n        \"URBAN_CORE_SITE_A\",\n        \"CORE_GATEWAY_01\"\n      ],\n      \"distance_km\": 4.5\n    }}\n  }},\n  \"link_capacities\": {{\n    \"LINK_BACKHAUL_A\": 2.0\n  }},\n  \"traffic_demand_matrix\": {{\n    \"URBAN_CORE_SITE_A_BH\": 1450\n  }},\n  \"node_status\": {{\n    \"URBAN_CORE_SITE_A\": {{\n      \"cpu_utilization\": 0.82,\n      \"backplane_utilization\": 0.72,\n      \"sector_alpha_prb_utilization\": 0.94,\n      \"sector_alpha_user_5p_mbps\": 1.5,\n      \"total_antenna_weight_kg\": 185,\n      \"installed_hardware\": [\n        {{\n          \"id\": \"B3_4G_PASSIVE_ARRAY\",\n          \"weight_kg\": 65,\n          \"tech\": \"4G\",\n          \"mimo\": \"4T4R\"\n        }}\n      ],\n      \"pdcch_cce_utilization\": 0.88\n    }}\n  }},\n  \"remaining_budget\": 120000,\n  \"simulation_step\": 0\n}}\n{{state_descriptions}}: {{\n  \"topology_map\": \"A mapping of link IDs to their connected node pairs and physical distances.\",\n  \"link_capacities\": \"Current provisioned bandwidth for each link ID in Gbps.\",\n  \"traffic_demand_matrix\": \"Current data transfer requirements between node pairs in Mbps.\",\n  \"node_status\": \"Current CPU and switching backplane utilization for each router/switch node.\",\n  \"remaining_budget\": \"Remaining Capital Expenditure (CAPEX) budget for network upgrades.\",\n  \"simulation_step\": \"The current time step in the planning horizon.\"\n}}\n{action_set_definitions}: {\n  \"get_performance_kpis\": {\n    \"description\": \"Retrieves the current performance indicators (PRB utilization and 5th-percentile user throughput) for a specific sector at a site.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"site_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the site (e.g., 'URBAN_CORE_SITE_A').\"\n        },\n        \"sector_id\": {\n          \"type\": \"string\",\n          \"description\": \"The specific sector ID (e.g., 'ALPHA').\"\n        }\n      },\n      \"required\": [\n        \"site_id\",\n        \"sector_id\"\n      ]\n    },\n    \"example_output\": {\n      \"prb_utilization_pct\": 85.5,\n      \"throughput_5p_mbps\": 12.2\n    }\n  },\n  \"get_site_physical_status\": {\n    \"description\": \"Retrieves the current total antenna weight installed on the tower and identifies the associated backhaul link ID.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"site_id\": {\n          \"type\": \"string\",\n          \"description\": \"The site identifier.\"\n        }\n      },\n      \"required\": [\n        \"site_id\"\n      ]\n    },\n    \"example_output\": {\n      \"current_total_weight_kg\": 150.0,\n      \"backhaul_link_id\": \"LINK_001\"\n    }\n  },\n  \"get_link_capacity_data\": {\n    \"description\": \"Retrieves the provisioned capacity and current traffic load for a specific network link.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"link_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the backhaul link.\"\n        }\n      },\n      \"required\": [\n        \"link_id\"\n      ]\n    },\n    \"example_output\": {\n      \"max_capacity_gbps\": 2.0,\n      \"current_load_gbps\": 1.1\n    }\n  },\n  \"get_budget_remaining\": {\n    \"description\": \"Queries the current available Capital Expenditure (CAPEX) budget.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {}\n    },\n    \"example_output\": {\n      \"remaining_budget_usd\": 120000.0\n    }\n  },\n  \"get_available_upgrades\": {\n    \"description\": \"Lists all available hardware upgrades, spectrum additions, or software features that can be deployed, including their costs, weights, and estimated performance impacts.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {}\n    },\n    \"example_output\": {\n      \"upgrades\": [\n        {\n          \"id\": \"MIMO_64R\",\n          \"type\": \"Hardware\",\n          \"cost_usd\": 45000,\n          \"weight_kg\": 35.0,\n          \"est_prb_reduction\": 15.0,\n          \"est_throughput_gain_mbps\": 10.0,\n          \"est_backhaul_increase_gbps\": 0.3\n        }\n      ]\n    }\n  },\n  \"execute_deployment\": {\n    \"description\": \"Applies a selected upgrade to a specific site and sector, updating the environment state.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"site_id\": {\n          \"type\": \"string\"\n        },\n        \"sector_id\": {\n          \"type\": \"string\"\n        },\n        \"upgrade_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the upgrade from the available catalog.\"\n        }\n      },\n      \"required\": [\n        \"site_id\",\n        \"sector_id\",\n        \"upgrade_id\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"success\",\n      \"new_simulation_step\": 2\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_performance_kpis",
+      "description": "Retrieves the current performance indicators (PRB utilization and 5th-percentile user throughput) for a specific sector at a site.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "site_id": {
+            "type": "string",
+            "description": "The unique identifier for the site (e.g., 'URBAN_CORE_SITE_A')."
+          },
+          "sector_id": {
+            "type": "string",
+            "description": "The specific sector ID (e.g., 'ALPHA')."
+          }
+        },
+        "required": [
+          "site_id",
+          "sector_id"
+        ]
+      },
+      "example_output": {
+        "prb_utilization_pct": 85.5,
+        "throughput_5p_mbps": 12.2
+      }
+    },
+    {
+      "name": "get_site_physical_status",
+      "description": "Retrieves the current total antenna weight installed on the tower and identifies the associated backhaul link ID.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "site_id": {
+            "type": "string",
+            "description": "The site identifier."
+          }
+        },
+        "required": [
+          "site_id"
+        ]
+      },
+      "example_output": {
+        "current_total_weight_kg": 150.0,
+        "backhaul_link_id": "LINK_001"
+      }
+    },
+    {
+      "name": "get_link_capacity_data",
+      "description": "Retrieves the provisioned capacity and current traffic load for a specific network link.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "link_id": {
+            "type": "string",
+            "description": "The unique identifier for the backhaul link."
+          }
+        },
+        "required": [
+          "link_id"
+        ]
+      },
+      "example_output": {
+        "max_capacity_gbps": 2.0,
+        "current_load_gbps": 1.1
+      }
+    },
+    {
+      "name": "get_budget_remaining",
+      "description": "Queries the current available Capital Expenditure (CAPEX) budget.",
+      "parameters": {
+        "type": "object",
+        "properties": {}
+      },
+      "example_output": {
+        "remaining_budget_usd": 120000.0
+      }
+    },
+    {
+      "name": "get_available_upgrades",
+      "description": "Lists all available hardware upgrades, spectrum additions, or software features that can be deployed, including their costs, weights, and estimated performance impacts.",
+      "parameters": {
+        "type": "object",
+        "properties": {}
+      },
+      "example_output": {
+        "upgrades": [
+          {
+            "id": "MIMO_64R",
+            "type": "Hardware",
+            "cost_usd": 45000,
+            "weight_kg": 35.0,
+            "est_prb_reduction": 15.0,
+            "est_throughput_gain_mbps": 10.0,
+            "est_backhaul_increase_gbps": 0.3
+          }
+        ]
+      }
+    },
+    {
+      "name": "execute_deployment",
+      "description": "Applies a selected upgrade to a specific site and sector, updating the environment state.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "site_id": {
+            "type": "string"
+          },
+          "sector_id": {
+            "type": "string"
+          },
+          "upgrade_id": {
+            "type": "string",
+            "description": "The ID of the upgrade from the available catalog."
+          }
+        },
+        "required": [
+          "site_id",
+          "sector_id",
+          "upgrade_id"
+        ]
+      },
+      "example_output": {
+        "status": "success",
+        "new_simulation_step": 2
+      }
+    }
+  ],
+  "state_description": {
+    "topology_map": "A mapping of link IDs to their connected node pairs and physical distances.",
+    "link_capacities": "Current provisioned bandwidth for each link ID in Gbps.",
+    "traffic_demand_matrix": "Current data transfer requirements between node pairs in Mbps.",
+    "node_status": "Current CPU and switching backplane utilization for each router/switch node.",
+    "remaining_budget": "Remaining Capital Expenditure (CAPEX) budget for network upgrades.",
+    "simulation_step": "The current time step in the planning horizon."
+  },
+  "task_initial_state": {
+    "topology_map": {
+      "LINK_BACKHAUL_A": {
+        "node_pair": [
+          "URBAN_CORE_SITE_A",
+          "CORE_GATEWAY_01"
+        ],
+        "distance_km": 4.5
+      }
+    },
+    "link_capacities": {
+      "LINK_BACKHAUL_A": 2.0
+    },
+    "traffic_demand_matrix": {
+      "URBAN_CORE_SITE_A_BH": 1450
+    },
+    "node_status": {
+      "URBAN_CORE_SITE_A": {
+        "cpu_utilization": 0.82,
+        "backplane_utilization": 0.72,
+        "sector_alpha_prb_utilization": 0.94,
+        "sector_alpha_user_5p_mbps": 1.5,
+        "total_antenna_weight_kg": 185,
+        "installed_hardware": [
+          {
+            "id": "B3_4G_PASSIVE_ARRAY",
+            "weight_kg": 65,
+            "tech": "4G",
+            "mimo": "4T4R"
+          }
+        ],
+        "pdcch_cce_utilization": 0.88
+      }
+    },
+    "remaining_budget": 120000,
+    "simulation_step": 0
+  }
+}

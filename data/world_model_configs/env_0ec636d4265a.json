@@ -1,0 +1,221 @@
+{
+  "environment_name": "env_0ec636d4265a",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: Based on the current internal state $s_t$ and the action $a_t$ executed by the Agent, simulate the evolution of the Contract Due Diligence environment and predict the observation $o_{{t+1}}$ obtained by the Agent.\n- **Emphasis**: You are a simulator of a legal document management and analysis system. You do not perform real-world legal services, but rather provide a consistent, realistic simulation of document retrieval, clause extraction, and risk flagging based on the provided state and actions.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions between the World Model and the Agent must maintain context consistency. Changes to the document status, flags raised, or current file focus must persist across the interaction history to ensure logical continuity in the due diligence process.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object containing:\n- `\"name\"`: The name of the action function (e.g., `open_document`, `extract_clause`).\n- Additional fields for the parameters required by that specific action.\n\nExample:\n```json\n{{\n \"name\": \"search_keyword\",\n \"arguments\": {{\n    \"document_id\": \"DOC_001\",\n    \"keyword\": \"change of control\"\n  }}\n}}\n```\nYou must parse this input and simulate the resulting observation based on the logic of a legal review environment.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\n- If an Agent attempts to access a `document_id` that does not exist in the current state: return `{{\"error\": \"Document not found\"}}`.\n- If an action is missing required arguments: return `{{\"error\": \"Missing required argument: [argument_name]\"}}`.\n- If an action is undefined: return `{{\"error\": \"Action [action_name] not found\"}}`.\n- Do not fabricate content for documents that have not been initialized in the state.\n\n##### Output Assembly\nFor every action function call, you must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition. \n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state $s_t$, the updated state, or any hidden state variables. The Agent must only receive the specific `observation` (e.g., the text of a clause, a list of files, or a confirmation of a flag). Internal state updates happen silently and are reflected in future observations.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to JSON output for observations.\n- **Factuality**: Simulate realistic legal document responses (e.g., boilerplate language, specific indemnification terms) based on the context provided.\n- **Consistency**: If a document is flagged as \"Reviewed\" in the state, subsequent search actions should reflect that status in their metadata if applicable.\n- **Realism**: Dynamics must align with professional due diligence workflows (e.g., scanning large PDFs takes state-logical time or multi-step processing).\n- **Quality**: Ensure extracted text or summaries are clear and structurally complete.\n- **Encapsulation**: Strictly hide the internal state structure. Only expose the \"Observation\" resulting from the action.\n{{initial_state}}: {{\n  \"document_repository\": {{\n    \"CORP-GOV-2024\": {{\n      \"metadata\": {{\n        \"title\": \"2024 Corporate Governance Summary\",\n        \"type\": \"Internal Report\",\n        \"status\": \"Final\"\n      }},\n      \"content_summary\": \"List of Executive Officers: Sarah Chen (CEO), Marcus Thorne (CFO). List of 5% Shareholders: Thorne Capital Group, Blue Horizon Ventures. Note: Marcus Thorne maintains a controlling interest in Thorne Capital Group.\",\n      \"tags\": [\n        \"Governance\",\n        \"Confidential\"\n      ]\n    }},\n    \"OPS-VEND-Q3\": {{\n      \"metadata\": {{\n        \"title\": \"Q3 Operations and Vendor Risk Assessment\",\n        \"type\": \"Internal Report\",\n        \"status\": \"Final\"\n      }},\n      \"content_summary\": \"Risk Analysis: Our production line is entirely dependent on proprietary sensors from 'SensorTech Solutions'. They are our sole-source provider for 92% of our hardware components. A disruption here would halt all revenue for 4-6 months. All other vendors (e.g., Staples, Dell) are non-critical and replaceable within 48 hours.\",\n      \"tags\": [\n        \"Operations\",\n        \"Risk\"\n      ]\n    }},\n    \"AGMT-THORNE-001\": {{\n      \"metadata\": {{\n        \"counterparty\": \"Thorne Capital Group\",\n        \"tcv\": 450000,\n        \"effective_date\": \"2023-12-01\",\n        \"type\": \"Lease Agreement\",\n        \"status\": \"Active\"\n      }},\n      \"content_summary\": \"Commercial lease for the company's primary R&D facility located in Palo Alto.\",\n      \"tags\": [\n        \"Real Estate\"\n      ]\n    }},\n    \"AGMT-SENSOR-992\": {{\n      \"metadata\": {{\n        \"counterparty\": \"SensorTech Solutions\",\n        \"tcv\": 2000000,\n        \"effective_date\": \"2024-01-15\",\n        \"type\": \"Master Supply Agreement\",\n        \"status\": \"Active\"\n      }},\n      \"content_summary\": \"Long-term supply agreement for customized industrial sensors. Includes exclusivity clauses and minimum order quantities.\",\n      \"tags\": [\n        \"Vendor\",\n        \"Critical\"\n      ]\n    }},\n    \"AGMT-DELL-883\": {{\n      \"metadata\": {{\n        \"counterparty\": \"Dell Technologies\",\n        \"tcv\": 1500000,\n        \"effective_date\": \"2023-05-10\",\n        \"type\": \"Hardware Purchase Agreement\",\n        \"status\": \"Active\"\n      }},\n      \"content_summary\": \"Standard purchase agreement for office laptops and server racks. Terms are standard for the industry.\",\n      \"tags\": [\n        \"IT\",\n        \"OCOB\"\n      ]\n    }},\n    \"AGMT-CHEN-005\": {{\n      \"metadata\": {{\n        \"counterparty\": \"Sarah Chen\",\n        \"tcv\": 0,\n        \"effective_date\": \"2022-01-01\",\n        \"type\": \"Invention Assignment Agreement\",\n        \"status\": \"Active\"\n      }},\n      \"content_summary\": \"Standard employee intellectual property assignment. No additional compensation beyond base salary.\",\n      \"tags\": [\n        \"Employment\",\n        \"IP\"\n      ]\n    }}\n  }},\n  \"active_document_id\": null,\n  \"audit_flags\": [],\n  \"review_session_metadata\": {{\n    \"project\": \"Project Gamma\",\n    \"jurisdiction\": \"Delaware\",\n    \"access_level\": \"Senior Auditor\",\n    \"company_annual_revenue\": 50000000\n  }}\n}}\n{{state_descriptions}}: {{\n  \"document_repository\": \"A map of document IDs to their metadata, content snippets, and processing status.\",\n  \"active_document_id\": \"The ID of the document currently 'opened' or 'focused' by the agent.\",\n  \"audit_flags\": \"A list of risk flags or bookmarks created by the agent during the session.\",\n  \"review_session_metadata\": \"General session info such as project name, jurisdiction focus, and access level.\"\n}}\n{action_set_definitions}: {\n  \"get_session_metadata\": {\n    \"description\": \"Retrieves the general session information, including project scope, revenue context, and specific disclosure thresholds.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"project_name\": \"Project Gamma\",\n      \"revenue_threshold\": 50000000,\n      \"jurisdiction\": \"SEC Regulation S-K\",\n      \"access_level\": \"Admin\"\n    }\n  },\n  \"search_repository\": {\n    \"description\": \"Searches for keywords or phrases across the entire document repository to identify relevant files for leadership, shareholders, or operations.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"query\": {\n          \"type\": \"string\",\n          \"description\": \"The search term (e.g., 'executive leadership list', 'shareholder registry', 'supply chain').\"\n        }\n      },\n      \"required\": [\n        \"query\"\n      ]\n    },\n    \"example_output\": {\n      \"results\": [\n        {\n          \"doc_id\": \"GOV-001\",\n          \"title\": \"Governance List 2023\",\n          \"snippet\": \"...the list of 5% shareholders includes...\"\n        }\n      ]\n    }\n  },\n  \"list_all_documents\": {\n    \"description\": \"Lists all document IDs and basic metadata in the repository to establish the review queue.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"documents\": [\n        {\n          \"doc_id\": \"CONT-101\",\n          \"type\": \"Contract\",\n          \"status\": \"pending\"\n        }\n      ]\n    }\n  },\n  \"get_document_details\": {\n    \"description\": \"Retrieves the full text and metadata for a specific document by its ID.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"doc_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier of the document to read.\"\n        }\n      },\n      \"required\": [\n        \"doc_id\"\n      ]\n    },\n    \"example_output\": {\n      \"content\": \"This Supply Agreement between Gamma and Supplier X...\",\n      \"metadata\": {\n        \"parties\": [\n          \"Gamma Corp\",\n          \"Supplier X\"\n        ],\n        \"value\": 2000000\n      }\n    }\n  },\n  \"create_audit_flag\": {\n    \"description\": \"Creates a risk flag for a document, specifying the regulatory trigger and justification.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"doc_id\": {\n          \"type\": \"string\",\n          \"description\": \"ID of the document requiring filing.\"\n        },\n        \"regulatory_trigger\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"Related Party Transaction\",\n            \"Substantial Dependency\"\n          ],\n          \"description\": \"The specific SEC Regulation S-K Item 601(b)(10) trigger.\"\n        },\n        \"justification\": {\n          \"type\": \"string\",\n          \"description\": \"Brief explanation of why this document meets the materiality threshold or trigger.\"\n        }\n      },\n      \"required\": [\n        \"doc_id\",\n        \"regulatory_trigger\",\n        \"justification\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"success\",\n      \"flag_id\": \"FLAG-999\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_session_metadata",
+      "description": "Retrieves the general session information, including project scope, revenue context, and specific disclosure thresholds.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "project_name": "Project Gamma",
+        "revenue_threshold": 50000000,
+        "jurisdiction": "SEC Regulation S-K",
+        "access_level": "Admin"
+      }
+    },
+    {
+      "name": "search_repository",
+      "description": "Searches for keywords or phrases across the entire document repository to identify relevant files for leadership, shareholders, or operations.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "description": "The search term (e.g., 'executive leadership list', 'shareholder registry', 'supply chain')."
+          }
+        },
+        "required": [
+          "query"
+        ]
+      },
+      "example_output": {
+        "results": [
+          {
+            "doc_id": "GOV-001",
+            "title": "Governance List 2023",
+            "snippet": "...the list of 5% shareholders includes..."
+          }
+        ]
+      }
+    },
+    {
+      "name": "list_all_documents",
+      "description": "Lists all document IDs and basic metadata in the repository to establish the review queue.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "documents": [
+          {
+            "doc_id": "CONT-101",
+            "type": "Contract",
+            "status": "pending"
+          }
+        ]
+      }
+    },
+    {
+      "name": "get_document_details",
+      "description": "Retrieves the full text and metadata for a specific document by its ID.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "doc_id": {
+            "type": "string",
+            "description": "The unique identifier of the document to read."
+          }
+        },
+        "required": [
+          "doc_id"
+        ]
+      },
+      "example_output": {
+        "content": "This Supply Agreement between Gamma and Supplier X...",
+        "metadata": {
+          "parties": [
+            "Gamma Corp",
+            "Supplier X"
+          ],
+          "value": 2000000
+        }
+      }
+    },
+    {
+      "name": "create_audit_flag",
+      "description": "Creates a risk flag for a document, specifying the regulatory trigger and justification.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "doc_id": {
+            "type": "string",
+            "description": "ID of the document requiring filing."
+          },
+          "regulatory_trigger": {
+            "type": "string",
+            "enum": [
+              "Related Party Transaction",
+              "Substantial Dependency"
+            ],
+            "description": "The specific SEC Regulation S-K Item 601(b)(10) trigger."
+          },
+          "justification": {
+            "type": "string",
+            "description": "Brief explanation of why this document meets the materiality threshold or trigger."
+          }
+        },
+        "required": [
+          "doc_id",
+          "regulatory_trigger",
+          "justification"
+        ]
+      },
+      "example_output": {
+        "status": "success",
+        "flag_id": "FLAG-999"
+      }
+    }
+  ],
+  "state_description": {
+    "document_repository": "A map of document IDs to their metadata, content snippets, and processing status.",
+    "active_document_id": "The ID of the document currently 'opened' or 'focused' by the agent.",
+    "audit_flags": "A list of risk flags or bookmarks created by the agent during the session.",
+    "review_session_metadata": "General session info such as project name, jurisdiction focus, and access level."
+  },
+  "task_initial_state": {
+    "document_repository": {
+      "CORP-GOV-2024": {
+        "metadata": {
+          "title": "2024 Corporate Governance Summary",
+          "type": "Internal Report",
+          "status": "Final"
+        },
+        "content_summary": "List of Executive Officers: Sarah Chen (CEO), Marcus Thorne (CFO). List of 5% Shareholders: Thorne Capital Group, Blue Horizon Ventures. Note: Marcus Thorne maintains a controlling interest in Thorne Capital Group.",
+        "tags": [
+          "Governance",
+          "Confidential"
+        ]
+      },
+      "OPS-VEND-Q3": {
+        "metadata": {
+          "title": "Q3 Operations and Vendor Risk Assessment",
+          "type": "Internal Report",
+          "status": "Final"
+        },
+        "content_summary": "Risk Analysis: Our production line is entirely dependent on proprietary sensors from 'SensorTech Solutions'. They are our sole-source provider for 92% of our hardware components. A disruption here would halt all revenue for 4-6 months. All other vendors (e.g., Staples, Dell) are non-critical and replaceable within 48 hours.",
+        "tags": [
+          "Operations",
+          "Risk"
+        ]
+      },
+      "AGMT-THORNE-001": {
+        "metadata": {
+          "counterparty": "Thorne Capital Group",
+          "tcv": 450000,
+          "effective_date": "2023-12-01",
+          "type": "Lease Agreement",
+          "status": "Active"
+        },
+        "content_summary": "Commercial lease for the company's primary R&D facility located in Palo Alto.",
+        "tags": [
+          "Real Estate"
+        ]
+      },
+      "AGMT-SENSOR-992": {
+        "metadata": {
+          "counterparty": "SensorTech Solutions",
+          "tcv": 2000000,
+          "effective_date": "2024-01-15",
+          "type": "Master Supply Agreement",
+          "status": "Active"
+        },
+        "content_summary": "Long-term supply agreement for customized industrial sensors. Includes exclusivity clauses and minimum order quantities.",
+        "tags": [
+          "Vendor",
+          "Critical"
+        ]
+      },
+      "AGMT-DELL-883": {
+        "metadata": {
+          "counterparty": "Dell Technologies",
+          "tcv": 1500000,
+          "effective_date": "2023-05-10",
+          "type": "Hardware Purchase Agreement",
+          "status": "Active"
+        },
+        "content_summary": "Standard purchase agreement for office laptops and server racks. Terms are standard for the industry.",
+        "tags": [
+          "IT",
+          "OCOB"
+        ]
+      },
+      "AGMT-CHEN-005": {
+        "metadata": {
+          "counterparty": "Sarah Chen",
+          "tcv": 0,
+          "effective_date": "2022-01-01",
+          "type": "Invention Assignment Agreement",
+          "status": "Active"
+        },
+        "content_summary": "Standard employee intellectual property assignment. No additional compensation beyond base salary.",
+        "tags": [
+          "Employment",
+          "IP"
+        ]
+      }
+    },
+    "active_document_id": null,
+    "audit_flags": [],
+    "review_session_metadata": {
+      "project": "Project Gamma",
+      "jurisdiction": "Delaware",
+      "access_level": "Senior Auditor",
+      "company_annual_revenue": 50000000
+    }
+  }
+}

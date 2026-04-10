@@ -1,0 +1,168 @@
+{
+  "environment_name": "env_eb49ab0a8534",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM) for Telescope Observation Scheduling.\n- **Core Objective**: Based on the current internal state $s_t$ and the action $a_t$ submitted by the Agent, simulate the evolution of the telescope environment and predict the resulting observation $o_{{t+1}}$.\n- **Emphasis**: You are a simulator. You do not control a real telescope; you simulate the mechanical, temporal, and environmental responses of the system based on physics and scheduling logic.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nYou must maintain a continuous and self-consistent timeline of the telescope's operations. Changes in orientation (azimuth/altitude), instrument settings (filters), and the progression of exposure times must be tracked internally to ensure that subsequent observations are realistic.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. This JSON must contain:\n- `\"name\"`: Specifies the name of the action function (e.g., `slew_to`, `take_exposure`, `change_filter`).\n- The remaining fields are the parameter names and corresponding values.\n\nExample:\n```json\n{{\n \"name\": \"slew_to\",\n \"arguments\": {{\n    \"target_ra\": \"05h 35m 17s\",\n    \"target_dec\": \"-05d 23m 28s\"\n  }}\n}}\n```\nYou must parse these requests and simulate the resulting change in the telescope's internal variables (e.g., slewing takes time, power is consumed, weather constraints are checked).\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nReturn structured error information (e.g., `{{\"error\": \"Hardware failure: Wind speed exceeds safety limit\"}}`) if:\n- Parameters are out of range (e.g., altitude < 0).\n- The action is physically impossible (e.g., attempting an exposure while slewing).\n- Undefined actions or empty inputs are received.\nDo not fabricate successful responses for invalid states.\n\n##### Output Assembly\nFor every action, return a structured JSON object containing **ONLY** the specific return fields defined in the action function's definition.\n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, `new_state`, or hidden variables like current wind speed unless specifically requested by a `get_telemetry` or similar action. State updates are internal; only provide the Agent with the direct result (Observation).\n\n### 4. Key Principles\n- **Format**: Strictly adhere to JSON for all inputs and outputs.\n- **Factuality**: Maintain realistic astronomical logic (e.g., objects below the horizon cannot be observed).\n- **Consistency**: Ensure that if the telescope is 'Slewing' at time $t$, it remains in that state until the simulated travel time has elapsed.\n- **Realism**: Telescope movements, filter wheel rotations, and CCD readouts have associated time costs and physical constraints.\n- **Quality**: Responses should be precise and devoid of conversational filler.\n- **Encapsulation**: Strictly hide the internal state structure. The Agent must only observe what the telescope's sensors/API would actually return.\n{{initial_state}}: {{\n  \"system_time_utc\": \"2025-01-01T02:00:00Z\",\n  \"mount_azimuth\": 0.0,\n  \"mount_altitude\": 90.0,\n  \"telescope_status\": \"IDLE\",\n  \"filter_position\": \"Clear\",\n  \"dome_shutter_status\": \"OPEN\",\n  \"weather_safety_ok\": false,\n  \"remaining_power_pct\": 85.0\n}}\n{{state_descriptions}}: {{\n  \"system_time_utc\": \"The current simulation time in ISO 8601 format.\",\n  \"mount_azimuth\": \"Current horizontal angle of the telescope in degrees (0-360).\",\n  \"mount_altitude\": \"Current vertical angle of the telescope in degrees (0-90).\",\n  \"telescope_status\": \"Current operational mode: IDLE, SLEWING, TRACKING, OBSERVING, or PARKED.\",\n  \"filter_position\": \"The currently loaded optical filter (e.g., U, B, V, R, I).\",\n  \"dome_shutter_status\": \"The physical state of the observatory dome: OPEN or CLOSED.\",\n  \"weather_safety_ok\": \"Internal flag indicating if wind/humidity/rain levels are safe for operation.\",\n  \"remaining_power_pct\": \"Current battery or system power percentage.\"\n}}\n{action_set_definitions}: {\n  \"get_observatory_status\": {\n    \"description\": \"Retrieves the current telemetry and operational state of the observatory, including system time, weather safety flag, telescope status, and hardware configuration.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"system_time_utc\": \"2023-10-27T01:59:00Z\",\n      \"mount_azimuth\": 180.0,\n      \"mount_altitude\": 45.0,\n      \"telescope_status\": \"IDLE\",\n      \"filter_position\": \"B\",\n      \"dome_shutter_status\": \"CLOSED\",\n      \"weather_safety_ok\": true,\n      \"remaining_power_pct\": 95.0\n    }\n  },\n  \"wait_for_time\": {\n    \"description\": \"Pauses the agent's execution until the observatory's internal clock reaches the specified UTC timestamp.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"target_time\": {\n          \"type\": \"string\",\n          \"description\": \"The ISO 8601 UTC timestamp to wait for (e.g., '2023-10-27T02:00:00Z').\"\n        }\n      },\n      \"required\": [\n        \"target_time\"\n      ]\n    },\n    \"example_output\": null\n  },\n  \"set_optical_filter\": {\n    \"description\": \"Commands the filter wheel to rotate to the specified optical filter.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"filter_name\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"U\",\n            \"B\",\n            \"V\",\n            \"R\",\n            \"I\"\n          ],\n          \"description\": \"The target optical filter.\"\n        }\n      },\n      \"required\": [\n        \"filter_name\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"success\",\n      \"current_filter\": \"V\"\n    }\n  },\n  \"slew_to_target\": {\n    \"description\": \"Points the telescope mount at the specified celestial coordinates.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"ra\": {\n          \"type\": \"string\",\n          \"description\": \"Right Ascension in 'HHh MMm SSs' format.\"\n        },\n        \"dec\": {\n          \"type\": \"string\",\n          \"description\": \"Declination in '+/-DDd MMm SSs' format.\"\n        }\n      },\n      \"required\": [\n        \"ra\",\n        \"dec\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"SLEWING\"\n    }\n  },\n  \"manage_dome_shutter\": {\n    \"description\": \"Operates the physical dome shutter mechanism of the observatory.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"action\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"OPEN\",\n            \"CLOSED\"\n          ],\n          \"description\": \"Desired state for the dome shutter.\"\n        }\n      },\n      \"required\": [\n        \"action\"\n      ]\n    },\n    \"example_output\": {\n      \"shutter_state\": \"OPEN\"\n    }\n  },\n  \"perform_exposure\": {\n    \"description\": \"Activates the camera sensor to capture a science-grade image for the specified duration.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"duration_seconds\": {\n          \"type\": \"number\",\n          \"description\": \"The duration of the exposure in seconds.\"\n        }\n      },\n      \"required\": [\n        \"duration_seconds\"\n      ]\n    },\n    \"example_output\": {\n      \"result\": \"Exposure complete\",\n      \"file_path\": \"/data/m42_obs.fits\"\n    }\n  },\n  \"park_telescope\": {\n    \"description\": \"Moves the telescope mount to its designated safe storage (PARKED) position.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"status\": \"PARKED\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_observatory_status",
+      "description": "Retrieves the current telemetry and operational state of the observatory, including system time, weather safety flag, telescope status, and hardware configuration.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "system_time_utc": "2023-10-27T01:59:00Z",
+        "mount_azimuth": 180.0,
+        "mount_altitude": 45.0,
+        "telescope_status": "IDLE",
+        "filter_position": "B",
+        "dome_shutter_status": "CLOSED",
+        "weather_safety_ok": true,
+        "remaining_power_pct": 95.0
+      }
+    },
+    {
+      "name": "wait_for_time",
+      "description": "Pauses the agent's execution until the observatory's internal clock reaches the specified UTC timestamp.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "target_time": {
+            "type": "string",
+            "description": "The ISO 8601 UTC timestamp to wait for (e.g., '2023-10-27T02:00:00Z')."
+          }
+        },
+        "required": [
+          "target_time"
+        ]
+      },
+      "example_output": null
+    },
+    {
+      "name": "set_optical_filter",
+      "description": "Commands the filter wheel to rotate to the specified optical filter.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "filter_name": {
+            "type": "string",
+            "enum": [
+              "U",
+              "B",
+              "V",
+              "R",
+              "I"
+            ],
+            "description": "The target optical filter."
+          }
+        },
+        "required": [
+          "filter_name"
+        ]
+      },
+      "example_output": {
+        "status": "success",
+        "current_filter": "V"
+      }
+    },
+    {
+      "name": "slew_to_target",
+      "description": "Points the telescope mount at the specified celestial coordinates.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "ra": {
+            "type": "string",
+            "description": "Right Ascension in 'HHh MMm SSs' format."
+          },
+          "dec": {
+            "type": "string",
+            "description": "Declination in '+/-DDd MMm SSs' format."
+          }
+        },
+        "required": [
+          "ra",
+          "dec"
+        ]
+      },
+      "example_output": {
+        "status": "SLEWING"
+      }
+    },
+    {
+      "name": "manage_dome_shutter",
+      "description": "Operates the physical dome shutter mechanism of the observatory.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": [
+              "OPEN",
+              "CLOSED"
+            ],
+            "description": "Desired state for the dome shutter."
+          }
+        },
+        "required": [
+          "action"
+        ]
+      },
+      "example_output": {
+        "shutter_state": "OPEN"
+      }
+    },
+    {
+      "name": "perform_exposure",
+      "description": "Activates the camera sensor to capture a science-grade image for the specified duration.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "duration_seconds": {
+            "type": "number",
+            "description": "The duration of the exposure in seconds."
+          }
+        },
+        "required": [
+          "duration_seconds"
+        ]
+      },
+      "example_output": {
+        "result": "Exposure complete",
+        "file_path": "/data/m42_obs.fits"
+      }
+    },
+    {
+      "name": "park_telescope",
+      "description": "Moves the telescope mount to its designated safe storage (PARKED) position.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "status": "PARKED"
+      }
+    }
+  ],
+  "state_description": {
+    "system_time_utc": "The current simulation time in ISO 8601 format.",
+    "mount_azimuth": "Current horizontal angle of the telescope in degrees (0-360).",
+    "mount_altitude": "Current vertical angle of the telescope in degrees (0-90).",
+    "telescope_status": "Current operational mode: IDLE, SLEWING, TRACKING, OBSERVING, or PARKED.",
+    "filter_position": "The currently loaded optical filter (e.g., U, B, V, R, I).",
+    "dome_shutter_status": "The physical state of the observatory dome: OPEN or CLOSED.",
+    "weather_safety_ok": "Internal flag indicating if wind/humidity/rain levels are safe for operation.",
+    "remaining_power_pct": "Current battery or system power percentage."
+  },
+  "task_initial_state": {
+    "system_time_utc": "2025-01-01T02:00:00Z",
+    "mount_azimuth": 0.0,
+    "mount_altitude": 90.0,
+    "telescope_status": "IDLE",
+    "filter_position": "Clear",
+    "dome_shutter_status": "OPEN",
+    "weather_safety_ok": false,
+    "remaining_power_pct": 85.0
+  }
+}

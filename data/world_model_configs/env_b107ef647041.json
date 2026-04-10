@@ -1,0 +1,219 @@
+{
+  "environment_name": "env_b107ef647041",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM) for News Source Fact Checking\n- **Core Objective**: Based on the current internal state $s_t$ and the Agent's action $a_t$, simulate the evolution of the information environment and predict the observation $o_{{t+1}}$.\n- **Emphasis**: You act as the backend of a fact-checking ecosystem (containing news archives, social media streams, and reputation databases). You do not perform the investigation yourself; you simulate the response of these systems to the Agent's inquiries.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions between the World Model and the Agent must maintain context consistency. If a source is determined to be unreliable in a previous step, its future outputs must remain consistent with that profile. Facts discovered previously must remain consistent throughout the session.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent submits action requests via a structured JSON object. This JSON contains the following fields:\n- `\"name\"`: Specifies the name of the action function to execute.\n- The remaining fields are parameters required by that action function.\n\nExample:\n```json\n{{\n \"name\": \"search_archive\",\n \"arguments\": {{\n    \"query\": \"original source of video X\",\n    \"start_date\": \"2023-01-01\"\n  }}\n}}\n```\nYou must parse this JSON and simulate the environment's response.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nIf the Agent provides invalid parameters (e.g., an invalid date format), calls a function not in the action set, or attempts an action that contradicts the current state logic, return structured error information: `{{\"error\": \"Description of what went wrong\"}}`. Do not fabricate successful responses for failed logic.\n\n##### Output Assembly\nFor every action function call, return a structured JSON object containing **ONLY** the return fields declared in that action function's definition. \n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state $s_t$, the `new_state`, or any hidden tracking variables. You are the environment; the Agent only sees the \"screen\" or \"data result\" (the Observation).\n\n### 4. Key Principles\n- **Format**: Strictly adhere to specified JSON formats for all outputs.\n- **Factuality**: Simulate realistic news data, metadata (timestamps, authors), and database records based on the task context.\n- **Consistency**: Maintain a linear, non-contradictory world logic. If a database query previously returned \"No records found,\" it should not suddenly return records unless the state (e.g., database update) has changed.\n- **Realism**: Responses should mimic the noise and complexity of real-world information retrieval (e.g., partial matches, conflicting snippets if the source is unreliable).\n- **Encapsulation**: Strictly hide the internal state structure from the output. Only expose information that is explicitly returned by the action function.\n{{initial_state}}: {{\n  \"truth_ground_truth\": {{\n    \"incident_details\": \"Principal Miller used administrative credentials to change 112 failing grades to 'C-' between June 1st and June 15th, 2023.\",\n    \"trap_phrase\": \"Operation Golden Diploma\",\n    \"district_audit_logs\": \"Log_ID_7782-SIS (Contains timestamps of overrides during late night hours).\",\n    \"available_sources\": [\n      {{\n        \"name\": \"Sarah Miller\",\n        \"status\": \"Active\",\n        \"role\": \"Principal\",\n        \"notes\": \"Target of investigation; under CBA protection.\"\n      }},\n      {{\n        \"name\": \"Kevin Vance\",\n        \"status\": \"Active\",\n        \"role\": \"IT Coordinator\",\n        \"notes\": \"CBA member; likely to flag suspicious FOIA keywords to legal.\"\n      }},\n      {{\n        \"name\": \"Elena Rodriguez\",\n        \"status\": \"Retired (Jan 2024)\",\n        \"role\": \"Former Guidance Counselor\",\n        \"notes\": \"Witnessed the grade changes; safe V2 validator.\"\n      }},\n      {{\n        \"name\": \"Thomas Thorne\",\n        \"status\": \"Retired (May 2023)\",\n        \"role\": \"Former Registrar\",\n        \"notes\": \"Left before the specific incident period.\"\n      }}\n    ],\n    \"document_risk\": {{\n      \"Leak_Alpha.pdf\": \"Contains Student PII and Canary Trap watermark (unique pagination errors).\"\n    }}\n  }},\n  \"source_reputation_matrix\": {{\n    \"Source_Alpha\": 0.91,\n    \"Elena_Rodriguez\": 0.85,\n    \"Lincoln_District_PR\": 0.15\n  }},\n  \"verified_claims_log\": [],\n  \"environment_timestamp\": \"2024-05-20T10:00:00Z\",\n  \"access_history\": []\n}}\n{{state_descriptions}}: {{\n  \"truth_ground_truth\": \"The actual underlying facts of the case, used as a reference for the LWM to ensure consistent simulation results.\",\n  \"source_reputation_matrix\": \"A mapping of simulated news outlets and social media users to their internal reliability scores (0-1).\",\n  \"verified_claims_log\": \"A record of which claims the Agent has already successfully cross-referenced.\",\n  \"environment_timestamp\": \"The current simulation time, used to determine if news articles are 'published' or 'not yet existing'.\",\n  \"access_history\": \"A list of identifiers for records the Agent has already accessed to prevent repetitive data generation.\"\n}}\n{action_set_definitions}: {\n  \"search_public_archives\": {\n    \"description\": \"Searches news articles, social media, and academic archives for specific keywords. Useful for finding initial leads or general information about an organization.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"search_query\": {\n          \"type\": \"string\",\n          \"description\": \"The search terms to use. Note: Do not use forbidden phrases.\"\n        },\n        \"start_date\": {\n          \"type\": \"string\",\n          \"description\": \"Start date for results (YYYY-MM-DD).\"\n        }\n      },\n      \"required\": [\n        \"search_query\"\n      ]\n    },\n    \"example_output\": {\n      \"results\": [\n        {\n          \"id\": \"NEWS_001\",\n          \"title\": \"Concerns raised over grading at Lincoln High\",\n          \"reputation_score\": 0.85\n        }\n      ]\n    }\n  },\n  \"query_personnel_directory\": {\n    \"description\": \"Retrieves the directory of school district staff. Returns names, roles, and employment status (Active/Retired/Resigned).\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"institution\": {\n          \"type\": \"string\",\n          \"description\": \"Name of the school or district.\"\n        },\n        \"status_filter\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"Active\",\n            \"Retired\",\n            \"All\"\n          ],\n          \"description\": \"Filter to find specific staff status.\"\n        }\n      },\n      \"required\": [\n        \"institution\"\n      ]\n    },\n    \"example_output\": {\n      \"staff_list\": [\n        {\n          \"staff_id\": \"ST_442\",\n          \"name\": \"Jane Doe\",\n          \"status\": \"Retired\",\n          \"role\": \"V2 Validator\"\n        }\n      ]\n    }\n  },\n  \"request_foia_metadata\": {\n    \"description\": \"Submits a Freedom of Information Act request for system metadata logs. The system automatically redacts PII.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"target_system\": {\n          \"type\": \"string\",\n          \"description\": \"The specific digital system or database to query (e.g., 'Grade Management System').\"\n        },\n        \"description_of_records\": {\n          \"type\": \"string\",\n          \"description\": \"Detail what metadata is needed (e.g., 'Modification logs for 2023 transcripts').\"\n        }\n      },\n      \"required\": [\n        \"target_system\",\n        \"description_of_records\"\n      ]\n    },\n    \"example_output\": {\n      \"request_id\": \"FOIA-202X-99\",\n      \"metadata_logs_id\": \"LOG_88271\",\n      \"redaction_status\": \"PII_REDACTED\"\n    }\n  },\n  \"interview_retired_source\": {\n    \"description\": \"Conducts a secure interview with a non-active staff member. Returns testimony and corroboration points.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"source_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the retired staff member retrieved from the directory.\"\n        },\n        \"interview_topic\": {\n          \"type\": \"string\",\n          \"description\": \"The specific subject to discuss. Avoid forbidden phrases.\"\n        }\n      },\n      \"required\": [\n        \"source_id\",\n        \"interview_topic\"\n      ]\n    },\n    \"example_output\": {\n      \"testimony\": \"I observed unusual batch updates to senior grades last spring...\",\n      \"corroboration_contribution\": 1\n    }\n  },\n  \"get_investigation_progress\": {\n    \"description\": \"Checks the current Corroboration Vector Count and lists claims already verified.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {}\n    },\n    \"example_output\": {\n      \"corroboration_vector_count\": 2,\n      \"verified_claims\": [\n        \"Systemic access found\",\n        \"Metadata confirms bulk edits\"\n      ]\n    }\n  },\n  \"submit_final_report\": {\n    \"description\": \"Submits the final verification report to complete the task.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"metadata_log_ids\": {\n          \"type\": \"array\",\n          \"items\": {\n            \"type\": \"string\"\n          },\n          \"description\": \"List of FOIA-acquired log identifiers.\"\n        },\n        \"validator_source_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the retired V2 validator who corroborated the findings.\"\n        },\n        \"summary_findings\": {\n          \"type\": \"string\",\n          \"description\": \"A summary of the fraud evidence.\"\n        }\n      },\n      \"required\": [\n        \"metadata_log_ids\",\n        \"validator_source_id\",\n        \"summary_findings\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"TASK_COMPLETE\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "search_public_archives",
+      "description": "Searches news articles, social media, and academic archives for specific keywords. Useful for finding initial leads or general information about an organization.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "search_query": {
+            "type": "string",
+            "description": "The search terms to use. Note: Do not use forbidden phrases."
+          },
+          "start_date": {
+            "type": "string",
+            "description": "Start date for results (YYYY-MM-DD)."
+          }
+        },
+        "required": [
+          "search_query"
+        ]
+      },
+      "example_output": {
+        "results": [
+          {
+            "id": "NEWS_001",
+            "title": "Concerns raised over grading at Lincoln High",
+            "reputation_score": 0.85
+          }
+        ]
+      }
+    },
+    {
+      "name": "query_personnel_directory",
+      "description": "Retrieves the directory of school district staff. Returns names, roles, and employment status (Active/Retired/Resigned).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "institution": {
+            "type": "string",
+            "description": "Name of the school or district."
+          },
+          "status_filter": {
+            "type": "string",
+            "enum": [
+              "Active",
+              "Retired",
+              "All"
+            ],
+            "description": "Filter to find specific staff status."
+          }
+        },
+        "required": [
+          "institution"
+        ]
+      },
+      "example_output": {
+        "staff_list": [
+          {
+            "staff_id": "ST_442",
+            "name": "Jane Doe",
+            "status": "Retired",
+            "role": "V2 Validator"
+          }
+        ]
+      }
+    },
+    {
+      "name": "request_foia_metadata",
+      "description": "Submits a Freedom of Information Act request for system metadata logs. The system automatically redacts PII.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "target_system": {
+            "type": "string",
+            "description": "The specific digital system or database to query (e.g., 'Grade Management System')."
+          },
+          "description_of_records": {
+            "type": "string",
+            "description": "Detail what metadata is needed (e.g., 'Modification logs for 2023 transcripts')."
+          }
+        },
+        "required": [
+          "target_system",
+          "description_of_records"
+        ]
+      },
+      "example_output": {
+        "request_id": "FOIA-202X-99",
+        "metadata_logs_id": "LOG_88271",
+        "redaction_status": "PII_REDACTED"
+      }
+    },
+    {
+      "name": "interview_retired_source",
+      "description": "Conducts a secure interview with a non-active staff member. Returns testimony and corroboration points.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "source_id": {
+            "type": "string",
+            "description": "The ID of the retired staff member retrieved from the directory."
+          },
+          "interview_topic": {
+            "type": "string",
+            "description": "The specific subject to discuss. Avoid forbidden phrases."
+          }
+        },
+        "required": [
+          "source_id",
+          "interview_topic"
+        ]
+      },
+      "example_output": {
+        "testimony": "I observed unusual batch updates to senior grades last spring...",
+        "corroboration_contribution": 1
+      }
+    },
+    {
+      "name": "get_investigation_progress",
+      "description": "Checks the current Corroboration Vector Count and lists claims already verified.",
+      "parameters": {
+        "type": "object",
+        "properties": {}
+      },
+      "example_output": {
+        "corroboration_vector_count": 2,
+        "verified_claims": [
+          "Systemic access found",
+          "Metadata confirms bulk edits"
+        ]
+      }
+    },
+    {
+      "name": "submit_final_report",
+      "description": "Submits the final verification report to complete the task.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "metadata_log_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "List of FOIA-acquired log identifiers."
+          },
+          "validator_source_id": {
+            "type": "string",
+            "description": "The ID of the retired V2 validator who corroborated the findings."
+          },
+          "summary_findings": {
+            "type": "string",
+            "description": "A summary of the fraud evidence."
+          }
+        },
+        "required": [
+          "metadata_log_ids",
+          "validator_source_id",
+          "summary_findings"
+        ]
+      },
+      "example_output": {
+        "status": "TASK_COMPLETE"
+      }
+    }
+  ],
+  "state_description": {
+    "truth_ground_truth": "The actual underlying facts of the case, used as a reference for the LWM to ensure consistent simulation results.",
+    "source_reputation_matrix": "A mapping of simulated news outlets and social media users to their internal reliability scores (0-1).",
+    "verified_claims_log": "A record of which claims the Agent has already successfully cross-referenced.",
+    "environment_timestamp": "The current simulation time, used to determine if news articles are 'published' or 'not yet existing'.",
+    "access_history": "A list of identifiers for records the Agent has already accessed to prevent repetitive data generation."
+  },
+  "task_initial_state": {
+    "truth_ground_truth": {
+      "incident_details": "Principal Miller used administrative credentials to change 112 failing grades to 'C-' between June 1st and June 15th, 2023.",
+      "trap_phrase": "Operation Golden Diploma",
+      "district_audit_logs": "Log_ID_7782-SIS (Contains timestamps of overrides during late night hours).",
+      "available_sources": [
+        {
+          "name": "Sarah Miller",
+          "status": "Active",
+          "role": "Principal",
+          "notes": "Target of investigation; under CBA protection."
+        },
+        {
+          "name": "Kevin Vance",
+          "status": "Active",
+          "role": "IT Coordinator",
+          "notes": "CBA member; likely to flag suspicious FOIA keywords to legal."
+        },
+        {
+          "name": "Elena Rodriguez",
+          "status": "Retired (Jan 2024)",
+          "role": "Former Guidance Counselor",
+          "notes": "Witnessed the grade changes; safe V2 validator."
+        },
+        {
+          "name": "Thomas Thorne",
+          "status": "Retired (May 2023)",
+          "role": "Former Registrar",
+          "notes": "Left before the specific incident period."
+        }
+      ],
+      "document_risk": {
+        "Leak_Alpha.pdf": "Contains Student PII and Canary Trap watermark (unique pagination errors)."
+      }
+    },
+    "source_reputation_matrix": {
+      "Source_Alpha": 0.91,
+      "Elena_Rodriguez": 0.85,
+      "Lincoln_District_PR": 0.15
+    },
+    "verified_claims_log": [],
+    "environment_timestamp": "2024-05-20T10:00:00Z",
+    "access_history": []
+  }
+}

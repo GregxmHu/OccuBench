@@ -1,0 +1,134 @@
+{
+  "environment_name": "env_8557d48f736c",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM) for Fish Farm Water Quality Control.\n- **Core Objective**: Based on the current internal state $s_t$ and the action $a_t$ performed by the Agent, simulate the biological and physical evolution of the fish farm environment and predict the resulting observation $o_{{t+1}}$ obtained by the Agent.\n- **Emphasis**: The LWM does not control the farm; it acts as the environment simulator. It maintains the continuity of water chemistry, temperature, and equipment status internally while only exposing defined observations to the Agent.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nYou must maintain the temporal consistency of the environment. Factors like dissolved oxygen consumption, temperature fluctuations, and chemical build-up must evolve logically across multiple steps of interaction.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. This JSON must contain the following fields:\n- `\"name\"`: Specifies the name of the action function to execute (e.g., \"adjust_aerator\", \"get_sensor_readings\").\n- The remaining fields are the parameter names and corresponding values required by that action function.\n\nExample:\n```json\n{{\n \"name\": \"set_temperature\",\n \"arguments\": {{\n    \"target_temp\": 24.5\n  }}\n}}\n```\nYou must parse this input, calculate the transition of the internal state (e.g., how the heater affects water temperature over time), and generate the resulting observation.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\n- If an action refers to an undefined piece of equipment or uses out-of-range parameters (e.g., setting pH to 20), return an error: `{{\"error\": \"Reason for failure\"}}`.\n- Do not fabricate data if an action is invalid; the state remains unchanged in the event of an error.\n\n##### Output Assembly\nFor every action function call, you must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition.\n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t` or the `new_state`. You are simulating the sensors and feedback of the farm, not providing the Agent with a direct view of the environment's underlying database. The state update is handled by you internally.\n\n### 4. Key Principles\n- **Format**: Strictly output valid JSON for observations.\n- **Factuality**: Simulations must follow basic principles of aquaculture (e.g., feeding increases ammonia; aeration increases dissolved oxygen).\n- **Consistency**: If the heater is turned on, the temperature must reflect an upward trend in subsequent observations until equilibrium is reached.\n- **Realism**: Include realistic delays or gradual changes where appropriate based on the action performed.\n- **Encapsulation**: Never reveal the internal state dictionary to the Agent. Only reveal what a sensor or a system status check would realistically return.\n{{initial_state}}: {{\n  \"water_temperature_celsius\": 27.8,\n  \"dissolved_oxygen_mg_l\": 3.1,\n  \"ph_level\": 6.6,\n  \"ammonia_ppm\": 1.4,\n  \"water_level_percent\": 92,\n  \"aerator_active\": true,\n  \"heater_active\": false,\n  \"filter_pump_active\": true,\n  \"last_feeding_timestamp\": 450\n}}\n{{state_descriptions}}: {{\n  \"water_temperature_celsius\": \"The current temperature of the water in degrees Celsius.\",\n  \"dissolved_oxygen_mg_l\": \"Concentration of dissolved oxygen in the water (mg/L).\",\n  \"ph_level\": \"The acidity or alkalinity of the water (0-14).\",\n  \"ammonia_ppm\": \"Total Ammonia Nitrogen levels in parts per million (ppm).\",\n  \"water_level_percent\": \"Current water level as a percentage of tank capacity.\",\n  \"aerator_active\": \"Status of the oxygenation aerator system.\",\n  \"heater_active\": \"Status of the water heating system.\",\n  \"filter_pump_active\": \"Status of the bio-filtration pump system.\",\n  \"last_feeding_timestamp\": \"The simulation step count when fish were last fed.\"\n}}\n{action_set_definitions}: {\n  \"get_environmental_sensors\": {\n    \"description\": \"Retrieves real-time sensor data from the water culture unit, including current pH level, dissolved oxygen (mg/L), and ammonia concentration (ppm).\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"dissolved_oxygen_mg_l\": 3.4,\n      \"ph_level\": 6.8,\n      \"ammonia_ppm\": 5.2,\n      \"water_temperature_celsius\": 24.0\n    }\n  },\n  \"get_equipment_status\": {\n    \"description\": \"Retrieves the current operational status of life support systems like the aerator, filter pump, and heater.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"aerator_active\": false,\n      \"filter_pump_active\": false,\n      \"heater_active\": true,\n      \"water_level_percent\": 95\n    }\n  },\n  \"read_technical_handbook\": {\n    \"description\": \"Consults the Technical Handbook to find safety thresholds and the specific compromise pH range for the 'pH Trap' involving high ammonia and anaerobic sludge.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"topic\": {\n          \"type\": \"string\",\n          \"description\": \"The specific query to look up (e.g., 'pH Trap compromise range').\"\n        }\n      },\n      \"required\": [\n        \"topic\"\n      ]\n    },\n    \"example_output\": {\n      \"target_ph_min\": 7.2,\n      \"target_ph_max\": 7.5,\n      \"min_do_required\": 5.5,\n      \"safety_notes\": \"Avoid mechanical disturbance of bottom sediment.\"\n    }\n  },\n  \"set_aerator_power\": {\n    \"description\": \"Activates or deactivates the oxygenation aerator system.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"state\": {\n          \"type\": \"boolean\",\n          \"description\": \"True to turn on, False to turn off.\"\n        }\n      },\n      \"required\": [\n        \"state\"\n      ]\n    },\n    \"example_output\": null\n  },\n  \"apply_chemical_buffer\": {\n    \"description\": \"Slowly introduces chemical buffers to reach a specific target pH level without disturbing the sediment at the bottom of the unit.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"target_ph\": {\n          \"type\": \"number\",\n          \"description\": \"The precise target pH level to stabilize the system.\"\n        }\n      },\n      \"required\": [\n        \"target_ph\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"Buffer application in progress\",\n      \"sediment_status\": \"Undisturbed\"\n    }\n  },\n  \"set_filter_pump\": {\n    \"description\": \"Activates or deactivates the bio-filtration pump to assist in ammonia toxicity mitigation.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"state\": {\n          \"type\": \"boolean\",\n          \"description\": \"True to turn on, False to turn off.\"\n        }\n      },\n      \"required\": [\n        \"state\"\n      ]\n    },\n    \"example_output\": null\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_environmental_sensors",
+      "description": "Retrieves real-time sensor data from the water culture unit, including current pH level, dissolved oxygen (mg/L), and ammonia concentration (ppm).",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "dissolved_oxygen_mg_l": 3.4,
+        "ph_level": 6.8,
+        "ammonia_ppm": 5.2,
+        "water_temperature_celsius": 24.0
+      }
+    },
+    {
+      "name": "get_equipment_status",
+      "description": "Retrieves the current operational status of life support systems like the aerator, filter pump, and heater.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "aerator_active": false,
+        "filter_pump_active": false,
+        "heater_active": true,
+        "water_level_percent": 95
+      }
+    },
+    {
+      "name": "read_technical_handbook",
+      "description": "Consults the Technical Handbook to find safety thresholds and the specific compromise pH range for the 'pH Trap' involving high ammonia and anaerobic sludge.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "topic": {
+            "type": "string",
+            "description": "The specific query to look up (e.g., 'pH Trap compromise range')."
+          }
+        },
+        "required": [
+          "topic"
+        ]
+      },
+      "example_output": {
+        "target_ph_min": 7.2,
+        "target_ph_max": 7.5,
+        "min_do_required": 5.5,
+        "safety_notes": "Avoid mechanical disturbance of bottom sediment."
+      }
+    },
+    {
+      "name": "set_aerator_power",
+      "description": "Activates or deactivates the oxygenation aerator system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "state": {
+            "type": "boolean",
+            "description": "True to turn on, False to turn off."
+          }
+        },
+        "required": [
+          "state"
+        ]
+      },
+      "example_output": null
+    },
+    {
+      "name": "apply_chemical_buffer",
+      "description": "Slowly introduces chemical buffers to reach a specific target pH level without disturbing the sediment at the bottom of the unit.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "target_ph": {
+            "type": "number",
+            "description": "The precise target pH level to stabilize the system."
+          }
+        },
+        "required": [
+          "target_ph"
+        ]
+      },
+      "example_output": {
+        "status": "Buffer application in progress",
+        "sediment_status": "Undisturbed"
+      }
+    },
+    {
+      "name": "set_filter_pump",
+      "description": "Activates or deactivates the bio-filtration pump to assist in ammonia toxicity mitigation.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "state": {
+            "type": "boolean",
+            "description": "True to turn on, False to turn off."
+          }
+        },
+        "required": [
+          "state"
+        ]
+      },
+      "example_output": null
+    }
+  ],
+  "state_description": {
+    "water_temperature_celsius": "The current temperature of the water in degrees Celsius.",
+    "dissolved_oxygen_mg_l": "Concentration of dissolved oxygen in the water (mg/L).",
+    "ph_level": "The acidity or alkalinity of the water (0-14).",
+    "ammonia_ppm": "Total Ammonia Nitrogen levels in parts per million (ppm).",
+    "water_level_percent": "Current water level as a percentage of tank capacity.",
+    "aerator_active": "Status of the oxygenation aerator system.",
+    "heater_active": "Status of the water heating system.",
+    "filter_pump_active": "Status of the bio-filtration pump system.",
+    "last_feeding_timestamp": "The simulation step count when fish were last fed."
+  },
+  "task_initial_state": {
+    "water_temperature_celsius": 27.8,
+    "dissolved_oxygen_mg_l": 3.1,
+    "ph_level": 6.6,
+    "ammonia_ppm": 1.4,
+    "water_level_percent": 92,
+    "aerator_active": true,
+    "heater_active": false,
+    "filter_pump_active": true,
+    "last_feeding_timestamp": 450
+  }
+}

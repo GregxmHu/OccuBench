@@ -1,0 +1,198 @@
+{
+  "environment_name": "env_5251eceb4267",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM) for Treatment Plan Sequencing.\n- **Core Objective**: Based on the current patient state $s_t$ and the clinical action $a_t$ executed by the Agent, you are to simulate the physiological evolution of the patient and predict the resulting observation $o_{{t+1}}$.\n- **Emphasis**: You are a simulator of medical outcomes and environment dynamics. You do not execute real medical procedures; you perform internal state transitions and generate the resulting clinical data/observations.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nYou must maintain strict context consistency throughout the treatment sequence. Every action taken must influence the patient's internal state, and subsequent observations must reflect the cumulative effects (or side effects) of all previous interventions.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions (e.g., administering medication, ordering tests, or initiating procedures). The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. You must parse this JSON to determine the action and its parameters.\nExample input format:\n```json\n{{\n \"name\": \"administer_medication\",\n \"arguments\": {{\n    \"drug_name\": \"Lisinopril\",\n    \"dosage\": \"10mg\"\n  }}\n}}\n```\nYou must simulate the physiological response to this input based on the patient's current internal state.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nIf the Agent provides invalid parameters (e.g., incorrect dosage format), undefined actions, or actions that conflict with the current state (e.g., administering a drug the patient is allergic to), return structured error information: `{{\"error\": \"Description of the issue\"}}`. Do not fabricate successful outcomes for invalid inputs.\n\n##### Output Assembly\nFor every action function call, you must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition.\n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, the updated state, or any hidden physiological variables. Your output is the Observation ($o_{{t+1}}$), which represents only what the Agent can see (e.g., lab results, vital sign readings). State maintenance is your internal responsibility and must remain encapsulated.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to specified JSON and text formats.\n- **Factuality**: Do not fabricate non-existent medical functions or patient responses.\n- **Consistency**: The patient's physiological evolution must be self-consistent. If a treatment reduces blood pressure, subsequent observations must reflect that change unless another factor intervenes.\n- **Realism**: Simulated behaviors must align with clinical logic and the reasonable dynamics of human physiology and medical treatment response.\n- **Quality**: Clinical descriptions and observations must be clear, unambiguous, and professional.\n- **Encapsulation**: Strictly hide the internal state structure from the output. Only expose information that is explicitly defined as a return value for the action function.\n{{initial_state}}: {{\n  \"patient_id\": \"PT-2280\",\n  \"vitals\": {{\n    \"systolic_bp\": 138,\n    \"diastolic_bp\": 88,\n    \"heart_rate\": 92,\n    \"oxygen_saturation\": 97\n  }},\n  \"symptoms\": [\n    \"mild localized pressure\",\n    \"persistent metallic taste\",\n    \"slight redness at the buccal fold\"\n  ],\n  \"lab_values\": {{\n    \"white_blood_cell_count\": 15600,\n    \"serum_creatinine\": 1.1,\n    \"blood_glucose\": 110\n  }},\n  \"active_interventions\": [\n    \"dPTFE non-resorbable membrane\",\n    \"Tenting screws at sites #4, #6, #11, and #13\",\n    \"Shortened dental arch interim prosthesis\"\n  ],\n  \"physiological_stability\": \"Stable\"\n}}\n{{state_descriptions}}: {{\n  \"patient_id\": \"Unique identifier for the patient case.\",\n  \"vitals\": \"Current physiological vital signs.\",\n  \"symptoms\": \"Current symptoms experienced by the patient.\",\n  \"lab_values\": \"Internal laboratory markers (hidden from direct observation unless tested).\",\n  \"active_interventions\": \"List of currently active treatments or medications.\",\n  \"physiological_stability\": \"Internal assessment of patient stability (Stable, Guarded, Critical).\"\n}}\n{action_set_definitions}: {\n  \"fetch_patient_status\": {\n    \"description\": \"Retrieves the historical and current clinical status for a specific patient, including the timeline of surgical interventions and healing periods.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"patient_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the patient (e.g., PT-2280).\"\n        }\n      },\n      \"required\": [\n        \"patient_id\"\n      ]\n    },\n    \"example_output\": {\n      \"healing_months_completed\": 6,\n      \"surgical_history\": \"Maxillary GBR and site development\",\n      \"current_stability_status\": \"Stable\"\n    }\n  },\n  \"evaluate_biologic_environment\": {\n    \"description\": \"Queries internal lab values and vital signs to check for signs of systemic or local infection and physiological readiness.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"patient_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the patient.\"\n        }\n      },\n      \"required\": [\n        \"patient_id\"\n      ]\n    },\n    \"example_output\": {\n      \"white_blood_cell_count\": \"Normal\",\n      \"crp_level\": \"Normal\",\n      \"temperature\": 98.6,\n      \"blood_pressure\": \"120/80\"\n    }\n  },\n  \"clinical_site_assessment\": {\n    \"description\": \"Performs a detailed inspection of the recipient sites, evaluating implant stability (ISQ), bone level integrity, and soft tissue health markers.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"patient_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the patient.\"\n        },\n        \"sites\": {\n          \"type\": \"array\",\n          \"items\": {\n            \"type\": \"string\"\n          },\n          \"description\": \"Specific tooth sites to inspect (e.g., ['#4', '#6', '#11', '#13']).\"\n        }\n      },\n      \"required\": [\n        \"patient_id\",\n        \"sites\"\n      ]\n    },\n    \"example_output\": {\n      \"soft_tissue_health\": \"Healthy/Pink\",\n      \"implant_stability_isq\": 75,\n      \"bone_integration_status\": \"Confirmed\"\n    }\n  },\n  \"perform_hardware_removal\": {\n    \"description\": \"Surgically removes internal hardware (e.g., membranes, tenting screws) from specified sites prior to prosthetic delivery.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"patient_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the patient.\"\n        },\n        \"hardware_items\": {\n          \"type\": \"array\",\n          \"items\": {\n            \"type\": \"string\"\n          },\n          \"description\": \"Types of hardware to remove (e.g., ['dPTFE membrane', 'tenting screws']).\"\n        },\n        \"target_sites\": {\n          \"type\": \"array\",\n          \"items\": {\n            \"type\": \"string\"\n          },\n          \"description\": \"The clinical sites where hardware is located.\"\n        }\n      },\n      \"required\": [\n        \"patient_id\",\n        \"hardware_items\",\n        \"target_sites\"\n      ]\n    },\n    \"example_output\": {\n      \"removal_status\": \"Complete\",\n      \"post_removal_integrity\": \"Intact\"\n    }\n  },\n  \"validate_prosthesis_integration\": {\n    \"description\": \"Tests the definitive prosthesis for vertical dimension of occlusion (VDO), esthetics, phonetics, and passive fit.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"patient_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the patient.\"\n        },\n        \"restoration_type\": {\n          \"type\": \"string\",\n          \"description\": \"The prosthetic description (e.g., 'Monolithic Zirconia FP-3').\"\n        }\n      },\n      \"required\": [\n        \"patient_id\",\n        \"restoration_type\"\n      ]\n    },\n    \"example_output\": {\n      \"vdo_verified\": true,\n      \"esthetics_check\": \"Satisfactory\",\n      \"passive_fit\": true\n    }\n  },\n  \"execute_definitive_loading\": {\n    \"description\": \"Finalizes the rehabilitation by delivering and torquing the definitive prosthesis to the implants.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"patient_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the patient.\"\n        },\n        \"torque_specification_ncm\": {\n          \"type\": \"integer\",\n          \"description\": \"Final torque value to be applied to the screws.\"\n        }\n      },\n      \"required\": [\n        \"patient_id\",\n        \"torque_specification_ncm\"\n      ]\n    },\n    \"example_output\": {\n      \"delivery_status\": \"Successful\",\n      \"interaction_summary\": \"Treatment sequence finalized.\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "fetch_patient_status",
+      "description": "Retrieves the historical and current clinical status for a specific patient, including the timeline of surgical interventions and healing periods.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "patient_id": {
+            "type": "string",
+            "description": "The unique identifier for the patient (e.g., PT-2280)."
+          }
+        },
+        "required": [
+          "patient_id"
+        ]
+      },
+      "example_output": {
+        "healing_months_completed": 6,
+        "surgical_history": "Maxillary GBR and site development",
+        "current_stability_status": "Stable"
+      }
+    },
+    {
+      "name": "evaluate_biologic_environment",
+      "description": "Queries internal lab values and vital signs to check for signs of systemic or local infection and physiological readiness.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "patient_id": {
+            "type": "string",
+            "description": "The unique identifier for the patient."
+          }
+        },
+        "required": [
+          "patient_id"
+        ]
+      },
+      "example_output": {
+        "white_blood_cell_count": "Normal",
+        "crp_level": "Normal",
+        "temperature": 98.6,
+        "blood_pressure": "120/80"
+      }
+    },
+    {
+      "name": "clinical_site_assessment",
+      "description": "Performs a detailed inspection of the recipient sites, evaluating implant stability (ISQ), bone level integrity, and soft tissue health markers.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "patient_id": {
+            "type": "string",
+            "description": "The unique identifier for the patient."
+          },
+          "sites": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Specific tooth sites to inspect (e.g., ['#4', '#6', '#11', '#13'])."
+          }
+        },
+        "required": [
+          "patient_id",
+          "sites"
+        ]
+      },
+      "example_output": {
+        "soft_tissue_health": "Healthy/Pink",
+        "implant_stability_isq": 75,
+        "bone_integration_status": "Confirmed"
+      }
+    },
+    {
+      "name": "perform_hardware_removal",
+      "description": "Surgically removes internal hardware (e.g., membranes, tenting screws) from specified sites prior to prosthetic delivery.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "patient_id": {
+            "type": "string",
+            "description": "The unique identifier for the patient."
+          },
+          "hardware_items": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Types of hardware to remove (e.g., ['dPTFE membrane', 'tenting screws'])."
+          },
+          "target_sites": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "The clinical sites where hardware is located."
+          }
+        },
+        "required": [
+          "patient_id",
+          "hardware_items",
+          "target_sites"
+        ]
+      },
+      "example_output": {
+        "removal_status": "Complete",
+        "post_removal_integrity": "Intact"
+      }
+    },
+    {
+      "name": "validate_prosthesis_integration",
+      "description": "Tests the definitive prosthesis for vertical dimension of occlusion (VDO), esthetics, phonetics, and passive fit.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "patient_id": {
+            "type": "string",
+            "description": "The unique identifier for the patient."
+          },
+          "restoration_type": {
+            "type": "string",
+            "description": "The prosthetic description (e.g., 'Monolithic Zirconia FP-3')."
+          }
+        },
+        "required": [
+          "patient_id",
+          "restoration_type"
+        ]
+      },
+      "example_output": {
+        "vdo_verified": true,
+        "esthetics_check": "Satisfactory",
+        "passive_fit": true
+      }
+    },
+    {
+      "name": "execute_definitive_loading",
+      "description": "Finalizes the rehabilitation by delivering and torquing the definitive prosthesis to the implants.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "patient_id": {
+            "type": "string",
+            "description": "The unique identifier for the patient."
+          },
+          "torque_specification_ncm": {
+            "type": "integer",
+            "description": "Final torque value to be applied to the screws."
+          }
+        },
+        "required": [
+          "patient_id",
+          "torque_specification_ncm"
+        ]
+      },
+      "example_output": {
+        "delivery_status": "Successful",
+        "interaction_summary": "Treatment sequence finalized."
+      }
+    }
+  ],
+  "state_description": {
+    "patient_id": "Unique identifier for the patient case.",
+    "vitals": "Current physiological vital signs.",
+    "symptoms": "Current symptoms experienced by the patient.",
+    "lab_values": "Internal laboratory markers (hidden from direct observation unless tested).",
+    "active_interventions": "List of currently active treatments or medications.",
+    "physiological_stability": "Internal assessment of patient stability (Stable, Guarded, Critical)."
+  },
+  "task_initial_state": {
+    "patient_id": "PT-2280",
+    "vitals": {
+      "systolic_bp": 138,
+      "diastolic_bp": 88,
+      "heart_rate": 92,
+      "oxygen_saturation": 97
+    },
+    "symptoms": [
+      "mild localized pressure",
+      "persistent metallic taste",
+      "slight redness at the buccal fold"
+    ],
+    "lab_values": {
+      "white_blood_cell_count": 15600,
+      "serum_creatinine": 1.1,
+      "blood_glucose": 110
+    },
+    "active_interventions": [
+      "dPTFE non-resorbable membrane",
+      "Tenting screws at sites #4, #6, #11, and #13",
+      "Shortened dental arch interim prosthesis"
+    ],
+    "physiological_stability": "Stable"
+  }
+}

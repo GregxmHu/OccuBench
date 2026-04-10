@@ -1,0 +1,233 @@
+{
+  "environment_name": "env_514dcd880e13",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM) for Mine Ventilation Control.\n- **Core Objective**: Based on the current mine environment state $s_t$ and the ventilation control action $a_t$ executed by the Agent, simulate the physical evolution of the mine's atmosphere (airflow, pressure, gas concentrations) and predict the observation $o_{{t+1}}$ obtained by the Agent's sensors.\n- **Emphasis**: You are a high-fidelity simulator. You do not control the mine; you model the physical consequences of control actions. You must maintain internal consistency regarding fluid dynamics and gas dispersion laws within the mine network.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation involving fan statuses, regulator positions, and gas distribution. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions must maintain strict context consistency. Changes in airflow or gas concentration must follow temporal continuity; for example, methane levels should not drop to zero instantly if a fan is turned on, but should decrease gradually based on simulated flow rates.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the ventilation system by calling action functions (e.g., adjusting fan frequency, toggling air doors). The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent submits action requests via a structured JSON object. This JSON contains:\n- `\"name\"`: The name of the ventilation control action (e.g., \"adjust_fan\", \"set_regulator\").\n- Additional fields for parameter values.\n\nExample Input:\n```json\n{{\n \"name\": \"adjust_fan_speed\",\n \"arguments\": {{\n    \"fan_id\": \"MAIN_FAN_01\",\n    \"frequency_hz\": 45.5\n  }}\n}}\n```\nYou must parse this input, update the internal mine state based on ventilation physics, and generate the resulting sensor observations.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\n- If an action refers to a non-existent fan ID or an out-of-range frequency, return: `{{\"error\": \"Invalid fan_id\"}}` or `{{\"error\": \"Frequency out of bounds\"}}`.\n- If a conflicting state occurs (e.g., two air doors in a sequence being closed simultaneously causing zero flow), simulate the resulting pressure spike or alarm observation accurately.\n- Do not fabricate data; rely on the provided action definitions.\n\n##### Output Assembly\nFor every action call, return a structured JSON object containing **ONLY** the return fields declared in that action function's definition (the Observation).\n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the internal state `$s_t$`, the `new_state`, or hidden system variables like global airflow matrices. The Agent only sees the sensor data and equipment feedback explicitly defined in the action's return schema.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to JSON for all outputs.\n- **Factuality**: Model gas behavior (CH4, CO, O2) and air pressure based on standard mining safety logic.\n- **Consistency**: If a regulator is closed, the airflow in that branch must decrease, and pressure in adjacent branches must reflect the change in the next observation.\n- **Realism**: Account for the lag in gas dilution and the relationship between fan power and air volume.\n- **Quality**: Ensure all simulated sensor readings are precise and logically sound.\n- **Encapsulation**: Hide the full internal status of the mine. Only expose the specific `observation` requested by the action.\n{{initial_state}}: {{\n  \"fan_systems\": {{\n    \"MAIN_FAN_VFD_01\": {{\n      \"rpm\": 950,\n      \"frequency_hz\": 50.0,\n      \"power_consumption_kw\": 520.0,\n      \"blade_angle\": 18.0,\n      \"status\": \"operational\"\n    }}\n  }},\n  \"regulators_and_doors\": {{\n    \"LW104_BLEEDER_REG\": {{\n      \"opening_percent\": 25.0,\n      \"type\": \"louver_regulator\",\n      \"location\": \"Return_Airway_104\"\n    }},\n    \"LW104_MG_AIRLOCK\": {{\n      \"state\": \"closed\",\n      \"type\": \"binary_airlock\",\n      \"integrity\": \"high\"\n    }}\n  }},\n  \"gas_distribution\": {{\n    \"TG_104_TCD\": {{\n      \"ch4_percent\": 1.32,\n      \"co_ppm\": 2.5,\n      \"o2_percent\": 20.1,\n      \"trend\": \"+0.05%/min\"\n    }},\n    \"SHEARER_TCD\": {{\n      \"ch4_percent\": 0.95,\n      \"co_ppm\": 1.2,\n      \"o2_percent\": 20.3,\n      \"trend\": \"rising\"\n    }},\n    \"CMM_SURFACE_PUMP\": {{\n      \"ch4_purity_percent\": 55.0,\n      \"applied_vacuum_kpa\": -25.0,\n      \"flow_rate_m3_min\": 2.2\n    }}\n  }},\n  \"airflow_network\": {{\n    \"LW_104_FACE\": {{\n      \"velocity_ms\": 3.65,\n      \"volume_flow_m3_s\": 95.0,\n      \"static_pressure_pa\": 2350\n    }},\n    \"GOB_BLEEDER_PATH\": {{\n      \"velocity_ms\": 1.5,\n      \"volume_flow_m3_s\": 22.0,\n      \"static_pressure_pa\": 1900\n    }}\n  }},\n  \"safety_alerts\": [\n    \"Level 3 TARP Active: TG_104_TCD at 1.32%.\",\n    \"Barometric Trend: -4.8 hPa/hr (Rapid Drop).\",\n    \"Operational Warning: High vacuum/Low flow discrepancy detected in CMM Drainage Line.\"\n  ],\n  \"simulation_time\": 1200\n}}\n{{state_descriptions}}: {{\n  \"fan_systems\": \"Mapping of fan IDs to their current operational parameters (RPM, power consumption, blade angle).\",\n  \"regulators_and_doors\": \"The physical state of air control structures, including opening percentages for regulators and binary states for airlocks.\",\n  \"gas_distribution\": \"Current concentrations of methane (CH4), carbon monoxide (CO), and oxygen (O2) at specific sensor nodes.\",\n  \"airflow_network\": \"Internal calculation of air velocity (m/s) and volume flow rate (m3/min) across all mine branches.\",\n  \"safety_alerts\": \"List of active environmental warnings or equipment malfunctions.\",\n  \"simulation_time\": \"Elapsed time in seconds since the start of the simulation session.\"\n}}\n{action_set_definitions}: {\n  \"get_environment_data\": {\n    \"description\": \"Retrieves current methane (CH4) concentrations, air velocities, and active safety alerts from the environment.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"sensor_ids\": {\n          \"type\": \"array\",\n          \"items\": {\n            \"type\": \"string\"\n          },\n          \"description\": \"Specific sensor IDs (e.g., 'TG_104_TCD') to query.\"\n        },\n        \"include_airflow\": {\n          \"type\": \"boolean\",\n          \"description\": \"Whether to return velocity data for all branches.\"\n        }\n      },\n      \"required\": [\n        \"sensor_ids\"\n      ]\n    },\n    \"example_output\": {\n      \"gas_levels\": {\n        \"TG_104_TCD\": 1.25,\n        \"LW_Face\": 0.8\n      },\n      \"air_velocities\": {\n        \"longwall_face_01\": 3.2,\n        \"main_intake\": 5.1\n      },\n      \"alerts\": [\n        \"Level 3 TARP - Methane Spike\"\n      ]\n    }\n  },\n  \"get_system_infrastructure\": {\n    \"description\": \"Retrieves the current operational status of fans, regulators, and the CMM drainage network.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {}\n    },\n    \"example_output\": {\n      \"fans\": {\n        \"Main_Fan_North\": {\n          \"rpm\": 1200,\n          \"blade_angle\": 15\n        }\n      },\n      \"regulators\": {\n        \"R_04_Tailgate\": {\n          \"opening_pct\": 45\n        }\n      },\n      \"cmm_network\": {\n        \"applied_vacuum_kpa\": 15.0,\n        \"gas_flow_rate_m3_s\": 2.5\n      }\n    }\n  },\n  \"adjust_cmm_vacuum\": {\n    \"description\": \"Modifies the vacuum pressure applied to the Coal Mine Methane drainage network.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"new_vacuum_kpa\": {\n          \"type\": \"number\",\n          \"description\": \"The target vacuum level in kilopascals.\"\n        }\n      },\n      \"required\": [\n        \"new_vacuum_kpa\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"success\",\n      \"current_vacuum\": 18.5\n    }\n  },\n  \"adjust_regulator\": {\n    \"description\": \"Changes the opening percentage of a specific air regulator to control ventilation flow.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"regulator_id\": {\n          \"type\": \"string\"\n        },\n        \"opening_pct\": {\n          \"type\": \"number\",\n          \"minimum\": 0,\n          \"maximum\": 100\n        }\n      },\n      \"required\": [\n        \"regulator_id\",\n        \"opening_pct\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"updated\",\n      \"regulator\": \"R_04_Tailgate\",\n      \"new_value\": 55\n    }\n  },\n  \"adjust_fan\": {\n    \"description\": \"Updates operational parameters for a specific mine fan.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"fan_id\": {\n          \"type\": \"string\"\n        },\n        \"parameter\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"rpm\",\n            \"blade_angle\"\n          ]\n        },\n        \"value\": {\n          \"type\": \"number\"\n        }\n      },\n      \"required\": [\n        \"fan_id\",\n        \"parameter\",\n        \"value\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"success\",\n      \"fan\": \"Main_Fan_North\",\n      \"rpm\": 1300\n    }\n  },\n  \"wait_simulation_step\": {\n    \"description\": \"Advances the simulation by a specified duration to observe the effects of changes.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"seconds\": {\n          \"type\": \"integer\",\n          \"description\": \"Duration to wait in simulation time.\"\n        }\n      },\n      \"required\": [\n        \"seconds\"\n      ]\n    },\n    \"example_output\": {\n      \"simulation_time\": 3600,\n      \"elapsed\": 30\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_environment_data",
+      "description": "Retrieves current methane (CH4) concentrations, air velocities, and active safety alerts from the environment.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "sensor_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Specific sensor IDs (e.g., 'TG_104_TCD') to query."
+          },
+          "include_airflow": {
+            "type": "boolean",
+            "description": "Whether to return velocity data for all branches."
+          }
+        },
+        "required": [
+          "sensor_ids"
+        ]
+      },
+      "example_output": {
+        "gas_levels": {
+          "TG_104_TCD": 1.25,
+          "LW_Face": 0.8
+        },
+        "air_velocities": {
+          "longwall_face_01": 3.2,
+          "main_intake": 5.1
+        },
+        "alerts": [
+          "Level 3 TARP - Methane Spike"
+        ]
+      }
+    },
+    {
+      "name": "get_system_infrastructure",
+      "description": "Retrieves the current operational status of fans, regulators, and the CMM drainage network.",
+      "parameters": {
+        "type": "object",
+        "properties": {}
+      },
+      "example_output": {
+        "fans": {
+          "Main_Fan_North": {
+            "rpm": 1200,
+            "blade_angle": 15
+          }
+        },
+        "regulators": {
+          "R_04_Tailgate": {
+            "opening_pct": 45
+          }
+        },
+        "cmm_network": {
+          "applied_vacuum_kpa": 15.0,
+          "gas_flow_rate_m3_s": 2.5
+        }
+      }
+    },
+    {
+      "name": "adjust_cmm_vacuum",
+      "description": "Modifies the vacuum pressure applied to the Coal Mine Methane drainage network.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "new_vacuum_kpa": {
+            "type": "number",
+            "description": "The target vacuum level in kilopascals."
+          }
+        },
+        "required": [
+          "new_vacuum_kpa"
+        ]
+      },
+      "example_output": {
+        "status": "success",
+        "current_vacuum": 18.5
+      }
+    },
+    {
+      "name": "adjust_regulator",
+      "description": "Changes the opening percentage of a specific air regulator to control ventilation flow.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "regulator_id": {
+            "type": "string"
+          },
+          "opening_pct": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100
+          }
+        },
+        "required": [
+          "regulator_id",
+          "opening_pct"
+        ]
+      },
+      "example_output": {
+        "status": "updated",
+        "regulator": "R_04_Tailgate",
+        "new_value": 55
+      }
+    },
+    {
+      "name": "adjust_fan",
+      "description": "Updates operational parameters for a specific mine fan.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "fan_id": {
+            "type": "string"
+          },
+          "parameter": {
+            "type": "string",
+            "enum": [
+              "rpm",
+              "blade_angle"
+            ]
+          },
+          "value": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "fan_id",
+          "parameter",
+          "value"
+        ]
+      },
+      "example_output": {
+        "status": "success",
+        "fan": "Main_Fan_North",
+        "rpm": 1300
+      }
+    },
+    {
+      "name": "wait_simulation_step",
+      "description": "Advances the simulation by a specified duration to observe the effects of changes.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "seconds": {
+            "type": "integer",
+            "description": "Duration to wait in simulation time."
+          }
+        },
+        "required": [
+          "seconds"
+        ]
+      },
+      "example_output": {
+        "simulation_time": 3600,
+        "elapsed": 30
+      }
+    }
+  ],
+  "state_description": {
+    "fan_systems": "Mapping of fan IDs to their current operational parameters (RPM, power consumption, blade angle).",
+    "regulators_and_doors": "The physical state of air control structures, including opening percentages for regulators and binary states for airlocks.",
+    "gas_distribution": "Current concentrations of methane (CH4), carbon monoxide (CO), and oxygen (O2) at specific sensor nodes.",
+    "airflow_network": "Internal calculation of air velocity (m/s) and volume flow rate (m3/min) across all mine branches.",
+    "safety_alerts": "List of active environmental warnings or equipment malfunctions.",
+    "simulation_time": "Elapsed time in seconds since the start of the simulation session."
+  },
+  "task_initial_state": {
+    "fan_systems": {
+      "MAIN_FAN_VFD_01": {
+        "rpm": 950,
+        "frequency_hz": 50.0,
+        "power_consumption_kw": 520.0,
+        "blade_angle": 18.0,
+        "status": "operational"
+      }
+    },
+    "regulators_and_doors": {
+      "LW104_BLEEDER_REG": {
+        "opening_percent": 25.0,
+        "type": "louver_regulator",
+        "location": "Return_Airway_104"
+      },
+      "LW104_MG_AIRLOCK": {
+        "state": "closed",
+        "type": "binary_airlock",
+        "integrity": "high"
+      }
+    },
+    "gas_distribution": {
+      "TG_104_TCD": {
+        "ch4_percent": 1.32,
+        "co_ppm": 2.5,
+        "o2_percent": 20.1,
+        "trend": "+0.05%/min"
+      },
+      "SHEARER_TCD": {
+        "ch4_percent": 0.95,
+        "co_ppm": 1.2,
+        "o2_percent": 20.3,
+        "trend": "rising"
+      },
+      "CMM_SURFACE_PUMP": {
+        "ch4_purity_percent": 55.0,
+        "applied_vacuum_kpa": -25.0,
+        "flow_rate_m3_min": 2.2
+      }
+    },
+    "airflow_network": {
+      "LW_104_FACE": {
+        "velocity_ms": 3.65,
+        "volume_flow_m3_s": 95.0,
+        "static_pressure_pa": 2350
+      },
+      "GOB_BLEEDER_PATH": {
+        "velocity_ms": 1.5,
+        "volume_flow_m3_s": 22.0,
+        "static_pressure_pa": 1900
+      }
+    },
+    "safety_alerts": [
+      "Level 3 TARP Active: TG_104_TCD at 1.32%.",
+      "Barometric Trend: -4.8 hPa/hr (Rapid Drop).",
+      "Operational Warning: High vacuum/Low flow discrepancy detected in CMM Drainage Line."
+    ],
+    "simulation_time": 1200
+  }
+}

@@ -1,0 +1,289 @@
+{
+  "environment_name": "env_b3a9a1fdeaef",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM) for Ship Cargo Loading Optimization.\n- **Core Objective**: Based on the current state $s_t$ (ship stability, hold distribution, and port conditions) and action $a_t$ (loading, unloading, or ballast adjustment), simulate the internal environment changes and predict the resulting observation $o_{{t+1}}$ obtained by the Agent.\n- **Emphasis**: The LWM does not execute real physical operations but performs internal state evolution (calculating weight distribution, center of gravity shifts, and stability metrics) and generates the corresponding observation.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions between the World Model and the Agent must maintain rigorous context consistency. Changes in cargo distribution must persist across time steps and logically influence subsequent stability calculations and available capacity.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. This JSON must contain the following fields:\n- `\"name\"`: Specifies the name of the action function to execute (e.g., \"load_cargo\", \"adjust_ballast\").\n- The remaining fields are the parameter names and corresponding values required by that action function.\n\nExample:\n```json\n{{\n \"name\": \"load_cargo\",\n \"arguments\": {{\n    \"hold_id\": \"H1\",\n    \"weight_tons\": 500,\n    \"cargo_type\": \"Iron Ore\"\n  }}\n}}\n```\nThe Language World Model must correctly parse such JSON inputs, calculate the resulting ship stability (trim, list, GM) and hold status, and simulate the execution results.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nFor invalid parameters (e.g., loading more than hold capacity, negative weights, invalid hold IDs), state conflicts (e.g., exceeding maximum permissible draft), or undefined actions, return structured error information (e.g., `{{\"error\": \"Exceeds hold capacity limit\"}}`), and do not fabricate states or fictitious responses.\n\n##### Output Assembly\nFor every action function call, the model must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition (the Observation).\n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, `new_state`, or any hidden variables such as the full state dictionary. The state maintenance is implicit in the history. The Agent must only see the specific return values defined in the action (the Observation).\n\n### 4. Key Principles\n- **Format**: Strictly adhere to specified JSON and text formats.\n- **Factuality**: Do not fabricate non-existent functions or impossible ship configurations.\n- **Consistency**: State evolution logic must be self-consistent (e.g., Total Weight = Lightship + Cargo + Ballast + Fuel).\n- **Realism**: Simulated behaviors must align with naval architecture principles (e.g., adding weight low in the ship usually increases stability/GM).\n- **Quality**: Language must be clear, unambiguous, and structurally complete.\n- **Encapsulation**: Strictly hide the internal state structure from the output. Only expose information that is explicitly returned by the action function.\n{{initial_state}}: {{\n  \"vessel_metrics\": {{\n    \"vessel_name\": \"MV-Atlas-Heavy\",\n    \"max_deadweight\": 45000\n  }},\n  \"stability_status\": {{\n    \"trim\": 0.15,\n    \"heel\": 0.0,\n    \"metacentric_height_GM\": 2.85,\n    \"current_draft_mean\": 8.2\n  }},\n  \"cargo_holds\": [\n    {{\n      \"hold_id\": \"H1\",\n      \"capacity\": 10000,\n      \"current_load\": 0,\n      \"cargo_type\": \"empty\"\n    }},\n    {{\n      \"hold_id\": \"H2\",\n      \"capacity\": 15000,\n      \"current_load\": 4500,\n      \"cargo_type\": \"steel_slabs\"\n    }}\n  ],\n  \"ballast_tanks\": [\n    {{\n      \"tank_id\": \"ForePeak\",\n      \"current_fill_level\": 45\n    }},\n    {{\n      \"tank_id\": \"AftPeak\",\n      \"current_fill_level\": 45\n    }},\n    {{\n      \"tank_id\": \"WingTank_Port\",\n      \"current_fill_level\": 15\n    }},\n    {{\n      \"tank_id\": \"WingTank_Stbd\",\n      \"current_fill_level\": 15\n    }}\n  ]\n}}\n{{state_descriptions}}: {{\n  \"vessel_metrics\": \"General vessel identifiers and physical limits\",\n  \"stability_status\": \"Current stability and equilibrium of the ship\",\n  \"cargo_holds\": \"List of cargo hold statuses\",\n  \"ballast_tanks\": \"Status of water ballast tanks used for stability\"\n}}\n{action_set_definitions}: {\n  \"get_cargo_details\": {\n    \"description\": \"Retrieves the weight, dimensions, and footprint of a specific cargo unit.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"cargo_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the cargo unit.\"\n        }\n      },\n      \"required\": [\n        \"cargo_id\"\n      ]\n    },\n    \"example_output\": {\n      \"weight_mt\": 460,\n      \"footprint_sqm\": 20,\n      \"description\": \"Deepsea-Manifold-A\"\n    }\n  },\n  \"get_vessel_operational_limits\": {\n    \"description\": \"Retrieves the safety thresholds for stability, including minimum GM, maximum allowable list, and maximum allowable list swing during operations.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"min_gm_m\": 2.2,\n      \"max_list_deg\": 1.0,\n      \"max_list_swing_deg\": 2.0\n    }\n  },\n  \"get_hatch_details\": {\n    \"description\": \"Retrieves the structural specifications of a specific hatch cover.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"hatch_id\": {\n          \"type\": \"string\",\n          \"description\": \"Identifier for the hatch (e.g., 'H1').\"\n        }\n      },\n      \"required\": [\n        \"hatch_id\"\n      ]\n    },\n    \"example_output\": {\n      \"max_udl_t_per_m2\": 10.0,\n      \"length_m\": 15,\n      \"width_m\": 12\n    }\n  },\n  \"get_crane_inventory\": {\n    \"description\": \"Lists all available cranes and their Safe Working Load (SWL) at a specific outreach.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"outreach_m\": {\n          \"type\": \"number\",\n          \"description\": \"The horizontal distance for the lift.\"\n        }\n      },\n      \"required\": [\n        \"outreach_m\"\n      ]\n    },\n    \"example_output\": {\n      \"cranes\": [\n        {\n          \"id\": \"CR-01\",\n          \"swl_mt\": 300\n        },\n        {\n          \"id\": \"CR-02\",\n          \"swl_mt\": 300\n        }\n      ]\n    }\n  },\n  \"get_stability_status\": {\n    \"description\": \"Returns the current metacentric height (GM) and list of the vessel.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"current_gm_m\": 2.5,\n      \"current_list_deg\": 0.1\n    }\n  },\n  \"get_ballast_inventory\": {\n    \"description\": \"Retrieves the status of all ballast tanks including current weight and remaining capacity.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"tanks\": [\n        {\n          \"tank_id\": \"WB-P1\",\n          \"current_mt\": 100,\n          \"capacity_mt\": 500\n        }\n      ]\n    }\n  },\n  \"simulate_dynamic_lift\": {\n    \"description\": \"Simulates the entire movement of a weight from pickup to stowage. Returns the 'worst-case' stability metrics encountered during the transit to ensure 'at all times' safety.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"weight_mt\": {\n          \"type\": \"number\"\n        },\n        \"start_outreach_m\": {\n          \"type\": \"number\"\n        },\n        \"end_position\": {\n          \"type\": \"string\"\n        },\n        \"crane_ids\": {\n          \"type\": \"array\",\n          \"items\": {\n            \"type\": \"string\"\n          }\n        }\n      },\n      \"required\": [\n        \"weight_mt\",\n        \"start_outreach_m\",\n        \"end_position\",\n        \"crane_ids\"\n      ]\n    },\n    \"example_output\": {\n      \"min_encountered_gm_m\": 2.1,\n      \"max_encountered_list_deg\": 1.8,\n      \"max_list_swing_deg\": 1.7\n    }\n  },\n  \"configure_hatch_reinforcement\": {\n    \"description\": \"Deploys load-spreading equipment (dunnage/mats) on a hatch cover.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"hatch_id\": {\n          \"type\": \"string\"\n        },\n        \"target_area_sqm\": {\n          \"type\": \"number\"\n        }\n      },\n      \"required\": [\n        \"hatch_id\",\n        \"target_area_sqm\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"configured\",\n      \"effective_udl_t_per_m2\": 9.5\n    }\n  },\n  \"execute_ballast_transfer\": {\n    \"description\": \"Adjusts water levels in ballast tanks to prepare for or compensate for a lift.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"adjustments\": {\n          \"type\": \"array\",\n          \"items\": {\n            \"type\": \"object\",\n            \"properties\": {\n              \"tank_id\": {\n                \"type\": \"string\"\n              },\n              \"delta_mt\": {\n                \"type\": \"number\",\n                \"description\": \"Positive for filling, negative for discharging.\"\n              }\n            }\n          }\n        }\n      },\n      \"required\": [\n        \"adjustments\"\n      ]\n    },\n    \"example_output\": {\n      \"success\": true\n    }\n  },\n  \"execute_heavy_lift_operation\": {\n    \"description\": \"Initiates the physical transfer of the cargo using the selected cranes. This tool monitors stability internally during the process.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"cargo_id\": {\n          \"type\": \"string\"\n        },\n        \"crane_ids\": {\n          \"type\": \"array\",\n          \"items\": {\n            \"type\": \"string\"\n          }\n        },\n        \"destination_hatch\": {\n          \"type\": \"string\"\n        }\n      },\n      \"required\": [\n        \"cargo_id\",\n        \"crane_ids\",\n        \"destination_hatch\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"completed\",\n      \"final_list_deg\": 0.2\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_cargo_details",
+      "description": "Retrieves the weight, dimensions, and footprint of a specific cargo unit.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "cargo_id": {
+            "type": "string",
+            "description": "The unique identifier for the cargo unit."
+          }
+        },
+        "required": [
+          "cargo_id"
+        ]
+      },
+      "example_output": {
+        "weight_mt": 460,
+        "footprint_sqm": 20,
+        "description": "Deepsea-Manifold-A"
+      }
+    },
+    {
+      "name": "get_vessel_operational_limits",
+      "description": "Retrieves the safety thresholds for stability, including minimum GM, maximum allowable list, and maximum allowable list swing during operations.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "min_gm_m": 2.2,
+        "max_list_deg": 1.0,
+        "max_list_swing_deg": 2.0
+      }
+    },
+    {
+      "name": "get_hatch_details",
+      "description": "Retrieves the structural specifications of a specific hatch cover.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "hatch_id": {
+            "type": "string",
+            "description": "Identifier for the hatch (e.g., 'H1')."
+          }
+        },
+        "required": [
+          "hatch_id"
+        ]
+      },
+      "example_output": {
+        "max_udl_t_per_m2": 10.0,
+        "length_m": 15,
+        "width_m": 12
+      }
+    },
+    {
+      "name": "get_crane_inventory",
+      "description": "Lists all available cranes and their Safe Working Load (SWL) at a specific outreach.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "outreach_m": {
+            "type": "number",
+            "description": "The horizontal distance for the lift."
+          }
+        },
+        "required": [
+          "outreach_m"
+        ]
+      },
+      "example_output": {
+        "cranes": [
+          {
+            "id": "CR-01",
+            "swl_mt": 300
+          },
+          {
+            "id": "CR-02",
+            "swl_mt": 300
+          }
+        ]
+      }
+    },
+    {
+      "name": "get_stability_status",
+      "description": "Returns the current metacentric height (GM) and list of the vessel.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "current_gm_m": 2.5,
+        "current_list_deg": 0.1
+      }
+    },
+    {
+      "name": "get_ballast_inventory",
+      "description": "Retrieves the status of all ballast tanks including current weight and remaining capacity.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "tanks": [
+          {
+            "tank_id": "WB-P1",
+            "current_mt": 100,
+            "capacity_mt": 500
+          }
+        ]
+      }
+    },
+    {
+      "name": "simulate_dynamic_lift",
+      "description": "Simulates the entire movement of a weight from pickup to stowage. Returns the 'worst-case' stability metrics encountered during the transit to ensure 'at all times' safety.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "weight_mt": {
+            "type": "number"
+          },
+          "start_outreach_m": {
+            "type": "number"
+          },
+          "end_position": {
+            "type": "string"
+          },
+          "crane_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "weight_mt",
+          "start_outreach_m",
+          "end_position",
+          "crane_ids"
+        ]
+      },
+      "example_output": {
+        "min_encountered_gm_m": 2.1,
+        "max_encountered_list_deg": 1.8,
+        "max_list_swing_deg": 1.7
+      }
+    },
+    {
+      "name": "configure_hatch_reinforcement",
+      "description": "Deploys load-spreading equipment (dunnage/mats) on a hatch cover.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "hatch_id": {
+            "type": "string"
+          },
+          "target_area_sqm": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "hatch_id",
+          "target_area_sqm"
+        ]
+      },
+      "example_output": {
+        "status": "configured",
+        "effective_udl_t_per_m2": 9.5
+      }
+    },
+    {
+      "name": "execute_ballast_transfer",
+      "description": "Adjusts water levels in ballast tanks to prepare for or compensate for a lift.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "adjustments": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "tank_id": {
+                  "type": "string"
+                },
+                "delta_mt": {
+                  "type": "number",
+                  "description": "Positive for filling, negative for discharging."
+                }
+              }
+            }
+          }
+        },
+        "required": [
+          "adjustments"
+        ]
+      },
+      "example_output": {
+        "success": true
+      }
+    },
+    {
+      "name": "execute_heavy_lift_operation",
+      "description": "Initiates the physical transfer of the cargo using the selected cranes. This tool monitors stability internally during the process.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "cargo_id": {
+            "type": "string"
+          },
+          "crane_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "destination_hatch": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "cargo_id",
+          "crane_ids",
+          "destination_hatch"
+        ]
+      },
+      "example_output": {
+        "status": "completed",
+        "final_list_deg": 0.2
+      }
+    }
+  ],
+  "state_description": {
+    "vessel_metrics": "General vessel identifiers and physical limits",
+    "stability_status": "Current stability and equilibrium of the ship",
+    "cargo_holds": "List of cargo hold statuses",
+    "ballast_tanks": "Status of water ballast tanks used for stability"
+  },
+  "task_initial_state": {
+    "vessel_metrics": {
+      "vessel_name": "MV-Atlas-Heavy",
+      "max_deadweight": 45000
+    },
+    "stability_status": {
+      "trim": 0.15,
+      "heel": 0.0,
+      "metacentric_height_GM": 2.85,
+      "current_draft_mean": 8.2
+    },
+    "cargo_holds": [
+      {
+        "hold_id": "H1",
+        "capacity": 10000,
+        "current_load": 0,
+        "cargo_type": "empty"
+      },
+      {
+        "hold_id": "H2",
+        "capacity": 15000,
+        "current_load": 4500,
+        "cargo_type": "steel_slabs"
+      }
+    ],
+    "ballast_tanks": [
+      {
+        "tank_id": "ForePeak",
+        "current_fill_level": 45
+      },
+      {
+        "tank_id": "AftPeak",
+        "current_fill_level": 45
+      },
+      {
+        "tank_id": "WingTank_Port",
+        "current_fill_level": 15
+      },
+      {
+        "tank_id": "WingTank_Stbd",
+        "current_fill_level": 15
+      }
+    ]
+  }
+}

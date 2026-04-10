@@ -1,0 +1,279 @@
+{
+  "environment_name": "env_1113cdbc54f3",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM) for Food Recall Traceability.\n- **Core Objective**: Based on the current supply chain state $s_t$ and the Agent's action $a_t$, simulate the environment's internal logic (tracing ingredients, batch movements, and logistics records) and predict the observation $o_{{t+1}}$ obtained by the Agent.\n- **Emphasis**: The LWM does not perform real-world database queries or physical recalls. It performs internal state evolution and generates realistic observations based on the food safety data provided.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions between the World Model and the Agent must maintain strict context consistency. If a batch is identified as contaminated in one step, its movement and descendant products must remain consistent throughout the simulation.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. This JSON must contain the following fields:\n- `\"name\"`: Specifies the name of the action function to execute.\n- The remaining fields are the parameter names and values required by that function.\n\nExample:\n```json\n{{\n \"name\": \"trace_backwards\",\n \"arguments\": {{\n    \"batch_id\": \"BCH-99283\",\n    \"depth\": 2\n  }}\n}}\n```\n\nThe Language World Model must correctly parse these JSON inputs and simulate the execution results based on the internal supply chain state.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nFor invalid batch IDs, undefined actions, impossible logistics transitions (e.g., a product arriving before it was shipped), or missing parameters, return structured error information (e.g., `{{\"error\": \"Batch ID 'BCH-000' not found in records\"}}`). Do not fabricate states or fictitious data outside the provided logic.\n\n##### Output Assembly\nFor every action function call, the model must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition.\n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, `new_state`, or any hidden variables like the complete supply chain map. The Agent must only see the specific return values defined in the action (the Observation). State maintenance is handled internally by the LWM.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to specified JSON and text formats.\n- **Factuality**: Do not fabricate non-existent supply chain nodes or batch histories not supported by the state logic.\n- **Consistency**: Batch lineage and shipping dates must be self-consistent (e.g., a recall notice cannot reach a distributor before the distributor receives the batch).\n- **Realism**: Simulated behaviors must align with food safety protocols and logistics dynamics.\n- **Quality**: Language must be clear, unambiguous, and structurally complete.\n- **Encapsulation**: Strictly hide the internal state structure. Only expose information explicitly returned by the action function.\n{{initial_state}}: {{\n  \"entities\": {{\n    \"SUP-VINE-88\": {{\n      \"name\": \"Vine-Fresh Farms\",\n      \"type\": \"Supplier\"\n    }},\n    \"FC-NORTH-01\": {{\n      \"name\": \"North-01 Fulfillment Center\",\n      \"type\": \"Processing Plant\"\n    }},\n    \"3PL-SPEEDY\": {{\n      \"name\": \"Speedy-Parcel\",\n      \"type\": \"Distributor\"\n    }}\n  }},\n  \"batches\": {{\n    \"BCH-TOM-101\": {{\n      \"product_type\": \"Roma Tomatoes\",\n      \"current_status\": \"active\",\n      \"timestamp\": \"2023-11-10T08:00:00Z\"\n    }},\n    \"BCH-TOM-102\": {{\n      \"product_type\": \"Roma Tomatoes\",\n      \"current_status\": \"active\",\n      \"timestamp\": \"2023-11-10T13:00:00Z\"\n    }},\n    \"BCH-KIT-Z-505\": {{\n      \"product_type\": \"Zesty Caprese Kit\",\n      \"current_status\": \"active\",\n      \"timestamp\": \"2023-11-11T09:00:00Z\"\n    }},\n    \"BCH-KIT-Z-506\": {{\n      \"product_type\": \"Zesty Caprese Kit\",\n      \"current_status\": \"active\",\n      \"timestamp\": \"2023-11-11T14:00:00Z\"\n    }}\n  }},\n  \"lineage\": [\n    {{\n      \"input_batch_id\": \"BCH-TOM-101\",\n      \"output_batch_id\": \"BCH-KIT-Z-505\",\n      \"quantity\": \"400 units\"\n    }},\n    {{\n      \"input_batch_id\": \"BCH-TOM-102\",\n      \"output_batch_id\": \"BCH-KIT-Z-506\",\n      \"quantity\": \"350 units\"\n    }}\n  ],\n  \"logistics_logs\": [\n    {{\n      \"batch_id\": \"BCH-KIT-Z-505\",\n      \"from\": \"FC-NORTH-01\",\n      \"to\": \"3PL-SPEEDY\",\n      \"quantity\": 300,\n      \"status\": \"in-transit\",\n      \"tracking_prefix\": \"SP-Z505\",\n      \"estimated_delivery\": \"2023-11-14\"\n    }},\n    {{\n      \"batch_id\": \"BCH-KIT-Z-505\",\n      \"from\": \"FC-NORTH-01\",\n      \"to\": \"FC-NORTH-01\",\n      \"quantity\": 100,\n      \"status\": \"at-fulfillment-center\",\n      \"location\": \"QA-Hold-Bin-01\"\n    }},\n    {{\n      \"batch_id\": \"BCH-KIT-Z-506\",\n      \"from\": \"FC-NORTH-01\",\n      \"to\": \"3PL-SPEEDY\",\n      \"quantity\": 350,\n      \"status\": \"out-for-delivery\",\n      \"tracking_prefix\": \"SP-Z506\",\n      \"estimated_delivery\": \"Today-Immediate\"\n    }}\n  ],\n  \"inspection_records\": {{\n    \"BCH-TOM-101\": {{\n      \"test_id\": \"SAL-POS-992\",\n      \"result\": \"Positive\",\n      \"pathogen\": \"Salmonella\",\n      \"timestamp\": \"2023-11-12T10:00:00Z\"\n    }},\n    \"FACILITY-FC-NORTH-01-LOG\": {{\n      \"record_type\": \"Sanitation/Clean-Break\",\n      \"date\": \"2023-11-10\",\n      \"shift_1_to_2_transition\": \"Omitted - Continuous run to meet volume\",\n      \"verified_by\": \"N/A\"\n    }}\n  }}\n}}\n{{state_descriptions}}: {{\n  \"entities\": \"A registry of all participants in the supply chain (Suppliers, Processing Plants, Distributors, Retailers).\",\n  \"batches\": \"Detailed records of food batches, including their product type, current status (e.g., 'active', 'recalled'), and creation timestamp.\",\n  \"lineage\": \"A list of directed relationships mapping input ingredients/batches to output products (Provenance).\",\n  \"logistics_logs\": \"Chronological records of batch movements between entities, including timestamps and quantities.\",\n  \"inspection_records\": \"Quality control and safety test results associated with specific batches or facilities.\"\n}}\n{action_set_definitions}: {\n  \"get_batch_metadata\": {\n    \"description\": \"Retrieves the initial details of a batch, including processing facility, timestamp, and the total expected yield/quantity.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"batch_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique ID of the batch (e.g., 'BCH-TOM-101').\"\n        }\n      },\n      \"required\": [\n        \"batch_id\"\n      ]\n    },\n    \"example_output\": {\n      \"facility_id\": \"FAC-PROC-05\",\n      \"production_time\": \"2023-10-27T10:00:00Z\",\n      \"total_yield_quantity\": 750\n    }\n  },\n  \"inspect_facility_sanitation\": {\n    \"description\": \"Queries processing logs for a specific facility to determine if sanitation standards were met and identifies the required 'Bracketing' time window if a failure is found.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"facility_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the processing facility.\"\n        },\n        \"target_timestamp\": {\n          \"type\": \"string\",\n          \"description\": \"The timestamp of the contaminated batch to center the search.\"\n        }\n      },\n      \"required\": [\n        \"facility_id\",\n        \"target_timestamp\"\n      ]\n    },\n    \"example_output\": {\n      \"sanitation_failure_detected\": true,\n      \"bracketing_start\": \"2023-10-27T06:00:00Z\",\n      \"bracketing_end\": \"2023-10-27T14:00:00Z\"\n    }\n  },\n  \"trace_product_lineage\": {\n    \"description\": \"Maps ingredient batches to downstream derived products and the specific facilities (e.g., FC-NORTH-01) where they were processed or stored.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"source_batch_ids\": {\n          \"type\": \"array\",\n          \"items\": {\n            \"type\": \"string\"\n          },\n          \"description\": \"List of source/ingredient batch IDs.\"\n        }\n      },\n      \"required\": [\n        \"source_batch_ids\"\n      ]\n    },\n    \"example_output\": {\n      \"derived_items\": [\n        {\n          \"product_id\": \"PROD-SALAD-XYZ\",\n          \"derived_batch_id\": \"BCH-SAL-999\",\n          \"current_facility\": \"FC-NORTH-01\"\n        }\n      ]\n    }\n  },\n  \"get_unit_distribution_details\": {\n    \"description\": \"Retrieves real-time logistics data for all units associated with specific batches, including current location, delivery status, and quantity per shipment.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"batch_ids\": {\n          \"type\": \"array\",\n          \"items\": {\n            \"type\": \"string\"\n          },\n          \"description\": \"The IDs of batches to track.\"\n        }\n      },\n      \"required\": [\n        \"batch_ids\"\n      ]\n    },\n    \"example_output\": {\n      \"total_tracked_quantity\": 750,\n      \"units\": [\n        {\n          \"unit_id\": \"UNIT-001\",\n          \"location\": \"In-Transit\",\n          \"delivery_status\": \"Out-for-Delivery\",\n          \"quantity\": 1\n        }\n      ]\n    }\n  },\n  \"execute_safety_intervention\": {\n    \"description\": \"Executes a safety action on a unit and sets its terminal status. For 'Ghost Delivery' risks (Out-for-Delivery or Delivered), Omnichannel notifications must be used.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"unit_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the unit.\"\n        },\n        \"intervention_type\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"Carrier_Intercept\",\n            \"Omnichannel_Notification\",\n            \"Physical_Destruction\"\n          ],\n          \"description\": \"The method used to secure the unit.\"\n        },\n        \"terminal_status\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"FC_Destroyed\",\n            \"Carrier_Intercepted\",\n            \"Consumer_DIF\"\n          ],\n          \"description\": \"The final safety disposition.\"\n        }\n      },\n      \"required\": [\n        \"unit_id\",\n        \"intervention_type\",\n        \"terminal_status\"\n      ]\n    },\n    \"example_output\": {\n      \"success\": true,\n      \"new_status\": \"Consumer_DIF\"\n    }\n  },\n  \"check_reconciliation_compliance\": {\n    \"description\": \"Aggregates terminal status data to verify if the total reconciled quantity matches the target yield.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"target_quantity\": {\n          \"type\": \"number\",\n          \"description\": \"The total units expected to be reconciled (e.g., 750).\"\n        },\n        \"implicated_batch_ids\": {\n          \"type\": \"array\",\n          \"items\": {\n            \"type\": \"string\"\n          },\n          \"description\": \"Batches to check against.\"\n        }\n      },\n      \"required\": [\n        \"target_quantity\",\n        \"implicated_batch_ids\"\n      ]\n    },\n    \"example_output\": {\n      \"reconciled_count\": 750,\n      \"compliance_percentage\": 100.0,\n      \"reconciliation_complete\": true\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_batch_metadata",
+      "description": "Retrieves the initial details of a batch, including processing facility, timestamp, and the total expected yield/quantity.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "batch_id": {
+            "type": "string",
+            "description": "The unique ID of the batch (e.g., 'BCH-TOM-101')."
+          }
+        },
+        "required": [
+          "batch_id"
+        ]
+      },
+      "example_output": {
+        "facility_id": "FAC-PROC-05",
+        "production_time": "2023-10-27T10:00:00Z",
+        "total_yield_quantity": 750
+      }
+    },
+    {
+      "name": "inspect_facility_sanitation",
+      "description": "Queries processing logs for a specific facility to determine if sanitation standards were met and identifies the required 'Bracketing' time window if a failure is found.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "facility_id": {
+            "type": "string",
+            "description": "The ID of the processing facility."
+          },
+          "target_timestamp": {
+            "type": "string",
+            "description": "The timestamp of the contaminated batch to center the search."
+          }
+        },
+        "required": [
+          "facility_id",
+          "target_timestamp"
+        ]
+      },
+      "example_output": {
+        "sanitation_failure_detected": true,
+        "bracketing_start": "2023-10-27T06:00:00Z",
+        "bracketing_end": "2023-10-27T14:00:00Z"
+      }
+    },
+    {
+      "name": "trace_product_lineage",
+      "description": "Maps ingredient batches to downstream derived products and the specific facilities (e.g., FC-NORTH-01) where they were processed or stored.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "source_batch_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "List of source/ingredient batch IDs."
+          }
+        },
+        "required": [
+          "source_batch_ids"
+        ]
+      },
+      "example_output": {
+        "derived_items": [
+          {
+            "product_id": "PROD-SALAD-XYZ",
+            "derived_batch_id": "BCH-SAL-999",
+            "current_facility": "FC-NORTH-01"
+          }
+        ]
+      }
+    },
+    {
+      "name": "get_unit_distribution_details",
+      "description": "Retrieves real-time logistics data for all units associated with specific batches, including current location, delivery status, and quantity per shipment.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "batch_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "The IDs of batches to track."
+          }
+        },
+        "required": [
+          "batch_ids"
+        ]
+      },
+      "example_output": {
+        "total_tracked_quantity": 750,
+        "units": [
+          {
+            "unit_id": "UNIT-001",
+            "location": "In-Transit",
+            "delivery_status": "Out-for-Delivery",
+            "quantity": 1
+          }
+        ]
+      }
+    },
+    {
+      "name": "execute_safety_intervention",
+      "description": "Executes a safety action on a unit and sets its terminal status. For 'Ghost Delivery' risks (Out-for-Delivery or Delivered), Omnichannel notifications must be used.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "unit_id": {
+            "type": "string",
+            "description": "The ID of the unit."
+          },
+          "intervention_type": {
+            "type": "string",
+            "enum": [
+              "Carrier_Intercept",
+              "Omnichannel_Notification",
+              "Physical_Destruction"
+            ],
+            "description": "The method used to secure the unit."
+          },
+          "terminal_status": {
+            "type": "string",
+            "enum": [
+              "FC_Destroyed",
+              "Carrier_Intercepted",
+              "Consumer_DIF"
+            ],
+            "description": "The final safety disposition."
+          }
+        },
+        "required": [
+          "unit_id",
+          "intervention_type",
+          "terminal_status"
+        ]
+      },
+      "example_output": {
+        "success": true,
+        "new_status": "Consumer_DIF"
+      }
+    },
+    {
+      "name": "check_reconciliation_compliance",
+      "description": "Aggregates terminal status data to verify if the total reconciled quantity matches the target yield.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "target_quantity": {
+            "type": "number",
+            "description": "The total units expected to be reconciled (e.g., 750)."
+          },
+          "implicated_batch_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Batches to check against."
+          }
+        },
+        "required": [
+          "target_quantity",
+          "implicated_batch_ids"
+        ]
+      },
+      "example_output": {
+        "reconciled_count": 750,
+        "compliance_percentage": 100.0,
+        "reconciliation_complete": true
+      }
+    }
+  ],
+  "state_description": {
+    "entities": "A registry of all participants in the supply chain (Suppliers, Processing Plants, Distributors, Retailers).",
+    "batches": "Detailed records of food batches, including their product type, current status (e.g., 'active', 'recalled'), and creation timestamp.",
+    "lineage": "A list of directed relationships mapping input ingredients/batches to output products (Provenance).",
+    "logistics_logs": "Chronological records of batch movements between entities, including timestamps and quantities.",
+    "inspection_records": "Quality control and safety test results associated with specific batches or facilities."
+  },
+  "task_initial_state": {
+    "entities": {
+      "SUP-VINE-88": {
+        "name": "Vine-Fresh Farms",
+        "type": "Supplier"
+      },
+      "FC-NORTH-01": {
+        "name": "North-01 Fulfillment Center",
+        "type": "Processing Plant"
+      },
+      "3PL-SPEEDY": {
+        "name": "Speedy-Parcel",
+        "type": "Distributor"
+      }
+    },
+    "batches": {
+      "BCH-TOM-101": {
+        "product_type": "Roma Tomatoes",
+        "current_status": "active",
+        "timestamp": "2023-11-10T08:00:00Z"
+      },
+      "BCH-TOM-102": {
+        "product_type": "Roma Tomatoes",
+        "current_status": "active",
+        "timestamp": "2023-11-10T13:00:00Z"
+      },
+      "BCH-KIT-Z-505": {
+        "product_type": "Zesty Caprese Kit",
+        "current_status": "active",
+        "timestamp": "2023-11-11T09:00:00Z"
+      },
+      "BCH-KIT-Z-506": {
+        "product_type": "Zesty Caprese Kit",
+        "current_status": "active",
+        "timestamp": "2023-11-11T14:00:00Z"
+      }
+    },
+    "lineage": [
+      {
+        "input_batch_id": "BCH-TOM-101",
+        "output_batch_id": "BCH-KIT-Z-505",
+        "quantity": "400 units"
+      },
+      {
+        "input_batch_id": "BCH-TOM-102",
+        "output_batch_id": "BCH-KIT-Z-506",
+        "quantity": "350 units"
+      }
+    ],
+    "logistics_logs": [
+      {
+        "batch_id": "BCH-KIT-Z-505",
+        "from": "FC-NORTH-01",
+        "to": "3PL-SPEEDY",
+        "quantity": 300,
+        "status": "in-transit",
+        "tracking_prefix": "SP-Z505",
+        "estimated_delivery": "2023-11-14"
+      },
+      {
+        "batch_id": "BCH-KIT-Z-505",
+        "from": "FC-NORTH-01",
+        "to": "FC-NORTH-01",
+        "quantity": 100,
+        "status": "at-fulfillment-center",
+        "location": "QA-Hold-Bin-01"
+      },
+      {
+        "batch_id": "BCH-KIT-Z-506",
+        "from": "FC-NORTH-01",
+        "to": "3PL-SPEEDY",
+        "quantity": 350,
+        "status": "out-for-delivery",
+        "tracking_prefix": "SP-Z506",
+        "estimated_delivery": "Today-Immediate"
+      }
+    ],
+    "inspection_records": {
+      "BCH-TOM-101": {
+        "test_id": "SAL-POS-992",
+        "result": "Positive",
+        "pathogen": "Salmonella",
+        "timestamp": "2023-11-12T10:00:00Z"
+      },
+      "FACILITY-FC-NORTH-01-LOG": {
+        "record_type": "Sanitation/Clean-Break",
+        "date": "2023-11-10",
+        "shift_1_to_2_transition": "Omitted - Continuous run to meet volume",
+        "verified_by": "N/A"
+      }
+    }
+  }
+}

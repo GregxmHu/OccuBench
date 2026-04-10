@@ -1,0 +1,201 @@
+{
+  "environment_name": "env_0b00ae217718",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM) for Runway Arrival Sequencing.\n- **Core Objective**: Based on the current air traffic state $s_t$ and the sequencing action $a_t$ taken by the Air Traffic Controller (Agent), simulate the environment's temporal and spatial evolution. Predict the resulting observation $o_{{t+1}}$ (e.g., updated landing times, separation alerts, or fuel status) obtained by the Agent.\n- **Emphasis**: You are a simulator, not an executor. You calculate the consequences of actions within the constraints of aviation physics, safety regulations (separation minima), and airport logic. You do not perform real-world flight control.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation tracking aircraft positions, types, fuel levels, and runway occupancy. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions must maintain rigorous context consistency. If an aircraft is moved to a later position in the landing sequence at time $t$, its arrival time and the subsequent landing times for trailing aircraft must be adjusted accordingly in $t+1$. Internal timers (e.g., fuel depletion) must progress logically with every simulated step.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. You must parse the following fields:\n- `\"name\"`: The specific ATC action (e.g., `reorder_sequence`, `assign_runway`, `emergency_priority`).\n- Parameters: The specific values required (e.g., `flight_id`, `new_index`, `target_runway`).\n\nExample:\n```json\n{{\n \"name\": \"assign_runway\",\n \"arguments\": {{\n    \"flight_id\": \"BA123\",\n    \"runway_id\": \"25R\"\n  }}\n}}\n```\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nSimulate realistic aviation constraints. If an action results in a safety violation (e.g., reducing separation below minimum distance based on wake turbulence categories), or refers to a non-existent flight ID, return structured error information:\n`{{\"error\": \"Minimum separation violation: Heavy aircraft followed by Light aircraft requires 6 miles.\"}}`\nDo not fabricate aircraft or ignore the physical limits of flight speeds.\n\n##### Output Assembly\nFor every action function call, return a structured JSON object containing **ONLY** the return fields declared in that action function's definition. \n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, the `new_state`, or hidden environment variables like exact fuel percentages unless explicitly requested by the action's observation definition. The Agent only sees the specified observation (the result of the action).\n\n### 4. Key Principles\n- **Format**: Strictly adhere to specified JSON and text formats.\n- **Factuality**: Do not simulate landings that are physically impossible or create ghost flights.\n- **Consistency**: The landing sequence must remain logical; an aircraft cannot land before it reaches the approach gate.\n- **Realism**: Separation times must account for aircraft weight classes (Heavy, Medium, Light) and runway occupancy times.\n- **Quality**: Ensure all simulated responses are precise and clear.\n- **Encapsulation**: Hide the backend state. Only expose the specific observation fields defined in the action schema.\n{{initial_state}}: {{\n  \"aircraft_queue\": [\n    {{\n      \"flight_id\": \"AFR442S\",\n      \"eta\": \"08:12:00\"\n    }},\n    {{\n      \"flight_id\": \"AFR422\",\n      \"eta\": \"08:14:15\"\n    }},\n    {{\n      \"flight_id\": \"AFR442\",\n      \"eta\": \"08:16:30\"\n    }},\n    {{\n      \"flight_id\": \"BAW888\",\n      \"eta\": \"08:18:00\"\n    }},\n    {{\n      \"flight_id\": \"AFR44\",\n      \"eta\": \"08:20:00\"\n    }}\n  ],\n  \"runway_status\": {{\n    \"09L\": {{\n      \"status\": \"active\",\n      \"next_slot\": \"08:12:00\"\n    }},\n    \"09R\": {{\n      \"status\": \"active\",\n      \"next_slot\": \"08:15:00\"\n    }}\n  }},\n  \"flight_metadata\": {{\n    \"AFR442S\": {{\n      \"wake_category\": \"Medium\",\n      \"remaining_fuel\": 95,\n      \"distance_to_go_nm\": 45.0,\n      \"distance_to_tod_nm\": 0.0,\n      \"cruise_speed_kts\": 420\n    }},\n    \"AFR422\": {{\n      \"wake_category\": \"Medium\",\n      \"remaining_fuel\": 110,\n      \"distance_to_go_nm\": 62.0,\n      \"distance_to_tod_nm\": 0.0,\n      \"cruise_speed_kts\": 430\n    }},\n    \"AFR442\": {{\n      \"wake_category\": \"Medium\",\n      \"remaining_fuel\": 140,\n      \"distance_to_go_nm\": 138.0,\n      \"distance_to_tod_nm\": 14.5,\n      \"cruise_speed_kts\": 445\n    }},\n    \"BAW888\": {{\n      \"wake_category\": \"Heavy\",\n      \"remaining_fuel\": 210,\n      \"distance_to_go_nm\": 154.0,\n      \"distance_to_tod_nm\": 32.0,\n      \"cruise_speed_kts\": 495,\n      \"time_to_lose_sec\": 115\n    }},\n    \"AFR44\": {{\n      \"wake_category\": \"Light\",\n      \"remaining_fuel\": 80,\n      \"distance_to_go_nm\": 170.0,\n      \"distance_to_tod_nm\": 45.0,\n      \"cruise_speed_kts\": 380\n    }}\n  }},\n  \"environmental_factors\": {{\n    \"visibility\": \"800m_fog\",\n    \"wind_kt\": 5\n  }}\n}}\n{{state_descriptions}}: {{\n  \"aircraft_queue\": \"An ordered list of aircraft objects currently in the arrival sequence, including their flight ID and current estimated time of arrival (ETA).\",\n  \"runway_status\": \"A mapping of runway identifiers to their current availability status and the time the next landing slot becomes available.\",\n  \"flight_metadata\": \"Detailed data for each flight, including wake turbulence category (Heavy/Medium/Light) and remaining fuel in minutes.\",\n  \"environmental_factors\": \"Current conditions affecting landing, such as wind speed/direction and visibility markers.\"\n}}\n{action_set_definitions}: {\n  \"get_environmental_data\": {\n    \"description\": \"Retrieves current weather conditions including visibility and wind speed.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"visibility_meters\": 1200,\n      \"wind_speed_kts\": 15\n    }\n  },\n  \"get_runway_arrival_sequence\": {\n    \"description\": \"Retrieves the ordered arrival queue for a specific runway.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"runway_id\": {\n          \"type\": \"string\",\n          \"description\": \"The identifier of the runway (e.g., '09L').\"\n        }\n      },\n      \"required\": [\n        \"runway_id\"\n      ]\n    },\n    \"example_output\": {\n      \"arrival_queue\": [\n        {\n          \"flight_id\": \"AFR442\",\n          \"sequence_index\": 0\n        },\n        {\n          \"flight_id\": \"BAW123\",\n          \"sequence_index\": 1\n        }\n      ]\n    }\n  },\n  \"get_flight_metadata\": {\n    \"description\": \"Retrieves detailed information for a specific flight, including its wake turbulence category, current ETA, and descent status.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"flight_id\": {\n          \"type\": \"string\",\n          \"description\": \"The flight identifier.\"\n        }\n      },\n      \"required\": [\n        \"flight_id\"\n      ]\n    },\n    \"example_output\": {\n      \"wake_category\": \"Heavy\",\n      \"current_eta_seconds\": 36000,\n      \"ground_speed_kts\": 450,\n      \"distance_to_tod_nm\": 45.5,\n      \"fuel_remaining_min\": 120\n    }\n  },\n  \"get_recat_eu_separation\": {\n    \"description\": \"Returns the required RECAT-EU longitudinal separation minima in Nautical Miles (NM) between a leading and trailing aircraft pair based on their wake categories.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"lead_category\": {\n          \"type\": \"string\",\n          \"description\": \"Wake category of the leading aircraft.\"\n        },\n        \"trail_category\": {\n          \"type\": \"string\",\n          \"description\": \"Wake category of the trailing aircraft.\"\n        }\n      },\n      \"required\": [\n        \"lead_category\",\n        \"trail_category\"\n      ]\n    },\n    \"example_output\": {\n      \"min_separation_nm\": 4.0\n    }\n  },\n  \"apply_pre_descent_speed_adjustment\": {\n    \"description\": \"Updates a flight's speed profile before it reaches Top of Descent (ToD) to achieve a target arrival time at the runway threshold.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"flight_id\": {\n          \"type\": \"string\",\n          \"description\": \"The flight identifier.\"\n        },\n        \"target_eta_seconds\": {\n          \"type\": \"number\",\n          \"description\": \"The new target Estimated Time of Arrival in seconds from epoch to ensure zero LFT.\"\n        }\n      },\n      \"required\": [\n        \"flight_id\",\n        \"target_eta_seconds\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"success\",\n      \"adjusted_speed_mach\": 0.78\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_environmental_data",
+      "description": "Retrieves current weather conditions including visibility and wind speed.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "visibility_meters": 1200,
+        "wind_speed_kts": 15
+      }
+    },
+    {
+      "name": "get_runway_arrival_sequence",
+      "description": "Retrieves the ordered arrival queue for a specific runway.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "runway_id": {
+            "type": "string",
+            "description": "The identifier of the runway (e.g., '09L')."
+          }
+        },
+        "required": [
+          "runway_id"
+        ]
+      },
+      "example_output": {
+        "arrival_queue": [
+          {
+            "flight_id": "AFR442",
+            "sequence_index": 0
+          },
+          {
+            "flight_id": "BAW123",
+            "sequence_index": 1
+          }
+        ]
+      }
+    },
+    {
+      "name": "get_flight_metadata",
+      "description": "Retrieves detailed information for a specific flight, including its wake turbulence category, current ETA, and descent status.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "flight_id": {
+            "type": "string",
+            "description": "The flight identifier."
+          }
+        },
+        "required": [
+          "flight_id"
+        ]
+      },
+      "example_output": {
+        "wake_category": "Heavy",
+        "current_eta_seconds": 36000,
+        "ground_speed_kts": 450,
+        "distance_to_tod_nm": 45.5,
+        "fuel_remaining_min": 120
+      }
+    },
+    {
+      "name": "get_recat_eu_separation",
+      "description": "Returns the required RECAT-EU longitudinal separation minima in Nautical Miles (NM) between a leading and trailing aircraft pair based on their wake categories.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "lead_category": {
+            "type": "string",
+            "description": "Wake category of the leading aircraft."
+          },
+          "trail_category": {
+            "type": "string",
+            "description": "Wake category of the trailing aircraft."
+          }
+        },
+        "required": [
+          "lead_category",
+          "trail_category"
+        ]
+      },
+      "example_output": {
+        "min_separation_nm": 4.0
+      }
+    },
+    {
+      "name": "apply_pre_descent_speed_adjustment",
+      "description": "Updates a flight's speed profile before it reaches Top of Descent (ToD) to achieve a target arrival time at the runway threshold.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "flight_id": {
+            "type": "string",
+            "description": "The flight identifier."
+          },
+          "target_eta_seconds": {
+            "type": "number",
+            "description": "The new target Estimated Time of Arrival in seconds from epoch to ensure zero LFT."
+          }
+        },
+        "required": [
+          "flight_id",
+          "target_eta_seconds"
+        ]
+      },
+      "example_output": {
+        "status": "success",
+        "adjusted_speed_mach": 0.78
+      }
+    }
+  ],
+  "state_description": {
+    "aircraft_queue": "An ordered list of aircraft objects currently in the arrival sequence, including their flight ID and current estimated time of arrival (ETA).",
+    "runway_status": "A mapping of runway identifiers to their current availability status and the time the next landing slot becomes available.",
+    "flight_metadata": "Detailed data for each flight, including wake turbulence category (Heavy/Medium/Light) and remaining fuel in minutes.",
+    "environmental_factors": "Current conditions affecting landing, such as wind speed/direction and visibility markers."
+  },
+  "task_initial_state": {
+    "aircraft_queue": [
+      {
+        "flight_id": "AFR442S",
+        "eta": "08:12:00"
+      },
+      {
+        "flight_id": "AFR422",
+        "eta": "08:14:15"
+      },
+      {
+        "flight_id": "AFR442",
+        "eta": "08:16:30"
+      },
+      {
+        "flight_id": "BAW888",
+        "eta": "08:18:00"
+      },
+      {
+        "flight_id": "AFR44",
+        "eta": "08:20:00"
+      }
+    ],
+    "runway_status": {
+      "09L": {
+        "status": "active",
+        "next_slot": "08:12:00"
+      },
+      "09R": {
+        "status": "active",
+        "next_slot": "08:15:00"
+      }
+    },
+    "flight_metadata": {
+      "AFR442S": {
+        "wake_category": "Medium",
+        "remaining_fuel": 95,
+        "distance_to_go_nm": 45.0,
+        "distance_to_tod_nm": 0.0,
+        "cruise_speed_kts": 420
+      },
+      "AFR422": {
+        "wake_category": "Medium",
+        "remaining_fuel": 110,
+        "distance_to_go_nm": 62.0,
+        "distance_to_tod_nm": 0.0,
+        "cruise_speed_kts": 430
+      },
+      "AFR442": {
+        "wake_category": "Medium",
+        "remaining_fuel": 140,
+        "distance_to_go_nm": 138.0,
+        "distance_to_tod_nm": 14.5,
+        "cruise_speed_kts": 445
+      },
+      "BAW888": {
+        "wake_category": "Heavy",
+        "remaining_fuel": 210,
+        "distance_to_go_nm": 154.0,
+        "distance_to_tod_nm": 32.0,
+        "cruise_speed_kts": 495,
+        "time_to_lose_sec": 115
+      },
+      "AFR44": {
+        "wake_category": "Light",
+        "remaining_fuel": 80,
+        "distance_to_go_nm": 170.0,
+        "distance_to_tod_nm": 45.0,
+        "cruise_speed_kts": 380
+      }
+    },
+    "environmental_factors": {
+      "visibility": "800m_fog",
+      "wind_kt": 5
+    }
+  }
+}

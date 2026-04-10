@@ -1,0 +1,261 @@
+{
+  "environment_name": "env_38c3cf2e264e",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM) for Quality Defect Root Cause Analysis (RCA).\n- **Core Objective**: Based on the current internal state $s_t$ and the Agent's investigation action $a_t$, simulate the evolution of the manufacturing environment/investigation context and predict the observation $o_{{t+1}}$ (test results, log data, sensor readings) obtained by the Agent.\n- **Emphasis**: You are the simulation engine. You do not solve the defect; you provide the consistent environment responses that allow an Agent to diagnose the root cause. You maintain the 'ground truth' of the production environment internally.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions between the World Model and the Agent must maintain context consistency. If an action modifies a component (e.g., recalibrating a machine), subsequent observations must reflect this change. The internal state ensures that if a defect is caused by a specific sensor drift, that drift remains present until corrected or until it evolves according to physical logic.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. This JSON must contain the following fields:\n- `\"name\"`: Specifies the name of the action function to execute.\n- The remaining fields are the parameter names and corresponding values required by that action function.\n\nExample:\n```json\n{{\n \"name\": \"query_sensor_log\",\n \"arguments\": {{\n    \"sensor_id\": \"TEMP_01\",\n    \"start_time\": \"2025-01-01T08:00:00\",\n    \"end_time\": \"2025-01-01T09:00:00\"\n  }}\n}}\n```\n\nYou must parse these inputs and simulate the resulting observation based on the internal state.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nFor invalid parameters (e.g., querying a non-existent machine ID), undefined actions, or state conflicts, return structured error information: `{{\"error\": \"Description of error\"}}`. Do not fabricate fictitious successful responses for invalid inputs.\n\n##### Output Assembly\nFor every action function call, you must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition (the Observation).\n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, `new_state`, or any hidden variables like the 'hidden_root_cause'. State maintenance is internal. The Agent must only see the specific return values (Observations) defined in the action.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to JSON for both state management (internal) and observation output.\n- **Factuality**: Do not invent data that contradicts the current environment state.\n- **Consistency**: If a machine is flagged as 'Down' in the state, any action trying to 'Run_Test' on it must return a failure observation until the state is updated.\n- **Realism**: Simulated sensor noise, log timestamps, and manufacturing physics must align with a professional industrial environment.\n- **Quality**: Observations should be detailed enough to allow for logical deduction.\n- **Encapsulation**: Strictly hide the internal state structure from the output. Only expose information that is explicitly returned by the action function. Do not output the state update text to the Agent.\n{{initial_state}}: {{\n  \"case_id\": \"RCA-2025-TCU-009-PREREQ\",\n  \"defect_manifest\": {{\n    \"symptom\": \"Intermittent communication loss (Address Bus Stuck-At Faults)\",\n    \"affected_batch\": \"SERIES-4-TCU\",\n    \"field_reliability_data\": \"Units fail after ~14,000 hours in 45°C ambient. Typical field thermal stress is 2 cycles/day between 25°C and 75°C (Delta-T = 50°C). Weibull Beta (β) is 3.1.\"\n  }},\n  \"production_line_status\": {{\n    \"thermal_shock_chamber_B2\": {{\n      \"status\": \"Ready\",\n      \"interlock\": \"LIMS_DATA_LOCK_ACTIVE\",\n      \"message\": \"Start command inhibited: Missing Pre-Stress Baseline Measurements for Batch-S4.\"\n    }},\n    \"available_units\": {{\n      \"SN-001\": \"In Storage (Reference)\",\n      \"SN-005\": \"Awaiting Characterization\",\n      \"SN-006\": \"Awaiting Characterization\",\n      \"SN-007\": \"Awaiting Characterization\"\n    }},\n    \"diagnostic_tools\": {{\n      \"digital_multi_meter\": \"online\",\n      \"tcu_diagnostic_jig\": \"online\",\n      \"acoustic_microscope\": \"online\"\n    }},\n    \"material_limits\": \"Max Operating Temp: 150°C; Case Tg: 160°C.\"\n  }},\n  \"hidden_root_cause\": \"The defect is low-cycle solder fatigue at the BGA-484 interface. Using the Coffin-Manson model (k=2.7), a 10-year field life (7,300 cycles at Delta-T=50) must be simulated. With a laboratory Delta-T of 140°C (-40°C to 100°C), the Acceleration Factor is ~16.14, requiring exactly 453 lab cycles. The Agent must first execute the 'measure_baseline' action on the test units and 'register_baseline_to_lims' before the chamber will accept a 'start_stress_test' command.\",\n  \"investigation_history\": [\n    \"Field returns logged into LIMS.\",\n    \"Visual inspection of housing: No anomalies.\"\n  ]\n}}\n{{state_descriptions}}: {{\n  \"case_id\": \"Unique identifier for the quality defect investigation.\",\n  \"defect_manifest\": \"Description of the reported defect symptoms and affected batch.\",\n  \"production_line_status\": \"The operational status of all units in the production line.\",\n  \"hidden_root_cause\": \"The ground truth cause of the defect (hidden from Agent).\",\n  \"investigation_history\": \"Internal log of actions taken and their outcomes to ensure temporal consistency.\"\n}}\n{action_set_definitions}: {\n  \"get_investigation_summary\": {\n    \"description\": \"Retrieves the current investigation context, including the case ID, defect manifestation, and any previous steps taken from the history log.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"case_id\": \"TCU-2024-009\",\n      \"defect_manifest\": \"Sudden memory corruption in hot climates.\",\n      \"investigation_history\": []\n    }\n  },\n  \"fetch_field_telemetry\": {\n    \"description\": \"Accesses the field service database to retrieve environmental stress profiles and failure logs for units currently in service.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"case_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the quality defect investigation.\"\n        }\n      },\n      \"required\": [\n        \"case_id\"\n      ]\n    },\n    \"example_output\": {\n      \"avg_field_temp\": \"45C\",\n      \"peak_field_temp\": \"65C\",\n      \"field_cycles_per_year\": 365\n    }\n  },\n  \"list_laboratory_inventory\": {\n    \"description\": \"Lists all hardware units available in the lab, including their Serial Numbers (SN) and current operational status.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"case_id\": {\n          \"type\": \"string\",\n          \"description\": \"The case ID to filter relevant hardware batches.\"\n        }\n      },\n      \"required\": [\n        \"case_id\"\n      ]\n    },\n    \"example_output\": {\n      \"units\": [\n        {\n          \"sn\": \"SN-001\",\n          \"type\": \"Golden Reference\",\n          \"location\": \"Storage Cabinet\"\n        },\n        {\n          \"sn\": \"SN-102\",\n          \"type\": \"Test Sample\",\n          \"location\": \"Lab Bench\"\n        }\n      ]\n    }\n  },\n  \"calculate_acceleration_parameters\": {\n    \"description\": \"Uses Physics-of-Failure (PoF) models to calculate the required laboratory cycles to simulate a specific field life based on field telemetry and lab stress levels.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"target_years\": {\n          \"type\": \"number\",\n          \"description\": \"The desired field service life to simulate (e.g., 10).\"\n        },\n        \"lab_temperature_celsius\": {\n          \"type\": \"number\",\n          \"description\": \"The temperature setting for the lab stress test (must not exceed 140C).\"\n        },\n        \"field_telemetry_data\": {\n          \"type\": \"object\",\n          \"description\": \"Data retrieved from fetch_field_telemetry.\"\n        }\n      },\n      \"required\": [\n        \"target_years\",\n        \"lab_temperature_celsius\",\n        \"field_telemetry_data\"\n      ]\n    },\n    \"example_output\": {\n      \"required_cycles\": 1500,\n      \"acceleration_factor\": 24.3\n    }\n  },\n  \"register_baseline_signature\": {\n    \"description\": \"Performs initial non-destructive characterization and registers the unit's integrity signature in the traceability system. This MUST be done before environmental stress.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"sn\": {\n          \"type\": \"string\",\n          \"description\": \"The Serial Number of the unit.\"\n        }\n      },\n      \"required\": [\n        \"sn\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"Registered\",\n      \"signature_id\": \"SIG-99210\"\n    }\n  },\n  \"perform_non_destructive_analysis\": {\n    \"description\": \"Conducts high-precision analysis (e.g., X-ray, acoustic microscopy) that does not damage the unit. Restricted for use on Golden Reference units.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"sn\": {\n          \"type\": \"string\",\n          \"description\": \"The Serial Number of the unit.\"\n        }\n      },\n      \"required\": [\n        \"sn\"\n      ]\n    },\n    \"example_output\": {\n      \"structural_integrity\": \"Nominal\",\n      \"internal_observations\": \"No delamination detected.\"\n    }\n  },\n  \"execute_environmental_stress_test\": {\n    \"description\": \"Subjects a test sample to thermal cycling in the lab equipment.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"sn\": {\n          \"type\": \"string\",\n          \"description\": \"The Serial Number of the unit.\"\n        },\n        \"cycle_count\": {\n          \"type\": \"integer\",\n          \"description\": \"Total number of cycles to run.\"\n        },\n        \"temperature_celsius\": {\n          \"type\": \"number\",\n          \"description\": \"Test temperature (Constraint: Max 140C).\"\n        }\n      },\n      \"required\": [\n        \"sn\",\n        \"cycle_count\",\n        \"temperature_celsius\"\n      ]\n    },\n    \"example_output\": {\n      \"test_status\": \"Completed\",\n      \"failure_detected\": true,\n      \"cycle_at_failure\": 1240\n    }\n  },\n  \"diagnose_failure_mechanism\": {\n    \"description\": \"Performs deep-dive failure analysis (e.g., cross-sectioning) on units that failed during stress testing to identify the root cause.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"sn\": {\n          \"type\": \"string\",\n          \"description\": \"The Serial Number of the failed unit.\"\n        }\n      },\n      \"required\": [\n        \"sn\"\n      ]\n    },\n    \"example_output\": {\n      \"primary_mechanism\": \"Solder Joint Fatigue\",\n      \"confidence_score\": 0.95\n    }\n  },\n  \"submit_investigation_report\": {\n    \"description\": \"Submits the final findings including the identified mechanism and the validated cycle count for 10-year reliability.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"case_id\": {\n          \"type\": \"string\",\n          \"description\": \"The investigation case ID.\"\n        },\n        \"failure_mechanism\": {\n          \"type\": \"string\",\n          \"description\": \"The identified primary root cause.\"\n        },\n        \"validated_cycle_count\": {\n          \"type\": \"integer\",\n          \"description\": \"The cycles required for 10-year field life.\"\n        }\n      },\n      \"required\": [\n        \"case_id\",\n        \"failure_mechanism\",\n        \"validated_cycle_count\"\n      ]\n    },\n    \"example_output\": {\n      \"report_status\": \"Accepted\",\n      \"filing_id\": \"REP-554\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_investigation_summary",
+      "description": "Retrieves the current investigation context, including the case ID, defect manifestation, and any previous steps taken from the history log.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "case_id": "TCU-2024-009",
+        "defect_manifest": "Sudden memory corruption in hot climates.",
+        "investigation_history": []
+      }
+    },
+    {
+      "name": "fetch_field_telemetry",
+      "description": "Accesses the field service database to retrieve environmental stress profiles and failure logs for units currently in service.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "case_id": {
+            "type": "string",
+            "description": "The unique identifier for the quality defect investigation."
+          }
+        },
+        "required": [
+          "case_id"
+        ]
+      },
+      "example_output": {
+        "avg_field_temp": "45C",
+        "peak_field_temp": "65C",
+        "field_cycles_per_year": 365
+      }
+    },
+    {
+      "name": "list_laboratory_inventory",
+      "description": "Lists all hardware units available in the lab, including their Serial Numbers (SN) and current operational status.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "case_id": {
+            "type": "string",
+            "description": "The case ID to filter relevant hardware batches."
+          }
+        },
+        "required": [
+          "case_id"
+        ]
+      },
+      "example_output": {
+        "units": [
+          {
+            "sn": "SN-001",
+            "type": "Golden Reference",
+            "location": "Storage Cabinet"
+          },
+          {
+            "sn": "SN-102",
+            "type": "Test Sample",
+            "location": "Lab Bench"
+          }
+        ]
+      }
+    },
+    {
+      "name": "calculate_acceleration_parameters",
+      "description": "Uses Physics-of-Failure (PoF) models to calculate the required laboratory cycles to simulate a specific field life based on field telemetry and lab stress levels.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "target_years": {
+            "type": "number",
+            "description": "The desired field service life to simulate (e.g., 10)."
+          },
+          "lab_temperature_celsius": {
+            "type": "number",
+            "description": "The temperature setting for the lab stress test (must not exceed 140C)."
+          },
+          "field_telemetry_data": {
+            "type": "object",
+            "description": "Data retrieved from fetch_field_telemetry."
+          }
+        },
+        "required": [
+          "target_years",
+          "lab_temperature_celsius",
+          "field_telemetry_data"
+        ]
+      },
+      "example_output": {
+        "required_cycles": 1500,
+        "acceleration_factor": 24.3
+      }
+    },
+    {
+      "name": "register_baseline_signature",
+      "description": "Performs initial non-destructive characterization and registers the unit's integrity signature in the traceability system. This MUST be done before environmental stress.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "sn": {
+            "type": "string",
+            "description": "The Serial Number of the unit."
+          }
+        },
+        "required": [
+          "sn"
+        ]
+      },
+      "example_output": {
+        "status": "Registered",
+        "signature_id": "SIG-99210"
+      }
+    },
+    {
+      "name": "perform_non_destructive_analysis",
+      "description": "Conducts high-precision analysis (e.g., X-ray, acoustic microscopy) that does not damage the unit. Restricted for use on Golden Reference units.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "sn": {
+            "type": "string",
+            "description": "The Serial Number of the unit."
+          }
+        },
+        "required": [
+          "sn"
+        ]
+      },
+      "example_output": {
+        "structural_integrity": "Nominal",
+        "internal_observations": "No delamination detected."
+      }
+    },
+    {
+      "name": "execute_environmental_stress_test",
+      "description": "Subjects a test sample to thermal cycling in the lab equipment.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "sn": {
+            "type": "string",
+            "description": "The Serial Number of the unit."
+          },
+          "cycle_count": {
+            "type": "integer",
+            "description": "Total number of cycles to run."
+          },
+          "temperature_celsius": {
+            "type": "number",
+            "description": "Test temperature (Constraint: Max 140C)."
+          }
+        },
+        "required": [
+          "sn",
+          "cycle_count",
+          "temperature_celsius"
+        ]
+      },
+      "example_output": {
+        "test_status": "Completed",
+        "failure_detected": true,
+        "cycle_at_failure": 1240
+      }
+    },
+    {
+      "name": "diagnose_failure_mechanism",
+      "description": "Performs deep-dive failure analysis (e.g., cross-sectioning) on units that failed during stress testing to identify the root cause.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "sn": {
+            "type": "string",
+            "description": "The Serial Number of the failed unit."
+          }
+        },
+        "required": [
+          "sn"
+        ]
+      },
+      "example_output": {
+        "primary_mechanism": "Solder Joint Fatigue",
+        "confidence_score": 0.95
+      }
+    },
+    {
+      "name": "submit_investigation_report",
+      "description": "Submits the final findings including the identified mechanism and the validated cycle count for 10-year reliability.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "case_id": {
+            "type": "string",
+            "description": "The investigation case ID."
+          },
+          "failure_mechanism": {
+            "type": "string",
+            "description": "The identified primary root cause."
+          },
+          "validated_cycle_count": {
+            "type": "integer",
+            "description": "The cycles required for 10-year field life."
+          }
+        },
+        "required": [
+          "case_id",
+          "failure_mechanism",
+          "validated_cycle_count"
+        ]
+      },
+      "example_output": {
+        "report_status": "Accepted",
+        "filing_id": "REP-554"
+      }
+    }
+  ],
+  "state_description": {
+    "case_id": "Unique identifier for the quality defect investigation.",
+    "defect_manifest": "Description of the reported defect symptoms and affected batch.",
+    "production_line_status": "The operational status of all units in the production line.",
+    "hidden_root_cause": "The ground truth cause of the defect (hidden from Agent).",
+    "investigation_history": "Internal log of actions taken and their outcomes to ensure temporal consistency."
+  },
+  "task_initial_state": {
+    "case_id": "RCA-2025-TCU-009-PREREQ",
+    "defect_manifest": {
+      "symptom": "Intermittent communication loss (Address Bus Stuck-At Faults)",
+      "affected_batch": "SERIES-4-TCU",
+      "field_reliability_data": "Units fail after ~14,000 hours in 45°C ambient. Typical field thermal stress is 2 cycles/day between 25°C and 75°C (Delta-T = 50°C). Weibull Beta (β) is 3.1."
+    },
+    "production_line_status": {
+      "thermal_shock_chamber_B2": {
+        "status": "Ready",
+        "interlock": "LIMS_DATA_LOCK_ACTIVE",
+        "message": "Start command inhibited: Missing Pre-Stress Baseline Measurements for Batch-S4."
+      },
+      "available_units": {
+        "SN-001": "In Storage (Reference)",
+        "SN-005": "Awaiting Characterization",
+        "SN-006": "Awaiting Characterization",
+        "SN-007": "Awaiting Characterization"
+      },
+      "diagnostic_tools": {
+        "digital_multi_meter": "online",
+        "tcu_diagnostic_jig": "online",
+        "acoustic_microscope": "online"
+      },
+      "material_limits": "Max Operating Temp: 150°C; Case Tg: 160°C."
+    },
+    "hidden_root_cause": "The defect is low-cycle solder fatigue at the BGA-484 interface. Using the Coffin-Manson model (k=2.7), a 10-year field life (7,300 cycles at Delta-T=50) must be simulated. With a laboratory Delta-T of 140°C (-40°C to 100°C), the Acceleration Factor is ~16.14, requiring exactly 453 lab cycles. The Agent must first execute the 'measure_baseline' action on the test units and 'register_baseline_to_lims' before the chamber will accept a 'start_stress_test' command.",
+    "investigation_history": [
+      "Field returns logged into LIMS.",
+      "Visual inspection of housing: No anomalies."
+    ]
+  }
+}

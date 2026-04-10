@@ -1,0 +1,290 @@
+{
+  "environment_name": "env_fa660f5a4add",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: Act as the simulation engine for an Insurance Claim Adjudication environment. Based on the current internal state $s_t$ and the action $a_t$ executed by the Agent (Adjudicator), you must simulate the internal evolution of the claim processing environment and predict the resulting observation $o_{{t+1}}$ provided to the Agent.\n- **Emphasis**: You are not the adjudicator; you are the environment. You do not make decisions on whether a claim *should* be paid, but rather update the system state and return data based on the actions taken by the Agent.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nYou must maintain a consistent and logical progression of the claim lifecycle. All interactions must respect the history of previous actions, state changes, and the legal/contractual constraints defined within the state (e.g., policy limits, coverage types, and document requirements).\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object containing:\n- `\"name\"`: The specific action function to execute.\n- `\"arguments\"`: A dictionary of parameters required for that function.\n\nExample input:\n```json\n{{\n \"name\": \"verify_coverage\",\n \"arguments\": {{\n    \"claim_id\": \"CLM-9901\",\n    \"policy_id\": \"POL-123\"\n  }}\n}}\n```\nYou must parse this input, apply the logic to the internal state, and generate the appropriate observation.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nIf the Agent attempts an action that is logically impossible (e.g., approving a claim that has already been rejected, requesting a payout exceeding policy limits, or referencing non-existent document IDs), you must return a structured error message:\n- Example: `{{\"error\": \"Invalid Action\", \"message\": \"Cannot update status to 'Approved' without required damage assessment report.\"}}`\nDo not fabricate missing information or assume successful execution of invalid requests.\n\n##### Output Assembly\nFor every action call, you must return a JSON object containing **ONLY** the observation fields defined for that specific action. \n\n**CRITICAL CONSTRAINT**: You must **NOT** output the full internal state or any modified state variables. Your response must be limited strictly to the observation (the return value of the function). The internal state update remains hidden and is only tracked through the conversation history.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to the JSON structure for all outputs.\n- **Factuality**: Use only the data provided in the initial state or generated through valid state transitions.\n- **Consistency**: Ensure the claim status, remaining coverage, and document logs are self-consistent throughout the simulation.\n- **Realism**: Simulate the complexities of insurance adjudication, including pending states for manual reviews or missing documentation errors.\n- **Quality**: Provide clear, professional, and unambiguous observation data.\n- **Encapsulation**: Never reveal the internal state dictionary. Only expose the specific `observation` fields explicitly requested by the action.\n{{initial_state}}: {{\n  \"claim_id\": \"CLM-CAT-9021\",\n  \"policy_details\": {{\n    \"policy_number\": \"POL-H889\",\n    \"coverage_limit\": 600000,\n    \"deductible\": 1000,\n    \"coverage_type\": \"HO-3 CAT\"\n  }},\n  \"claimant_info\": {{\n    \"name\": \"Robert Miller\",\n    \"contact\": \"r.miller@example.com\"\n  }},\n  \"incident_data\": {{\n    \"date\": \"2024-08-20\",\n    \"description\": \"PCS-24 Hurricane Helios: Catastrophic wind damage and total roof failure reported for a 3,200 sq ft primary residence located in the storm buffer zone. Claimant reports house is currently uninhabitable due to structural exposure.\",\n    \"reported_damage_est\": 55000\n  }},\n  \"status\": \"SUBMITTED\",\n  \"document_registry\": [\n    {{\n      \"doc_id\": \"FNOL-9021\",\n      \"type\": \"First_Notice_Of_Loss\",\n      \"verified\": true\n    }}\n  ],\n  \"internal_financial_log\": {{\n    \"total_reserve\": 65000,\n    \"payout_issued\": 0\n  }}\n}}\n{{state_descriptions}}: {{\n  \"claim_id\": \"Unique identifier for the insurance claim.\",\n  \"policy_details\": \"Details of the policyholder's contract, including coverage types and limits.\",\n  \"claimant_info\": \"Personal details of the individual filing the claim.\",\n  \"incident_data\": \"Information regarding the reported incident.\",\n  \"status\": \"The current lifecycle stage of the claim (e.g., SUBMITTED, UNDER_REVIEW, PENDING_INFO, APPROVED, REJECTED, PAID).\",\n  \"document_registry\": \"A list of documents received and verified by the system.\",\n  \"internal_financial_log\": \"Internal tracking of reserves and pending payments.\"\n}}\n{action_set_definitions}: {\n  \"get_claim_summary\": {\n    \"description\": \"Retrieves the basic summary of a claim, including policy ID, claimant name, and current status.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"claim_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the claim (e.g., CLM-CAT-9021).\"\n        }\n      },\n      \"required\": [\n        \"claim_id\"\n      ]\n    },\n    \"example_output\": {\n      \"claim_id\": \"CLM-CAT-9021\",\n      \"policy_id\": \"POL-123\",\n      \"claimant_name\": \"Robert Miller\",\n      \"status\": \"SUBMITTED\"\n    }\n  },\n  \"get_incident_details\": {\n    \"description\": \"Retrieves specific data regarding the reported incident, including catastrophe codes, property descriptions, and reported damage estimates.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"claim_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the claim.\"\n        }\n      },\n      \"required\": [\n        \"claim_id\"\n      ]\n    },\n    \"example_output\": {\n      \"event_code\": \"PCS-24\",\n      \"property_description\": \"3,200 sq ft primary residence\",\n      \"incident_date\": \"2024-08-15\",\n      \"initial_damage_narrative\": \"Wind damage from Hurricane Helios.\"\n    }\n  },\n  \"fetch_policy_provisions\": {\n    \"description\": \"Gets specific coverage limits, deductibles, and Additional Living Expense (ALE) provisions for a policy.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"policy_id\": {\n          \"type\": \"string\",\n          \"description\": \"The policy ID linked to the claimant.\"\n        }\n      },\n      \"required\": [\n        \"policy_id\"\n      ]\n    },\n    \"example_output\": {\n      \"dwelling_limit\": 600000,\n      \"ale_limit_per_diem\": 250,\n      \"ale_max_total\": 30000,\n      \"deductible\": 5000\n    }\n  },\n  \"check_document_registry\": {\n    \"description\": \"Lists all documents currently associated with the claim registry.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"claim_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the claim.\"\n        }\n      },\n      \"required\": [\n        \"claim_id\"\n      ]\n    },\n    \"example_output\": {\n      \"documents\": [\n        {\n          \"doc_id\": \"D-001\",\n          \"type\": \"FNOL\",\n          \"verified\": true\n        },\n        {\n          \"doc_id\": \"D-002\",\n          \"type\": \"Adjuster_Report\",\n          \"verified\": false\n        }\n      ]\n    }\n  },\n  \"fetch_document_content\": {\n    \"description\": \"Retrieves the text or data contents of a specific document in the registry (e.g., reading details from an Adjuster Report).\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"doc_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the document.\"\n        }\n      },\n      \"required\": [\n        \"doc_id\"\n      ]\n    },\n    \"example_output\": {\n      \"content_summary\": \"Adjuster confirms roof destruction. Estimated repair: $45,000. Displacement confirmed.\",\n      \"verified_expenses\": 1200.5\n    }\n  },\n  \"upload_claim_document\": {\n    \"description\": \"Adds necessary documentation to the claim registry (e.g., submitting an adjuster's final assessment or ALE receipts).\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"claim_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the claim.\"\n        },\n        \"document_type\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"Adjuster_Report\",\n            \"ALE_Receipts\",\n            \"Repair_Estimate\"\n          ],\n          \"description\": \"The type of document being uploaded.\"\n        },\n        \"data_payload\": {\n          \"type\": \"object\",\n          \"description\": \"The structured data or content of the document.\"\n        }\n      },\n      \"required\": [\n        \"claim_id\",\n        \"document_type\",\n        \"data_payload\"\n      ]\n    },\n    \"example_output\": {\n      \"doc_id\": \"D-003\",\n      \"status\": \"UPLOADED\"\n    }\n  },\n  \"set_internal_reserves\": {\n    \"description\": \"Updates the financial log to set aside funds for indemnity and ALE based on calculations.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"claim_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the claim.\"\n        },\n        \"indemnity_reserve\": {\n          \"type\": \"number\",\n          \"description\": \"Amount reserved for property damage.\"\n        },\n        \"ale_reserve\": {\n          \"type\": \"number\",\n          \"description\": \"Amount reserved for living expenses.\"\n        }\n      },\n      \"required\": [\n        \"claim_id\",\n        \"indemnity_reserve\",\n        \"ale_reserve\"\n      ]\n    },\n    \"example_output\": {\n      \"reserve_id\": \"RES-55\",\n      \"total_allocated\": 46200.5\n    }\n  },\n  \"update_claim_status\": {\n    \"description\": \"Advances the claim through lifecycle stages (e.g., TRIAGED, APPROVED, PAID).\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"claim_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the claim.\"\n        },\n        \"status\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"TRIAGED\",\n            \"UNDER_REVIEW\",\n            \"APPROVED\",\n            \"PAID\"\n          ]\n        },\n        \"reasoning\": {\n          \"type\": \"string\",\n          \"description\": \"Explanation for the status change.\"\n        }\n      },\n      \"required\": [\n        \"claim_id\",\n        \"status\"\n      ]\n    },\n    \"example_output\": {\n      \"new_status\": \"APPROVED\",\n      \"timestamp\": \"2024-09-01T10:00:00Z\"\n    }\n  },\n  \"execute_disbursement\": {\n    \"description\": \"Triggers the final financial payout to the claimant.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"claim_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the claim.\"\n        },\n        \"payout_amount\": {\n          \"type\": \"number\",\n          \"description\": \"The total amount to be paid.\"\n        },\n        \"auth_code\": {\n          \"type\": \"string\",\n          \"description\": \"Authorization code for the catastrophe event (e.g., PCS-24).\"\n        }\n      },\n      \"required\": [\n        \"claim_id\",\n        \"payout_amount\",\n        \"auth_code\"\n      ]\n    },\n    \"example_output\": {\n      \"transaction_id\": \"TXN-999\",\n      \"status\": \"DISBURSED\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_claim_summary",
+      "description": "Retrieves the basic summary of a claim, including policy ID, claimant name, and current status.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "claim_id": {
+            "type": "string",
+            "description": "The unique identifier for the claim (e.g., CLM-CAT-9021)."
+          }
+        },
+        "required": [
+          "claim_id"
+        ]
+      },
+      "example_output": {
+        "claim_id": "CLM-CAT-9021",
+        "policy_id": "POL-123",
+        "claimant_name": "Robert Miller",
+        "status": "SUBMITTED"
+      }
+    },
+    {
+      "name": "get_incident_details",
+      "description": "Retrieves specific data regarding the reported incident, including catastrophe codes, property descriptions, and reported damage estimates.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "claim_id": {
+            "type": "string",
+            "description": "The unique identifier for the claim."
+          }
+        },
+        "required": [
+          "claim_id"
+        ]
+      },
+      "example_output": {
+        "event_code": "PCS-24",
+        "property_description": "3,200 sq ft primary residence",
+        "incident_date": "2024-08-15",
+        "initial_damage_narrative": "Wind damage from Hurricane Helios."
+      }
+    },
+    {
+      "name": "fetch_policy_provisions",
+      "description": "Gets specific coverage limits, deductibles, and Additional Living Expense (ALE) provisions for a policy.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "policy_id": {
+            "type": "string",
+            "description": "The policy ID linked to the claimant."
+          }
+        },
+        "required": [
+          "policy_id"
+        ]
+      },
+      "example_output": {
+        "dwelling_limit": 600000,
+        "ale_limit_per_diem": 250,
+        "ale_max_total": 30000,
+        "deductible": 5000
+      }
+    },
+    {
+      "name": "check_document_registry",
+      "description": "Lists all documents currently associated with the claim registry.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "claim_id": {
+            "type": "string",
+            "description": "The unique identifier for the claim."
+          }
+        },
+        "required": [
+          "claim_id"
+        ]
+      },
+      "example_output": {
+        "documents": [
+          {
+            "doc_id": "D-001",
+            "type": "FNOL",
+            "verified": true
+          },
+          {
+            "doc_id": "D-002",
+            "type": "Adjuster_Report",
+            "verified": false
+          }
+        ]
+      }
+    },
+    {
+      "name": "fetch_document_content",
+      "description": "Retrieves the text or data contents of a specific document in the registry (e.g., reading details from an Adjuster Report).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "doc_id": {
+            "type": "string",
+            "description": "The unique identifier for the document."
+          }
+        },
+        "required": [
+          "doc_id"
+        ]
+      },
+      "example_output": {
+        "content_summary": "Adjuster confirms roof destruction. Estimated repair: $45,000. Displacement confirmed.",
+        "verified_expenses": 1200.5
+      }
+    },
+    {
+      "name": "upload_claim_document",
+      "description": "Adds necessary documentation to the claim registry (e.g., submitting an adjuster's final assessment or ALE receipts).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "claim_id": {
+            "type": "string",
+            "description": "The unique identifier for the claim."
+          },
+          "document_type": {
+            "type": "string",
+            "enum": [
+              "Adjuster_Report",
+              "ALE_Receipts",
+              "Repair_Estimate"
+            ],
+            "description": "The type of document being uploaded."
+          },
+          "data_payload": {
+            "type": "object",
+            "description": "The structured data or content of the document."
+          }
+        },
+        "required": [
+          "claim_id",
+          "document_type",
+          "data_payload"
+        ]
+      },
+      "example_output": {
+        "doc_id": "D-003",
+        "status": "UPLOADED"
+      }
+    },
+    {
+      "name": "set_internal_reserves",
+      "description": "Updates the financial log to set aside funds for indemnity and ALE based on calculations.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "claim_id": {
+            "type": "string",
+            "description": "The unique identifier for the claim."
+          },
+          "indemnity_reserve": {
+            "type": "number",
+            "description": "Amount reserved for property damage."
+          },
+          "ale_reserve": {
+            "type": "number",
+            "description": "Amount reserved for living expenses."
+          }
+        },
+        "required": [
+          "claim_id",
+          "indemnity_reserve",
+          "ale_reserve"
+        ]
+      },
+      "example_output": {
+        "reserve_id": "RES-55",
+        "total_allocated": 46200.5
+      }
+    },
+    {
+      "name": "update_claim_status",
+      "description": "Advances the claim through lifecycle stages (e.g., TRIAGED, APPROVED, PAID).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "claim_id": {
+            "type": "string",
+            "description": "The unique identifier for the claim."
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "TRIAGED",
+              "UNDER_REVIEW",
+              "APPROVED",
+              "PAID"
+            ]
+          },
+          "reasoning": {
+            "type": "string",
+            "description": "Explanation for the status change."
+          }
+        },
+        "required": [
+          "claim_id",
+          "status"
+        ]
+      },
+      "example_output": {
+        "new_status": "APPROVED",
+        "timestamp": "2024-09-01T10:00:00Z"
+      }
+    },
+    {
+      "name": "execute_disbursement",
+      "description": "Triggers the final financial payout to the claimant.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "claim_id": {
+            "type": "string",
+            "description": "The unique identifier for the claim."
+          },
+          "payout_amount": {
+            "type": "number",
+            "description": "The total amount to be paid."
+          },
+          "auth_code": {
+            "type": "string",
+            "description": "Authorization code for the catastrophe event (e.g., PCS-24)."
+          }
+        },
+        "required": [
+          "claim_id",
+          "payout_amount",
+          "auth_code"
+        ]
+      },
+      "example_output": {
+        "transaction_id": "TXN-999",
+        "status": "DISBURSED"
+      }
+    }
+  ],
+  "state_description": {
+    "claim_id": "Unique identifier for the insurance claim.",
+    "policy_details": "Details of the policyholder's contract, including coverage types and limits.",
+    "claimant_info": "Personal details of the individual filing the claim.",
+    "incident_data": "Information regarding the reported incident.",
+    "status": "The current lifecycle stage of the claim (e.g., SUBMITTED, UNDER_REVIEW, PENDING_INFO, APPROVED, REJECTED, PAID).",
+    "document_registry": "A list of documents received and verified by the system.",
+    "internal_financial_log": "Internal tracking of reserves and pending payments."
+  },
+  "task_initial_state": {
+    "claim_id": "CLM-CAT-9021",
+    "policy_details": {
+      "policy_number": "POL-H889",
+      "coverage_limit": 600000,
+      "deductible": 1000,
+      "coverage_type": "HO-3 CAT"
+    },
+    "claimant_info": {
+      "name": "Robert Miller",
+      "contact": "r.miller@example.com"
+    },
+    "incident_data": {
+      "date": "2024-08-20",
+      "description": "PCS-24 Hurricane Helios: Catastrophic wind damage and total roof failure reported for a 3,200 sq ft primary residence located in the storm buffer zone. Claimant reports house is currently uninhabitable due to structural exposure.",
+      "reported_damage_est": 55000
+    },
+    "status": "SUBMITTED",
+    "document_registry": [
+      {
+        "doc_id": "FNOL-9021",
+        "type": "First_Notice_Of_Loss",
+        "verified": true
+      }
+    ],
+    "internal_financial_log": {
+      "total_reserve": 65000,
+      "payout_issued": 0
+    }
+  }
+}

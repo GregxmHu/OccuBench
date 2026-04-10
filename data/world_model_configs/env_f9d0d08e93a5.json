@@ -1,0 +1,302 @@
+{
+  "environment_name": "env_f9d0d08e93a5",
+  "world_model_system_prompt": "# 1. Role and Objective\n- **Role**: Language World Model (LWM) for Endangered Species Monitoring\n- **Core Objective**: Based on the current internal state $s_t$ and the action $a_t$ executed by the monitoring agent, simulate the environment's internal evolution and predict the resulting observation $o_{{t+1}}$ obtained by the Agent.\n- **Emphasis**: You are the simulation engine. You do not perform conservation tasks yourself; you calculate how the environment (wildlife, weather, equipment) changes and what the sensors/drones report back.\n\n# 2. Environment Management\n\n## State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n## Context Awareness\nAll interactions must maintain absolute context consistency. Changes to drone battery levels, animal movement, and sensor health must persist across turns unless altered by actions or environmental decay.\n\n# 3. Environment Execution\n\n## Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n## Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object containing:\n- `\"name\"`: The action function name.\n- `\"arguments\"`: A dictionary of parameters.\n\nYou must parse this JSON, simulate the transition logic (e.g., moving a drone consumes battery and changes its coordinate state), and determine the resulting observation.\n\n## Environment Behavior Modeling\n\n### Error Handling & Edge Cases\n- If an action is called with insufficient battery, out-of-range coordinates, or invalid IDs, return a structured error (e.g., `{{\"error\": \"Drone 01: Battery insufficient for flight\"}}`).\n- Do not fabricate data; if a sensor is offline, the observation should reflect a failure or null data as defined by the logic.\n\n### Output Assembly\nFor every action function call, you must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition.\n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, `new_state`, or any hidden variables. You must maintain the state internally. The Agent only receives the specific Observation (the return value of the action).\n\n# 4. Key Principles\n- **Format**: Strictly adhere to JSON output.\n- **Factuality**: Simulations must respect the constraints of the equipment and the biological reality of the species (e.g., animals cannot teleport).\n- **Consistency**: If a drone moves North in turn 1, its position in turn 2 must reflect that change.\n- **Realism**: Account for environmental factors like weather interference or terrain limitations.\n- **Encapsulation**: Strictly hide the internal state structure from the output. Only expose information that is explicitly returned by the action function.\n{{initial_state}}: {{\n  \"simulation_timestamp\": \"2024-11-16T03:10:00Z\",\n  \"active_drones\": {{\n    \"Drone_Alpha_01\": {{\n      \"current_coordinates\": [\n        12.445,\n        77.882\n      ],\n      \"battery_percentage\": 12,\n      \"sensor_payload\": \"optical_zoom\"\n    }},\n    \"Drone_Beta_02\": {{\n      \"current_coordinates\": [\n        12.44,\n        77.89\n      ],\n      \"battery_percentage\": 88,\n      \"sensor_payload\": \"thermal_and_acoustic\"\n    }}\n  }},\n  \"ground_sensor_network\": {{\n    \"AudioMoth_S4_A\": {{\n      \"status\": \"alerting\",\n      \"current_reading\": \"High-frequency continuous buzzing/harmonic interference at 15kHz\",\n      \"metadata\": \"Suspected insect swarm activity\"\n    }},\n    \"AudioMoth_S4_B\": {{\n      \"status\": \"alerting\",\n      \"current_reading\": \"Low-frequency infrasonic rumble (15-30Hz) and intermittent snapping sounds\",\n      \"metadata\": \"Signature matches large mammal movement\"\n    }},\n    \"PIR_Motion_S4_01\": {{\n      \"status\": \"alerting\",\n      \"current_reading\": \"Rapid intermittent triggers\",\n      \"metadata\": \"High wind interference with nearby vegetation detected\"\n    }},\n    \"Fence_Segment_402\": {{\n      \"status\": \"voltage_drop\",\n      \"voltage_kv\": 1.1,\n      \"location\": \"Buffer Zone Edge, Plot 402 (Maize)\"\n    }},\n    \"Fence_Segment_403\": {{\n      \"status\": \"active\",\n      \"voltage_kv\": 5.7,\n      \"location\": \"Buffer Zone Edge, Plot 403 (Chili)\"\n    }}\n  }},\n  \"weather_conditions\": {{\n    \"visibility\": \"low\",\n    \"wind_speed\": \"32km/h\",\n    \"condition\": \"stormy\"\n  }},\n  \"tracked_individuals\": [\n    {{\n      \"individual_id\": \"Bull_Lox_15_OldMilly\",\n      \"last_known_coordinates\": [\n        12.448,\n        77.892\n      ],\n      \"status\": \"Stationary/Resting\",\n      \"resistance_profile\": {{\n        \"acoustic\": \"Medium\",\n        \"thermal_strobe\": \"Low\"\n      }}\n    }},\n    {{\n      \"individual_id\": \"Bull_Lox_22_ThePusher\",\n      \"last_known_coordinates\": [\n        12.457,\n        77.903\n      ],\n      \"status\": \"Active/Rapid_Movement\",\n      \"resistance_profile\": {{\n        \"acoustic\": \"Low\",\n        \"thermal_strobe\": \"High (Habituated)\",\n        \"chili_smoke\": \"Low\"\n      }},\n      \"notes\": \"Frequently targets Maize during Harvest stage.\"\n    }}\n  ],\n  \"plot_metadata\": {{\n    \"Plot_402\": {{\n      \"crop\": \"Maize\",\n      \"stage\": \"Harvest\",\n      \"market_value_per_sqm\": 22\n    }},\n    \"Plot_403\": {{\n      \"crop\": \"Chili\",\n      \"stage\": \"Seedling\",\n      \"market_value_per_sqm\": 8\n    }}\n  }}\n}}\n{{state_descriptions}}: {{\n  \"simulation_timestamp\": \"Current time in the monitoring zone (ISO 8601 format or relative)\",\n  \"active_drones\": \"Inventory of drones with their ID, current coordinates, and battery percentage\",\n  \"ground_sensor_network\": \"Status and health of fixed camera traps and acoustic sensors\",\n  \"weather_conditions\": \"Current environmental factors including visibility, wind speed, and precipitation\",\n  \"tracked_individuals\": \"Last known coordinates and health vitals of animals fitted with GPS tags\"\n}}\n{action_set_definitions}: {\n  \"get_alert_summary\": {\n    \"description\": \"Retrieves active early warning alerts from the sensor network, filtered by zone.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"zone_name\": {\n          \"type\": \"string\",\n          \"description\": \"The name of the zone to query (e.g., 'Northern Buffer Zone').\"\n        }\n      },\n      \"required\": [\n        \"zone_name\"\n      ]\n    },\n    \"example_output\": {\n      \"alerts\": [\n        {\n          \"alert_id\": \"ALRT-123\",\n          \"coordinates\": [\n            45.12,\n            -93.45\n          ],\n          \"sensor_type\": \"acoustic\",\n          \"intensity\": 0.85\n        }\n      ]\n    }\n  },\n  \"get_environment_and_sensor_status\": {\n    \"description\": \"Checks weather conditions and the health/calibration status of ground sensors to identify potential environmental noise.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"coordinates\": {\n          \"type\": \"array\",\n          \"items\": {\n            \"type\": \"number\"\n          },\n          \"description\": \"[lat, long] of the area to check.\"\n        }\n      },\n      \"required\": [\n        \"coordinates\"\n      ]\n    },\n    \"example_output\": {\n      \"weather\": {\n        \"visibility\": \"low\",\n        \"wind_speed\": \"45km/h\"\n      },\n      \"sensor_health\": \"degraded_due_to_wind_noise\"\n    }\n  },\n  \"get_available_drones\": {\n    \"description\": \"Lists all active drones, their current battery levels, and locations.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {}\n    },\n    \"example_output\": {\n      \"drones\": [\n        {\n          \"drone_id\": \"DRN-01\",\n          \"battery\": 88,\n          \"status\": \"idle\"\n        }\n      ]\n    }\n  },\n  \"deploy_drone_recon\": {\n    \"description\": \"Dispatches a drone to specific coordinates to capture high-resolution visual and thermal data.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"drone_id\": {\n          \"type\": \"string\"\n        },\n        \"coordinates\": {\n          \"type\": \"array\",\n          \"items\": {\n            \"type\": \"number\"\n          }\n        }\n      },\n      \"required\": [\n        \"drone_id\",\n        \"coordinates\"\n      ]\n    },\n    \"example_output\": {\n      \"visual_confirmation\": \"Elephant detected\",\n      \"individual_tag_id\": \"ELE-005\",\n      \"damage_extent\": \"moderate\"\n    }\n  },\n  \"get_behavioral_history\": {\n    \"description\": \"Retrieves the historical behavioral data and past successful deterrence strategies for a specific tagged individual.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"individual_id\": {\n          \"type\": \"string\"\n        }\n      },\n      \"required\": [\n        \"individual_id\"\n      ]\n    },\n    \"example_output\": {\n      \"history\": \"Resistant to sound, sensitive to strobe lights\",\n      \"recommended_deterrence\": \"strobe_light\"\n    }\n  },\n  \"execute_deterrence\": {\n    \"description\": \"Activates a specific deterrence mechanism via a drone or ground station.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"target_id\": {\n          \"type\": \"string\"\n        },\n        \"strategy\": {\n          \"type\": \"string\"\n        },\n        \"drone_id\": {\n          \"type\": \"string\"\n        }\n      },\n      \"required\": [\n        \"target_id\",\n        \"strategy\",\n        \"drone_id\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"success\",\n      \"result\": \"Individual retreated to buffer interior\"\n    }\n  },\n  \"calculate_economic_loss\": {\n    \"description\": \"Estimates the economic loss based on crop type and the area size of the breach.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"coordinates\": {\n          \"type\": \"array\",\n          \"items\": {\n            \"type\": \"number\"\n          }\n        },\n        \"damage_level\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"none\",\n            \"low\",\n            \"moderate\",\n            \"high\"\n          ]\n        }\n      },\n      \"required\": [\n        \"coordinates\",\n        \"damage_level\"\n      ]\n    },\n    \"example_output\": {\n      \"estimated_loss_usd\": 1250.5,\n      \"crop_type\": \"Maize\"\n    }\n  },\n  \"submit_incident_report\": {\n    \"description\": \"Finalizes a SMART report containing all gathered data, actions taken, and financial impact.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"incident_details\": {\n          \"type\": \"object\"\n        }\n      },\n      \"required\": [\n        \"incident_details\"\n      ]\n    },\n    \"example_output\": {\n      \"report_id\": \"REP-999\",\n      \"timestamp\": \"2023-10-27T10:00:00Z\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_alert_summary",
+      "description": "Retrieves active early warning alerts from the sensor network, filtered by zone.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "zone_name": {
+            "type": "string",
+            "description": "The name of the zone to query (e.g., 'Northern Buffer Zone')."
+          }
+        },
+        "required": [
+          "zone_name"
+        ]
+      },
+      "example_output": {
+        "alerts": [
+          {
+            "alert_id": "ALRT-123",
+            "coordinates": [
+              45.12,
+              -93.45
+            ],
+            "sensor_type": "acoustic",
+            "intensity": 0.85
+          }
+        ]
+      }
+    },
+    {
+      "name": "get_environment_and_sensor_status",
+      "description": "Checks weather conditions and the health/calibration status of ground sensors to identify potential environmental noise.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "coordinates": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            },
+            "description": "[lat, long] of the area to check."
+          }
+        },
+        "required": [
+          "coordinates"
+        ]
+      },
+      "example_output": {
+        "weather": {
+          "visibility": "low",
+          "wind_speed": "45km/h"
+        },
+        "sensor_health": "degraded_due_to_wind_noise"
+      }
+    },
+    {
+      "name": "get_available_drones",
+      "description": "Lists all active drones, their current battery levels, and locations.",
+      "parameters": {
+        "type": "object",
+        "properties": {}
+      },
+      "example_output": {
+        "drones": [
+          {
+            "drone_id": "DRN-01",
+            "battery": 88,
+            "status": "idle"
+          }
+        ]
+      }
+    },
+    {
+      "name": "deploy_drone_recon",
+      "description": "Dispatches a drone to specific coordinates to capture high-resolution visual and thermal data.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "drone_id": {
+            "type": "string"
+          },
+          "coordinates": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            }
+          }
+        },
+        "required": [
+          "drone_id",
+          "coordinates"
+        ]
+      },
+      "example_output": {
+        "visual_confirmation": "Elephant detected",
+        "individual_tag_id": "ELE-005",
+        "damage_extent": "moderate"
+      }
+    },
+    {
+      "name": "get_behavioral_history",
+      "description": "Retrieves the historical behavioral data and past successful deterrence strategies for a specific tagged individual.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "individual_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "individual_id"
+        ]
+      },
+      "example_output": {
+        "history": "Resistant to sound, sensitive to strobe lights",
+        "recommended_deterrence": "strobe_light"
+      }
+    },
+    {
+      "name": "execute_deterrence",
+      "description": "Activates a specific deterrence mechanism via a drone or ground station.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "target_id": {
+            "type": "string"
+          },
+          "strategy": {
+            "type": "string"
+          },
+          "drone_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "target_id",
+          "strategy",
+          "drone_id"
+        ]
+      },
+      "example_output": {
+        "status": "success",
+        "result": "Individual retreated to buffer interior"
+      }
+    },
+    {
+      "name": "calculate_economic_loss",
+      "description": "Estimates the economic loss based on crop type and the area size of the breach.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "coordinates": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            }
+          },
+          "damage_level": {
+            "type": "string",
+            "enum": [
+              "none",
+              "low",
+              "moderate",
+              "high"
+            ]
+          }
+        },
+        "required": [
+          "coordinates",
+          "damage_level"
+        ]
+      },
+      "example_output": {
+        "estimated_loss_usd": 1250.5,
+        "crop_type": "Maize"
+      }
+    },
+    {
+      "name": "submit_incident_report",
+      "description": "Finalizes a SMART report containing all gathered data, actions taken, and financial impact.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "incident_details": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "incident_details"
+        ]
+      },
+      "example_output": {
+        "report_id": "REP-999",
+        "timestamp": "2023-10-27T10:00:00Z"
+      }
+    }
+  ],
+  "state_description": {
+    "simulation_timestamp": "Current time in the monitoring zone (ISO 8601 format or relative)",
+    "active_drones": "Inventory of drones with their ID, current coordinates, and battery percentage",
+    "ground_sensor_network": "Status and health of fixed camera traps and acoustic sensors",
+    "weather_conditions": "Current environmental factors including visibility, wind speed, and precipitation",
+    "tracked_individuals": "Last known coordinates and health vitals of animals fitted with GPS tags"
+  },
+  "task_initial_state": {
+    "simulation_timestamp": "2024-11-16T03:10:00Z",
+    "active_drones": {
+      "Drone_Alpha_01": {
+        "current_coordinates": [
+          12.445,
+          77.882
+        ],
+        "battery_percentage": 12,
+        "sensor_payload": "optical_zoom"
+      },
+      "Drone_Beta_02": {
+        "current_coordinates": [
+          12.44,
+          77.89
+        ],
+        "battery_percentage": 88,
+        "sensor_payload": "thermal_and_acoustic"
+      }
+    },
+    "ground_sensor_network": {
+      "AudioMoth_S4_A": {
+        "status": "alerting",
+        "current_reading": "High-frequency continuous buzzing/harmonic interference at 15kHz",
+        "metadata": "Suspected insect swarm activity"
+      },
+      "AudioMoth_S4_B": {
+        "status": "alerting",
+        "current_reading": "Low-frequency infrasonic rumble (15-30Hz) and intermittent snapping sounds",
+        "metadata": "Signature matches large mammal movement"
+      },
+      "PIR_Motion_S4_01": {
+        "status": "alerting",
+        "current_reading": "Rapid intermittent triggers",
+        "metadata": "High wind interference with nearby vegetation detected"
+      },
+      "Fence_Segment_402": {
+        "status": "voltage_drop",
+        "voltage_kv": 1.1,
+        "location": "Buffer Zone Edge, Plot 402 (Maize)"
+      },
+      "Fence_Segment_403": {
+        "status": "active",
+        "voltage_kv": 5.7,
+        "location": "Buffer Zone Edge, Plot 403 (Chili)"
+      }
+    },
+    "weather_conditions": {
+      "visibility": "low",
+      "wind_speed": "32km/h",
+      "condition": "stormy"
+    },
+    "tracked_individuals": [
+      {
+        "individual_id": "Bull_Lox_15_OldMilly",
+        "last_known_coordinates": [
+          12.448,
+          77.892
+        ],
+        "status": "Stationary/Resting",
+        "resistance_profile": {
+          "acoustic": "Medium",
+          "thermal_strobe": "Low"
+        }
+      },
+      {
+        "individual_id": "Bull_Lox_22_ThePusher",
+        "last_known_coordinates": [
+          12.457,
+          77.903
+        ],
+        "status": "Active/Rapid_Movement",
+        "resistance_profile": {
+          "acoustic": "Low",
+          "thermal_strobe": "High (Habituated)",
+          "chili_smoke": "Low"
+        },
+        "notes": "Frequently targets Maize during Harvest stage."
+      }
+    ],
+    "plot_metadata": {
+      "Plot_402": {
+        "crop": "Maize",
+        "stage": "Harvest",
+        "market_value_per_sqm": 22
+      },
+      "Plot_403": {
+        "crop": "Chili",
+        "stage": "Seedling",
+        "market_value_per_sqm": 8
+      }
+    }
+  }
+}

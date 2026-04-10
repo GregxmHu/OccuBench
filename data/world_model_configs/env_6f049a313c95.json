@@ -1,0 +1,169 @@
+{
+  "environment_name": "env_6f049a313c95",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: Based on the current state $s_t$ and action $a_t$, simulate the environment changes of the Excavation Site Grid Assignment scenario and predict the observation $o_{{t+1}}$ obtained by the Agent.\n- **Emphasis**: The LWM does not execute real-world operations but performs internal state evolution and observation generation to simulate the logic of a field excavation project.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions between the World Model and the Agent must maintain context consistency. The evolution of the excavation site (e.g., progress of digging, team locations, discovery logs) must be tracked over time and remain logically coherent across multiple turns.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. This JSON must contain the following fields:\n- `\"name\"`: Specifies the name of the action function to execute.\n- The remaining fields are the parameter names and corresponding values required by that action function.\n\nExample:\n```json\n{{\n \"name\": \"assign_team\",\n \"arguments\": {{\n    \"grid_id\": \"B4\",\n    \"team_name\": \"Alpha_Unit\"\n  }}\n}}\n```\n\nThe Language World Model must correctly parse such JSON inputs and simulate the execution results based on the site logic.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nFor invalid parameters (e.g., non-existent grid IDs), undefined actions, state conflicts (e.g., assigning two teams to the same small grid), or empty inputs, return structured error information (e.g., `{{\"error\": \"Grid B4 is already fully occupied\"}}`). Do not fabricate states or fictitious responses.\n\n##### Output Assembly\nFor every action function call, the model must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition.\n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, `new_state`, or any hidden variables. The state maintenance is implicit in the history. The Agent must only see the specific return values (the Observation) defined in the action.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to specified JSON and text formats.\n- **Factuality**: Do not fabricate non-existent functions, site data, or responses.\n- **Consistency**: State evolution logic must be self-consistent (e.g., a grid cannot be 'fully excavated' and then later 'unexplored' without a valid reason).\n- **Realism**: Simulated behaviors must align with reasonable excavation dynamics, such as weather delays or varying soil difficulty.\n- **Quality**: Language must be clear, unambiguous, and structurally complete.\n- **Encapsulation**: Strictly hide the internal state structure from the output. Only expose information that is explicitly returned by the action function. Do not output the state update.\n{{initial_state}}: {{\n  \"grid_status\": {{\n    \"Sector_A_Alpha\": {{\n      \"status\": \"completed\",\n      \"depth_meters\": 3.1\n    }},\n    \"Sector_A_Gamma\": {{\n      \"status\": \"completed\",\n      \"depth_meters\": 3.1\n    }},\n    \"Sector_A_Beta\": {{\n      \"status\": \"unexplored\",\n      \"depth_meters\": 0\n    }},\n    \"Masonry_Marker_North\": {{\n      \"status\": \"unexplored\",\n      \"depth_meters\": 0\n    }},\n    \"Masonry_Marker_South\": {{\n      \"status\": \"unexplored\",\n      \"depth_meters\": 0\n    }},\n    \"Masonry_Marker_West\": {{\n      \"status\": \"unexplored\",\n      \"depth_meters\": 0\n    }}\n  }},\n  \"team_assignments\": {{\n    \"Team_Sigma\": {{\n      \"current_grid\": null,\n      \"task\": \"idle\"\n    }},\n    \"Team_Beta\": {{\n      \"current_grid\": \"Sector_B_01\",\n      \"task\": \"recording_stratigraphy\"\n    }}\n  }},\n  \"discovery_registry\": [\n    {{\n      \"item\": \"1954 Survey Fragment\",\n      \"description\": \"Historical notes identifying Masonry_Marker_North, South, and West as the primary control points for the temple grid baseline.\"\n    }}\n  ],\n  \"environmental_factors\": {{\n    \"weather\": \"clear\",\n    \"equipment_status\": \"nominal\"\n  }}\n}}\n{{state_descriptions}}: {{\n  \"grid_status\": \"A map where keys are grid coordinates (e.g., 'A1') and values track status ('unexplored', 'in-progress', 'completed') and depth reached.\",\n  \"team_assignments\": \"Mapping of team names to their current grid location and active task.\",\n  \"discovery_registry\": \"A list of artifacts or significant soil samples found during the simulation.\",\n  \"environmental_factors\": \"Current conditions affecting work speed, such as weather and equipment health.\"\n}}\n{action_set_definitions}: {\n  \"get_site_inventory\": {\n    \"description\": \"Retrieves the current grid status (mapping of coordinates to status and depth) and the discovery registry (list of historical landmarks and artifacts).\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"grid_status\": {\n        \"A1\": {\n          \"status\": \"completed\",\n          \"depth\": 1.5\n        }\n      },\n      \"discovery_registry\": [\n        {\n          \"id\": \"landmark_01\",\n          \"type\": \"masonry_landmark\",\n          \"coordinates\": \"A1\"\n        }\n      ]\n    }\n  },\n  \"verify_historical_coordinates\": {\n    \"description\": \"Cross-references legacy coordinate systems with modern standards using specific masonry landmarks to ensure high-precision spatial reconciliation.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"landmark_ids\": {\n          \"type\": \"array\",\n          \"items\": {\n            \"type\": \"string\"\n          },\n          \"description\": \"A list of masonry landmark IDs found in the discovery registry.\"\n        }\n      },\n      \"required\": [\n        \"landmark_ids\"\n      ]\n    },\n    \"example_output\": {\n      \"verification_result\": \"reconciled\",\n      \"precision\": \"high\"\n    }\n  },\n  \"get_workforce_status\": {\n    \"description\": \"Returns a mapping of all field units/teams to their current grid location and active tasking.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"team_assignments\": {\n        \"Alpha_Unit\": {\n          \"location\": \"B2\",\n          \"active_task\": \"awaiting assignment\"\n        }\n      }\n    }\n  },\n  \"get_environmental_data\": {\n    \"description\": \"Retrieves environmental factors, including weather conditions and equipment health status.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"environmental_factors\": {\n        \"weather\": \"clear\",\n        \"equipment_health\": \"nominal\"\n      }\n    }\n  },\n  \"execute_excavation_operation\": {\n    \"description\": \"Synchronously deploys a team to a grid unit to excavate to a specified depth. This action updates the environment state immediately upon execution.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"team_name\": {\n          \"type\": \"string\",\n          \"description\": \"The name of the unit to be deployed.\"\n        },\n        \"grid_id\": {\n          \"type\": \"string\",\n          \"description\": \"The coordinate ID of the target grid unit.\"\n        },\n        \"target_depth\": {\n          \"type\": \"number\",\n          \"description\": \"The depth in meters to be achieved.\"\n        }\n      },\n      \"required\": [\n        \"team_name\",\n        \"grid_id\",\n        \"target_depth\"\n      ]\n    },\n    \"example_output\": {\n      \"operation_status\": \"complete\",\n      \"final_depth\": 0.5\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_site_inventory",
+      "description": "Retrieves the current grid status (mapping of coordinates to status and depth) and the discovery registry (list of historical landmarks and artifacts).",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "grid_status": {
+          "A1": {
+            "status": "completed",
+            "depth": 1.5
+          }
+        },
+        "discovery_registry": [
+          {
+            "id": "landmark_01",
+            "type": "masonry_landmark",
+            "coordinates": "A1"
+          }
+        ]
+      }
+    },
+    {
+      "name": "verify_historical_coordinates",
+      "description": "Cross-references legacy coordinate systems with modern standards using specific masonry landmarks to ensure high-precision spatial reconciliation.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "landmark_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "A list of masonry landmark IDs found in the discovery registry."
+          }
+        },
+        "required": [
+          "landmark_ids"
+        ]
+      },
+      "example_output": {
+        "verification_result": "reconciled",
+        "precision": "high"
+      }
+    },
+    {
+      "name": "get_workforce_status",
+      "description": "Returns a mapping of all field units/teams to their current grid location and active tasking.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "team_assignments": {
+          "Alpha_Unit": {
+            "location": "B2",
+            "active_task": "awaiting assignment"
+          }
+        }
+      }
+    },
+    {
+      "name": "get_environmental_data",
+      "description": "Retrieves environmental factors, including weather conditions and equipment health status.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "environmental_factors": {
+          "weather": "clear",
+          "equipment_health": "nominal"
+        }
+      }
+    },
+    {
+      "name": "execute_excavation_operation",
+      "description": "Synchronously deploys a team to a grid unit to excavate to a specified depth. This action updates the environment state immediately upon execution.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "team_name": {
+            "type": "string",
+            "description": "The name of the unit to be deployed."
+          },
+          "grid_id": {
+            "type": "string",
+            "description": "The coordinate ID of the target grid unit."
+          },
+          "target_depth": {
+            "type": "number",
+            "description": "The depth in meters to be achieved."
+          }
+        },
+        "required": [
+          "team_name",
+          "grid_id",
+          "target_depth"
+        ]
+      },
+      "example_output": {
+        "operation_status": "complete",
+        "final_depth": 0.5
+      }
+    }
+  ],
+  "state_description": {
+    "grid_status": "A map where keys are grid coordinates (e.g., 'A1') and values track status ('unexplored', 'in-progress', 'completed') and depth reached.",
+    "team_assignments": "Mapping of team names to their current grid location and active task.",
+    "discovery_registry": "A list of artifacts or significant soil samples found during the simulation.",
+    "environmental_factors": "Current conditions affecting work speed, such as weather and equipment health."
+  },
+  "task_initial_state": {
+    "grid_status": {
+      "Sector_A_Alpha": {
+        "status": "completed",
+        "depth_meters": 3.1
+      },
+      "Sector_A_Gamma": {
+        "status": "completed",
+        "depth_meters": 3.1
+      },
+      "Sector_A_Beta": {
+        "status": "unexplored",
+        "depth_meters": 0
+      },
+      "Masonry_Marker_North": {
+        "status": "unexplored",
+        "depth_meters": 0
+      },
+      "Masonry_Marker_South": {
+        "status": "unexplored",
+        "depth_meters": 0
+      },
+      "Masonry_Marker_West": {
+        "status": "unexplored",
+        "depth_meters": 0
+      }
+    },
+    "team_assignments": {
+      "Team_Sigma": {
+        "current_grid": null,
+        "task": "idle"
+      },
+      "Team_Beta": {
+        "current_grid": "Sector_B_01",
+        "task": "recording_stratigraphy"
+      }
+    },
+    "discovery_registry": [
+      {
+        "item": "1954 Survey Fragment",
+        "description": "Historical notes identifying Masonry_Marker_North, South, and West as the primary control points for the temple grid baseline."
+      }
+    ],
+    "environmental_factors": {
+      "weather": "clear",
+      "equipment_status": "nominal"
+    }
+  }
+}

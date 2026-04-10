@@ -1,0 +1,126 @@
+{
+  "environment_name": "env_2fd80b7a9913",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM) for Batch Reactor Process Control.\n- **Core Objective**: Based on the current internal state $s_t$ and the Agent's action $a_t$, simulate the chemical and physical evolution of the batch reactor environment. You will predict the resulting observation $o_{{t+1}}$ obtained by the Agent.\n- **Emphasis**: You are a simulator, not an executor. Your goal is to maintain a self-consistent physical model of the reactor (thermodynamics, kinetics, and fluid dynamics) and provide realistic feedback based on control inputs.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nYou must maintain strict temporal and physical consistency. The state evolution (e.g., temperature rise, reactant depletion) must follow the history of actions and the laws of chemical engineering. \n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. You must parse this JSON to determine the transition. Format:\n- `\"name\"`: The name of the control action (e.g., \"set_heating_power\").\n- Parameters: Specific values for the control (e.g., \"voltage\", \"flow_rate\").\n\nExample Input:\n```json\n{{\n \"name\": \"adjust_cooling_valve\",\n \"arguments\": {{\n    \"opening_percentage\": 45.5\n  }}\n}}\n```\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\n- If an action exceeds physical limits (e.g., valve opening > 100%), return a structured error or simulate a physical constraint limit.\n- For undefined actions or invalid JSON, return: `{{\"error\": \"Invalid action or parameters\"}}`.\n- Do not fabricate successes; if the reactor is in a critical failure state (e.g., explosion), subsequent observations must reflect this.\n\n##### Output Assembly\nFor every action call, return a structured JSON object containing **ONLY** the return fields declared in the action function's definition. \n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the internal state dictionary, the new state vector, or hidden calculation variables. Only expose the \"Observation\".\n\n### 4. Key Principles\n- **Format**: Strictly JSON output.\n- **Factuality**: Align with chemical kinetics (e.g., reaction rates increase with temperature) and thermodynamics.\n- **Consistency**: If the heater is turned off, the temperature cannot spontaneously rise unless an exothermic reaction is occurring.\n- **Realism**: Include realistic noise or delay if the action definition implies it, but prioritize logical consequence.\n- **Encapsulation**: Never reveal the full internal state values (like `{{initial_state}}`) in your final response to the Agent.\n{{initial_state}}: {{\n  \"reactor_temperature_k\": 305.15,\n  \"internal_pressure_bar\": 1.02,\n  \"reactant_a_concentration\": 2.5,\n  \"reactant_b_concentration\": 0.0,\n  \"product_concentration\": 0.0,\n  \"jacket_temperature_k\": 293.15,\n  \"stirrer_speed_rpm\": 650,\n  \"cooling_valve_pos\": 15.0,\n  \"heating_element_power_kw\": 0.0,\n  \"elapsed_process_time_s\": 0\n}}\n{{state_descriptions}}: {{\n  \"reactor_temperature_k\": \"Internal temperature of the reactants in Kelvin.\",\n  \"internal_pressure_bar\": \"Total pressure inside the reactor vessel in bar.\",\n  \"reactant_a_concentration\": \"Current concentration of Reactant A in mol/L.\",\n  \"reactant_b_concentration\": \"Current concentration of Reactant B in mol/L.\",\n  \"product_concentration\": \"Current concentration of the target product in mol/L.\",\n  \"jacket_temperature_k\": \"Temperature of the cooling/heating jacket fluid in Kelvin.\",\n  \"stirrer_speed_rpm\": \"Rotational speed of the internal agitator in Revolutions Per Minute.\",\n  \"cooling_valve_pos\": \"Current position of the cooling water valve (0.0 to 100.0).\",\n  \"heating_element_power_kw\": \"Current power output of the electric heating element in kilowatts.\",\n  \"elapsed_process_time_s\": \"Total time elapsed since the start of the batch in seconds.\"\n}}\n{action_set_definitions}: {\n  \"get_telemetry\": {\n    \"description\": \"Reads the current environmental state from the reactor sensors, including temperature, reactant/product concentrations, and current hardware settings.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"reactor_temperature_k\": 312.4,\n      \"reactant_b_concentration\": 0.04,\n      \"product_concentration\": 1.2,\n      \"cooling_valve_pos\": 20.0,\n      \"stirrer_speed_rpm\": 600\n    }\n  },\n  \"set_cooling_valve\": {\n    \"description\": \"Adjusts the cooling jacket valve position. 0.0 is fully closed, 100.0 is fully open.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"position\": {\n          \"type\": \"number\",\n          \"description\": \"Valve opening percentage (0-100).\"\n        }\n      },\n      \"required\": [\n        \"position\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"success\",\n      \"current_position\": 45.5\n    }\n  },\n  \"set_heating_power\": {\n    \"description\": \"Adjusts the power of the internal heating element in kilowatts.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"power_kw\": {\n          \"type\": \"number\",\n          \"description\": \"Heating power in kW.\"\n        }\n      },\n      \"required\": [\n        \"power_kw\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"success\",\n      \"power_kw\": 0.0\n    }\n  },\n  \"set_stirrer_rpm\": {\n    \"description\": \"Sets the agitation speed of the reactor stirrer.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"rpm\": {\n          \"type\": \"integer\",\n          \"description\": \"Rotational speed in RPM.\"\n        }\n      },\n      \"required\": [\n        \"rpm\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"success\",\n      \"rpm\": 600\n    }\n  },\n  \"set_feed_rate_b\": {\n    \"description\": \"Sets the dosing rate of Reactant B into the reactor.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"flow_rate\": {\n          \"type\": \"number\",\n          \"description\": \"Feeding rate in mol/s.\"\n        }\n      },\n      \"required\": [\n        \"flow_rate\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"success\",\n      \"flow_rate\": 0.005\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_telemetry",
+      "description": "Reads the current environmental state from the reactor sensors, including temperature, reactant/product concentrations, and current hardware settings.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "reactor_temperature_k": 312.4,
+        "reactant_b_concentration": 0.04,
+        "product_concentration": 1.2,
+        "cooling_valve_pos": 20.0,
+        "stirrer_speed_rpm": 600
+      }
+    },
+    {
+      "name": "set_cooling_valve",
+      "description": "Adjusts the cooling jacket valve position. 0.0 is fully closed, 100.0 is fully open.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "position": {
+            "type": "number",
+            "description": "Valve opening percentage (0-100)."
+          }
+        },
+        "required": [
+          "position"
+        ]
+      },
+      "example_output": {
+        "status": "success",
+        "current_position": 45.5
+      }
+    },
+    {
+      "name": "set_heating_power",
+      "description": "Adjusts the power of the internal heating element in kilowatts.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "power_kw": {
+            "type": "number",
+            "description": "Heating power in kW."
+          }
+        },
+        "required": [
+          "power_kw"
+        ]
+      },
+      "example_output": {
+        "status": "success",
+        "power_kw": 0.0
+      }
+    },
+    {
+      "name": "set_stirrer_rpm",
+      "description": "Sets the agitation speed of the reactor stirrer.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "rpm": {
+            "type": "integer",
+            "description": "Rotational speed in RPM."
+          }
+        },
+        "required": [
+          "rpm"
+        ]
+      },
+      "example_output": {
+        "status": "success",
+        "rpm": 600
+      }
+    },
+    {
+      "name": "set_feed_rate_b",
+      "description": "Sets the dosing rate of Reactant B into the reactor.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "flow_rate": {
+            "type": "number",
+            "description": "Feeding rate in mol/s."
+          }
+        },
+        "required": [
+          "flow_rate"
+        ]
+      },
+      "example_output": {
+        "status": "success",
+        "flow_rate": 0.005
+      }
+    }
+  ],
+  "state_description": {
+    "reactor_temperature_k": "Internal temperature of the reactants in Kelvin.",
+    "internal_pressure_bar": "Total pressure inside the reactor vessel in bar.",
+    "reactant_a_concentration": "Current concentration of Reactant A in mol/L.",
+    "reactant_b_concentration": "Current concentration of Reactant B in mol/L.",
+    "product_concentration": "Current concentration of the target product in mol/L.",
+    "jacket_temperature_k": "Temperature of the cooling/heating jacket fluid in Kelvin.",
+    "stirrer_speed_rpm": "Rotational speed of the internal agitator in Revolutions Per Minute.",
+    "cooling_valve_pos": "Current position of the cooling water valve (0.0 to 100.0).",
+    "heating_element_power_kw": "Current power output of the electric heating element in kilowatts.",
+    "elapsed_process_time_s": "Total time elapsed since the start of the batch in seconds."
+  },
+  "task_initial_state": {
+    "reactor_temperature_k": 305.15,
+    "internal_pressure_bar": 1.02,
+    "reactant_a_concentration": 2.5,
+    "reactant_b_concentration": 0.0,
+    "product_concentration": 0.0,
+    "jacket_temperature_k": 293.15,
+    "stirrer_speed_rpm": 650,
+    "cooling_valve_pos": 15.0,
+    "heating_element_power_kw": 0.0,
+    "elapsed_process_time_s": 0
+  }
+}

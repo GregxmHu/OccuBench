@@ -1,0 +1,231 @@
+{
+  "environment_name": "env_969e627d3a33",
+  "world_model_system_prompt": "## 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: Based on the current internal state $s_t$ and the action $a_t$ provided by the Agent, simulate the internal evolution of the General Ledger Reconciliation environment and predict the resulting observation $o_{{t+1}}$.\n- **Emphasis**: You are a simulator. You do not perform real-world accounting or file operations. Your goal is to maintain a logically consistent ledger state and provide realistic feedback (observations) to the Agent based on its actions.\n\n## 2. Environment Management\n\n### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n### Context Awareness\nAll interactions between the World Model and the Agent must maintain strict context consistency. Any changes made to the ledger balances, transaction statuses, or reconciliation logs must persist across the interaction history to ensure that subsequent observations reflect previous actions.\n\n## 3. Environment Execution\n\n### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. This JSON will contain:\n- `\"name\"`: The name of the action function to execute.\n- `\"arguments\"`: A dictionary of parameters required by the function.\n\nYou must parse this input, apply the logic of the General Ledger Reconciliation process (e.g., matching IDs, updating balances, flagging discrepancies), and generate the appropriate response.\n\n### Environment Behavior Modeling\n\n#### Error Handling & Edge Cases\n- If the Agent attempts to reconcile non-existent transaction IDs, return an error: `{{\"error\": \"Transaction ID [ID] not found\"}}`.\n- If an action would result in an accounting impossibility (e.g., reconciling a closed period), return: `{{\"error\": \"Action rejected: Accounting period is closed\"}}`.\n- For undefined actions or malformed parameters, return structured error info and do not update the internal state.\n\n#### Output Assembly\nFor every action function call, you must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition.\n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, the updated state, or any hidden system variables. You are only to output the **Observation** (the specific return values of the action). State maintenance is handled internally and implicitly through the conversation history.\n\n## 4. Key Principles\n- **Format**: Strictly adhere to specified JSON formats for all outputs.\n- **Factuality**: Do not fabricate transactions or accounts that do not exist in the state. Use only the data provided or generated through valid logic.\n- **Consistency**: If a transaction is marked as 'reconciled', it must remain 'reconciled' in all future observations unless an explicit 'un-reconcile' action is taken.\n- **Realism**: Simulation must mimic professional accounting standards, including handling of rounding differences or mismatched timestamps if relevant to the scenario.\n- **Quality**: Ensure all descriptions and error messages are professional and clear.\n- **Encapsulation**: Strictly hide the internal state structure from the Agent. The Agent should only perceive the environment through the observations returned by actions.\n{{initial_state}}: {{\n  \"ledger_balances\": {{\n    \"GL-600-NCI-USD\": 4900.0,\n    \"GL-800-CTA-SYS-USD\": 26000.0,\n    \"GL-100-OPEN-EQUITY-SEK\": 5000000.0,\n    \"GL-200-NET-INC-SEK\": 500000.0\n  }},\n  \"sub_ledger_entries\": [\n    {{\n      \"id\": \"FX-RATE-001\",\n      \"description\": \"Opening Spot Rate (USD/SEK)\",\n      \"rate_value\": 0.095,\n      \"effective_date\": \"2024-02-01\"\n    }},\n    {{\n      \"id\": \"FX-RATE-002\",\n      \"description\": \"Closing Spot Rate (USD/SEK)\",\n      \"rate_value\": 0.1,\n      \"effective_date\": \"2024-02-29\"\n    }},\n    {{\n      \"id\": \"FX-RATE-003\",\n      \"description\": \"Weighted Average Rate (USD/SEK)\",\n      \"rate_value\": 0.098,\n      \"effective_date\": \"2024-02-29\"\n    }},\n    {{\n      \"id\": \"SUB-EQUITY-ROLL\",\n      \"description\": \"NordicSub Equity Roll-forward Workpaper\",\n      \"opening_net_assets_sek\": 5000000.0,\n      \"current_ni_sek\": 500000.0\n    }}\n  ],\n  \"reconciliation_status\": {{\n    \"matched_ids\": [\n      \"FX-RATE-001\",\n      \"FX-RATE-002\",\n      \"FX-RATE-003\"\n    ],\n    \"discrepancies\": [\n      {{\n        \"code\": \"DISC-NCI-001\",\n        \"description\": \"NCI balance at consolidated level does not match NCI share of Net Assets + CTA movement.\",\n        \"status\": \"pending_adjustment\"\n      }}\n    ]\n  }},\n  \"accounting_period\": \"2024-02\",\n  \"is_period_closed\": false\n}}\n{{state_descriptions}}: {{\n  \"ledger_balances\": \"A map of account codes to their current numerical balances in the General Ledger.\",\n  \"sub_ledger_entries\": \"A list of detailed transaction records from sub-ledgers or bank statements to be reconciled.\",\n  \"reconciliation_status\": \"Tracking object showing which transactions are 'matched', 'pending', or 'flagged_discrepancy'.\",\n  \"accounting_period\": \"The current active fiscal period (e.g., '2023-10').\",\n  \"is_period_closed\": \"Indicates if the current period is locked for editing.\"\n}}\n{action_set_definitions}: {\n  \"get_ledger_balances\": {\n    \"description\": \"Retrieves the current numerical balances for specific account codes from the General Ledger for a given subsidiary and period.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"subsidiary\": {\n          \"type\": \"string\",\n          \"description\": \"The name or ID of the subsidiary (e.g., 'NordicSub').\"\n        },\n        \"period\": {\n          \"type\": \"string\",\n          \"description\": \"The fiscal period (e.g., '2024-02').\"\n        },\n        \"account_codes\": {\n          \"type\": \"array\",\n          \"items\": {\n            \"type\": \"string\"\n          },\n          \"description\": \"List of account codes to query (e.g., ['Total_Equity', 'Net_Income', 'NCI_Balance', 'CTA_Account']).\"\n        }\n      },\n      \"required\": [\n        \"subsidiary\",\n        \"period\",\n        \"account_codes\"\n      ]\n    },\n    \"example_output\": {\n      \"balances\": {\n        \"Total_Equity_Opening\": 500000,\n        \"Net_Income_Local\": 45000,\n        \"NCI_Ending_Balance\": 45000,\n        \"Current_CTA_Balance\": -1200\n      },\n      \"currency\": \"USD/SEK\"\n    }\n  },\n  \"get_exchange_rates\": {\n    \"description\": \"Retrieves the opening, closing, and average exchange rates for a specific currency pair and period.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"from_currency\": {\n          \"type\": \"string\",\n          \"description\": \"The source currency (e.g., 'SEK').\"\n        },\n        \"to_currency\": {\n          \"type\": \"string\",\n          \"description\": \"The target reporting currency (e.g., 'USD').\"\n        },\n        \"period\": {\n          \"type\": \"string\",\n          \"description\": \"The fiscal period.\"\n        }\n      },\n      \"required\": [\n        \"from_currency\",\n        \"to_currency\",\n        \"period\"\n      ]\n    },\n    \"example_output\": {\n      \"opening_rate\": 0.095,\n      \"closing_rate\": 0.098,\n      \"average_rate\": 0.096\n    }\n  },\n  \"get_reconciliation_status\": {\n    \"description\": \"Queries the reconciliation tracking object to identify pending discrepancies and current status for a subsidiary.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"subsidiary\": {\n          \"type\": \"string\",\n          \"description\": \"The subsidiary name.\"\n        },\n        \"period\": {\n          \"type\": \"string\",\n          \"description\": \"The fiscal period.\"\n        }\n      },\n      \"required\": [\n        \"subsidiary\",\n        \"period\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"flagged_discrepancy\",\n      \"pending_issues\": [\n        {\n          \"id\": \"ERR-001\",\n          \"description\": \"NCI translation movement mismatch\",\n          \"amount_diff\": 450.0\n        }\n      ]\n    }\n  },\n  \"post_adjustment_journal\": {\n    \"description\": \"Creates a journal entry to adjust ledger balances and fix reconciliation discrepancies.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"subsidiary\": {\n          \"type\": \"string\",\n          \"description\": \"Target subsidiary.\"\n        },\n        \"period\": {\n          \"type\": \"string\",\n          \"description\": \"Target period.\"\n        },\n        \"account_code\": {\n          \"type\": \"string\",\n          \"description\": \"The account to be adjusted (e.g., 'NCI_Balance').\"\n        },\n        \"amount\": {\n          \"type\": \"number\",\n          \"description\": \"The adjustment amount (positive for debit, negative for credit, based on standard accounting rules).\"\n        },\n        \"description\": {\n          \"type\": \"string\",\n          \"description\": \"A memo describing the adjustment.\"\n        }\n      },\n      \"required\": [\n        \"subsidiary\",\n        \"period\",\n        \"account_code\",\n        \"amount\",\n        \"description\"\n      ]\n    },\n    \"example_output\": {\n      \"journal_id\": \"JE-2024-005\",\n      \"status\": \"posted\"\n    }\n  },\n  \"update_reconciliation_record\": {\n    \"description\": \"Updates the status of a specific reconciliation issue to 'matched' or 'resolved'.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"issue_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the discrepancy to update.\"\n        },\n        \"new_status\": {\n          \"type\": \"string\",\n          \"description\": \"The new status (e.g., 'matched').\"\n        },\n        \"comment\": {\n          \"type\": \"string\",\n          \"description\": \"Final notes on the resolution.\"\n        }\n      },\n      \"required\": [\n        \"issue_id\",\n        \"new_status\"\n      ]\n    },\n    \"example_output\": {\n      \"updated\": true\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_ledger_balances",
+      "description": "Retrieves the current numerical balances for specific account codes from the General Ledger for a given subsidiary and period.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "subsidiary": {
+            "type": "string",
+            "description": "The name or ID of the subsidiary (e.g., 'NordicSub')."
+          },
+          "period": {
+            "type": "string",
+            "description": "The fiscal period (e.g., '2024-02')."
+          },
+          "account_codes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "List of account codes to query (e.g., ['Total_Equity', 'Net_Income', 'NCI_Balance', 'CTA_Account'])."
+          }
+        },
+        "required": [
+          "subsidiary",
+          "period",
+          "account_codes"
+        ]
+      },
+      "example_output": {
+        "balances": {
+          "Total_Equity_Opening": 500000,
+          "Net_Income_Local": 45000,
+          "NCI_Ending_Balance": 45000,
+          "Current_CTA_Balance": -1200
+        },
+        "currency": "USD/SEK"
+      }
+    },
+    {
+      "name": "get_exchange_rates",
+      "description": "Retrieves the opening, closing, and average exchange rates for a specific currency pair and period.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "from_currency": {
+            "type": "string",
+            "description": "The source currency (e.g., 'SEK')."
+          },
+          "to_currency": {
+            "type": "string",
+            "description": "The target reporting currency (e.g., 'USD')."
+          },
+          "period": {
+            "type": "string",
+            "description": "The fiscal period."
+          }
+        },
+        "required": [
+          "from_currency",
+          "to_currency",
+          "period"
+        ]
+      },
+      "example_output": {
+        "opening_rate": 0.095,
+        "closing_rate": 0.098,
+        "average_rate": 0.096
+      }
+    },
+    {
+      "name": "get_reconciliation_status",
+      "description": "Queries the reconciliation tracking object to identify pending discrepancies and current status for a subsidiary.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "subsidiary": {
+            "type": "string",
+            "description": "The subsidiary name."
+          },
+          "period": {
+            "type": "string",
+            "description": "The fiscal period."
+          }
+        },
+        "required": [
+          "subsidiary",
+          "period"
+        ]
+      },
+      "example_output": {
+        "status": "flagged_discrepancy",
+        "pending_issues": [
+          {
+            "id": "ERR-001",
+            "description": "NCI translation movement mismatch",
+            "amount_diff": 450.0
+          }
+        ]
+      }
+    },
+    {
+      "name": "post_adjustment_journal",
+      "description": "Creates a journal entry to adjust ledger balances and fix reconciliation discrepancies.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "subsidiary": {
+            "type": "string",
+            "description": "Target subsidiary."
+          },
+          "period": {
+            "type": "string",
+            "description": "Target period."
+          },
+          "account_code": {
+            "type": "string",
+            "description": "The account to be adjusted (e.g., 'NCI_Balance')."
+          },
+          "amount": {
+            "type": "number",
+            "description": "The adjustment amount (positive for debit, negative for credit, based on standard accounting rules)."
+          },
+          "description": {
+            "type": "string",
+            "description": "A memo describing the adjustment."
+          }
+        },
+        "required": [
+          "subsidiary",
+          "period",
+          "account_code",
+          "amount",
+          "description"
+        ]
+      },
+      "example_output": {
+        "journal_id": "JE-2024-005",
+        "status": "posted"
+      }
+    },
+    {
+      "name": "update_reconciliation_record",
+      "description": "Updates the status of a specific reconciliation issue to 'matched' or 'resolved'.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "issue_id": {
+            "type": "string",
+            "description": "The ID of the discrepancy to update."
+          },
+          "new_status": {
+            "type": "string",
+            "description": "The new status (e.g., 'matched')."
+          },
+          "comment": {
+            "type": "string",
+            "description": "Final notes on the resolution."
+          }
+        },
+        "required": [
+          "issue_id",
+          "new_status"
+        ]
+      },
+      "example_output": {
+        "updated": true
+      }
+    }
+  ],
+  "state_description": {
+    "ledger_balances": "A map of account codes to their current numerical balances in the General Ledger.",
+    "sub_ledger_entries": "A list of detailed transaction records from sub-ledgers or bank statements to be reconciled.",
+    "reconciliation_status": "Tracking object showing which transactions are 'matched', 'pending', or 'flagged_discrepancy'.",
+    "accounting_period": "The current active fiscal period (e.g., '2023-10').",
+    "is_period_closed": "Indicates if the current period is locked for editing."
+  },
+  "task_initial_state": {
+    "ledger_balances": {
+      "GL-600-NCI-USD": 4900.0,
+      "GL-800-CTA-SYS-USD": 26000.0,
+      "GL-100-OPEN-EQUITY-SEK": 5000000.0,
+      "GL-200-NET-INC-SEK": 500000.0
+    },
+    "sub_ledger_entries": [
+      {
+        "id": "FX-RATE-001",
+        "description": "Opening Spot Rate (USD/SEK)",
+        "rate_value": 0.095,
+        "effective_date": "2024-02-01"
+      },
+      {
+        "id": "FX-RATE-002",
+        "description": "Closing Spot Rate (USD/SEK)",
+        "rate_value": 0.1,
+        "effective_date": "2024-02-29"
+      },
+      {
+        "id": "FX-RATE-003",
+        "description": "Weighted Average Rate (USD/SEK)",
+        "rate_value": 0.098,
+        "effective_date": "2024-02-29"
+      },
+      {
+        "id": "SUB-EQUITY-ROLL",
+        "description": "NordicSub Equity Roll-forward Workpaper",
+        "opening_net_assets_sek": 5000000.0,
+        "current_ni_sek": 500000.0
+      }
+    ],
+    "reconciliation_status": {
+      "matched_ids": [
+        "FX-RATE-001",
+        "FX-RATE-002",
+        "FX-RATE-003"
+      ],
+      "discrepancies": [
+        {
+          "code": "DISC-NCI-001",
+          "description": "NCI balance at consolidated level does not match NCI share of Net Assets + CTA movement.",
+          "status": "pending_adjustment"
+        }
+      ]
+    },
+    "accounting_period": "2024-02",
+    "is_period_closed": false
+  }
+}

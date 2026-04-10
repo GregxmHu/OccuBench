@@ -1,0 +1,96 @@
+{
+  "environment_name": "env_c82b7391cf8e",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: Based on current state $s_t$ and action $a_t$, simulate environment changes and predict the observation $o_{{t+1}}$ obtained by the Agent in the Hotel Room Revenue Management scenario.\n- **Emphasis**: The LWM does not execute real operations, but only performs internal state evolution and observation generation. You simulate the behavior of the market, including customer booking patterns and price sensitivity.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions between the World Model and the Agent must maintain context consistency. You must track the progression of days, the depletion of room inventory, and the accumulation of revenue over time.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will not send actions in the form of function call strings, but will always submit action requests via a structured JSON object. This JSON must contain the following fields:\n- `\"name\"`: Specifies the name of the action function to execute (must be defined).\n- The remaining fields are the parameter names and corresponding values required by that action function.\n\nExample:\n```json\n{{\n \"name\": \"set_room_price\",\n \"arguments\": {{\n    \"room_type\": \"Deluxe\",\n    \"new_price\": 250.0\n  }}\n}}\n```\n\nThe Language World Model must correctly parse such JSON inputs and simulate the execution results.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nFor invalid parameters (e.g., negative prices), undefined actions, state conflicts (e.g., advancing time beyond the simulation limit), empty inputs, and other exceptions, return structured error information (e.g. `{{\"error\": \"Action 'xyz' not found\"}}`), and do not fabricate states or fictitious responses.\n\n##### Output Assembly\nFor every action function call, the model must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition.\n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, `new_state`, or any hidden variables. The state maintenance is implicit in the history. The Agent must only see the specific return values defined in the action (the Observation). For example, if an action simulates a day's bookings, return the booking results and revenue gained, but do not output the updated total inventory state unless explicitly requested by a getter action.\n\n### 4. Key Principles\nAll simulated behaviors must adhere to the following principles:\n- **Format**: Strictly adhere to specified JSON and text formats.\n- **Factuality**: Do not fabricate non-existent functions, states, or responses. Simulate market demand based on standard revenue management logic (e.g., higher prices typically lead to lower booking probability).\n- **Consistency**: State evolution logic must be self-consistent. If a room is booked, the inventory must decrease accordingly in your internal tracking.\n- **Realism**: Simulated behaviors must align with the reasonable dynamics of the hospitality industry, including weekend vs. weekday demand shifts and seasonal trends.\n- **Quality**: Language must be clear, unambiguous, and structurally complete.\n- **Encapsulation**: Strictly hide the internal state structure from the output. Only expose information that is explicitly returned by the action function. Do not output the state update.\n{{initial_state}}: {{\n  \"current_day\": 1,\n  \"inventory\": {{\n    \"standard\": 110,\n    \"deluxe\": 55,\n    \"suite\": 15\n  }},\n  \"current_prices\": {{\n    \"standard\": 145.0,\n    \"deluxe\": 275.0,\n    \"suite\": 620.0\n  }},\n  \"total_revenue\": 0.0,\n  \"demand_modifier\": 1.4\n}}\n{{state_descriptions}}: {{\n  \"current_day\": \"The current day of the simulation (e.g., 1 to 365).\",\n  \"inventory\": \"Mapping of room types to the number of available rooms left for the current booking cycle.\",\n  \"current_prices\": \"The current active price for each room type.\",\n  \"total_revenue\": \"The cumulative revenue generated since the start of the simulation.\",\n  \"demand_modifier\": \"A multiplier representing external factors like holidays or events affecting demand (1.0 is neutral).\"\n}}\n{action_set_definitions}: {\n  \"get_market_snapshot\": {\n    \"description\": \"Retrieves the current state of the environment, including current day, inventory counts, active prices, total revenue, and the demand modifier.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"current_day\": 1,\n      \"inventory\": {\n        \"Standard\": 50,\n        \"Deluxe\": 20,\n        \"Suite\": 5\n      },\n      \"current_prices\": {\n        \"Standard\": 150,\n        \"Deluxe\": 300,\n        \"Suite\": 800\n      },\n      \"total_revenue\": 0,\n      \"demand_modifier\": 1.4\n    }\n  },\n  \"set_room_prices\": {\n    \"description\": \"Updates the active pricing for specific room tiers in the environment.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"price_updates\": {\n          \"type\": \"object\",\n          \"description\": \"A mapping where keys are room tier names and values are the new prices (numbers).\",\n          \"additionalProperties\": {\n            \"type\": \"number\"\n          }\n        }\n      },\n      \"required\": [\n        \"price_updates\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"success\",\n      \"updated_prices\": {\n        \"Standard\": 210,\n        \"Suite\": 1120\n      }\n    }\n  },\n  \"simulate_next_day\": {\n    \"description\": \"Advances the simulation to the next day. This process simulates customer bookings based on current prices and the demand modifier, updates inventory, and adds to total revenue.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"day_completed\": 1,\n      \"revenue_gained\": 12500,\n      \"remaining_inventory\": {\n        \"Standard\": 42,\n        \"Deluxe\": 18,\n        \"Suite\": 4\n      }\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_market_snapshot",
+      "description": "Retrieves the current state of the environment, including current day, inventory counts, active prices, total revenue, and the demand modifier.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "current_day": 1,
+        "inventory": {
+          "Standard": 50,
+          "Deluxe": 20,
+          "Suite": 5
+        },
+        "current_prices": {
+          "Standard": 150,
+          "Deluxe": 300,
+          "Suite": 800
+        },
+        "total_revenue": 0,
+        "demand_modifier": 1.4
+      }
+    },
+    {
+      "name": "set_room_prices",
+      "description": "Updates the active pricing for specific room tiers in the environment.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "price_updates": {
+            "type": "object",
+            "description": "A mapping where keys are room tier names and values are the new prices (numbers).",
+            "additionalProperties": {
+              "type": "number"
+            }
+          }
+        },
+        "required": [
+          "price_updates"
+        ]
+      },
+      "example_output": {
+        "status": "success",
+        "updated_prices": {
+          "Standard": 210,
+          "Suite": 1120
+        }
+      }
+    },
+    {
+      "name": "simulate_next_day",
+      "description": "Advances the simulation to the next day. This process simulates customer bookings based on current prices and the demand modifier, updates inventory, and adds to total revenue.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "day_completed": 1,
+        "revenue_gained": 12500,
+        "remaining_inventory": {
+          "Standard": 42,
+          "Deluxe": 18,
+          "Suite": 4
+        }
+      }
+    }
+  ],
+  "state_description": {
+    "current_day": "The current day of the simulation (e.g., 1 to 365).",
+    "inventory": "Mapping of room types to the number of available rooms left for the current booking cycle.",
+    "current_prices": "The current active price for each room type.",
+    "total_revenue": "The cumulative revenue generated since the start of the simulation.",
+    "demand_modifier": "A multiplier representing external factors like holidays or events affecting demand (1.0 is neutral)."
+  },
+  "task_initial_state": {
+    "current_day": 1,
+    "inventory": {
+      "standard": 110,
+      "deluxe": 55,
+      "suite": 15
+    },
+    "current_prices": {
+      "standard": 145.0,
+      "deluxe": 275.0,
+      "suite": 620.0
+    },
+    "total_revenue": 0.0,
+    "demand_modifier": 1.4
+  }
+}

@@ -1,0 +1,180 @@
+{
+  "environment_name": "env_6207d37b15fe",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: You are a specialized simulator for a Database Migration Rollback environment. Based on the current internal state $s_t$ and the action $a_t$ submitted by the Agent, you must simulate the internal state evolution and predict the resulting observation $o_{{t+1}}$ obtained by the Agent.\n- **Emphasis**: You do not execute real database commands. You simulate the logical consequences, constraints, and failures of migration rollback operations. You maintain the continuity and self-consistency of the database environment throughout the session.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions between the World Model and the Agent must maintain context consistency. If a database lock is acquired or a schema version is reverted, that change must persist and influence the results of all subsequent actions until another state transition occurs.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. This JSON contains:\n- `\"name\"`: Specifies the name of the action function to execute.\n- The remaining fields are parameter names and values.\n\nExample input:\n```json\n{{\n \"name\": \"rollback_version\",\n \"arguments\": {{\n    \"target_version\": \"v1.4.2\",\n    \"force\": true\n  }}\n}}\n```\nYou must parse this JSON, validate it against the current state (e.g., checking if the database is locked or if the target version exists in backups), and simulate the outcome.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nIf the Agent attempts an action that is logically impossible (e.g., rolling back to a version that doesn't exist, performing operations without a lock, or executing commands while the database service is stopped), return a structured error JSON:\n- Format: `{{\"error\": \"Description of the specific failure\"}}`\n- Do not fabricate states or provide conversational excuses.\n\n##### Output Assembly\nFor every action function call, you must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition in `{{action_set_definitions}}`.\n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state $s_t$, the updated state, or any hidden system variables. The Agent must only see the specific return values (the Observation). State updates are handled internally by you.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to JSON for both input parsing and output generation.\n- **Factuality**: Simulate realistic database behaviors, including latencies, transaction logs, and dependency constraints.\n- **Consistency**: Ensure that if a migration fails halfway, the state reflects the partial failure (e.g., \"inconsistent\" status).\n- **Realism**: Rollback operations should behave like real-world RDBMS systems (e.g., requiring exclusive locks for schema changes).\n- **Encapsulation**: Strictly hide the internal state structure from the output. Only expose information explicitly returned by the action function.\n{{initial_state}}: {{\n  \"current_version\": \"v2.4.2\",\n  \"db_status\": \"healthy\",\n  \"is_locked\": false,\n  \"available_backups\": [\n    \"v2.4.1\",\n    \"v2.4.0\",\n    \"v2.3.9\"\n  ],\n  \"active_connections\": 312,\n  \"last_migration_log\": \"Hotfix v2.4.2 applied. Note: The 'Merchant Extraction' expansion (initiated in v2.4.1) added a UUID column to the transactions table with a NOT NULL constraint. Bi-directional sync triggers were installed but are currently set to 'DISABLED' to reduce transaction overhead.\"\n}}\n{{state_descriptions}}: {{\n  \"current_version\": \"The current semantic version of the database schema.\",\n  \"db_status\": \"The operational status of the database (e.g., 'healthy', 'migrating', 'inconsistent', 'stopped').\",\n  \"is_locked\": \"Indicates if a global migration lock is currently held.\",\n  \"available_backups\": \"A list of available snapshot versions that can be restored.\",\n  \"active_connections\": \"The number of active application connections currently hitting the database.\",\n  \"last_migration_log\": \"The exit message or error log from the most recent migration attempt.\"\n}}\n{action_set_definitions}: {\n  \"get_system_state\": {\n    \"description\": \"Retrieves the current environment status, including version, database health, migration locks, and active connection counts.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"current_version\": \"v2.4.1-alpha\",\n      \"db_status\": \"degraded\",\n      \"is_locked\": true,\n      \"active_connections\": 150\n    }\n  },\n  \"get_migration_history\": {\n    \"description\": \"Returns a chronological list of all migration events, including version tags, descriptions (e.g., 'Merchant Extraction'), and stability flags.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"limit\": {\n          \"type\": \"number\",\n          \"description\": \"Number of recent logs to retrieve.\"\n        }\n      },\n      \"required\": [\n        \"limit\"\n      ]\n    },\n    \"example_output\": [\n      {\n        \"version\": \"v2.3.0\",\n        \"description\": \"Merchant Extraction expansion\",\n        \"is_stable\": false\n      },\n      {\n        \"version\": \"v2.2.5\",\n        \"description\": \"Security Patch\",\n        \"is_stable\": true\n      }\n    ]\n  },\n  \"analyze_schema_diff\": {\n    \"description\": \"Compares the schema of two versions to identify new mandatory (NOT NULL) attributes without default values that would break legacy insertions.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"source_version\": {\n          \"type\": \"string\",\n          \"description\": \"The target legacy version.\"\n        },\n        \"target_version\": {\n          \"type\": \"string\",\n          \"description\": \"The current faulty version.\"\n        }\n      },\n      \"required\": [\n        \"source_version\",\n        \"target_version\"\n      ]\n    },\n    \"example_output\": {\n      \"mandatory_attributes\": [\n        \"merchant_id\",\n        \"tax_compliance_code\"\n      ]\n    }\n  },\n  \"sync_current_session_data\": {\n    \"description\": \"Extracts and buffers transaction records processed during the current faulty session to ensure no data is lost during rollback.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"start_version\": {\n          \"type\": \"string\",\n          \"description\": \"The version from which data capture should begin.\"\n        }\n      },\n      \"required\": [\n        \"start_version\"\n      ]\n    },\n    \"example_output\": {\n      \"records_captured\": 4502,\n      \"buffer_id\": \"buff_99210\"\n    }\n  },\n  \"manage_migration_lock\": {\n    \"description\": \"Allows the agent to release (unlock) or acquire a global migration lock.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"action\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"release\",\n            \"acquire\"\n          ]\n        }\n      },\n      \"required\": [\n        \"action\"\n      ]\n    },\n    \"example_output\": {\n      \"success\": true\n    }\n  },\n  \"execute_rollback\": {\n    \"description\": \"Restores the database state and schema to a specific previous snapshot version.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"target_version\": {\n          \"type\": \"string\",\n          \"description\": \"The version to restore.\"\n        }\n      },\n      \"required\": [\n        \"target_version\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"restored\",\n      \"new_version\": \"v2.2.5\"\n    }\n  },\n  \"apply_schema_compatibility_fix\": {\n    \"description\": \"Modifies schema constraints (e.g., making attributes optional or adding defaults) to ensure legacy application compatibility.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"attributes\": {\n          \"type\": \"array\",\n          \"items\": {\n            \"type\": \"string\"\n          },\n          \"description\": \"List of attributes to make compatible.\"\n        }\n      },\n      \"required\": [\n        \"attributes\"\n      ]\n    },\n    \"example_output\": {\n      \"applied\": true\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_system_state",
+      "description": "Retrieves the current environment status, including version, database health, migration locks, and active connection counts.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "current_version": "v2.4.1-alpha",
+        "db_status": "degraded",
+        "is_locked": true,
+        "active_connections": 150
+      }
+    },
+    {
+      "name": "get_migration_history",
+      "description": "Returns a chronological list of all migration events, including version tags, descriptions (e.g., 'Merchant Extraction'), and stability flags.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "limit": {
+            "type": "number",
+            "description": "Number of recent logs to retrieve."
+          }
+        },
+        "required": [
+          "limit"
+        ]
+      },
+      "example_output": [
+        {
+          "version": "v2.3.0",
+          "description": "Merchant Extraction expansion",
+          "is_stable": false
+        },
+        {
+          "version": "v2.2.5",
+          "description": "Security Patch",
+          "is_stable": true
+        }
+      ]
+    },
+    {
+      "name": "analyze_schema_diff",
+      "description": "Compares the schema of two versions to identify new mandatory (NOT NULL) attributes without default values that would break legacy insertions.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "source_version": {
+            "type": "string",
+            "description": "The target legacy version."
+          },
+          "target_version": {
+            "type": "string",
+            "description": "The current faulty version."
+          }
+        },
+        "required": [
+          "source_version",
+          "target_version"
+        ]
+      },
+      "example_output": {
+        "mandatory_attributes": [
+          "merchant_id",
+          "tax_compliance_code"
+        ]
+      }
+    },
+    {
+      "name": "sync_current_session_data",
+      "description": "Extracts and buffers transaction records processed during the current faulty session to ensure no data is lost during rollback.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "start_version": {
+            "type": "string",
+            "description": "The version from which data capture should begin."
+          }
+        },
+        "required": [
+          "start_version"
+        ]
+      },
+      "example_output": {
+        "records_captured": 4502,
+        "buffer_id": "buff_99210"
+      }
+    },
+    {
+      "name": "manage_migration_lock",
+      "description": "Allows the agent to release (unlock) or acquire a global migration lock.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": [
+              "release",
+              "acquire"
+            ]
+          }
+        },
+        "required": [
+          "action"
+        ]
+      },
+      "example_output": {
+        "success": true
+      }
+    },
+    {
+      "name": "execute_rollback",
+      "description": "Restores the database state and schema to a specific previous snapshot version.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "target_version": {
+            "type": "string",
+            "description": "The version to restore."
+          }
+        },
+        "required": [
+          "target_version"
+        ]
+      },
+      "example_output": {
+        "status": "restored",
+        "new_version": "v2.2.5"
+      }
+    },
+    {
+      "name": "apply_schema_compatibility_fix",
+      "description": "Modifies schema constraints (e.g., making attributes optional or adding defaults) to ensure legacy application compatibility.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "attributes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "List of attributes to make compatible."
+          }
+        },
+        "required": [
+          "attributes"
+        ]
+      },
+      "example_output": {
+        "applied": true
+      }
+    }
+  ],
+  "state_description": {
+    "current_version": "The current semantic version of the database schema.",
+    "db_status": "The operational status of the database (e.g., 'healthy', 'migrating', 'inconsistent', 'stopped').",
+    "is_locked": "Indicates if a global migration lock is currently held.",
+    "available_backups": "A list of available snapshot versions that can be restored.",
+    "active_connections": "The number of active application connections currently hitting the database.",
+    "last_migration_log": "The exit message or error log from the most recent migration attempt."
+  },
+  "task_initial_state": {
+    "current_version": "v2.4.2",
+    "db_status": "healthy",
+    "is_locked": false,
+    "available_backups": [
+      "v2.4.1",
+      "v2.4.0",
+      "v2.3.9"
+    ],
+    "active_connections": 312,
+    "last_migration_log": "Hotfix v2.4.2 applied. Note: The 'Merchant Extraction' expansion (initiated in v2.4.1) added a UUID column to the transactions table with a NOT NULL constraint. Bi-directional sync triggers were installed but are currently set to 'DISABLED' to reduce transaction overhead."
+  }
+}

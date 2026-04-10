@@ -1,0 +1,208 @@
+{
+  "environment_name": "env_52384b739513",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: You act as a high-fidelity simulator for a Database Migration Rollback environment. Based on the current internal state $s_t$ and the action $a_t$ submitted by the Agent, you must simulate the database's internal logic evolution and generate the resulting observation $o_{{t+1}}$.\n- **Emphasis**: You do not perform real database operations. You simulate state transitions and predict the outputs that a real database management system or migration tool would provide.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nYou must maintain perfect temporal consistency. Every action depends on the cumulative state resulting from all previous actions in the session. Ensure that if a migration is rolled back, the internal version and history reflect that change in subsequent turns.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. You must parse this JSON to determine the intended action and parameters.\nExample format:\n```json\n{{\n \"name\": \"rollback_version\",\n \"arguments\": {{\n    \"target_version\": \"20231027_init\",\n    \"force\": true\n  }}\n}}\n```\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\n- **Invalid State**: If an action is attempted while the database is in a 'LOCKED' or 'CORRUPTED' state (unless the action is specifically designed to fix it), return an error observation.\n- **Invalid Parameters**: If a target version does not exist in the migration history, return `{{\"error\": \"Version not found in history\"}}`.\n- **Concurrency/Locks**: Simulate failures if the Agent attempts to modify the schema without acquiring the necessary locks defined in the state.\n- **Non-existent Actions**: If the action name is not found in the definition, return `{{\"error\": \"Action undefined\"}}`.\n\n##### Output Assembly\nFor every action function call, you must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition. \n\n**CRITICAL CONSTRAINT**: Your output must be a single JSON object representing the Observation ($o_{{t+1}}$). You must **NOT** output the internal state structure, the updated state variables, or any 'thought' process. The Agent only sees the result of the command, not the database's internal metadata unless explicitly queried via a defined action.\n\n### 4. Key Principles\n- **Format**: Strictly JSON-only for observations.\n- **Factuality**: Simulate database behaviors realistically (e.g., rolling back version B requires version C to be removed first if sequential constraints exist).\n- **Consistency**: If a backup is deleted, it must no longer be available in the state for future restoration actions.\n- **Realism**: Include simulated timestamps or operation durations if the action definition requires them.\n- **Encapsulation**: Strictly hide the internal state structure from the output. Only expose information that is explicitly returned by the action function.\n{{initial_state}}: {{\n  \"current_schema_version\": \"titan_aurora_v2.1_production\",\n  \"migration_history\": [\n    \"titan_oracle_v1.0_baseline\",\n    \"titan_aurora_v2.1_production\"\n  ],\n  \"db_lock_active\": true,\n  \"integrity_status\": \"MIGRATING\",\n  \"available_backups\": [\n    \"titan_oracle_snapshot_t0\"\n  ],\n  \"last_migration_log\": \"Reverse replication task 'TITAN_REV_CDC' is active but struggling. Current reverse_repl_lag_ms: 12,500ms and increasing. Source DB CPU utilization at 98%. System logs indicate 'TRG_AUDIT_LEDGER' is firing for every CDC insert, causing significant IOPS contention on the legacy storage array. Queue depth: 4,500 events.\"\n}}\n{{state_descriptions}}: {{\n  \"current_schema_version\": \"The unique identifier of the currently active database migration version.\",\n  \"migration_history\": \"A list of migration IDs that have been successfully applied to the database, in chronological order.\",\n  \"db_lock_active\": \"Indicates if a migration lock is currently held. True prevents schema modifications.\",\n  \"integrity_status\": \"Current health of the database schema (e.g., 'HEALTHY', 'INCONSISTENT', 'MIGRATING').\",\n  \"available_backups\": \"List of available snapshot IDs that can be used for full restoration.\",\n  \"last_migration_log\": \"The stdout/stderr output from the last migration or rollback attempt.\"\n}}\n{action_set_definitions}: {\n  \"get_environment_state\": {\n    \"description\": \"Retrieves the current metadata of the database environment including schema version, migration history, and system integrity status.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"current_schema_version\": \"v2.1.0\",\n      \"integrity_status\": \"HEALTHY\",\n      \"legacy_db_id\": \"oracle-prod-01\",\n      \"target_db_id\": \"aurora-prod-cluster\"\n    }\n  },\n  \"get_replication_metrics\": {\n    \"description\": \"Checks the synchronization status and performance metrics (e.g., IOPS usage, lag) between the Aurora target and the Oracle source.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"db_id\": {\n          \"type\": \"string\",\n          \"description\": \"The database identifier to check metrics for.\"\n        }\n      },\n      \"required\": [\n        \"db_id\"\n      ]\n    },\n    \"example_output\": {\n      \"replication_lag_seconds\": 120,\n      \"iops_utilization_percent\": 95,\n      \"pending_transaction_count\": 450\n    }\n  },\n  \"modify_db_instance_resources\": {\n    \"description\": \"Scales database resources such as IOPS or instance class to resolve performance bottlenecks.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"db_id\": {\n          \"type\": \"string\",\n          \"description\": \"The identifier of the database instance to modify.\"\n        },\n        \"allocated_storage_iops\": {\n          \"type\": \"integer\",\n          \"description\": \"The new IOPS value to set.\"\n        }\n      },\n      \"required\": [\n        \"db_id\",\n        \"allocated_storage_iops\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"MODIFYING\",\n      \"target_iops\": 10000\n    }\n  },\n  \"manage_database_components\": {\n    \"description\": \"Enables or disables database components such as triggers, constraints, or indexes to facilitate high-speed data loading or maintain integrity.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"db_id\": {\n          \"type\": \"string\",\n          \"description\": \"The database identifier.\"\n        },\n        \"component_type\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"TRIGGER\",\n            \"CONSTRAINT\",\n            \"INDEX\"\n          ],\n          \"description\": \"The type of component to manage.\"\n        },\n        \"action\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"ENABLE\",\n            \"DISABLE\"\n          ],\n          \"description\": \"The action to perform.\"\n        }\n      },\n      \"required\": [\n        \"db_id\",\n        \"component_type\",\n        \"action\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"SUCCESS\",\n      \"affected_components\": 15\n    }\n  },\n  \"initiate_reverse_sync\": {\n    \"description\": \"Starts the data synchronization process from the Aurora target back to the Oracle source for a specific time window.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"window_minutes\": {\n          \"type\": \"integer\",\n          \"description\": \"The duration in minutes of transactions to sync back.\"\n        },\n        \"source_db_id\": {\n          \"type\": \"string\",\n          \"description\": \"Aurora database ID.\"\n        },\n        \"destination_db_id\": {\n          \"type\": \"string\",\n          \"description\": \"Legacy Oracle database ID.\"\n        }\n      },\n      \"required\": [\n        \"window_minutes\",\n        \"source_db_id\",\n        \"destination_db_id\"\n      ]\n    },\n    \"example_output\": {\n      \"sync_job_id\": \"job_998877\",\n      \"status\": \"IN_PROGRESS\"\n    }\n  },\n  \"validate_database_integrity\": {\n    \"description\": \"Performs a deep consistency check on the specified database.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"db_id\": {\n          \"type\": \"string\",\n          \"description\": \"Identifier for the database to validate.\"\n        }\n      },\n      \"required\": [\n        \"db_id\"\n      ]\n    },\n    \"example_output\": {\n      \"is_consistent\": true,\n      \"health_score\": 100\n    }\n  },\n  \"flush_secondary_data_streams\": {\n    \"description\": \"Ensures all cached or buffered data in secondary streams are written and closed.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"status\": \"CLEAN\"\n    }\n  },\n  \"update_dns_routing\": {\n    \"description\": \"Points the application traffic to the legacy database endpoint.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"target_endpoint\": {\n          \"type\": \"string\",\n          \"description\": \"The DNS or connection string for the legacy database.\"\n        }\n      },\n      \"required\": [\n        \"target_endpoint\"\n      ]\n    },\n    \"example_output\": {\n      \"dns_status\": \"COMPLETED\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_environment_state",
+      "description": "Retrieves the current metadata of the database environment including schema version, migration history, and system integrity status.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "current_schema_version": "v2.1.0",
+        "integrity_status": "HEALTHY",
+        "legacy_db_id": "oracle-prod-01",
+        "target_db_id": "aurora-prod-cluster"
+      }
+    },
+    {
+      "name": "get_replication_metrics",
+      "description": "Checks the synchronization status and performance metrics (e.g., IOPS usage, lag) between the Aurora target and the Oracle source.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "db_id": {
+            "type": "string",
+            "description": "The database identifier to check metrics for."
+          }
+        },
+        "required": [
+          "db_id"
+        ]
+      },
+      "example_output": {
+        "replication_lag_seconds": 120,
+        "iops_utilization_percent": 95,
+        "pending_transaction_count": 450
+      }
+    },
+    {
+      "name": "modify_db_instance_resources",
+      "description": "Scales database resources such as IOPS or instance class to resolve performance bottlenecks.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "db_id": {
+            "type": "string",
+            "description": "The identifier of the database instance to modify."
+          },
+          "allocated_storage_iops": {
+            "type": "integer",
+            "description": "The new IOPS value to set."
+          }
+        },
+        "required": [
+          "db_id",
+          "allocated_storage_iops"
+        ]
+      },
+      "example_output": {
+        "status": "MODIFYING",
+        "target_iops": 10000
+      }
+    },
+    {
+      "name": "manage_database_components",
+      "description": "Enables or disables database components such as triggers, constraints, or indexes to facilitate high-speed data loading or maintain integrity.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "db_id": {
+            "type": "string",
+            "description": "The database identifier."
+          },
+          "component_type": {
+            "type": "string",
+            "enum": [
+              "TRIGGER",
+              "CONSTRAINT",
+              "INDEX"
+            ],
+            "description": "The type of component to manage."
+          },
+          "action": {
+            "type": "string",
+            "enum": [
+              "ENABLE",
+              "DISABLE"
+            ],
+            "description": "The action to perform."
+          }
+        },
+        "required": [
+          "db_id",
+          "component_type",
+          "action"
+        ]
+      },
+      "example_output": {
+        "status": "SUCCESS",
+        "affected_components": 15
+      }
+    },
+    {
+      "name": "initiate_reverse_sync",
+      "description": "Starts the data synchronization process from the Aurora target back to the Oracle source for a specific time window.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "window_minutes": {
+            "type": "integer",
+            "description": "The duration in minutes of transactions to sync back."
+          },
+          "source_db_id": {
+            "type": "string",
+            "description": "Aurora database ID."
+          },
+          "destination_db_id": {
+            "type": "string",
+            "description": "Legacy Oracle database ID."
+          }
+        },
+        "required": [
+          "window_minutes",
+          "source_db_id",
+          "destination_db_id"
+        ]
+      },
+      "example_output": {
+        "sync_job_id": "job_998877",
+        "status": "IN_PROGRESS"
+      }
+    },
+    {
+      "name": "validate_database_integrity",
+      "description": "Performs a deep consistency check on the specified database.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "db_id": {
+            "type": "string",
+            "description": "Identifier for the database to validate."
+          }
+        },
+        "required": [
+          "db_id"
+        ]
+      },
+      "example_output": {
+        "is_consistent": true,
+        "health_score": 100
+      }
+    },
+    {
+      "name": "flush_secondary_data_streams",
+      "description": "Ensures all cached or buffered data in secondary streams are written and closed.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "status": "CLEAN"
+      }
+    },
+    {
+      "name": "update_dns_routing",
+      "description": "Points the application traffic to the legacy database endpoint.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "target_endpoint": {
+            "type": "string",
+            "description": "The DNS or connection string for the legacy database."
+          }
+        },
+        "required": [
+          "target_endpoint"
+        ]
+      },
+      "example_output": {
+        "dns_status": "COMPLETED"
+      }
+    }
+  ],
+  "state_description": {
+    "current_schema_version": "The unique identifier of the currently active database migration version.",
+    "migration_history": "A list of migration IDs that have been successfully applied to the database, in chronological order.",
+    "db_lock_active": "Indicates if a migration lock is currently held. True prevents schema modifications.",
+    "integrity_status": "Current health of the database schema (e.g., 'HEALTHY', 'INCONSISTENT', 'MIGRATING').",
+    "available_backups": "List of available snapshot IDs that can be used for full restoration.",
+    "last_migration_log": "The stdout/stderr output from the last migration or rollback attempt."
+  },
+  "task_initial_state": {
+    "current_schema_version": "titan_aurora_v2.1_production",
+    "migration_history": [
+      "titan_oracle_v1.0_baseline",
+      "titan_aurora_v2.1_production"
+    ],
+    "db_lock_active": true,
+    "integrity_status": "MIGRATING",
+    "available_backups": [
+      "titan_oracle_snapshot_t0"
+    ],
+    "last_migration_log": "Reverse replication task 'TITAN_REV_CDC' is active but struggling. Current reverse_repl_lag_ms: 12,500ms and increasing. Source DB CPU utilization at 98%. System logs indicate 'TRG_AUDIT_LEDGER' is firing for every CDC insert, causing significant IOPS contention on the legacy storage array. Queue depth: 4,500 events."
+  }
+}

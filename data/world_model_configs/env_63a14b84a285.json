@@ -1,0 +1,191 @@
+{
+  "environment_name": "env_63a14b84a285",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: Based on the current internal state $s_t$ of the public transit network and the recovery action $a_t$ executed by the Agent, simulate the evolution of the transit environment and predict the observation $o_{{t+1}}$ obtained by the Agent. \n- **Emphasis**: The LWM does not manage real buses or schedules. It performs internal state evolution for the public transit system and generates realistic feedback (observations) as if a real dispatch system were responding.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions between the World Model and the Agent must maintain context consistency. Changes to vehicle positions, schedule delays, or disruption statuses must persist across the interaction history to ensure a coherent simulation of the recovery process.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. This JSON must contain the following fields:\n- `\"name\"`: Specifies the name of the action function to execute (e.g., reroute_bus, hold_vehicle, add_shuttle).\n- The remaining fields are the parameter names and corresponding values required by that action function.\n\nExample:\n```json\n{{\n \"name\": \"reroute_vehicle\",\n \"arguments\": {{\n    \"vehicle_id\": \"BUS_101\",\n    \"new_route_path\": [\"Stop_A\", \"Stop_C\", \"Stop_D\"]\n  }}\n}}\n```\n\nThe Language World Model must correctly parse such JSON inputs and simulate the resulting changes in the transit network.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nFor invalid parameters (e.g., non-existent vehicle ID), undefined actions, state conflicts (e.g., assigning a bus to a closed road), or empty inputs, return structured error information (e.g., `{{\"error\": \"Vehicle 'BUS_999' not found\"}}`), and do not fabricate states or fictitious responses.\n\n##### Output Assembly\nFor every action function call, the model must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition. \n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, `new_state`, or any hidden variables like the full fleet registry. The state maintenance is implicit in the history. The Agent must only see the specific return values (the Observation) defined in the action function.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to specified JSON and text formats.\n- **Factuality**: Do not fabricate non-existent transit lines, stops, or vehicle IDs.\n- **Consistency**: Transit logic must be self-consistent (e.g., if a road is blocked, all vehicles passing through that segment must show delays until the state changes).\n- **Realism**: Simulated behaviors must align with urban mobility dynamics, such as traffic propagation and realistic boarding times.\n- **Quality**: Language must be clear, unambiguous, and structurally complete.\n- **Encapsulation**: Strictly hide the internal state structure from the output. Only expose information that is explicitly returned by the action function. Do not output the state update summary.\n{{initial_state}}: {{\n  \"sim_clock\": \"14:30\",\n  \"fleet_status\": {{\n    \"BUS_202\": {{\n      \"route\": \"10_NB\",\n      \"current_stop\": \"Westside_Hub\",\n      \"delay_minutes\": 25,\n      \"status\": \"Stalled - Mechanical Failure\"\n    }},\n    \"BUS_210\": {{\n      \"route\": \"10_SB\",\n      \"current_stop\": \"High_St\",\n      \"delay_minutes\": 0,\n      \"status\": \"Active - System Hold: ADMIN_LOCK_04\"\n    }},\n    \"BUS_215\": {{\n      \"route\": \"10_SB\",\n      \"current_stop\": \"North_Terminal\",\n      \"delay_minutes\": 2,\n      \"status\": \"Active\"\n    }}\n  }},\n  \"active_disruptions\": [\n    {{\n      \"incident_id\": \"BKDN_202\",\n      \"location\": \"Westside_Hub\",\n      \"severity\": \"High\",\n      \"description\": \"Vehicle 202 has a pneumatic leak; Northbound lane blocked.\"\n    }}\n  ],\n  \"passenger_loads\": {{\n    \"10_NB\": \"High\",\n    \"10_SB\": \"Medium\"\n  }},\n  \"crew_availability\": {{\n    \"standby_units\": 0\n  }}\n}}\n{{state_descriptions}}: {{\n  \"sim_clock\": \"The current simulation time in 24-hour format (HH:MM).\",\n  \"fleet_status\": \"A mapping of vehicle IDs to their current route, coordinates/stop, and delay status in minutes.\",\n  \"active_disruptions\": \"A list of current incidents (e.g., accidents, road closures) affecting the network, including location and severity.\",\n  \"passenger_loads\": \"Crowding levels at key transit hubs or on specific routes (e.g., 'Low', 'Medium', 'High').\",\n  \"crew_availability\": \"Status of standby drivers or staff available for emergency schedule recovery.\"\n}}\n{action_set_definitions}: {\n  \"get_fleet_status\": {\n    \"description\": \"Retrieves the current status, location, and assigned route for specific vehicles or all vehicles in the fleet.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"vehicle_ids\": {\n          \"type\": \"array\",\n          \"items\": {\n            \"type\": \"string\"\n          },\n          \"description\": \"Optional list of vehicle IDs to query. If empty, returns status for all vehicles.\"\n        }\n      },\n      \"required\": []\n    },\n    \"example_output\": {\n      \"BUS_202\": {\n        \"route\": \"10 Blue Line\",\n        \"status\": \"Delayed\",\n        \"location\": \"Westside Hub\"\n      },\n      \"BUS_210\": {\n        \"route\": \"Unassigned\",\n        \"status\": \"Available\",\n        \"location\": \"Central Garage\"\n      }\n    }\n  },\n  \"check_maintenance_holds\": {\n    \"description\": \"Queries the OCC (Operations Control Center) database for administrative maintenance holds on specific vehicle records. Required before CAD/AVL updates.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"vehicle_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier of the vehicle to check.\"\n        }\n      },\n      \"required\": [\n        \"vehicle_id\"\n      ]\n    },\n    \"example_output\": {\n      \"vehicle_id\": \"BUS_202\",\n      \"has_hold\": true,\n      \"hold_type\": \"Administrative/Mechanical\"\n    }\n  },\n  \"resolve_maintenance_hold\": {\n    \"description\": \"Resolves or clears an administrative maintenance hold on a vehicle record to allow synchronization with the CAD/AVL system.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"vehicle_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier of the vehicle.\"\n        },\n        \"resolution_code\": {\n          \"type\": \"string\",\n          \"description\": \"The protocol code for clearing the hold (e.g., 'SYNC_AUTH', 'MAINT_ACK').\"\n        }\n      },\n      \"required\": [\n        \"vehicle_id\",\n        \"resolution_code\"\n      ]\n    },\n    \"example_output\": {\n      \"success\": true,\n      \"timestamp\": \"2023-10-27T10:00:00Z\"\n    }\n  },\n  \"set_rtpi_visibility\": {\n    \"description\": \"Configures the public-facing Real-Time Passenger Information (RTPI) feed visibility for a vehicle.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"vehicle_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier of the vehicle.\"\n        },\n        \"suppress_countdown\": {\n          \"type\": \"boolean\",\n          \"description\": \"Set to true to hide the vehicle's arrival predictions from public feeds.\"\n        }\n      },\n      \"required\": [\n        \"vehicle_id\",\n        \"suppress_countdown\"\n      ]\n    },\n    \"example_output\": {\n      \"vehicle_id\": \"BUS_202\",\n      \"rtpi_status\": \"Suppressed\"\n    }\n  },\n  \"update_cad_avl_assignment\": {\n    \"description\": \"Updates the Computer-Aided Dispatch/Automatic Vehicle Location (CAD/AVL) system to assign a vehicle to a specific route, direction, and schedule block.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"vehicle_id\": {\n          \"type\": \"string\",\n          \"description\": \"The vehicle to be reassigned.\"\n        },\n        \"target_route\": {\n          \"type\": \"string\",\n          \"description\": \"The route name or ID (e.g., 'Route 10 Blue Line').\"\n        },\n        \"direction\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"Northbound\",\n            \"Southbound\",\n            \"Eastbound\",\n            \"Westbound\"\n          ],\n          \"description\": \"The service direction.\"\n        },\n        \"schedule_relationship\": {\n          \"type\": \"string\",\n          \"description\": \"The type of service (e.g., 'Replacement', 'Added', 'Scheduled').\"\n        }\n      },\n      \"required\": [\n        \"vehicle_id\",\n        \"target_route\",\n        \"direction\"\n      ]\n    },\n    \"example_output\": {\n      \"update_status\": \"Success\",\n      \"active_trip_id\": \"TRIP_9982\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_fleet_status",
+      "description": "Retrieves the current status, location, and assigned route for specific vehicles or all vehicles in the fleet.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "vehicle_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Optional list of vehicle IDs to query. If empty, returns status for all vehicles."
+          }
+        },
+        "required": []
+      },
+      "example_output": {
+        "BUS_202": {
+          "route": "10 Blue Line",
+          "status": "Delayed",
+          "location": "Westside Hub"
+        },
+        "BUS_210": {
+          "route": "Unassigned",
+          "status": "Available",
+          "location": "Central Garage"
+        }
+      }
+    },
+    {
+      "name": "check_maintenance_holds",
+      "description": "Queries the OCC (Operations Control Center) database for administrative maintenance holds on specific vehicle records. Required before CAD/AVL updates.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "vehicle_id": {
+            "type": "string",
+            "description": "The unique identifier of the vehicle to check."
+          }
+        },
+        "required": [
+          "vehicle_id"
+        ]
+      },
+      "example_output": {
+        "vehicle_id": "BUS_202",
+        "has_hold": true,
+        "hold_type": "Administrative/Mechanical"
+      }
+    },
+    {
+      "name": "resolve_maintenance_hold",
+      "description": "Resolves or clears an administrative maintenance hold on a vehicle record to allow synchronization with the CAD/AVL system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "vehicle_id": {
+            "type": "string",
+            "description": "The unique identifier of the vehicle."
+          },
+          "resolution_code": {
+            "type": "string",
+            "description": "The protocol code for clearing the hold (e.g., 'SYNC_AUTH', 'MAINT_ACK')."
+          }
+        },
+        "required": [
+          "vehicle_id",
+          "resolution_code"
+        ]
+      },
+      "example_output": {
+        "success": true,
+        "timestamp": "2023-10-27T10:00:00Z"
+      }
+    },
+    {
+      "name": "set_rtpi_visibility",
+      "description": "Configures the public-facing Real-Time Passenger Information (RTPI) feed visibility for a vehicle.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "vehicle_id": {
+            "type": "string",
+            "description": "The unique identifier of the vehicle."
+          },
+          "suppress_countdown": {
+            "type": "boolean",
+            "description": "Set to true to hide the vehicle's arrival predictions from public feeds."
+          }
+        },
+        "required": [
+          "vehicle_id",
+          "suppress_countdown"
+        ]
+      },
+      "example_output": {
+        "vehicle_id": "BUS_202",
+        "rtpi_status": "Suppressed"
+      }
+    },
+    {
+      "name": "update_cad_avl_assignment",
+      "description": "Updates the Computer-Aided Dispatch/Automatic Vehicle Location (CAD/AVL) system to assign a vehicle to a specific route, direction, and schedule block.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "vehicle_id": {
+            "type": "string",
+            "description": "The vehicle to be reassigned."
+          },
+          "target_route": {
+            "type": "string",
+            "description": "The route name or ID (e.g., 'Route 10 Blue Line')."
+          },
+          "direction": {
+            "type": "string",
+            "enum": [
+              "Northbound",
+              "Southbound",
+              "Eastbound",
+              "Westbound"
+            ],
+            "description": "The service direction."
+          },
+          "schedule_relationship": {
+            "type": "string",
+            "description": "The type of service (e.g., 'Replacement', 'Added', 'Scheduled')."
+          }
+        },
+        "required": [
+          "vehicle_id",
+          "target_route",
+          "direction"
+        ]
+      },
+      "example_output": {
+        "update_status": "Success",
+        "active_trip_id": "TRIP_9982"
+      }
+    }
+  ],
+  "state_description": {
+    "sim_clock": "The current simulation time in 24-hour format (HH:MM).",
+    "fleet_status": "A mapping of vehicle IDs to their current route, coordinates/stop, and delay status in minutes.",
+    "active_disruptions": "A list of current incidents (e.g., accidents, road closures) affecting the network, including location and severity.",
+    "passenger_loads": "Crowding levels at key transit hubs or on specific routes (e.g., 'Low', 'Medium', 'High').",
+    "crew_availability": "Status of standby drivers or staff available for emergency schedule recovery."
+  },
+  "task_initial_state": {
+    "sim_clock": "14:30",
+    "fleet_status": {
+      "BUS_202": {
+        "route": "10_NB",
+        "current_stop": "Westside_Hub",
+        "delay_minutes": 25,
+        "status": "Stalled - Mechanical Failure"
+      },
+      "BUS_210": {
+        "route": "10_SB",
+        "current_stop": "High_St",
+        "delay_minutes": 0,
+        "status": "Active - System Hold: ADMIN_LOCK_04"
+      },
+      "BUS_215": {
+        "route": "10_SB",
+        "current_stop": "North_Terminal",
+        "delay_minutes": 2,
+        "status": "Active"
+      }
+    },
+    "active_disruptions": [
+      {
+        "incident_id": "BKDN_202",
+        "location": "Westside_Hub",
+        "severity": "High",
+        "description": "Vehicle 202 has a pneumatic leak; Northbound lane blocked."
+      }
+    ],
+    "passenger_loads": {
+      "10_NB": "High",
+      "10_SB": "Medium"
+    },
+    "crew_availability": {
+      "standby_units": 0
+    }
+  }
+}

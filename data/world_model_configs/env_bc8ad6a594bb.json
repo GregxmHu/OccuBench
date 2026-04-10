@@ -1,0 +1,291 @@
+{
+  "environment_name": "env_bc8ad6a594bb",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM) for Pharmacy Prescription Verification.\n- **Core Objective**: Based on the current environment state $s_t$ and the action $a_t$ performed by the pharmacist (Agent), simulate the internal evolution of the pharmacy system and predict the resulting observation $o_{{t+1}}$.\n- **Emphasis**: You are the environment simulator. You do not suggest actions; you calculate the consequences of actions, update internal records (inventory, verification status, patient logs), and provide the resulting data to the Agent.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nYou must maintain internal consistency across the interaction. Every action taken by the Agent (e.g., checking a drug against inventory, scanning a patient ID) must update the environment's internal logical state, ensuring that subsequent actions reflect previous changes.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the pharmacy environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. You must parse these requests to trigger the corresponding environment change. \n\nExample input format:\n```json\n{{\n \"name\": \"verify_stock\",\n \"arguments\": {{\n    \"medication_id\": \"RX-9921\",\n    \"quantity\": 30\n  }}\n}}\n```\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\n- If the Agent attempts to verify a prescription ID that does not exist in the internal state, return: `{{\"error\": \"Prescription ID not found\"}}`.\n- If a required parameter is missing from the Agent's input, return: `{{\"error\": \"Missing required argument: [argument_name]\"}}`.\n- If the Agent attempts an action that violates logical constraints (e.g., dispensing a drug before verifying the patient), the environment should return an observation reflecting the failure or a system warning.\n- Do not fabricate clinical data or inventory counts that are not logically derived from the state.\n\n##### Output Assembly\nFor every action call, return a structured JSON object containing **ONLY** the return fields declared in the specific action's definition. \n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state, hidden variables, or the updated state object. The Agent must only receive the specific `observation` (return values) defined for the action. State maintenance is handled internally by you.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to the JSON structure for all outputs.\n- **Factuality**: Use the provided patient records, allergy databases, and inventory levels in the internal state to determine outcomes.\n- **Consistency**: If a drug is marked as \"dispensed\" in the internal state, subsequent checks must reflect reduced inventory.\n- **Realism**: Simulate realistic pharmacy dynamics, such as drug-drug interaction warnings or insurance rejection messages based on the state data.\n- **Encapsulation**: Strictly hide the internal state structure from the output. Only expose the information explicitly returned by the action function.\n{{initial_state}}: {{\n  \"pending_prescriptions\": [\n    {{\n      \"prescription_id\": \"RX-441\",\n      \"patient_id\": \"PAT-V08\",\n      \"medication_id\": \"DRUG-TREN-100\",\n      \"medication_name\": \"TEGretol 100mg\",\n      \"quantity\": 60,\n      \"sig\": \"1 tab PO BID\",\n      \"prescriber\": \"Dr. Helena Thorne\"\n    }}\n  ],\n  \"drug_inventory\": {{\n    \"DRUG-TREN-100\": 150,\n    \"DRUG-TEGR-100\": 85\n  }},\n  \"patient_health_records\": {{\n    \"PAT-V08\": {{\n      \"name\": \"Miriam Vance\",\n      \"age\": 62,\n      \"chronic_conditions\": [\n        \"Generalized Seizure Disorder\",\n        \"Hypertension\"\n      ],\n      \"current_medications\": [\n        \"Lisinopril 10mg\"\n      ],\n      \"documented_allergies\": [\n        \"Sulfa (Rash)\"\n      ]\n    }}\n  }},\n  \"interaction_lookup_table\": {{\n    \"DRUG-TREN-100\": {{\n      \"label_name\": \"Trental\",\n      \"generic\": \"Pentoxifylline\",\n      \"class\": \"Hemorheologic agent\",\n      \"indications\": [\n        \"Intermittent Claudication\"\n      ]\n    }},\n    \"DRUG-TEGR-100\": {{\n      \"label_name\": \"TEGretol\",\n      \"generic\": \"Carbamazepine\",\n      \"class\": \"Anticonvulsant\",\n      \"indications\": [\n        \"Epilepsy\",\n        \"Trigeminal Neuralgia\"\n      ]\n    }},\n    \"CLINICAL_CONTRAINDICATIONS\": {{\n      \"DRUG-TREN-100_VS_Seizure Disorder\": \"Therapeutic Failure: Medication has no anticonvulsant properties; use in epilepsy is non-indicated.\",\n      \"DRUG-TEGR-100_VS_Seizure Disorder\": \"Indicated: Standard therapy for focal and generalized tonic-clonic seizures.\"\n    }},\n    \"LASA_GROUPS\": [\n      \"TEGretol / Trental\"\n    ]\n  }},\n  \"verification_workflow_status\": {{\n    \"current_id\": null,\n    \"steps_completed\": []\n  }}\n}}\n{{state_descriptions}}: {{\n  \"pending_prescriptions\": \"A list of prescription objects currently awaiting verification in the queue.\",\n  \"drug_inventory\": \"A mapping of medication IDs to their current available stock levels in the pharmacy.\",\n  \"patient_health_records\": \"Detailed database of patients, including documented allergies, age, and chronic conditions used for safety screening.\",\n  \"interaction_lookup_table\": \"A reference table used to determine harmful drug-drug or drug-condition interactions.\",\n  \"verification_workflow_status\": \"Tracks the internal progress of the current verification task (e.g., identity_verified: true, clinical_check: pending).\"\n}}\n{action_set_definitions}: {\n  \"get_prescription_details\": {\n    \"description\": \"Retrieves the specific details of a prescription, including the patient name, medication ID currently on file, and the medication name written by the prescriber.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"prescription_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the prescription (e.g., 'RX-441').\"\n        }\n      },\n      \"required\": [\n        \"prescription_id\"\n      ]\n    },\n    \"example_output\": {\n      \"medication_id\": \"DRUG-ID-999\",\n      \"medication_name\": \"Tegretol\",\n      \"patient_name\": \"Miriam Vance\",\n      \"dosage\": \"200mg\"\n    }\n  },\n  \"get_patient_data\": {\n    \"description\": \"Retrieves medical records, including patient ID, allergies, and chronic conditions for a specific patient name.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"patient_name\": {\n          \"type\": \"string\",\n          \"description\": \"The full name of the patient.\"\n        }\n      },\n      \"required\": [\n        \"patient_name\"\n      ]\n    },\n    \"example_output\": {\n      \"patient_id\": \"PAT-555\",\n      \"allergies\": [\n        \"Sulfa\"\n      ],\n      \"chronic_conditions\": [\n        \"Epilepsy\"\n      ]\n    }\n  },\n  \"get_drug_info\": {\n    \"description\": \"Searches the official drug database by name or ID to retrieve the correct medication ID, therapeutic class, and safety profile.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"query\": {\n          \"type\": \"string\",\n          \"description\": \"The name of the drug (e.g., 'Tegretol') or the medication ID (e.g., 'DRUG-TEGR-100') to look up.\"\n        }\n      },\n      \"required\": [\n        \"query\"\n      ]\n    },\n    \"example_output\": {\n      \"medication_id\": \"DRUG-TEGR-100\",\n      \"medication_name\": \"Tegretol\",\n      \"therapeutic_category\": \"Anticonvulsant\"\n    }\n  },\n  \"update_prescription_details\": {\n    \"description\": \"Updates the medication ID associated with a prescription to reconcile it with the correct clinical selection.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"prescription_id\": {\n          \"type\": \"string\",\n          \"description\": \"The prescription identifier.\"\n        },\n        \"medication_id\": {\n          \"type\": \"string\",\n          \"description\": \"The new, corrected medication ID to be associated with the prescription.\"\n        }\n      },\n      \"required\": [\n        \"prescription_id\",\n        \"medication_id\"\n      ]\n    },\n    \"example_output\": {\n      \"success\": true,\n      \"updated_at\": \"2023-10-27T10:05:00Z\"\n    }\n  },\n  \"check_clinical_safety\": {\n    \"description\": \"Evaluates potential drug-drug or drug-condition interactions for a specific drug and patient.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"medication_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the drug to check.\"\n        },\n        \"patient_id\": {\n          \"type\": \"string\",\n          \"description\": \"The patient ID.\"\n        }\n      },\n      \"required\": [\n        \"medication_id\",\n        \"patient_id\"\n      ]\n    },\n    \"example_output\": {\n      \"is_safe\": true,\n      \"contraindications\": []\n    }\n  },\n  \"check_inventory_stock\": {\n    \"description\": \"Verifies if the specific medication ID is available in the pharmacy stock.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"medication_id\": {\n          \"type\": \"string\",\n          \"description\": \"The medication ID to check.\"\n        }\n      },\n      \"required\": [\n        \"medication_id\"\n      ]\n    },\n    \"example_output\": {\n      \"stock_count\": 50,\n      \"is_available\": true\n    }\n  },\n  \"get_workflow_status\": {\n    \"description\": \"Checks the current progress of the verification workflow steps.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"prescription_id\": {\n          \"type\": \"string\",\n          \"description\": \"The prescription identifier.\"\n        }\n      },\n      \"required\": [\n        \"prescription_id\"\n      ]\n    },\n    \"example_output\": {\n      \"identity_verified\": false,\n      \"clinical_check\": \"pending\"\n    }\n  },\n  \"update_workflow_step\": {\n    \"description\": \"Sets the status of specific internal workflow checkpoints (e.g., clinical_check).\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"prescription_id\": {\n          \"type\": \"string\",\n          \"description\": \"The prescription identifier.\"\n        },\n        \"step_key\": {\n          \"type\": \"string\",\n          \"description\": \"The specific checkpoint to update.\"\n        },\n        \"status\": {\n          \"type\": \"boolean\",\n          \"description\": \"True if the check is passed/complete.\"\n        }\n      },\n      \"required\": [\n        \"prescription_id\",\n        \"step_key\",\n        \"status\"\n      ]\n    },\n    \"example_output\": {\n      \"status_updated\": true\n    }\n  },\n  \"finalize_verification\": {\n    \"description\": \"Records the final approval and closes the verification task.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"prescription_id\": {\n          \"type\": \"string\",\n          \"description\": \"The prescription identifier.\"\n        },\n        \"status\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"approved\",\n            \"rejected\"\n          ],\n          \"description\": \"The final decision.\"\n        }\n      },\n      \"required\": [\n        \"prescription_id\",\n        \"status\"\n      ]\n    },\n    \"example_output\": {\n      \"final_status\": \"approved\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_prescription_details",
+      "description": "Retrieves the specific details of a prescription, including the patient name, medication ID currently on file, and the medication name written by the prescriber.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "prescription_id": {
+            "type": "string",
+            "description": "The unique identifier for the prescription (e.g., 'RX-441')."
+          }
+        },
+        "required": [
+          "prescription_id"
+        ]
+      },
+      "example_output": {
+        "medication_id": "DRUG-ID-999",
+        "medication_name": "Tegretol",
+        "patient_name": "Miriam Vance",
+        "dosage": "200mg"
+      }
+    },
+    {
+      "name": "get_patient_data",
+      "description": "Retrieves medical records, including patient ID, allergies, and chronic conditions for a specific patient name.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "patient_name": {
+            "type": "string",
+            "description": "The full name of the patient."
+          }
+        },
+        "required": [
+          "patient_name"
+        ]
+      },
+      "example_output": {
+        "patient_id": "PAT-555",
+        "allergies": [
+          "Sulfa"
+        ],
+        "chronic_conditions": [
+          "Epilepsy"
+        ]
+      }
+    },
+    {
+      "name": "get_drug_info",
+      "description": "Searches the official drug database by name or ID to retrieve the correct medication ID, therapeutic class, and safety profile.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "description": "The name of the drug (e.g., 'Tegretol') or the medication ID (e.g., 'DRUG-TEGR-100') to look up."
+          }
+        },
+        "required": [
+          "query"
+        ]
+      },
+      "example_output": {
+        "medication_id": "DRUG-TEGR-100",
+        "medication_name": "Tegretol",
+        "therapeutic_category": "Anticonvulsant"
+      }
+    },
+    {
+      "name": "update_prescription_details",
+      "description": "Updates the medication ID associated with a prescription to reconcile it with the correct clinical selection.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "prescription_id": {
+            "type": "string",
+            "description": "The prescription identifier."
+          },
+          "medication_id": {
+            "type": "string",
+            "description": "The new, corrected medication ID to be associated with the prescription."
+          }
+        },
+        "required": [
+          "prescription_id",
+          "medication_id"
+        ]
+      },
+      "example_output": {
+        "success": true,
+        "updated_at": "2023-10-27T10:05:00Z"
+      }
+    },
+    {
+      "name": "check_clinical_safety",
+      "description": "Evaluates potential drug-drug or drug-condition interactions for a specific drug and patient.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "medication_id": {
+            "type": "string",
+            "description": "The ID of the drug to check."
+          },
+          "patient_id": {
+            "type": "string",
+            "description": "The patient ID."
+          }
+        },
+        "required": [
+          "medication_id",
+          "patient_id"
+        ]
+      },
+      "example_output": {
+        "is_safe": true,
+        "contraindications": []
+      }
+    },
+    {
+      "name": "check_inventory_stock",
+      "description": "Verifies if the specific medication ID is available in the pharmacy stock.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "medication_id": {
+            "type": "string",
+            "description": "The medication ID to check."
+          }
+        },
+        "required": [
+          "medication_id"
+        ]
+      },
+      "example_output": {
+        "stock_count": 50,
+        "is_available": true
+      }
+    },
+    {
+      "name": "get_workflow_status",
+      "description": "Checks the current progress of the verification workflow steps.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "prescription_id": {
+            "type": "string",
+            "description": "The prescription identifier."
+          }
+        },
+        "required": [
+          "prescription_id"
+        ]
+      },
+      "example_output": {
+        "identity_verified": false,
+        "clinical_check": "pending"
+      }
+    },
+    {
+      "name": "update_workflow_step",
+      "description": "Sets the status of specific internal workflow checkpoints (e.g., clinical_check).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "prescription_id": {
+            "type": "string",
+            "description": "The prescription identifier."
+          },
+          "step_key": {
+            "type": "string",
+            "description": "The specific checkpoint to update."
+          },
+          "status": {
+            "type": "boolean",
+            "description": "True if the check is passed/complete."
+          }
+        },
+        "required": [
+          "prescription_id",
+          "step_key",
+          "status"
+        ]
+      },
+      "example_output": {
+        "status_updated": true
+      }
+    },
+    {
+      "name": "finalize_verification",
+      "description": "Records the final approval and closes the verification task.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "prescription_id": {
+            "type": "string",
+            "description": "The prescription identifier."
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "approved",
+              "rejected"
+            ],
+            "description": "The final decision."
+          }
+        },
+        "required": [
+          "prescription_id",
+          "status"
+        ]
+      },
+      "example_output": {
+        "final_status": "approved"
+      }
+    }
+  ],
+  "state_description": {
+    "pending_prescriptions": "A list of prescription objects currently awaiting verification in the queue.",
+    "drug_inventory": "A mapping of medication IDs to their current available stock levels in the pharmacy.",
+    "patient_health_records": "Detailed database of patients, including documented allergies, age, and chronic conditions used for safety screening.",
+    "interaction_lookup_table": "A reference table used to determine harmful drug-drug or drug-condition interactions.",
+    "verification_workflow_status": "Tracks the internal progress of the current verification task (e.g., identity_verified: true, clinical_check: pending)."
+  },
+  "task_initial_state": {
+    "pending_prescriptions": [
+      {
+        "prescription_id": "RX-441",
+        "patient_id": "PAT-V08",
+        "medication_id": "DRUG-TREN-100",
+        "medication_name": "TEGretol 100mg",
+        "quantity": 60,
+        "sig": "1 tab PO BID",
+        "prescriber": "Dr. Helena Thorne"
+      }
+    ],
+    "drug_inventory": {
+      "DRUG-TREN-100": 150,
+      "DRUG-TEGR-100": 85
+    },
+    "patient_health_records": {
+      "PAT-V08": {
+        "name": "Miriam Vance",
+        "age": 62,
+        "chronic_conditions": [
+          "Generalized Seizure Disorder",
+          "Hypertension"
+        ],
+        "current_medications": [
+          "Lisinopril 10mg"
+        ],
+        "documented_allergies": [
+          "Sulfa (Rash)"
+        ]
+      }
+    },
+    "interaction_lookup_table": {
+      "DRUG-TREN-100": {
+        "label_name": "Trental",
+        "generic": "Pentoxifylline",
+        "class": "Hemorheologic agent",
+        "indications": [
+          "Intermittent Claudication"
+        ]
+      },
+      "DRUG-TEGR-100": {
+        "label_name": "TEGretol",
+        "generic": "Carbamazepine",
+        "class": "Anticonvulsant",
+        "indications": [
+          "Epilepsy",
+          "Trigeminal Neuralgia"
+        ]
+      },
+      "CLINICAL_CONTRAINDICATIONS": {
+        "DRUG-TREN-100_VS_Seizure Disorder": "Therapeutic Failure: Medication has no anticonvulsant properties; use in epilepsy is non-indicated.",
+        "DRUG-TEGR-100_VS_Seizure Disorder": "Indicated: Standard therapy for focal and generalized tonic-clonic seizures."
+      },
+      "LASA_GROUPS": [
+        "TEGretol / Trental"
+      ]
+    },
+    "verification_workflow_status": {
+      "current_id": null,
+      "steps_completed": []
+    }
+  }
+}

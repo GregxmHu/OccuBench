@@ -1,0 +1,285 @@
+{
+  "environment_name": "env_faa80faf8744",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM) for General Ledger Reconciliation.\n- **Core Objective**: Based on the current internal state $s_t$ (representing the accounting books and bank records) and the action $a_t$ executed by the Agent, simulate the evolution of the reconciliation environment and predict the observation $o_{{t+1}}$.\n- **Emphasis**: The LWM acts as the backend accounting engine. It does not perform reconciliation tasks itself but maintains the integrity of the financial records and returns the results of queries or matching actions performed by the Agent.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation tracking ledger entries, bank statements, and reconciliation progress. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions between the World Model and the Agent must maintain context consistency. If a transaction is matched in step $t$, it must remain matched in step $t+1$ unless an explicit un-match action is performed. The internal balance and discrepancy counts must update logically following every state-altering action.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent submits action requests via a structured JSON object. The LWM must parse this JSON to determine the intended operation:\n- `\"name\"`: The specific reconciliation action (e.g., `match_entries`, `query_ledger`, `report_discrepancy`).\n- The remaining fields contain the arguments for the action.\n\nExample Input:\n```json\n{{\n \"name\": \"match_entries\",\n \"arguments\": {{\n    \"ledger_id\": \"L-10024\",\n    \"bank_id\": \"B-88392\"\n  }}\n}}\n```\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\n- **Non-existent Records**: If an Agent attempts to match an ID not present in the current state, return: `{{\"error\": \"Record ID [ID] not found\"}}`.\n- **Double Matching**: If an Agent attempts to match a record that is already marked as 'reconciled', return: `{{\"error\": \"Record [ID] is already reconciled\"}}`.\n- **Invalid Logic**: For actions with missing parameters or invalid formats, return a specific error message and do not update the internal state.\n\n##### Output Assembly\nFor every action, the model must return a structured JSON object containing **ONLY** the return fields declared in the action function's definition. \n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, the `new_state`, or the full list of entries unless explicitly requested by a `query` action. The Agent must only see the specific Observation (e.g., success status, specific transaction details, or a summary report).\n\n### 4. Key Principles\n- **Format**: Strictly adhere to JSON output for observations.\n- **Factuality**: Do not invent transactions or bank records not present in the internal state.\n- **Consistency**: The sum of matched and unmatched entries must always equal the total entries in the initial state.\n- **Realism**: Simulate the logic of a financial system (e.g., amounts must match or be within a specified tolerance to be reconciled).\n- **Quality**: Ensure all status messages are professional and clear.\n- **Encapsulation**: Strictly hide the internal JSON state structure from the output. Only expose information that is explicitly returned by the action function.\n{{initial_state}}: {{\n  \"ledger_entries\": [\n    {{\n      \"id\": \"L-SUTA-Q2-001\",\n      \"date\": \"2023-04-30\",\n      \"amount\": 2100.0,\n      \"description\": \"April SUTA Accrual (based on 2.1% rate)\",\n      \"reconciliation_status\": \"unmatched\"\n    }},\n    {{\n      \"id\": \"L-SUTA-Q2-002\",\n      \"date\": \"2023-05-05\",\n      \"amount\": -2100.0,\n      \"description\": \"Payment: Q1/April SUTA Tax Liability\",\n      \"reconciliation_status\": \"unmatched\"\n    }},\n    {{\n      \"id\": \"L-SUTA-Q2-003\",\n      \"date\": \"2023-05-31\",\n      \"amount\": 2100.0,\n      \"description\": \"May SUTA Accrual (incorrectly calculated at 2.1%)\",\n      \"reconciliation_status\": \"unmatched\"\n    }},\n    {{\n      \"id\": \"L-SUTA-Q2-004\",\n      \"date\": \"2023-06-30\",\n      \"amount\": 2700.0,\n      \"description\": \"June SUTA Accrual (updated 2.7% rate)\",\n      \"reconciliation_status\": \"unmatched\"\n    }}\n  ],\n  \"bank_statements\": [\n    {{\n      \"id\": \"B-TX-55091\",\n      \"date\": \"2023-05-06\",\n      \"amount\": 2100.0,\n      \"description\": \"STATE DEPT OF REVENUE - TAX PAY\",\n      \"reconciliation_status\": \"unmatched\"\n    }},\n    {{\n      \"id\": \"B-TX-55092\",\n      \"date\": \"2023-06-12\",\n      \"amount\": 550.0,\n      \"description\": \"MANUAL CHK #8821 - SUTA OVERAGE\",\n      \"reconciliation_status\": \"unmatched\"\n    }}\n  ],\n  \"reconciliation_log\": [],\n  \"discrepancies\": [],\n  \"summary_stats\": {{\n    \"total_unmatched_ledger\": 4,\n    \"total_unmatched_bank\": 2\n  }}\n}}\n{{state_descriptions}}: {{\n  \"ledger_entries\": \"List of internal accounting records including ID, date, amount, and reconciliation_status.\",\n  \"bank_statements\": \"List of bank-provided records including ID, date, amount, and reconciliation_status.\",\n  \"reconciliation_log\": \"A mapping of matched ledger IDs to bank IDs with timestamps.\",\n  \"discrepancies\": \"List of entries flagged by the agent as requiring manual investigation.\",\n  \"summary_stats\": \"Aggregated statistics of the current reconciliation state.\"\n}}\n{action_set_definitions}: {\n  \"get_summary_stats\": {\n    \"description\": \"Retrieves the current status of the reconciliation, including the count of unmatched ledger entries, unmatched bank statements, and the number of entries in the discrepancy log.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"unmatched_ledger_count\": 10,\n      \"unmatched_bank_count\": 4,\n      \"logged_discrepancies_count\": 0\n    }\n  },\n  \"get_tax_rate_schedule\": {\n    \"description\": \"Retrieves the official SUTA tax rate schedule for a specific period to identify rate changes and effective dates.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"tax_type\": {\n          \"type\": \"string\",\n          \"description\": \"The type of tax (e.g., 'SUTA').\"\n        },\n        \"period\": {\n          \"type\": \"string\",\n          \"description\": \"The fiscal period (e.g., 'Q2').\"\n        }\n      },\n      \"required\": [\n        \"tax_type\",\n        \"period\"\n      ]\n    },\n    \"example_output\": [\n      {\n        \"effective_date\": \"202X-04-01\",\n        \"rate\": 0.021\n      },\n      {\n        \"effective_date\": \"202X-05-01\",\n        \"rate\": 0.027\n      }\n    ]\n  },\n  \"get_ledger_entries\": {\n    \"description\": \"Fetches internal ledger records for a specific account and period. Includes ID, date, amount, and current reconciliation status.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"account_id\": {\n          \"type\": \"string\",\n          \"description\": \"The account number (e.g., '2210').\"\n        },\n        \"period\": {\n          \"type\": \"string\",\n          \"description\": \"The fiscal period (e.g., 'Q2').\"\n        },\n        \"status\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"unreconciled\",\n            \"reconciled\",\n            \"all\"\n          ],\n          \"description\": \"Filter by reconciliation status.\"\n        }\n      },\n      \"required\": [\n        \"account_id\",\n        \"period\"\n      ]\n    },\n    \"example_output\": [\n      {\n        \"id\": \"L-101\",\n        \"date\": \"202X-05-15\",\n        \"amount\": 210.0,\n        \"description\": \"SUTA Accrual\"\n      }\n    ]\n  },\n  \"get_bank_statements\": {\n    \"description\": \"Retrieves bank statement records for a specific period.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"period\": {\n          \"type\": \"string\"\n        },\n        \"status\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"unreconciled\",\n            \"reconciled\",\n            \"all\"\n          ]\n        }\n      },\n      \"required\": [\n        \"period\"\n      ]\n    },\n    \"example_output\": [\n      {\n        \"id\": \"B-500\",\n        \"date\": \"202X-05-20\",\n        \"amount\": -550.0\n      }\n    ]\n  },\n  \"get_payroll_source_records\": {\n    \"description\": \"Retrieves source payroll data including taxable wages per pay period to calculate expected tax liabilities.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"period\": {\n          \"type\": \"string\"\n        }\n      },\n      \"required\": [\n        \"period\"\n      ]\n    },\n    \"example_output\": [\n      {\n        \"pay_date\": \"202X-05-15\",\n        \"taxable_wages\": 10000.0\n      }\n    ]\n  },\n  \"match_entries\": {\n    \"description\": \"Links a ledger entry and a bank record as a standard match, updating status to reconciled.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"ledger_id\": {\n          \"type\": \"string\"\n        },\n        \"bank_id\": {\n          \"type\": \"string\"\n        }\n      },\n      \"required\": [\n        \"ledger_id\",\n        \"bank_id\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"success\"\n    }\n  },\n  \"create_ledger_entry\": {\n    \"description\": \"Manually adds a missing entry to the internal ledger to account for cash outflows found only in the bank statement.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"account_id\": {\n          \"type\": \"string\"\n        },\n        \"amount\": {\n          \"type\": \"number\"\n        },\n        \"date\": {\n          \"type\": \"string\"\n        },\n        \"description\": {\n          \"type\": \"string\"\n        }\n      },\n      \"required\": [\n        \"account_id\",\n        \"amount\",\n        \"date\",\n        \"description\"\n      ]\n    },\n    \"example_output\": {\n      \"new_ledger_id\": \"L-MANUAL-999\"\n    }\n  },\n  \"resolve_ledger_entry\": {\n    \"description\": \"Updates a ledger entry to 'reconciled' status and simultaneously logs the variance in the discrepancy list with a required justification.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"ledger_id\": {\n          \"type\": \"string\"\n        },\n        \"discrepancy_type\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"rate_mismatch\",\n            \"unrecorded_payment\"\n          ]\n        },\n        \"justification\": {\n          \"type\": \"string\",\n          \"description\": \"Explanation of the variance (e.g., '2.1% used instead of 2.7%' or 'Cash outflow bypassed GL').\"\n        }\n      },\n      \"required\": [\n        \"ledger_id\",\n        \"discrepancy_type\",\n        \"justification\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"resolved\",\n      \"log_id\": \"DISC-001\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_summary_stats",
+      "description": "Retrieves the current status of the reconciliation, including the count of unmatched ledger entries, unmatched bank statements, and the number of entries in the discrepancy log.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "unmatched_ledger_count": 10,
+        "unmatched_bank_count": 4,
+        "logged_discrepancies_count": 0
+      }
+    },
+    {
+      "name": "get_tax_rate_schedule",
+      "description": "Retrieves the official SUTA tax rate schedule for a specific period to identify rate changes and effective dates.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "tax_type": {
+            "type": "string",
+            "description": "The type of tax (e.g., 'SUTA')."
+          },
+          "period": {
+            "type": "string",
+            "description": "The fiscal period (e.g., 'Q2')."
+          }
+        },
+        "required": [
+          "tax_type",
+          "period"
+        ]
+      },
+      "example_output": [
+        {
+          "effective_date": "202X-04-01",
+          "rate": 0.021
+        },
+        {
+          "effective_date": "202X-05-01",
+          "rate": 0.027
+        }
+      ]
+    },
+    {
+      "name": "get_ledger_entries",
+      "description": "Fetches internal ledger records for a specific account and period. Includes ID, date, amount, and current reconciliation status.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "account_id": {
+            "type": "string",
+            "description": "The account number (e.g., '2210')."
+          },
+          "period": {
+            "type": "string",
+            "description": "The fiscal period (e.g., 'Q2')."
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "unreconciled",
+              "reconciled",
+              "all"
+            ],
+            "description": "Filter by reconciliation status."
+          }
+        },
+        "required": [
+          "account_id",
+          "period"
+        ]
+      },
+      "example_output": [
+        {
+          "id": "L-101",
+          "date": "202X-05-15",
+          "amount": 210.0,
+          "description": "SUTA Accrual"
+        }
+      ]
+    },
+    {
+      "name": "get_bank_statements",
+      "description": "Retrieves bank statement records for a specific period.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "period": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "unreconciled",
+              "reconciled",
+              "all"
+            ]
+          }
+        },
+        "required": [
+          "period"
+        ]
+      },
+      "example_output": [
+        {
+          "id": "B-500",
+          "date": "202X-05-20",
+          "amount": -550.0
+        }
+      ]
+    },
+    {
+      "name": "get_payroll_source_records",
+      "description": "Retrieves source payroll data including taxable wages per pay period to calculate expected tax liabilities.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "period": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "period"
+        ]
+      },
+      "example_output": [
+        {
+          "pay_date": "202X-05-15",
+          "taxable_wages": 10000.0
+        }
+      ]
+    },
+    {
+      "name": "match_entries",
+      "description": "Links a ledger entry and a bank record as a standard match, updating status to reconciled.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "ledger_id": {
+            "type": "string"
+          },
+          "bank_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "ledger_id",
+          "bank_id"
+        ]
+      },
+      "example_output": {
+        "status": "success"
+      }
+    },
+    {
+      "name": "create_ledger_entry",
+      "description": "Manually adds a missing entry to the internal ledger to account for cash outflows found only in the bank statement.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "account_id": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "number"
+          },
+          "date": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "account_id",
+          "amount",
+          "date",
+          "description"
+        ]
+      },
+      "example_output": {
+        "new_ledger_id": "L-MANUAL-999"
+      }
+    },
+    {
+      "name": "resolve_ledger_entry",
+      "description": "Updates a ledger entry to 'reconciled' status and simultaneously logs the variance in the discrepancy list with a required justification.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "ledger_id": {
+            "type": "string"
+          },
+          "discrepancy_type": {
+            "type": "string",
+            "enum": [
+              "rate_mismatch",
+              "unrecorded_payment"
+            ]
+          },
+          "justification": {
+            "type": "string",
+            "description": "Explanation of the variance (e.g., '2.1% used instead of 2.7%' or 'Cash outflow bypassed GL')."
+          }
+        },
+        "required": [
+          "ledger_id",
+          "discrepancy_type",
+          "justification"
+        ]
+      },
+      "example_output": {
+        "status": "resolved",
+        "log_id": "DISC-001"
+      }
+    }
+  ],
+  "state_description": {
+    "ledger_entries": "List of internal accounting records including ID, date, amount, and reconciliation_status.",
+    "bank_statements": "List of bank-provided records including ID, date, amount, and reconciliation_status.",
+    "reconciliation_log": "A mapping of matched ledger IDs to bank IDs with timestamps.",
+    "discrepancies": "List of entries flagged by the agent as requiring manual investigation.",
+    "summary_stats": "Aggregated statistics of the current reconciliation state."
+  },
+  "task_initial_state": {
+    "ledger_entries": [
+      {
+        "id": "L-SUTA-Q2-001",
+        "date": "2023-04-30",
+        "amount": 2100.0,
+        "description": "April SUTA Accrual (based on 2.1% rate)",
+        "reconciliation_status": "unmatched"
+      },
+      {
+        "id": "L-SUTA-Q2-002",
+        "date": "2023-05-05",
+        "amount": -2100.0,
+        "description": "Payment: Q1/April SUTA Tax Liability",
+        "reconciliation_status": "unmatched"
+      },
+      {
+        "id": "L-SUTA-Q2-003",
+        "date": "2023-05-31",
+        "amount": 2100.0,
+        "description": "May SUTA Accrual (incorrectly calculated at 2.1%)",
+        "reconciliation_status": "unmatched"
+      },
+      {
+        "id": "L-SUTA-Q2-004",
+        "date": "2023-06-30",
+        "amount": 2700.0,
+        "description": "June SUTA Accrual (updated 2.7% rate)",
+        "reconciliation_status": "unmatched"
+      }
+    ],
+    "bank_statements": [
+      {
+        "id": "B-TX-55091",
+        "date": "2023-05-06",
+        "amount": 2100.0,
+        "description": "STATE DEPT OF REVENUE - TAX PAY",
+        "reconciliation_status": "unmatched"
+      },
+      {
+        "id": "B-TX-55092",
+        "date": "2023-06-12",
+        "amount": 550.0,
+        "description": "MANUAL CHK #8821 - SUTA OVERAGE",
+        "reconciliation_status": "unmatched"
+      }
+    ],
+    "reconciliation_log": [],
+    "discrepancies": [],
+    "summary_stats": {
+      "total_unmatched_ledger": 4,
+      "total_unmatched_bank": 2
+    }
+  }
+}

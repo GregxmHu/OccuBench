@@ -1,0 +1,166 @@
+{
+  "environment_name": "env_f96ee97f28d2",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: Based on the current telescope state $s_t$ and the scheduling action $a_t$ provided by the Agent, simulate the internal environment evolution and predict the resulting observation $o_{{t+1}}$.\n- **Emphasis**: You are a simulator of a telescope system. You do not execute real-world hardware commands but calculate the logical consequences of actions (e.g., time elapsed during a slew, data volume generated, weather impact) to maintain a consistent environment state.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nYou must maintain internal consistency across all turns. Subsequent actions must respect the state resulting from previous interactions (e.g., if the telescope is currently 'slewing', an exposure action should fail or return an error until the slew is complete).\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. This JSON contains:\n- `\"name\"`: The name of the action function to execute.\n- `\"arguments\"`: A dictionary of parameters required for that function.\n\nYou must parse this JSON, update your internal representation of the telescope and environment state, and generate the appropriate observation.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\n- If an action is requested while the telescope is in an incompatible state (e.g., observing during bad weather or moving while already tracking), return an error observation.\n- For invalid parameters, undefined actions, or empty inputs, return a structured error: `{{\"error\": \"Description of the specific issue\"}}`.\n- Do not fabricate data; if a target is below the horizon or weather prevents observation, the observation must reflect this reality.\n\n##### Output Assembly\nFor every action function call, you must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition.\n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, `new_state`, or any hidden variables. You are responsible for tracking the state internally, but the Agent must only see the specific Observation (the return value of the function).\n\n### 4. Key Principles\n- **Format**: Strictly adhere to JSON for all observations.\n- **Factuality**: Use realistic astronomical and operational logic (e.g., slewing takes time proportional to angular distance).\n- **Consistency**: The telescope's position and time must evolve linearly and logically.\n- **Realism**: Simulated behaviors must align with telescope operational constraints (e.g., storage limits, sun-avoidance constraints).\n- **Quality**: Ensure all generated observations are clear and structured.\n- **Encapsulation**: Strictly hide the internal state structure from the output. Only expose information explicitly returned by the action function.\n{{initial_state}}: {{\n  \"current_time_utc\": \"2025-01-01T22:30:00Z\",\n  \"telescope_azimuth\": 215.5,\n  \"telescope_elevation\": 32.0,\n  \"system_status\": \"stowed\",\n  \"weather_wind_speed\": 14.2,\n  \"weather_cloud_cover\": 0.0,\n  \"available_storage_gb\": 248.5\n}}\n{{state_descriptions}}: {{\n  \"current_time_utc\": \"The current simulation time in ISO 8601 format.\",\n  \"telescope_azimuth\": \"The current horizontal angle of the telescope in degrees (0-360).\",\n  \"telescope_elevation\": \"The current vertical angle of the telescope in degrees (0-90).\",\n  \"system_status\": \"The current operational mode: 'idle', 'slewing', 'tracking', 'calibrating', or 'stowed'.\",\n  \"weather_wind_speed\": \"Current wind speed at the site in km/h.\",\n  \"weather_cloud_cover\": \"Percentage of the sky covered by clouds (0-100).\",\n  \"available_storage_gb\": \"Remaining capacity in the local data storage buffer in Gigabytes.\"\n}}\n{action_set_definitions}: {\n  \"get_environment_status\": {\n    \"description\": \"Retrieves the current state of the telescope environment, including time, weather conditions, storage capacity, and system status.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"current_time_utc\": \"2025-05-10T22:30:00Z\",\n      \"telescope_azimuth\": 0.0,\n      \"telescope_elevation\": 90.0,\n      \"system_status\": \"stowed\",\n      \"weather_wind_speed\": 15.5,\n      \"weather_cloud_cover\": 5,\n      \"available_storage_gb\": 500.0\n    }\n  },\n  \"get_target_ephemeris\": {\n    \"description\": \"Retrieves the sky coordinates (Azimuth and Elevation) for a specific celestial target at the current time.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"target_name\": {\n          \"type\": \"string\",\n          \"description\": \"The name of the astronomical object (e.g., 'SN 2025a').\"\n        }\n      },\n      \"required\": [\n        \"target_name\"\n      ]\n    },\n    \"example_output\": {\n      \"target_name\": \"SN 2025a\",\n      \"azimuth\": 145.2,\n      \"elevation\": 45.8\n    }\n  },\n  \"prepare_system\": {\n    \"description\": \"Transitions the telescope from 'stowed' to 'idle' mode and performs initial hardware checks.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"status\": \"success\",\n      \"current_mode\": \"idle\"\n    }\n  },\n  \"calibrate_instrument\": {\n    \"description\": \"Executes standard calibration procedures for the observation band specified.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"band\": {\n          \"type\": \"string\",\n          \"description\": \"The observation band (e.g., 'Band 1').\"\n        }\n      },\n      \"required\": [\n        \"band\"\n      ]\n    },\n    \"example_output\": {\n      \"calibration_status\": \"complete\"\n    }\n  },\n  \"slew_to_target\": {\n    \"description\": \"Moves the telescope to the specified azimuth and elevation coordinates.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"azimuth\": {\n          \"type\": \"number\",\n          \"description\": \"Target horizontal angle (0-360).\"\n        },\n        \"elevation\": {\n          \"type\": \"number\",\n          \"description\": \"Target vertical angle (0-90).\"\n        }\n      },\n      \"required\": [\n        \"azimuth\",\n        \"elevation\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"slewing\",\n      \"estimated_arrival_time\": \"2025-05-10T22:35:00Z\"\n    }\n  },\n  \"start_observation\": {\n    \"description\": \"Begins a tracked integration on the current target for a specified duration.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"duration_minutes\": {\n          \"type\": \"integer\",\n          \"description\": \"Integration time in minutes.\"\n        },\n        \"priority_level\": {\n          \"type\": \"string\",\n          \"description\": \"The priority classification (e.g., 'Band 1').\"\n        }\n      },\n      \"required\": [\n        \"duration_minutes\",\n        \"priority_level\"\n      ]\n    },\n    \"example_output\": {\n      \"observation_id\": \"OBS-9921\",\n      \"status\": \"tracking\",\n      \"end_time_utc\": \"2025-05-11T00:35:00Z\"\n    }\n  },\n  \"verify_archive_storage\": {\n    \"description\": \"Checks the data archive to confirm that the observation data file has been successfully written and stored.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"target_name\": {\n          \"type\": \"string\",\n          \"description\": \"The name of the observed object.\"\n        }\n      },\n      \"required\": [\n        \"target_name\"\n      ]\n    },\n    \"example_output\": {\n      \"archive_confirmed\": true,\n      \"file_path\": \"/archive/2025/SN2025a_B1.fits\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_environment_status",
+      "description": "Retrieves the current state of the telescope environment, including time, weather conditions, storage capacity, and system status.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "current_time_utc": "2025-05-10T22:30:00Z",
+        "telescope_azimuth": 0.0,
+        "telescope_elevation": 90.0,
+        "system_status": "stowed",
+        "weather_wind_speed": 15.5,
+        "weather_cloud_cover": 5,
+        "available_storage_gb": 500.0
+      }
+    },
+    {
+      "name": "get_target_ephemeris",
+      "description": "Retrieves the sky coordinates (Azimuth and Elevation) for a specific celestial target at the current time.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "target_name": {
+            "type": "string",
+            "description": "The name of the astronomical object (e.g., 'SN 2025a')."
+          }
+        },
+        "required": [
+          "target_name"
+        ]
+      },
+      "example_output": {
+        "target_name": "SN 2025a",
+        "azimuth": 145.2,
+        "elevation": 45.8
+      }
+    },
+    {
+      "name": "prepare_system",
+      "description": "Transitions the telescope from 'stowed' to 'idle' mode and performs initial hardware checks.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "status": "success",
+        "current_mode": "idle"
+      }
+    },
+    {
+      "name": "calibrate_instrument",
+      "description": "Executes standard calibration procedures for the observation band specified.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "band": {
+            "type": "string",
+            "description": "The observation band (e.g., 'Band 1')."
+          }
+        },
+        "required": [
+          "band"
+        ]
+      },
+      "example_output": {
+        "calibration_status": "complete"
+      }
+    },
+    {
+      "name": "slew_to_target",
+      "description": "Moves the telescope to the specified azimuth and elevation coordinates.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "azimuth": {
+            "type": "number",
+            "description": "Target horizontal angle (0-360)."
+          },
+          "elevation": {
+            "type": "number",
+            "description": "Target vertical angle (0-90)."
+          }
+        },
+        "required": [
+          "azimuth",
+          "elevation"
+        ]
+      },
+      "example_output": {
+        "status": "slewing",
+        "estimated_arrival_time": "2025-05-10T22:35:00Z"
+      }
+    },
+    {
+      "name": "start_observation",
+      "description": "Begins a tracked integration on the current target for a specified duration.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "duration_minutes": {
+            "type": "integer",
+            "description": "Integration time in minutes."
+          },
+          "priority_level": {
+            "type": "string",
+            "description": "The priority classification (e.g., 'Band 1')."
+          }
+        },
+        "required": [
+          "duration_minutes",
+          "priority_level"
+        ]
+      },
+      "example_output": {
+        "observation_id": "OBS-9921",
+        "status": "tracking",
+        "end_time_utc": "2025-05-11T00:35:00Z"
+      }
+    },
+    {
+      "name": "verify_archive_storage",
+      "description": "Checks the data archive to confirm that the observation data file has been successfully written and stored.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "target_name": {
+            "type": "string",
+            "description": "The name of the observed object."
+          }
+        },
+        "required": [
+          "target_name"
+        ]
+      },
+      "example_output": {
+        "archive_confirmed": true,
+        "file_path": "/archive/2025/SN2025a_B1.fits"
+      }
+    }
+  ],
+  "state_description": {
+    "current_time_utc": "The current simulation time in ISO 8601 format.",
+    "telescope_azimuth": "The current horizontal angle of the telescope in degrees (0-360).",
+    "telescope_elevation": "The current vertical angle of the telescope in degrees (0-90).",
+    "system_status": "The current operational mode: 'idle', 'slewing', 'tracking', 'calibrating', or 'stowed'.",
+    "weather_wind_speed": "Current wind speed at the site in km/h.",
+    "weather_cloud_cover": "Percentage of the sky covered by clouds (0-100).",
+    "available_storage_gb": "Remaining capacity in the local data storage buffer in Gigabytes."
+  },
+  "task_initial_state": {
+    "current_time_utc": "2025-01-01T22:30:00Z",
+    "telescope_azimuth": 215.5,
+    "telescope_elevation": 32.0,
+    "system_status": "stowed",
+    "weather_wind_speed": 14.2,
+    "weather_cloud_cover": 0.0,
+    "available_storage_gb": 248.5
+  }
+}

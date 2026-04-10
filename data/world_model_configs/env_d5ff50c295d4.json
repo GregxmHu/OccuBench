@@ -1,0 +1,140 @@
+{
+  "environment_name": "env_d5ff50c295d4",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: Based on the current internal state $s_t$ and the action $a_t$ performed by the Agent, simulate the evolution of the NDA Contract Review environment and predict the resulting observation $o_{{t+1}}$.\n- **Emphasis**: You are a simulator of the contract review process. You do not provide legal advice or act as the Agent; you maintain the integrity of the document state and environmental constraints, generating realistic feedback based on the Agent's inputs.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions between the World Model and the Agent must maintain context consistency. Changes to the contract text, identified risks, or approval statuses must persist across turns until further modified or reset.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object containing:\n- `\"name\"`: The name of the action function.\n- Parameters required by that action function.\n\nExample:\n```json\n{{\n \"name\": \"propose_redline\",\n \"arguments\": {{\n    \"clause_id\": \"section_4.1\",\n    \"new_text\": \"The Recipient shall return all Confidential Information within 10 days.\"\n  }}\n}}\n```\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nIf the Agent attempts to modify a non-existent clause, provides invalid parameters, or executes actions in an incorrect sequence (e.g., signing before review), return a structured error:\n`{{\"error\": \"Reason for failure\"}}`.\nDo not fabricate contract data or ignore logic constraints.\n\n##### Output Assembly\nFor every action function call, return a structured JSON object containing **ONLY** the return fields declared in that action function's definition. \n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, `new_state`, or hidden variables. The state maintenance is implicit in the interaction history. The Agent must only see the specific Observation (return values) defined in the action.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to specified JSON and text formats.\n- **Factuality**: Do not simulate external legal databases; rely only on the provided contract state and standard legal logic for NDAs.\n- **Consistency**: If a clause is deleted in $t=1$, it must remain deleted at $t=2$ unless a restore action is called.\n- **Realism**: Responses should reflect a professional legal environment (e.g., redline reflections, consistency checks across definitions).\n- **Quality**: Language must be precise, professional, and structurally complete.\n- **Encapsulation**: Strictly hide the internal state structure. Only expose the \"Observation\" resulting from the action.\n{{initial_state}}: {{\n  \"contract_id\": \"NDA-2024-APEX-99\",\n  \"document_text\": \"Section 6. Data Remediation: Upon the Disclosing Party's written request, the Receiving Party shall within 48 hours expunge all Confidential Information from its active servers and all disaster recovery backups. No exceptions shall be made for legal holds or regulatory archiving. Following the 48-hour period, a signed Certificate of Destruction must be delivered to the Disclosing Party within 24 hours, certifying that no copies remain. Any violation of this timeline constitutes a material breach.\",\n  \"review_status\": \"INITIAL_SCREENING\",\n  \"identified_issues\": [],\n  \"parties\": {{\n    \"discloser\": \"ApexCorp\",\n    \"recipient\": \"OmniTech Solutions\"\n  }},\n  \"last_action_timestamp\": \"2024-06-12T14:30:00Z\"\n}}\n{{state_descriptions}}: {{\n  \"contract_id\": \"Unique identifier for the NDA document.\",\n  \"document_text\": \"The complete raw text of the NDA contract currently being reviewed.\",\n  \"review_status\": \"The current phase of the workflow (e.g., 'INITIAL_SCREENING', 'REDLINING', 'PENDING_APPROVAL', 'FINALIZED').\",\n  \"identified_issues\": \"A list of tracked legal issues or risks identified in the contract.\",\n  \"parties\": \"The legal entities involved in the agreement.\",\n  \"last_action_timestamp\": \"ISO 8601 timestamp of the last state update.\"\n}}\n{action_set_definitions}: {\n  \"get_active_contract_metadata\": {\n    \"description\": \"Retrieves the metadata for the contract currently under review, including the unique contract ID and current status. Essential for initiating the workflow.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"contract_id\": \"NDA-APEX-2023-001\",\n      \"review_status\": \"INITIAL_SCREENING\",\n      \"parties\": [\n        \"OmniTech Solutions\",\n        \"ApexCorp\"\n      ]\n    }\n  },\n  \"get_contract_text\": {\n    \"description\": \"Retrieves the full raw text of the contract associated with the provided contract_id.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"contract_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier of the contract.\"\n        }\n      },\n      \"required\": [\n        \"contract_id\"\n      ]\n    },\n    \"example_output\": {\n      \"document_text\": \"This Non-Disclosure Agreement...\"\n    }\n  },\n  \"log_contract_issue\": {\n    \"description\": \"Records a specific legal or operational issue found during the review process into the tracked issues list.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"contract_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier of the contract.\"\n        },\n        \"issue_description\": {\n          \"type\": \"string\",\n          \"description\": \"A detailed description of the identified non-compliance or risk.\"\n        }\n      },\n      \"required\": [\n        \"contract_id\",\n        \"issue_description\"\n      ]\n    },\n    \"example_output\": {\n      \"success\": true\n    }\n  },\n  \"update_contract_content\": {\n    \"description\": \"Updates the full text of the contract with redlined/revised content. Use this to implement changes to clauses.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"contract_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier of the contract.\"\n        },\n        \"revised_text\": {\n          \"type\": \"string\",\n          \"description\": \"The full document text incorporating all necessary redlines and revisions.\"\n        }\n      },\n      \"required\": [\n        \"contract_id\",\n        \"revised_text\"\n      ]\n    },\n    \"example_output\": {\n      \"success\": true,\n      \"new_timestamp\": \"2023-10-27T10:00:00Z\"\n    }\n  },\n  \"update_review_status\": {\n    \"description\": \"Updates the workflow phase/status of the contract (e.g., transitioning to 'REDLINING').\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"contract_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier of the contract.\"\n        },\n        \"new_status\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"INITIAL_SCREENING\",\n            \"REDLINING\",\n            \"PENDING_APPROVAL\",\n            \"FINALIZED\"\n          ],\n          \"description\": \"The target workflow phase.\"\n        }\n      },\n      \"required\": [\n        \"contract_id\",\n        \"new_status\"\n      ]\n    },\n    \"example_output\": {\n      \"current_status\": \"REDLINING\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_active_contract_metadata",
+      "description": "Retrieves the metadata for the contract currently under review, including the unique contract ID and current status. Essential for initiating the workflow.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "contract_id": "NDA-APEX-2023-001",
+        "review_status": "INITIAL_SCREENING",
+        "parties": [
+          "OmniTech Solutions",
+          "ApexCorp"
+        ]
+      }
+    },
+    {
+      "name": "get_contract_text",
+      "description": "Retrieves the full raw text of the contract associated with the provided contract_id.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "contract_id": {
+            "type": "string",
+            "description": "The unique identifier of the contract."
+          }
+        },
+        "required": [
+          "contract_id"
+        ]
+      },
+      "example_output": {
+        "document_text": "This Non-Disclosure Agreement..."
+      }
+    },
+    {
+      "name": "log_contract_issue",
+      "description": "Records a specific legal or operational issue found during the review process into the tracked issues list.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "contract_id": {
+            "type": "string",
+            "description": "The unique identifier of the contract."
+          },
+          "issue_description": {
+            "type": "string",
+            "description": "A detailed description of the identified non-compliance or risk."
+          }
+        },
+        "required": [
+          "contract_id",
+          "issue_description"
+        ]
+      },
+      "example_output": {
+        "success": true
+      }
+    },
+    {
+      "name": "update_contract_content",
+      "description": "Updates the full text of the contract with redlined/revised content. Use this to implement changes to clauses.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "contract_id": {
+            "type": "string",
+            "description": "The unique identifier of the contract."
+          },
+          "revised_text": {
+            "type": "string",
+            "description": "The full document text incorporating all necessary redlines and revisions."
+          }
+        },
+        "required": [
+          "contract_id",
+          "revised_text"
+        ]
+      },
+      "example_output": {
+        "success": true,
+        "new_timestamp": "2023-10-27T10:00:00Z"
+      }
+    },
+    {
+      "name": "update_review_status",
+      "description": "Updates the workflow phase/status of the contract (e.g., transitioning to 'REDLINING').",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "contract_id": {
+            "type": "string",
+            "description": "The unique identifier of the contract."
+          },
+          "new_status": {
+            "type": "string",
+            "enum": [
+              "INITIAL_SCREENING",
+              "REDLINING",
+              "PENDING_APPROVAL",
+              "FINALIZED"
+            ],
+            "description": "The target workflow phase."
+          }
+        },
+        "required": [
+          "contract_id",
+          "new_status"
+        ]
+      },
+      "example_output": {
+        "current_status": "REDLINING"
+      }
+    }
+  ],
+  "state_description": {
+    "contract_id": "Unique identifier for the NDA document.",
+    "document_text": "The complete raw text of the NDA contract currently being reviewed.",
+    "review_status": "The current phase of the workflow (e.g., 'INITIAL_SCREENING', 'REDLINING', 'PENDING_APPROVAL', 'FINALIZED').",
+    "identified_issues": "A list of tracked legal issues or risks identified in the contract.",
+    "parties": "The legal entities involved in the agreement.",
+    "last_action_timestamp": "ISO 8601 timestamp of the last state update."
+  },
+  "task_initial_state": {
+    "contract_id": "NDA-2024-APEX-99",
+    "document_text": "Section 6. Data Remediation: Upon the Disclosing Party's written request, the Receiving Party shall within 48 hours expunge all Confidential Information from its active servers and all disaster recovery backups. No exceptions shall be made for legal holds or regulatory archiving. Following the 48-hour period, a signed Certificate of Destruction must be delivered to the Disclosing Party within 24 hours, certifying that no copies remain. Any violation of this timeline constitutes a material breach.",
+    "review_status": "INITIAL_SCREENING",
+    "identified_issues": [],
+    "parties": {
+      "discloser": "ApexCorp",
+      "recipient": "OmniTech Solutions"
+    },
+    "last_action_timestamp": "2024-06-12T14:30:00Z"
+  }
+}

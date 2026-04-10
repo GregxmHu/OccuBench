@@ -1,0 +1,122 @@
+{
+  "environment_name": "env_6f60725a5fc2",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: Act as the internal simulation engine for a Dynamic Portfolio Rebalancing environment. Based on the current internal state $s_t$ and the Agent's trading action $a_t$, you must calculate the environment's state transition and predict the observation $o_{{t+1}}$ (execution results and market updates) returned to the Agent.\n- **Emphasis**: You are a simulator, not an executor of real-world financial transactions. Your task is to maintain internal consistency in asset quantities, cash balances, and market price fluctuations while only exposing the specific results defined by the action functions.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nYou must maintain a continuous and self-consistent simulation. Every action taken by the Agent affects the internal state (e.g., selling an asset increases cash and decreases holdings). Market prices should evolve realistically or according to the provided state logic over time steps.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. You must parse the following format:\n- `\"name\"`: The name of the action (e.g., buy, sell, get_quote).\n- `\"arguments\"`: A dictionary of parameters required for the action.\n\nExample:\n```json\n{{\n \"name\": \"trade_asset\",\n \"arguments\": {{\n    \"symbol\": \"AAPL\",\n    \"quantity\": 10,\n    \"side\": \"buy\"\n  }}\n}}\n```\nYou must simulate the outcome of these actions against the internal state.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nReturn structured error messages (e.g., `{{\"error\": \"Insufficient funds\"}}` or `{{\"error\": \"Invalid symbol\"}}`) if the Agent attempts an impossible action (e.g., selling more shares than held, buying with insufficient cash, or calling an undefined action). Do not hallucinate successful outcomes for invalid requests.\n\n##### Output Assembly\nFor every action call, return a JSON object containing **ONLY** the observation fields defined in the action's return schema. \n\n**CRITICAL CONSTRAINT**: You must **NOT** output the full internal state or the updated state object in your response. The Agent should only see the specific observation (e.g., transaction confirmation or current ticker price). The evolution of the internal state remains hidden and is managed by you internally across the conversation history.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to the JSON response format.\n- **Factuality**: Ensure math for balance and holdings updates is precise.\n- **Consistency**: If an asset's price is updated, it must remain consistent across subsequent observations until the next price movement occurs.\n- **Realism**: Simulate realistic market dynamics (e.g., price impact or time-stepping) if implied by the state transitions.\n- **Encapsulation**: Strictly hide internal state variables like the total portfolio log or hidden risk factors unless explicitly requested through a defined action observation.\n{{initial_state}}: {{\n  \"cash_balance\": 65000.0,\n  \"holdings\": {{\n    \"VTI\": 15000.0,\n    \"Summit_Private_Equity\": 1.0\n  }},\n  \"market_prices\": {{\n    \"VTI\": 130.0,\n    \"Summit_Private_Equity\": 2500000.0\n  }},\n  \"transaction_fee_rate\": 0.001,\n  \"current_step\": 3\n}}\n{{state_descriptions}}: {{\n  \"cash_balance\": \"The amount of liquid currency available for purchasing assets.\",\n  \"holdings\": \"A dictionary mapping asset symbols to the quantity currently held in the portfolio.\",\n  \"market_prices\": \"The current unit price for all trackable assets in the simulation.\",\n  \"transaction_fee_rate\": \"The percentage fee charged on the total value of each trade.\",\n  \"current_step\": \"The current discrete time step in the simulation.\"\n}}\n{action_set_definitions}: {\n  \"get_portfolio_data\": {\n    \"description\": \"Retrieves current cash balance, asset holdings (symbol and quantity), and the transaction fee rate from the environment state.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"cash_balance\": 100000.0,\n      \"holdings\": {\n        \"VTI\": 2500,\n        \"Summit_Private_Equity\": 1\n      },\n      \"transaction_fee_rate\": 0.005\n    }\n  },\n  \"get_market_data\": {\n    \"description\": \"Retrieves the current market unit prices for all assets in the portfolio.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"VTI\": 130.0,\n      \"Summit_Private_Equity\": 2000000.0\n    }\n  },\n  \"liquidate_vti_shares\": {\n    \"description\": \"Sells a specified quantity of VTI shares to raise cash, accounting for transaction fees.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"quantity\": {\n          \"type\": \"number\",\n          \"description\": \"The number of shares to sell.\"\n        }\n      },\n      \"required\": [\n        \"quantity\"\n      ]\n    },\n    \"example_output\": {\n      \"transaction_status\": \"success\",\n      \"gross_value\": 351758.79,\n      \"net_proceeds\": 350000.0\n    }\n  },\n  \"draw_nav_credit_line\": {\n    \"description\": \"Draws a specified amount of cash from the NAV Credit Line facility.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"amount\": {\n          \"type\": \"number\",\n          \"description\": \"The amount of currency to draw from the credit line.\"\n        }\n      },\n      \"required\": [\n        \"amount\"\n      ]\n    },\n    \"example_output\": {\n      \"transaction_status\": \"success\",\n      \"new_credit_balance\": 350000.0\n    }\n  },\n  \"execute_capital_call\": {\n    \"description\": \"Executes the final transfer of funds to the private equity entity to satisfy the capital call.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"entity_name\": {\n          \"type\": \"string\",\n          \"description\": \"The name of the PE entity.\"\n        },\n        \"amount\": {\n          \"type\": \"number\",\n          \"description\": \"The cash amount to be transferred.\"\n        }\n      },\n      \"required\": [\n        \"entity_name\",\n        \"amount\"\n      ]\n    },\n    \"example_output\": {\n      \"payment_status\": \"confirmed\",\n      \"remaining_cash\": 10000.0\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_portfolio_data",
+      "description": "Retrieves current cash balance, asset holdings (symbol and quantity), and the transaction fee rate from the environment state.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "cash_balance": 100000.0,
+        "holdings": {
+          "VTI": 2500,
+          "Summit_Private_Equity": 1
+        },
+        "transaction_fee_rate": 0.005
+      }
+    },
+    {
+      "name": "get_market_data",
+      "description": "Retrieves the current market unit prices for all assets in the portfolio.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "VTI": 130.0,
+        "Summit_Private_Equity": 2000000.0
+      }
+    },
+    {
+      "name": "liquidate_vti_shares",
+      "description": "Sells a specified quantity of VTI shares to raise cash, accounting for transaction fees.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "quantity": {
+            "type": "number",
+            "description": "The number of shares to sell."
+          }
+        },
+        "required": [
+          "quantity"
+        ]
+      },
+      "example_output": {
+        "transaction_status": "success",
+        "gross_value": 351758.79,
+        "net_proceeds": 350000.0
+      }
+    },
+    {
+      "name": "draw_nav_credit_line",
+      "description": "Draws a specified amount of cash from the NAV Credit Line facility.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "amount": {
+            "type": "number",
+            "description": "The amount of currency to draw from the credit line."
+          }
+        },
+        "required": [
+          "amount"
+        ]
+      },
+      "example_output": {
+        "transaction_status": "success",
+        "new_credit_balance": 350000.0
+      }
+    },
+    {
+      "name": "execute_capital_call",
+      "description": "Executes the final transfer of funds to the private equity entity to satisfy the capital call.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "entity_name": {
+            "type": "string",
+            "description": "The name of the PE entity."
+          },
+          "amount": {
+            "type": "number",
+            "description": "The cash amount to be transferred."
+          }
+        },
+        "required": [
+          "entity_name",
+          "amount"
+        ]
+      },
+      "example_output": {
+        "payment_status": "confirmed",
+        "remaining_cash": 10000.0
+      }
+    }
+  ],
+  "state_description": {
+    "cash_balance": "The amount of liquid currency available for purchasing assets.",
+    "holdings": "A dictionary mapping asset symbols to the quantity currently held in the portfolio.",
+    "market_prices": "The current unit price for all trackable assets in the simulation.",
+    "transaction_fee_rate": "The percentage fee charged on the total value of each trade.",
+    "current_step": "The current discrete time step in the simulation."
+  },
+  "task_initial_state": {
+    "cash_balance": 65000.0,
+    "holdings": {
+      "VTI": 15000.0,
+      "Summit_Private_Equity": 1.0
+    },
+    "market_prices": {
+      "VTI": 130.0,
+      "Summit_Private_Equity": 2500000.0
+    },
+    "transaction_fee_rate": 0.001,
+    "current_step": 3
+  }
+}

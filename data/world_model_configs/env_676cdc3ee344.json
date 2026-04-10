@@ -1,0 +1,104 @@
+{
+  "environment_name": "env_676cdc3ee344",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: You are a high-fidelity simulator for a Power Grid Load Balancing scenario. Based on the current grid state $s_t$ and the load management or generation actions $a_t$ executed by the Agent, your task is to simulate the physical and logical evolution of the power grid and predict the resulting observation $o_{{t+1}}$ provided to the Agent.\n- **Emphasis**: You do not control the grid; you are the grid. You perform internal state updates based on physics-informed logic (e.g., frequency changes based on supply/demand imbalance) and return only the specific observations defined in the action responses.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions must maintain strict context consistency. You must track the cumulative effects of generation adjustments, storage depletion/charging, and demand fluctuations over time. The grid's stability (frequency, voltage levels) must reflect the historical sequence of actions.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. You must parse this JSON to determine the intended transition. \n\nExample Input:\n```json\n{{\n \"name\": \"adjust_generator_output\",\n \"arguments\": {{\n    \"generator_id\": \"thermal_01\",\n    \"target_mw\": 450\n  }}\n}}\n```\n\nYou must calculate the delta in total supply, update the internal state (including the resulting impact on grid frequency), and generate the observation.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\n- If an action specifies a value outside physical limits (e.g., setting generation higher than max capacity or discharging an empty battery), return a JSON error object: `{{\"error\": \"Physical limit exceeded\", \"details\": \"...\"}}`.\n- For undefined actions or malformed JSON, return `{{\"error\": \"Invalid request\"}}`.\n- Do not fabricate data; if a requested observation depends on a sensor that is \"offline\" in the state, report the failure.\n\n##### Output Assembly\nFor every action function call, you must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition.\n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, `new_state`, or hidden variables like `grid_frequency` unless that specific field is explicitly listed as a return value for the called action. State maintenance is handled internally by you. The Agent must only see the specific Observation.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to specified JSON formats for both input parsing and output generation.\n- **Factuality**: Simulations must follow the logic of power systems (e.g., Supply > Demand leads to frequency rise; Supply < Demand leads to frequency drop).\n- **Consistency**: The internal state must remain self-consistent across multiple turns (e.g., if a battery was discharged in $t_1$, its $t_2$ state must reflect reduced energy).\n- **Realism**: Simulate realistic constraints such as generator ramp rates, transmission losses, and weather-dependent renewable volatility if present in the state.\n- **Encapsulation**: Strictly hide the internal state structure. Only expose information that is explicitly returned by the action function. Do not output text explanations of the state update unless requested by the observation format.\n{{initial_state}}: {{\n  \"grid_frequency_hz\": 49.3,\n  \"total_demand_mw\": 1450.0,\n  \"active_generation_mw\": 1300.0,\n  \"storage_soc_mwh\": 58.0,\n  \"generator_registry\": {{\n    \"thermal_01\": {{\n      \"type\": \"thermal\",\n      \"current_output\": 850,\n      \"max_capacity\": 1000,\n      \"ramp_rate\": 30\n    }},\n    \"wind_farm_01\": {{\n      \"type\": \"wind\",\n      \"current_output\": 450,\n      \"max_capacity\": 600,\n      \"ramp_rate\": 10\n    }}\n  }},\n  \"grid_stability_status\": \"Under-frequency Alert\"\n}}\n{{state_descriptions}}: {{\n  \"grid_frequency_hz\": \"The current operational frequency of the power grid. Nominal value is usually 50.0 or 60.0.\",\n  \"total_demand_mw\": \"The total instantaneous power demand from all consumers on the grid in Megawatts.\",\n  \"active_generation_mw\": \"The total real-time power being injected into the grid by all active generators.\",\n  \"storage_soc_mwh\": \"State of Charge: The current energy stored in the grid's battery systems in Megawatt-hours.\",\n  \"generator_registry\": \"A detailed mapping of individual generators, their current output, and their operational limits.\",\n  \"grid_stability_status\": \"The current status of the grid (e.g., 'Stable', 'Under-frequency Alert', 'Critical Load Shedding').\"\n}}\n{action_set_definitions}: {\n  \"get_grid_status\": {\n    \"description\": \"Retrieves the current real-time operational metrics of the power grid, including frequency, demand, total active generation, battery State of Charge (SoC) in MWh, and stability status.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"grid_frequency_hz\": 49.3,\n      \"total_demand_mw\": 1450.0,\n      \"active_generation_mw\": 1300.0,\n      \"storage_soc_mwh\": 65.0,\n      \"grid_stability_status\": \"Under-frequency Alert\"\n    }\n  },\n  \"get_generator_registry\": {\n    \"description\": \"Returns a comprehensive registry of all active generation and storage units, detailing their unique IDs, current power output, maximum operational capacity, and ramp rate limits (MW per dispatch step).\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"units\": [\n        {\n          \"unit_id\": \"battery_01\",\n          \"type\": \"storage\",\n          \"current_output_mw\": 10.0,\n          \"max_capacity_mw\": 200.0,\n          \"ramp_rate_mw\": 150.0\n        },\n        {\n          \"unit_id\": \"thermal_01\",\n          \"type\": \"thermal\",\n          \"current_output_mw\": 450.0,\n          \"max_capacity_mw\": 600.0,\n          \"ramp_rate_mw\": 25.0\n        }\n      ]\n    }\n  },\n  \"update_dispatch\": {\n    \"description\": \"Adjusts the power output level of a specific unit. Changes must respect the unit's ramp rate and maximum capacity.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"unit_id\": {\n          \"type\": \"string\",\n          \"description\": \"The identifier of the unit to be adjusted.\"\n        },\n        \"target_output_mw\": {\n          \"type\": \"number\",\n          \"description\": \"The new power output level requested in Megawatts.\"\n        }\n      },\n      \"required\": [\n        \"unit_id\",\n        \"target_output_mw\"\n      ]\n    },\n    \"example_output\": {\n      \"unit_id\": \"battery_01\",\n      \"status\": \"success\",\n      \"new_output_mw\": 160.0\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_grid_status",
+      "description": "Retrieves the current real-time operational metrics of the power grid, including frequency, demand, total active generation, battery State of Charge (SoC) in MWh, and stability status.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "grid_frequency_hz": 49.3,
+        "total_demand_mw": 1450.0,
+        "active_generation_mw": 1300.0,
+        "storage_soc_mwh": 65.0,
+        "grid_stability_status": "Under-frequency Alert"
+      }
+    },
+    {
+      "name": "get_generator_registry",
+      "description": "Returns a comprehensive registry of all active generation and storage units, detailing their unique IDs, current power output, maximum operational capacity, and ramp rate limits (MW per dispatch step).",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "units": [
+          {
+            "unit_id": "battery_01",
+            "type": "storage",
+            "current_output_mw": 10.0,
+            "max_capacity_mw": 200.0,
+            "ramp_rate_mw": 150.0
+          },
+          {
+            "unit_id": "thermal_01",
+            "type": "thermal",
+            "current_output_mw": 450.0,
+            "max_capacity_mw": 600.0,
+            "ramp_rate_mw": 25.0
+          }
+        ]
+      }
+    },
+    {
+      "name": "update_dispatch",
+      "description": "Adjusts the power output level of a specific unit. Changes must respect the unit's ramp rate and maximum capacity.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "unit_id": {
+            "type": "string",
+            "description": "The identifier of the unit to be adjusted."
+          },
+          "target_output_mw": {
+            "type": "number",
+            "description": "The new power output level requested in Megawatts."
+          }
+        },
+        "required": [
+          "unit_id",
+          "target_output_mw"
+        ]
+      },
+      "example_output": {
+        "unit_id": "battery_01",
+        "status": "success",
+        "new_output_mw": 160.0
+      }
+    }
+  ],
+  "state_description": {
+    "grid_frequency_hz": "The current operational frequency of the power grid. Nominal value is usually 50.0 or 60.0.",
+    "total_demand_mw": "The total instantaneous power demand from all consumers on the grid in Megawatts.",
+    "active_generation_mw": "The total real-time power being injected into the grid by all active generators.",
+    "storage_soc_mwh": "State of Charge: The current energy stored in the grid's battery systems in Megawatt-hours.",
+    "generator_registry": "A detailed mapping of individual generators, their current output, and their operational limits.",
+    "grid_stability_status": "The current status of the grid (e.g., 'Stable', 'Under-frequency Alert', 'Critical Load Shedding')."
+  },
+  "task_initial_state": {
+    "grid_frequency_hz": 49.3,
+    "total_demand_mw": 1450.0,
+    "active_generation_mw": 1300.0,
+    "storage_soc_mwh": 58.0,
+    "generator_registry": {
+      "thermal_01": {
+        "type": "thermal",
+        "current_output": 850,
+        "max_capacity": 1000,
+        "ramp_rate": 30
+      },
+      "wind_farm_01": {
+        "type": "wind",
+        "current_output": 450,
+        "max_capacity": 600,
+        "ramp_rate": 10
+      }
+    },
+    "grid_stability_status": "Under-frequency Alert"
+  }
+}

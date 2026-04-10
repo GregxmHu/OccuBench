@@ -1,0 +1,188 @@
+{
+  "environment_name": "env_9e13a4c33819",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: You act as a high-fidelity simulator for a Last-Mile Delivery Routing environment. Based on the current internal state $s_t$ and the action $a_t$ submitted by the Agent, you must simulate the environmental evolution, update the internal state, and predict the resulting observation $o_{{t+1}}$ obtained by the Agent.\n- **Emphasis**: You are a simulator, not an executor. You do not perform real-world deliveries. Your task is to maintain logical consistency and provide realistic feedback (observations) based on the physics and constraints of delivery logistics.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation to track the vehicle, packages, and logistics progress. The initial state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nYou must maintain the continuity of the delivery simulation. Every action taken by the Agent affects the internal state (e.g., moving consumes battery, delivering a package removes it from the inventory). All subsequent observations must be consistent with the cumulative history of the interaction.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the delivery environment by calling predefined action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` returned for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. You must parse this JSON to determine the evolution of the world. The input format is:\n- `\"name\"`: The name of the action (e.g., \"move_to\", \"pickup_package\", \"deliver_package\").\n- The remaining fields are the specific parameters for that action.\n\nExample Input:\n```json\n{{\n \"name\": \"move_to\",\n \"arguments\": {{\n    \"destination_node\": \"Customer_A\",\n    \"route_preference\": \"fastest\"\n  }}\n}}\n```\nYou must simulate the consequences of this action (e.g., travel time, fuel consumption, traffic impact) and generate the corresponding observation.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nYou must strictly validate actions against the current state and defined constraints. Return a structured error (e.g., `{{\"error\": \"Infeasible path: road closed\"}}` or `{{\"error\": \"Vehicle capacity exceeded\"}}`) and do not update the state or fabricate a success if:\n- The destination is unreachable.\n- The vehicle lacks sufficient battery/fuel.\n- The action parameters are invalid.\n- The Agent attempts to deliver a package not currently in the vehicle.\n\n##### Output Assembly\nFor every action, you must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition (the Observation). \n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the internal state `$s_{{t+1}}$`, hidden state variables, or the full state summary. You must strictly encapsulate the environment's internal mechanics. The Agent should only receive the specific sensory feedback or confirmation defined in the action's observation schema.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to the JSON response format without conversational filler.\n- **Factuality**: Do not invent locations, package IDs, or vehicle capabilities not present in the state or definitions.\n- **Consistency**: Ensure time, distance, and inventory logic are self-consistent (e.g., time must always move forward).\n- **Realism**: Simulate realistic logistics dynamics, such as variable traffic delays or delivery window constraints.\n- **Quality**: Ensure all descriptions within the observations are clear and professional.\n- **Encapsulation**: Never expose the full state update or internal counters in the output. Only return the Observation.\n{{initial_state}}: {{\n  \"current_location\": \"Distribution_Center_A\",\n  \"battery_level\": 25.5,\n  \"vehicle_inventory\": [],\n  \"remaining_capacity\": 5,\n  \"pending_orders\": [\n    {{\n      \"package_id\": \"PKG_V_909\",\n      \"destination\": \"Steel_Tower_A\",\n      \"weight\": 1\n    }},\n    {{\n      \"package_id\": \"PKG_V_909_OLD\",\n      \"destination\": \"Steel_Tower_A\",\n      \"weight\": 1\n    }},\n    {{\n      \"package_id\": \"PKG_V_910\",\n      \"destination\": \"Central_Exchange\",\n      \"weight\": 1\n    }},\n    {{\n      \"package_id\": \"PKG_V_910_REPLACEMENT\",\n      \"destination\": \"Central_Exchange\",\n      \"weight\": 1\n    }},\n    {{\n      \"package_id\": \"PKG_NON_PRIORITY\",\n      \"destination\": \"Suburb_Node_4\",\n      \"weight\": 3\n    }}\n  ],\n  \"elapsed_time_minutes\": 0,\n  \"delivered_packages\": []\n}}\n{{state_descriptions}}: {{\n  \"current_location\": \"The current node or coordinate ID where the delivery vehicle is located.\",\n  \"battery_level\": \"Remaining energy percentage of the vehicle (0.0 to 100.0).\",\n  \"vehicle_inventory\": \"List of package IDs currently loaded in the vehicle.\",\n  \"remaining_capacity\": \"The number of additional standard-sized units the vehicle can carry.\",\n  \"pending_orders\": \"List of orders currently awaiting pickup or delivery, including destination and weight.\",\n  \"elapsed_time_minutes\": \"Total time passed since the start of the delivery shift in minutes.\",\n  \"delivered_packages\": \"List of package IDs successfully delivered to their destinations.\"\n}}\n{action_set_definitions}: {\n  \"query_vehicle_telemetry\": {\n    \"description\": \"Retrieves the current status of the vehicle, including location, battery percentage, time elapsed, and current inventory.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"current_location\": \"Distribution_Center_A\",\n      \"battery_level\": 95.0,\n      \"vehicle_inventory\": [],\n      \"elapsed_time_minutes\": 5\n    }\n  },\n  \"query_order_info\": {\n    \"description\": \"Retrieves logistical details for a specific package ID, including its current pickup location and its intended destination.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"package_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the package.\"\n        }\n      },\n      \"required\": [\n        \"package_id\"\n      ]\n    },\n    \"example_output\": {\n      \"package_id\": \"PKG_V_909\",\n      \"pickup_node\": \"Distribution_Center_A\",\n      \"destination_node\": \"Steel_Corridor_Gate_1\"\n    }\n  },\n  \"pickup_package\": {\n    \"description\": \"Loads a package into the vehicle inventory. The vehicle must be at the package's pickup location.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"package_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the package to pick up.\"\n        }\n      },\n      \"required\": [\n        \"package_id\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"Success\",\n      \"package_id\": \"PKG_V_909\",\n      \"new_inventory_count\": 1\n    }\n  },\n  \"move_to_node\": {\n    \"description\": \"Navigates the vehicle to a specified grid node. Returns the arrival status and any environmental alerts.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"destination_node_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the target destination node.\"\n        }\n      },\n      \"required\": [\n        \"destination_node_id\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"Arrived\",\n      \"current_node\": \"Steel_Corridor_Gate_1\",\n      \"signals\": [\n        \"Out of Range\"\n      ]\n    }\n  },\n  \"perform_delivery\": {\n    \"description\": \"Unloads and finalizes the delivery of a package at the current location.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"package_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the package to deliver.\"\n        }\n      },\n      \"required\": [\n        \"package_id\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"Delivered\",\n      \"package_id\": \"PKG_V_909\"\n    }\n  },\n  \"charge_at_station\": {\n    \"description\": \"Recharges the vehicle's battery to 100%. Only executable at 'Grid_Node_7'.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"status\": \"Fully Charged\",\n      \"battery_level\": 100.0\n    }\n  },\n  \"manual_override_sop\": {\n    \"description\": \"Executes a manual delivery authorization when standard signals are blocked (e.g., in the Steel Corridor).\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"package_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the package.\"\n        },\n        \"reason_code\": {\n          \"type\": \"string\",\n          \"description\": \"A justified explanation code for the override.\"\n        }\n      },\n      \"required\": [\n        \"package_id\",\n        \"reason_code\"\n      ]\n    },\n    \"example_output\": {\n      \"override_status\": \"Success\",\n      \"authorization_token\": \"SOP-9982\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "query_vehicle_telemetry",
+      "description": "Retrieves the current status of the vehicle, including location, battery percentage, time elapsed, and current inventory.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "current_location": "Distribution_Center_A",
+        "battery_level": 95.0,
+        "vehicle_inventory": [],
+        "elapsed_time_minutes": 5
+      }
+    },
+    {
+      "name": "query_order_info",
+      "description": "Retrieves logistical details for a specific package ID, including its current pickup location and its intended destination.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "package_id": {
+            "type": "string",
+            "description": "The unique identifier for the package."
+          }
+        },
+        "required": [
+          "package_id"
+        ]
+      },
+      "example_output": {
+        "package_id": "PKG_V_909",
+        "pickup_node": "Distribution_Center_A",
+        "destination_node": "Steel_Corridor_Gate_1"
+      }
+    },
+    {
+      "name": "pickup_package",
+      "description": "Loads a package into the vehicle inventory. The vehicle must be at the package's pickup location.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "package_id": {
+            "type": "string",
+            "description": "The ID of the package to pick up."
+          }
+        },
+        "required": [
+          "package_id"
+        ]
+      },
+      "example_output": {
+        "status": "Success",
+        "package_id": "PKG_V_909",
+        "new_inventory_count": 1
+      }
+    },
+    {
+      "name": "move_to_node",
+      "description": "Navigates the vehicle to a specified grid node. Returns the arrival status and any environmental alerts.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "destination_node_id": {
+            "type": "string",
+            "description": "The ID of the target destination node."
+          }
+        },
+        "required": [
+          "destination_node_id"
+        ]
+      },
+      "example_output": {
+        "status": "Arrived",
+        "current_node": "Steel_Corridor_Gate_1",
+        "signals": [
+          "Out of Range"
+        ]
+      }
+    },
+    {
+      "name": "perform_delivery",
+      "description": "Unloads and finalizes the delivery of a package at the current location.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "package_id": {
+            "type": "string",
+            "description": "The ID of the package to deliver."
+          }
+        },
+        "required": [
+          "package_id"
+        ]
+      },
+      "example_output": {
+        "status": "Delivered",
+        "package_id": "PKG_V_909"
+      }
+    },
+    {
+      "name": "charge_at_station",
+      "description": "Recharges the vehicle's battery to 100%. Only executable at 'Grid_Node_7'.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "status": "Fully Charged",
+        "battery_level": 100.0
+      }
+    },
+    {
+      "name": "manual_override_sop",
+      "description": "Executes a manual delivery authorization when standard signals are blocked (e.g., in the Steel Corridor).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "package_id": {
+            "type": "string",
+            "description": "The ID of the package."
+          },
+          "reason_code": {
+            "type": "string",
+            "description": "A justified explanation code for the override."
+          }
+        },
+        "required": [
+          "package_id",
+          "reason_code"
+        ]
+      },
+      "example_output": {
+        "override_status": "Success",
+        "authorization_token": "SOP-9982"
+      }
+    }
+  ],
+  "state_description": {
+    "current_location": "The current node or coordinate ID where the delivery vehicle is located.",
+    "battery_level": "Remaining energy percentage of the vehicle (0.0 to 100.0).",
+    "vehicle_inventory": "List of package IDs currently loaded in the vehicle.",
+    "remaining_capacity": "The number of additional standard-sized units the vehicle can carry.",
+    "pending_orders": "List of orders currently awaiting pickup or delivery, including destination and weight.",
+    "elapsed_time_minutes": "Total time passed since the start of the delivery shift in minutes.",
+    "delivered_packages": "List of package IDs successfully delivered to their destinations."
+  },
+  "task_initial_state": {
+    "current_location": "Distribution_Center_A",
+    "battery_level": 25.5,
+    "vehicle_inventory": [],
+    "remaining_capacity": 5,
+    "pending_orders": [
+      {
+        "package_id": "PKG_V_909",
+        "destination": "Steel_Tower_A",
+        "weight": 1
+      },
+      {
+        "package_id": "PKG_V_909_OLD",
+        "destination": "Steel_Tower_A",
+        "weight": 1
+      },
+      {
+        "package_id": "PKG_V_910",
+        "destination": "Central_Exchange",
+        "weight": 1
+      },
+      {
+        "package_id": "PKG_V_910_REPLACEMENT",
+        "destination": "Central_Exchange",
+        "weight": 1
+      },
+      {
+        "package_id": "PKG_NON_PRIORITY",
+        "destination": "Suburb_Node_4",
+        "weight": 3
+      }
+    ],
+    "elapsed_time_minutes": 0,
+    "delivered_packages": []
+  }
+}

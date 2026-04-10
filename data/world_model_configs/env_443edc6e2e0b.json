@@ -1,0 +1,249 @@
+{
+  "environment_name": "env_443edc6e2e0b",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: Based on the current experiment state $s_t$ and the Agent's action $a_t$, you are responsible for simulating the transition of the experiment environment and predicting the resulting observation $o_{{t+1}}$.\n- **Emphasis**: As an LWM, you do not perform actual physical experiments or external API calls. Your role is purely to simulate the logical evolution of the experiment protocol, including physical reactions, instrument responses, and safety consequences within the provided context.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation to track the progress and variables of the experiment protocol. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions between the World Model and the Agent must maintain rigorous context consistency. Changes to reagents, equipment settings, or step progress must persist across the interaction history. You must ensure that if a reagent is consumed in step $t$, it is reflected as depleted in step $t+1$.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the experiment environment by calling action functions (e.g., measuring substances, adjusting temperature, logging data). The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. You must parse this JSON to determine the intended state transition. The format will be:\n- `\"name\"`: The name of the action function.\n- Other fields: Parameters for the action.\n\nExample:\n```json\n{{\n \"name\": \"adjust_temperature\",\n \"arguments\": {{\n    \"target_celsius\": 75.5,\n    \"duration_minutes\": 10\n  }}\n}}\n```\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nIf the Agent attempts an action that is physically impossible (e.g., using a reagent not in inventory), uses undefined parameters, or violates safety protocols, you must return structured error information. \nExample: `{{\"error\": \"Reagent 'Sodium_Azide' not found in current inventory.\"}}`. Do not fabricate results for invalid actions.\n\n##### Output Assembly\nFor every action function call, you must return a structured JSON object containing **ONLY** the return fields (Observations) declared in that action's definition.\n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, the updated state, or any hidden state variables. The Agent must only receive the specific `observation` resulting from the action. State maintenance is handled internally by your simulation logic.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to JSON for both input parsing and output generation.\n- **Factuality**: Simulate realistic scientific outcomes based on the protocol. Do not invent equipment or chemicals not present in the environment.\n- **Consistency**: Ensure the experiment's logic follows a linear and logical progression. Results must be reproducible within the simulation context.\n- **Realism**: Simulated behaviors (e.g., time taken for a reaction, precision of a scale) must align with reasonable lab dynamics.\n- **Quality**: Observations should be technical, clear, and structurally complete.\n- **Encapsulation**: Strictly hide the internal state structure. Only expose the explicit return values defined in the action function.\n{{initial_state}}: {{\n  \"experiment_metadata\": {{\n    \"title\": \"Batch-7 Targeted Defect Characterization\",\n    \"objective\": \"High-temperature fatigue mapping on highest-VVF specimen.\"\n  }},\n  \"protocol_steps\": [],\n  \"current_step_index\": 0,\n  \"inventory\": {{\n    \"Specimen_S701\": {{\n      \"status\": \"unscanned\",\n      \"material\": \"Ti-6Al-4V\",\n      \"batch_cert_ref\": \"B7-A\"\n    }},\n    \"Specimen_S702\": {{\n      \"status\": \"unscanned\",\n      \"material\": \"Ti-6Al-4V\",\n      \"batch_cert_ref\": \"B7-B\"\n    }},\n    \"Specimen_S703\": {{\n      \"status\": \"unscanned\",\n      \"material\": \"Ti-6Al-4V\",\n      \"batch_cert_ref\": \"B7-C\"\n    }},\n    \"Argon_Supply\": {{\n      \"quantity\": 3000,\n      \"unit\": \"PSI\"\n    }}\n  }},\n  \"equipment_status\": {{\n    \"XCT_Scanner\": {{\n      \"state\": \"idle\",\n      \"last_scan_results\": {{}}\n    }},\n    \"MTS_Hydraulic_Frame\": {{\n      \"state\": \"off\",\n      \"grip_pressure_mpa\": 0,\n      \"applied_load_kn\": 0\n    }},\n    \"Environmental_Chamber\": {{\n      \"active\": false,\n      \"temp_celsius\": 24.1,\n      \"atmosphere_purged\": false,\n      \"soak_time_minutes\": 0\n    }},\n    \"DIC_System\": {{\n      \"focus_coordinate_z\": 0.0,\n      \"is_synced\": false,\n      \"speckle_quality\": \"unverified\"\n    }},\n    \"AE_System\": {{\n      \"monitoring\": false,\n      \"interrupt_threshold_joules\": 0\n    }}\n  }},\n  \"safety_constraints_met\": false,\n  \"measurement_logs\": []\n}}\n{{state_descriptions}}: {{\n  \"experiment_metadata\": \"General information about the protocol, including title and objective.\",\n  \"protocol_steps\": \"A list of strings defining the sequence of operations to be performed.\",\n  \"current_step_index\": \"The index of the step currently being executed in the protocol_steps list.\",\n  \"inventory\": \"A mapping of reagent names to their current available quantities and units.\",\n  \"equipment_status\": \"The current configuration and power status of lab instruments (e.g., {{'centrifuge': {{'rpm': 0, 'active': false}}).\",\n  \"safety_constraints_met\": \"Whether all necessary safety checks (PPE, ventilation) have been passed to allow the experiment to proceed.\",\n  \"measurement_logs\": \"A chronological record of data points collected during the simulation (e.g., pH readings, temperature logs).\"\n}}\n{action_set_definitions}: {\n  \"get_inventory_list\": {\n    \"description\": \"Retrieves the full list of specimens in the inventory, including their porosity risk metrics and identification IDs.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"specimens\": [\n        {\n          \"id\": \"SPEC-001\",\n          \"porosity_index\": 0.85\n        }\n      ]\n    }\n  },\n  \"get_batch_certification\": {\n    \"description\": \"Retrieves the technical certification data for a specific specimen ID, including its documented yield strength (YS).\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"specimen_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier of the specimen.\"\n        }\n      },\n      \"required\": [\n        \"specimen_id\"\n      ]\n    },\n    \"example_output\": {\n      \"yield_strength_mpa\": 450.0,\n      \"batch_id\": \"BATCH-2023-A\"\n    }\n  },\n  \"perform_volumetric_scan\": {\n    \"description\": \"Executes a volumetric scan on a specimen to locate internal defects and returns the spatial coordinates (Z-axis) of the most critical defect.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"specimen_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier of the specimen to scan.\"\n        }\n      },\n      \"required\": [\n        \"specimen_id\"\n      ]\n    },\n    \"example_output\": {\n      \"vertical_coordinate_mm\": 12.45\n    }\n  },\n  \"configure_dic_alignment\": {\n    \"description\": \"Aligns the Digital Image Correlation (DIC) system focus to a specific vertical spatial coordinate.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"z_coordinate\": {\n          \"type\": \"number\",\n          \"description\": \"The vertical coordinate for the system to focus on.\"\n        }\n      },\n      \"required\": [\n        \"z_coordinate\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"aligned\",\n      \"current_focus_z\": 12.45\n    }\n  },\n  \"control_environmental_chamber\": {\n    \"description\": \"Sets the environmental chamber parameters, including gas purging and target temperature.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"gas_type\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"Argon\",\n            \"Nitrogen\",\n            \"Oxygen\"\n          ],\n          \"description\": \"The gas to use for purging.\"\n        },\n        \"target_temp_celsius\": {\n          \"type\": \"number\",\n          \"description\": \"The target equilibrium temperature in Celsius.\"\n        }\n      },\n      \"required\": [\n        \"gas_type\",\n        \"target_temp_celsius\"\n      ]\n    },\n    \"example_output\": {\n      \"purging\": true,\n      \"heating\": true\n    }\n  },\n  \"get_chamber_status\": {\n    \"description\": \"Returns the current internal temperature and atmosphere status of the environmental chamber.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"current_temp\": 450.0,\n      \"atmosphere\": \"Argon\",\n      \"equilibrium_reached\": true\n    }\n  },\n  \"setup_mechanical_test\": {\n    \"description\": \"Configures the mechanical loading system for cyclic fatigue testing.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"load_kn\": {\n          \"type\": \"number\",\n          \"description\": \"The calculated cyclic fatigue load value.\"\n        },\n        \"ae_trigger_joules\": {\n          \"type\": \"number\",\n          \"description\": \"The Acoustic Emission energy threshold to trigger an interruption.\"\n        }\n      },\n      \"required\": [\n        \"load_kn\",\n        \"ae_trigger_joules\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"ready\"\n    }\n  },\n  \"execute_protocol\": {\n    \"description\": \"Starts the automated test sequence and monitors for interruptions.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"event\": \"AE_SPIKE_DETECTED\",\n      \"energy_recorded\": 605\n    }\n  },\n  \"capture_micrograph\": {\n    \"description\": \"Triggers an in-situ micrographic capture at the current coordinates.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"label\": {\n          \"type\": \"string\",\n          \"description\": \"Label for the captured image.\"\n        }\n      },\n      \"required\": [\n        \"label\"\n      ]\n    },\n    \"example_output\": {\n      \"image_id\": \"IMG_992\",\n      \"saved_path\": \"/data/micrographs/specimen_x.png\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_inventory_list",
+      "description": "Retrieves the full list of specimens in the inventory, including their porosity risk metrics and identification IDs.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "specimens": [
+          {
+            "id": "SPEC-001",
+            "porosity_index": 0.85
+          }
+        ]
+      }
+    },
+    {
+      "name": "get_batch_certification",
+      "description": "Retrieves the technical certification data for a specific specimen ID, including its documented yield strength (YS).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "specimen_id": {
+            "type": "string",
+            "description": "The unique identifier of the specimen."
+          }
+        },
+        "required": [
+          "specimen_id"
+        ]
+      },
+      "example_output": {
+        "yield_strength_mpa": 450.0,
+        "batch_id": "BATCH-2023-A"
+      }
+    },
+    {
+      "name": "perform_volumetric_scan",
+      "description": "Executes a volumetric scan on a specimen to locate internal defects and returns the spatial coordinates (Z-axis) of the most critical defect.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "specimen_id": {
+            "type": "string",
+            "description": "The unique identifier of the specimen to scan."
+          }
+        },
+        "required": [
+          "specimen_id"
+        ]
+      },
+      "example_output": {
+        "vertical_coordinate_mm": 12.45
+      }
+    },
+    {
+      "name": "configure_dic_alignment",
+      "description": "Aligns the Digital Image Correlation (DIC) system focus to a specific vertical spatial coordinate.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "z_coordinate": {
+            "type": "number",
+            "description": "The vertical coordinate for the system to focus on."
+          }
+        },
+        "required": [
+          "z_coordinate"
+        ]
+      },
+      "example_output": {
+        "status": "aligned",
+        "current_focus_z": 12.45
+      }
+    },
+    {
+      "name": "control_environmental_chamber",
+      "description": "Sets the environmental chamber parameters, including gas purging and target temperature.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "gas_type": {
+            "type": "string",
+            "enum": [
+              "Argon",
+              "Nitrogen",
+              "Oxygen"
+            ],
+            "description": "The gas to use for purging."
+          },
+          "target_temp_celsius": {
+            "type": "number",
+            "description": "The target equilibrium temperature in Celsius."
+          }
+        },
+        "required": [
+          "gas_type",
+          "target_temp_celsius"
+        ]
+      },
+      "example_output": {
+        "purging": true,
+        "heating": true
+      }
+    },
+    {
+      "name": "get_chamber_status",
+      "description": "Returns the current internal temperature and atmosphere status of the environmental chamber.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "current_temp": 450.0,
+        "atmosphere": "Argon",
+        "equilibrium_reached": true
+      }
+    },
+    {
+      "name": "setup_mechanical_test",
+      "description": "Configures the mechanical loading system for cyclic fatigue testing.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "load_kn": {
+            "type": "number",
+            "description": "The calculated cyclic fatigue load value."
+          },
+          "ae_trigger_joules": {
+            "type": "number",
+            "description": "The Acoustic Emission energy threshold to trigger an interruption."
+          }
+        },
+        "required": [
+          "load_kn",
+          "ae_trigger_joules"
+        ]
+      },
+      "example_output": {
+        "status": "ready"
+      }
+    },
+    {
+      "name": "execute_protocol",
+      "description": "Starts the automated test sequence and monitors for interruptions.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "event": "AE_SPIKE_DETECTED",
+        "energy_recorded": 605
+      }
+    },
+    {
+      "name": "capture_micrograph",
+      "description": "Triggers an in-situ micrographic capture at the current coordinates.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "label": {
+            "type": "string",
+            "description": "Label for the captured image."
+          }
+        },
+        "required": [
+          "label"
+        ]
+      },
+      "example_output": {
+        "image_id": "IMG_992",
+        "saved_path": "/data/micrographs/specimen_x.png"
+      }
+    }
+  ],
+  "state_description": {
+    "experiment_metadata": "General information about the protocol, including title and objective.",
+    "protocol_steps": "A list of strings defining the sequence of operations to be performed.",
+    "current_step_index": "The index of the step currently being executed in the protocol_steps list.",
+    "inventory": "A mapping of reagent names to their current available quantities and units.",
+    "equipment_status": "The current configuration and power status of lab instruments (e.g., {'centrifuge': {'rpm': 0, 'active': false}}).",
+    "safety_constraints_met": "Whether all necessary safety checks (PPE, ventilation) have been passed to allow the experiment to proceed.",
+    "measurement_logs": "A chronological record of data points collected during the simulation (e.g., pH readings, temperature logs)."
+  },
+  "task_initial_state": {
+    "experiment_metadata": {
+      "title": "Batch-7 Targeted Defect Characterization",
+      "objective": "High-temperature fatigue mapping on highest-VVF specimen."
+    },
+    "protocol_steps": [],
+    "current_step_index": 0,
+    "inventory": {
+      "Specimen_S701": {
+        "status": "unscanned",
+        "material": "Ti-6Al-4V",
+        "batch_cert_ref": "B7-A"
+      },
+      "Specimen_S702": {
+        "status": "unscanned",
+        "material": "Ti-6Al-4V",
+        "batch_cert_ref": "B7-B"
+      },
+      "Specimen_S703": {
+        "status": "unscanned",
+        "material": "Ti-6Al-4V",
+        "batch_cert_ref": "B7-C"
+      },
+      "Argon_Supply": {
+        "quantity": 3000,
+        "unit": "PSI"
+      }
+    },
+    "equipment_status": {
+      "XCT_Scanner": {
+        "state": "idle",
+        "last_scan_results": {}
+      },
+      "MTS_Hydraulic_Frame": {
+        "state": "off",
+        "grip_pressure_mpa": 0,
+        "applied_load_kn": 0
+      },
+      "Environmental_Chamber": {
+        "active": false,
+        "temp_celsius": 24.1,
+        "atmosphere_purged": false,
+        "soak_time_minutes": 0
+      },
+      "DIC_System": {
+        "focus_coordinate_z": 0.0,
+        "is_synced": false,
+        "speckle_quality": "unverified"
+      },
+      "AE_System": {
+        "monitoring": false,
+        "interrupt_threshold_joules": 0
+      }
+    },
+    "safety_constraints_met": false,
+    "measurement_logs": []
+  }
+}

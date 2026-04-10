@@ -1,0 +1,212 @@
+{
+  "environment_name": "env_7c2db16e96a1",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: Based on the current internal state $s_t$ and the action $a_t$ performed by the Agent, simulate the internal evolution of the audio mixing environment and predict the resulting observation $o_{{t+1}}$ obtained by the Agent.\n- **Emphasis**: You are a simulator of an audio workstation's logic. You do not process actual audio signals or execute real software commands; you simulate the state changes (e.g., fader movements, plugin parameter updates, playback state) and generate the corresponding feedback observations.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions between the World Model and the Agent must maintain strict context consistency. Subsequent observations must reflect all cumulative changes made to the session (e.g., if a track is muted in step $t$, it remains muted in step $t+1$ unless an explicit 'unmute' action occurs).\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. This JSON must contain the following fields:\n- `\"name\"`: Specifies the name of the action function to execute (e.g., \"set_fader_level\", \"toggle_plugin\", \"transport_control\").\n- The remaining fields are the parameter names and corresponding values required by that action function.\n\nExample:\n```json\n{{\n \"name\": \"adjust_track_volume\",\n \"arguments\": {{\n    \"track_id\": 4,\n    \"gain_db\": -3.5\n  }}\n}}\n```\n\nYou must correctly parse these inputs and simulate the resulting state transition.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nIf an action provides invalid parameters (e.g., a non-existent track ID, gain levels outside of hardware limits), or if an action is called that contradicts the current state (e.g., 'play' while already playing), return a structured error response: `{{\"error\": \"Description of the specific failure\"}}`. Do not fabricate states or generate fictitious successful responses for failed operations.\n\n##### Output Assembly\nFor every action function call, you must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition (the Observation).\n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state $s_t$, the updated `new_state`, or any hidden variables. State maintenance is handled internally. The Agent must only receive the specific Observation data.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to specified JSON and text formats.\n- **Factuality**: Do not fabricate non-existent functions or session components.\n- **Consistency**: The mixing session logic must be self-consistent (e.g., playhead position must advance linearly during playback simulation).\n- **Realism**: Simulated behaviors must align with the dynamics of professional audio engineering (e.g., latency, dB scales, signal flow).\n- **Quality**: Language must be clear and structurally complete.\n- **Encapsulation**: Strictly hide the internal state structure from the output. Only expose information explicitly returned by the action function.\n{{initial_state}}: {{\n  \"tracks\": [\n    {{\n      \"id\": \"tr_101\",\n      \"name\": \"Kick_In\",\n      \"volume_db\": -2.0,\n      \"pan\": 0,\n      \"mute\": false,\n      \"solo\": false,\n      \"routing\": \"sub_master_a\"\n    }},\n    {{\n      \"id\": \"tr_102\",\n      \"name\": \"Snare_Top\",\n      \"volume_db\": -2.0,\n      \"pan\": 0,\n      \"mute\": false,\n      \"solo\": false,\n      \"routing\": \"sub_master_a\"\n    }},\n    {{\n      \"id\": \"vca_drums\",\n      \"name\": \"VCA_DRUMS\",\n      \"volume_db\": 9.5,\n      \"pan\": 0,\n      \"mute\": false,\n      \"solo\": false,\n      \"target_group\": [\n        \"tr_101\",\n        \"tr_102\"\n      ]\n    }},\n    {{\n      \"id\": \"aux_701\",\n      \"name\": \"Vox_Reverb_Return\",\n      \"volume_db\": -10.5,\n      \"pan\": 0,\n      \"mute\": false,\n      \"solo\": false,\n      \"solo_safe\": false,\n      \"routing\": \"sub_master_c\"\n    }},\n    {{\n      \"id\": \"sub_master_a\",\n      \"name\": \"Sub_A_Drums_Bass\",\n      \"volume_db\": 4.0,\n      \"pan\": 0,\n      \"mute\": false,\n      \"solo\": false,\n      \"rms_meter_dbfs\": -4.2\n    }},\n    {{\n      \"id\": \"sub_master_c\",\n      \"name\": \"Sub_C_Vocals\",\n      \"volume_db\": 0.0,\n      \"pan\": 0,\n      \"mute\": false,\n      \"solo\": false,\n      \"rms_meter_dbfs\": -18.1\n    }}\n  ],\n  \"master_bus\": {{\n    \"fader_db\": 0.0,\n    \"is_clipping\": true,\n    \"peak_level_dbfs\": 1.2\n  }},\n  \"transport\": {{\n    \"status\": \"playing\",\n    \"playhead_seconds\": 12.5,\n    \"tempo_bpm\": 128.0\n  }},\n  \"plugins\": {{\n    \"sub_master_a\": {{\n      \"ssl_bus_compressor\": {{\n        \"threshold\": -20.0,\n        \"ratio\": 4.0,\n        \"makeup_gain_db\": 5.0\n      }}\n    }}\n  }}\n}}\n{{state_descriptions}}: {{\n  \"tracks\": \"A list of track objects containing volume (dB), pan (-100 to 100), mute status, and solo status.\",\n  \"master_bus\": \"State of the master output channel including fader level and active inserts.\",\n  \"transport\": \"Current playback status and playhead location.\",\n  \"plugins\": \"Map of track IDs to active signal processors and their current parameter states.\"\n}}\n{action_set_definitions}: {\n  \"get_session_overview\": {\n    \"description\": \"Retrieves the session track list to identify IDs for named tracks (e.g., 'Master Bus', 'Drum VCA', 'Sub-Master A').\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"tracks\": [\n        {\n          \"track_id\": \"vca_101\",\n          \"name\": \"Drum VCA\"\n        },\n        {\n          \"track_id\": \"bus_master\",\n          \"name\": \"Master Bus\"\n        }\n      ]\n    }\n  },\n  \"get_track_details\": {\n    \"description\": \"Returns the current settings for a specific track, including fader level (dB) and solo-safe status.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"track_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the track.\"\n        }\n      },\n      \"required\": [\n        \"track_id\"\n      ]\n    },\n    \"example_output\": {\n      \"fader_level_db\": -5.2,\n      \"is_solo_safe\": false,\n      \"is_muted\": false\n    }\n  },\n  \"get_metering_data\": {\n    \"description\": \"Provides real-time Peak and RMS values for specified track IDs to check for clipping or gain staging targets.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"track_ids\": {\n          \"type\": \"array\",\n          \"items\": {\n            \"type\": \"string\"\n          },\n          \"description\": \"List of track IDs to meter.\"\n        }\n      },\n      \"required\": [\n        \"track_ids\"\n      ]\n    },\n    \"example_output\": {\n      \"meters\": {\n        \"bus_master\": {\n          \"peak\": 1.5,\n          \"rms\": -10.2\n        }\n      }\n    }\n  },\n  \"update_fader_level\": {\n    \"description\": \"Sets the fader level of a specific track to a target decibel value.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"track_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the track.\"\n        },\n        \"target_db\": {\n          \"type\": \"number\",\n          \"description\": \"The target gain level in dB.\"\n        }\n      },\n      \"required\": [\n        \"track_id\",\n        \"target_db\"\n      ]\n    },\n    \"example_output\": {\n      \"track_id\": \"vca_101\",\n      \"new_level\": 0.0\n    }\n  },\n  \"set_solo_safe_status\": {\n    \"description\": \"Enables or disables the Solo Safe mode on a track, ensuring it is not muted when other tracks are soloed.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"track_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the track.\"\n        },\n        \"enabled\": {\n          \"type\": \"boolean\",\n          \"description\": \"Whether solo safe should be on (true) or off (false).\"\n        }\n      },\n      \"required\": [\n        \"track_id\",\n        \"enabled\"\n      ]\n    },\n    \"example_output\": {\n      \"track_id\": \"aux_701\",\n      \"solo_safe\": true\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_session_overview",
+      "description": "Retrieves the session track list to identify IDs for named tracks (e.g., 'Master Bus', 'Drum VCA', 'Sub-Master A').",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "tracks": [
+          {
+            "track_id": "vca_101",
+            "name": "Drum VCA"
+          },
+          {
+            "track_id": "bus_master",
+            "name": "Master Bus"
+          }
+        ]
+      }
+    },
+    {
+      "name": "get_track_details",
+      "description": "Returns the current settings for a specific track, including fader level (dB) and solo-safe status.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "track_id": {
+            "type": "string",
+            "description": "The unique identifier for the track."
+          }
+        },
+        "required": [
+          "track_id"
+        ]
+      },
+      "example_output": {
+        "fader_level_db": -5.2,
+        "is_solo_safe": false,
+        "is_muted": false
+      }
+    },
+    {
+      "name": "get_metering_data",
+      "description": "Provides real-time Peak and RMS values for specified track IDs to check for clipping or gain staging targets.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "track_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "List of track IDs to meter."
+          }
+        },
+        "required": [
+          "track_ids"
+        ]
+      },
+      "example_output": {
+        "meters": {
+          "bus_master": {
+            "peak": 1.5,
+            "rms": -10.2
+          }
+        }
+      }
+    },
+    {
+      "name": "update_fader_level",
+      "description": "Sets the fader level of a specific track to a target decibel value.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "track_id": {
+            "type": "string",
+            "description": "The unique identifier for the track."
+          },
+          "target_db": {
+            "type": "number",
+            "description": "The target gain level in dB."
+          }
+        },
+        "required": [
+          "track_id",
+          "target_db"
+        ]
+      },
+      "example_output": {
+        "track_id": "vca_101",
+        "new_level": 0.0
+      }
+    },
+    {
+      "name": "set_solo_safe_status",
+      "description": "Enables or disables the Solo Safe mode on a track, ensuring it is not muted when other tracks are soloed.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "track_id": {
+            "type": "string",
+            "description": "The unique identifier for the track."
+          },
+          "enabled": {
+            "type": "boolean",
+            "description": "Whether solo safe should be on (true) or off (false)."
+          }
+        },
+        "required": [
+          "track_id",
+          "enabled"
+        ]
+      },
+      "example_output": {
+        "track_id": "aux_701",
+        "solo_safe": true
+      }
+    }
+  ],
+  "state_description": {
+    "tracks": "A list of track objects containing volume (dB), pan (-100 to 100), mute status, and solo status.",
+    "master_bus": "State of the master output channel including fader level and active inserts.",
+    "transport": "Current playback status and playhead location.",
+    "plugins": "Map of track IDs to active signal processors and their current parameter states."
+  },
+  "task_initial_state": {
+    "tracks": [
+      {
+        "id": "tr_101",
+        "name": "Kick_In",
+        "volume_db": -2.0,
+        "pan": 0,
+        "mute": false,
+        "solo": false,
+        "routing": "sub_master_a"
+      },
+      {
+        "id": "tr_102",
+        "name": "Snare_Top",
+        "volume_db": -2.0,
+        "pan": 0,
+        "mute": false,
+        "solo": false,
+        "routing": "sub_master_a"
+      },
+      {
+        "id": "vca_drums",
+        "name": "VCA_DRUMS",
+        "volume_db": 9.5,
+        "pan": 0,
+        "mute": false,
+        "solo": false,
+        "target_group": [
+          "tr_101",
+          "tr_102"
+        ]
+      },
+      {
+        "id": "aux_701",
+        "name": "Vox_Reverb_Return",
+        "volume_db": -10.5,
+        "pan": 0,
+        "mute": false,
+        "solo": false,
+        "solo_safe": false,
+        "routing": "sub_master_c"
+      },
+      {
+        "id": "sub_master_a",
+        "name": "Sub_A_Drums_Bass",
+        "volume_db": 4.0,
+        "pan": 0,
+        "mute": false,
+        "solo": false,
+        "rms_meter_dbfs": -4.2
+      },
+      {
+        "id": "sub_master_c",
+        "name": "Sub_C_Vocals",
+        "volume_db": 0.0,
+        "pan": 0,
+        "mute": false,
+        "solo": false,
+        "rms_meter_dbfs": -18.1
+      }
+    ],
+    "master_bus": {
+      "fader_db": 0.0,
+      "is_clipping": true,
+      "peak_level_dbfs": 1.2
+    },
+    "transport": {
+      "status": "playing",
+      "playhead_seconds": 12.5,
+      "tempo_bpm": 128.0
+    },
+    "plugins": {
+      "sub_master_a": {
+        "ssl_bus_compressor": {
+          "threshold": -20.0,
+          "ratio": 4.0,
+          "makeup_gain_db": 5.0
+        }
+      }
+    }
+  }
+}

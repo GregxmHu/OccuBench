@@ -1,0 +1,215 @@
+{
+  "environment_name": "env_1356f8cbfe9f",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: Based on the current internal state $s_t$ and the action $a_t$ executed by the Agent, simulate the internal evolution of the Last-Mile Delivery environment and predict the resulting observation $o_{{t+1}}$ for the Agent.\n- **Emphasis**: You are the simulation engine. You do not execute real-world logistics; you calculate state transitions (e.g., travel time, fuel consumption, delivery success) and generate the feedback the Agent would receive from sensors or delivery logs.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions must maintain rigorous context consistency. You must track the vehicle's position, the status of every package in the manifest, the passage of time, and the depletion of resources (like fuel or battery) across the entire session.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. You must parse this JSON to determine the transition:\n- `\"name\"`: The delivery action to execute (e.g., move, deliver, refuel).\n- `\"arguments\"`: Parameters such as destination IDs or package IDs.\n\nExample Input:\n```json\n{{\n \"name\": \"move_to_location\",\n \"arguments\": {{\n    \"destination_node\": \"Hub_A\"\n  }}\n}}\n```\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nYou must handle and return structured error information for the following:\n- Invalid parameters (e.g., moving to a non-existent node).\n- Logic conflicts (e.g., attempting to deliver a package not currently in the vehicle).\n- Resource exhaustion (e.g., running out of fuel mid-route).\n- Undefined actions.\nIn these cases, return `{{\"error\": \"Description of the issue\"}}` and do not update the state in a way that creates logical paradoxes.\n\n##### Output Assembly\nFor every action, return a structured JSON object containing **ONLY** the return fields declared in the action function's definition (the Observation).\n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, `new_state`, or any hidden variables. You must maintain the state internally. The Agent must only receive the specific return values (Observations) defined in the action set.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to JSON for all inputs and outputs.\n- **Factuality**: Do not simulate successful delivery if the coordinates do not match the package destination.\n- **Consistency**: Travel times must be consistent with distances between nodes; fuel consumption must be cumulative.\n- **Realism**: Simulate realistic constraints such as traffic delays, window-time constraints for deliveries, and vehicle capacity limits.\n- **Quality**: Ensure all simulated observations are clear and structurally complete.\n- **Encapsulation**: Strictly hide the internal state structure from the output. Only expose information that is explicitly returned by the action function. Do not output the state update text.\n{{initial_state}}: {{\n  \"vehicle_location\": \"hub_north_01\",\n  \"current_time\": \"08:15\",\n  \"fuel_level\": 38.5,\n  \"traffic_factor\": 1.2,\n  \"package_manifest\": [\n    {{\n      \"package_id\": \"PKG-881\",\n      \"destination\": \"12_industrial_park\",\n      \"status\": \"in_vehicle\",\n      \"delivery_window\": \"08:30-09:30\"\n    }},\n    {{\n      \"package_id\": \"PKG-229\",\n      \"destination\": \"88_sunset_blvd\",\n      \"status\": \"in_vehicle\",\n      \"delivery_window\": \"09:00-12:00\"\n    }},\n    {{\n      \"package_id\": \"RMA-921\",\n      \"destination\": \"404_willow_lane\",\n      \"status\": \"at_hub\",\n      \"delivery_window\": \"10:00-11:00\"\n    }}\n  ]\n}}\n{{state_descriptions}}: {{\n  \"vehicle_location\": \"The current node ID or GPS coordinate where the delivery vehicle is located.\",\n  \"current_time\": \"The current simulation time in 24-hour format (HH:MM).\",\n  \"fuel_level\": \"The current fuel or battery percentage of the vehicle (0.0 to 100.0).\",\n  \"package_manifest\": \"A list of packages currently assigned to the vehicle or pending at the hub.\",\n  \"traffic_factor\": \"A multiplier representing current traffic congestion (1.0 is clear, >1.0 represents delays).\"\n}}\n{action_set_definitions}: {\n  \"get_vehicle_state\": {\n    \"description\": \"Retrieves the current status of a specific vehicle including its location, fuel level, and cargo manifest.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"vehicle_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier of the vehicle (e.g., 'URB-702').\"\n        }\n      },\n      \"required\": [\n        \"vehicle_id\"\n      ]\n    },\n    \"example_output\": {\n      \"current_location\": \"node_452\",\n      \"fuel_level\": 75.5,\n      \"manifest\": [\n        \"PKG-001\",\n        \"PKG-002\"\n      ],\n      \"current_time\": \"10:30\"\n    }\n  },\n  \"get_item_details\": {\n    \"description\": \"Retrieves destination, SLA time windows, and required dwell time for a specific package or RMA.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"item_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the package or RMA (e.g., 'RMA-921').\"\n        }\n      },\n      \"required\": [\n        \"item_id\"\n      ]\n    },\n    \"example_output\": {\n      \"destination_node\": \"loc_customer_A\",\n      \"sla_deadline\": \"14:00\",\n      \"base_dwell_time_minutes\": 15\n    }\n  },\n  \"get_traffic_data\": {\n    \"description\": \"Returns the current global traffic congestion factor.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {}\n    },\n    \"example_output\": {\n      \"traffic_factor\": 1.3\n    }\n  },\n  \"calculate_route\": {\n    \"description\": \"Calculates estimated travel time and fuel consumption between two nodes, accounting for traffic.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"origin\": {\n          \"type\": \"string\"\n        },\n        \"destination\": {\n          \"type\": \"string\"\n        },\n        \"traffic_factor\": {\n          \"type\": \"number\",\n          \"description\": \"Congestion multiplier retrieved from get_traffic_data.\"\n        }\n      },\n      \"required\": [\n        \"origin\",\n        \"destination\",\n        \"traffic_factor\"\n      ]\n    },\n    \"example_output\": {\n      \"est_travel_time_mins\": 45,\n      \"est_fuel_consumption\": 12.5\n    }\n  },\n  \"navigate\": {\n    \"description\": \"Moves the vehicle to a target location, consuming fuel and time.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"vehicle_id\": {\n          \"type\": \"string\"\n        },\n        \"destination_node\": {\n          \"type\": \"string\"\n        }\n      },\n      \"required\": [\n        \"vehicle_id\",\n        \"destination_node\"\n      ]\n    },\n    \"example_output\": {\n      \"arrival_time\": \"11:15\",\n      \"remaining_fuel\": 63.0\n    }\n  },\n  \"process_delivery\": {\n    \"description\": \"Executes the delivery of an outbound package at the current location.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"vehicle_id\": {\n          \"type\": \"string\"\n        },\n        \"package_id\": {\n          \"type\": \"string\"\n        }\n      },\n      \"required\": [\n        \"vehicle_id\",\n        \"package_id\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"delivered\",\n      \"completion_time\": \"11:30\"\n    }\n  },\n  \"process_rma_pickup\": {\n    \"description\": \"Executes a dynamic pickup including quality inspection dwell time.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"vehicle_id\": {\n          \"type\": \"string\"\n        },\n        \"rma_id\": {\n          \"type\": \"string\"\n        },\n        \"inspection_required\": {\n          \"type\": \"boolean\"\n        }\n      },\n      \"required\": [\n        \"vehicle_id\",\n        \"rma_id\",\n        \"inspection_required\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"picked_up\",\n      \"completion_time\": \"12:15\"\n    }\n  },\n  \"refuel_vehicle\": {\n    \"description\": \"Refills the fuel or battery of the vehicle to 100%.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"vehicle_id\": {\n          \"type\": \"string\"\n        }\n      },\n      \"required\": [\n        \"vehicle_id\"\n      ]\n    },\n    \"example_output\": {\n      \"fuel_level\": 100.0\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_vehicle_state",
+      "description": "Retrieves the current status of a specific vehicle including its location, fuel level, and cargo manifest.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "vehicle_id": {
+            "type": "string",
+            "description": "The unique identifier of the vehicle (e.g., 'URB-702')."
+          }
+        },
+        "required": [
+          "vehicle_id"
+        ]
+      },
+      "example_output": {
+        "current_location": "node_452",
+        "fuel_level": 75.5,
+        "manifest": [
+          "PKG-001",
+          "PKG-002"
+        ],
+        "current_time": "10:30"
+      }
+    },
+    {
+      "name": "get_item_details",
+      "description": "Retrieves destination, SLA time windows, and required dwell time for a specific package or RMA.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "item_id": {
+            "type": "string",
+            "description": "The ID of the package or RMA (e.g., 'RMA-921')."
+          }
+        },
+        "required": [
+          "item_id"
+        ]
+      },
+      "example_output": {
+        "destination_node": "loc_customer_A",
+        "sla_deadline": "14:00",
+        "base_dwell_time_minutes": 15
+      }
+    },
+    {
+      "name": "get_traffic_data",
+      "description": "Returns the current global traffic congestion factor.",
+      "parameters": {
+        "type": "object",
+        "properties": {}
+      },
+      "example_output": {
+        "traffic_factor": 1.3
+      }
+    },
+    {
+      "name": "calculate_route",
+      "description": "Calculates estimated travel time and fuel consumption between two nodes, accounting for traffic.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "origin": {
+            "type": "string"
+          },
+          "destination": {
+            "type": "string"
+          },
+          "traffic_factor": {
+            "type": "number",
+            "description": "Congestion multiplier retrieved from get_traffic_data."
+          }
+        },
+        "required": [
+          "origin",
+          "destination",
+          "traffic_factor"
+        ]
+      },
+      "example_output": {
+        "est_travel_time_mins": 45,
+        "est_fuel_consumption": 12.5
+      }
+    },
+    {
+      "name": "navigate",
+      "description": "Moves the vehicle to a target location, consuming fuel and time.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "vehicle_id": {
+            "type": "string"
+          },
+          "destination_node": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "vehicle_id",
+          "destination_node"
+        ]
+      },
+      "example_output": {
+        "arrival_time": "11:15",
+        "remaining_fuel": 63.0
+      }
+    },
+    {
+      "name": "process_delivery",
+      "description": "Executes the delivery of an outbound package at the current location.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "vehicle_id": {
+            "type": "string"
+          },
+          "package_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "vehicle_id",
+          "package_id"
+        ]
+      },
+      "example_output": {
+        "status": "delivered",
+        "completion_time": "11:30"
+      }
+    },
+    {
+      "name": "process_rma_pickup",
+      "description": "Executes a dynamic pickup including quality inspection dwell time.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "vehicle_id": {
+            "type": "string"
+          },
+          "rma_id": {
+            "type": "string"
+          },
+          "inspection_required": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "vehicle_id",
+          "rma_id",
+          "inspection_required"
+        ]
+      },
+      "example_output": {
+        "status": "picked_up",
+        "completion_time": "12:15"
+      }
+    },
+    {
+      "name": "refuel_vehicle",
+      "description": "Refills the fuel or battery of the vehicle to 100%.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "vehicle_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "vehicle_id"
+        ]
+      },
+      "example_output": {
+        "fuel_level": 100.0
+      }
+    }
+  ],
+  "state_description": {
+    "vehicle_location": "The current node ID or GPS coordinate where the delivery vehicle is located.",
+    "current_time": "The current simulation time in 24-hour format (HH:MM).",
+    "fuel_level": "The current fuel or battery percentage of the vehicle (0.0 to 100.0).",
+    "package_manifest": "A list of packages currently assigned to the vehicle or pending at the hub.",
+    "traffic_factor": "A multiplier representing current traffic congestion (1.0 is clear, >1.0 represents delays)."
+  },
+  "task_initial_state": {
+    "vehicle_location": "hub_north_01",
+    "current_time": "08:15",
+    "fuel_level": 38.5,
+    "traffic_factor": 1.2,
+    "package_manifest": [
+      {
+        "package_id": "PKG-881",
+        "destination": "12_industrial_park",
+        "status": "in_vehicle",
+        "delivery_window": "08:30-09:30"
+      },
+      {
+        "package_id": "PKG-229",
+        "destination": "88_sunset_blvd",
+        "status": "in_vehicle",
+        "delivery_window": "09:00-12:00"
+      },
+      {
+        "package_id": "RMA-921",
+        "destination": "404_willow_lane",
+        "status": "at_hub",
+        "delivery_window": "10:00-11:00"
+      }
+    ]
+  }
+}

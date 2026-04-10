@@ -1,0 +1,110 @@
+{
+  "environment_name": "env_c5914e011f9b",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM) for Batch Reactor Process Control.\n- **Core Objective**: Based on the current internal state $s_t$ and the action $a_t$ taken by the control Agent, simulate the physical and chemical evolution of the batch reactor environment and predict the resulting observation $o_{{t+1}}$.\n- **Emphasis**: You are a simulator. You do not control the reactor; you simulate its response to control inputs (e.g., valve adjustments, heating) based on chemical kinetics and thermodynamics. You must maintain the internal state and only reveal specific observations defined in the action outputs.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nYou must maintain a consistent temporal and physical logic across the interaction history. Every state transition must be a logical consequence of the previous state and the action applied, following the principles of mass and energy balance.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. This JSON contains:\n- `\"name\"`: The name of the action to execute.\n- `\"arguments\"`: The parameters for the action.\n\nExample:\n```json\n{{\n \"name\": \"adjust_temperature\",\n \"arguments\": {{\n    \"target_kelvin\": 350.5,\n    \"ramp_rate\": 2.0\n  }}\n}}\n```\n\nYou must parse this input, calculate the state transition $(s_t, a_t) \\rightarrow s_{{t+1}}$ internally, and generate the corresponding observation $o_{{t+1}}$.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nIf the Agent provides invalid parameters (e.g., negative pressure, temperatures exceeding physical limits of the equipment), returns undefined actions, or attempts actions that conflict with the current state (e.g., adding reactants to a full vessel), you must return a structured error message:\n`{{\"error\": \"Reason for failure\"}}`.\nDo not fabricate successful outcomes for impossible physical states.\n\n##### Output Assembly\nFor every action call, return a structured JSON object containing **ONLY** the return fields declared in that specific action function's definition. \n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, `new_state`, or any hidden variables. You are the 'black box' of the world. The Agent only receives the sensor readings or status messages explicitly returned by the action.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to JSON for all outputs.\n- **Factuality**: Model chemical reactions and thermal changes based on realistic process control dynamics.\n- **Consistency**: If a reactor is heating up, the temperature in $s_{{t+1}}$ must be higher than $s_t$ unless an exothermic/endothermic shift or cooling action overrides it.\n- **Realism**: Account for inertia in physical systems (e.g., temperature does not change instantly).\n- **Quality**: Ensure all simulated data (floats, integers) are within realistic engineering ranges.\n- **Encapsulation**: Never expose the internal state schema to the Agent. Only provide the defined observation.\n{{initial_state}}: {{\n  \"internal_temp_k\": 402.5,\n  \"pressure_kpa\": 125.0,\n  \"liquid_volume_l\": 800.0,\n  \"reactant_a_conc\": 7.5,\n  \"product_c_conc\": 2.5,\n  \"agitator_status\": \"high\",\n  \"jacket_temp_k\": 400.0,\n  \"elapsed_time_min\": 180\n}}\n{{state_descriptions}}: {{\n  \"internal_temp_k\": \"Current temperature of the reactant mixture in Kelvin.\",\n  \"pressure_kpa\": \"Internal pressure of the reactor vessel in kiloPascals.\",\n  \"liquid_volume_l\": \"Volume of the liquid currently in the reactor in Liters.\",\n  \"reactant_a_conc\": \"Concentration of Reactant A in mol/L.\",\n  \"product_c_conc\": \"Concentration of the target Product C in mol/L.\",\n  \"agitator_status\": \"Status of the internal mixer (e.g., 'off', 'low', 'high').\",\n  \"jacket_temp_k\": \"Temperature of the cooling/heating jacket fluid in Kelvin.\",\n  \"elapsed_time_min\": \"Total time elapsed since the start of the batch process in minutes.\"\n}}\n{action_set_definitions}: {\n  \"get_reactor_telemetry\": {\n    \"description\": \"Retrieves the current real-time state of the batch reactor, including temperatures, concentrations, and system status.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"internal_temp_k\": 400.5,\n      \"pressure_kpa\": 101.3,\n      \"liquid_volume_l\": 500.0,\n      \"reactant_a_conc\": 2.1,\n      \"product_c_conc\": 0.5,\n      \"agitator_status\": \"low\",\n      \"jacket_temp_k\": 390.0,\n      \"elapsed_time_min\": 15\n    }\n  },\n  \"set_jacket_temperature\": {\n    \"description\": \"Adjusts the temperature of the cooling/heating jacket fluid. Use this to control the internal reactor temperature through heat exchange.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"target_temp_k\": {\n          \"type\": \"number\",\n          \"description\": \"The target temperature for the jacket fluid in Kelvin.\"\n        }\n      },\n      \"required\": [\n        \"target_temp_k\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"success\",\n      \"new_jacket_temp_k\": 385.0\n    }\n  },\n  \"set_agitator_speed\": {\n    \"description\": \"Sets the speed of the internal mixer. Higher speeds are required during the high-viscosity Gel Effect phase to ensure thermal homogeneity.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"speed_level\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"off\",\n            \"low\",\n            \"high\"\n          ],\n          \"description\": \"The desired agitation intensity.\"\n        }\n      },\n      \"required\": [\n        \"speed_level\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"success\",\n      \"current_agitator_status\": \"high\"\n    }\n  },\n  \"advance_process_time\": {\n    \"description\": \"Advances the process simulation by a specified time step, allowing the reaction to proceed and the state to evolve based on the current control parameters.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"duration_min\": {\n          \"type\": \"integer\",\n          \"description\": \"The number of minutes to advance the process.\"\n        }\n      },\n      \"required\": [\n        \"duration_min\"\n      ]\n    },\n    \"example_output\": {\n      \"message\": \"Process advanced by 5 minutes.\",\n      \"updated_state\": \"object\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_reactor_telemetry",
+      "description": "Retrieves the current real-time state of the batch reactor, including temperatures, concentrations, and system status.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "internal_temp_k": 400.5,
+        "pressure_kpa": 101.3,
+        "liquid_volume_l": 500.0,
+        "reactant_a_conc": 2.1,
+        "product_c_conc": 0.5,
+        "agitator_status": "low",
+        "jacket_temp_k": 390.0,
+        "elapsed_time_min": 15
+      }
+    },
+    {
+      "name": "set_jacket_temperature",
+      "description": "Adjusts the temperature of the cooling/heating jacket fluid. Use this to control the internal reactor temperature through heat exchange.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "target_temp_k": {
+            "type": "number",
+            "description": "The target temperature for the jacket fluid in Kelvin."
+          }
+        },
+        "required": [
+          "target_temp_k"
+        ]
+      },
+      "example_output": {
+        "status": "success",
+        "new_jacket_temp_k": 385.0
+      }
+    },
+    {
+      "name": "set_agitator_speed",
+      "description": "Sets the speed of the internal mixer. Higher speeds are required during the high-viscosity Gel Effect phase to ensure thermal homogeneity.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "speed_level": {
+            "type": "string",
+            "enum": [
+              "off",
+              "low",
+              "high"
+            ],
+            "description": "The desired agitation intensity."
+          }
+        },
+        "required": [
+          "speed_level"
+        ]
+      },
+      "example_output": {
+        "status": "success",
+        "current_agitator_status": "high"
+      }
+    },
+    {
+      "name": "advance_process_time",
+      "description": "Advances the process simulation by a specified time step, allowing the reaction to proceed and the state to evolve based on the current control parameters.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "duration_min": {
+            "type": "integer",
+            "description": "The number of minutes to advance the process."
+          }
+        },
+        "required": [
+          "duration_min"
+        ]
+      },
+      "example_output": {
+        "message": "Process advanced by 5 minutes.",
+        "updated_state": "object"
+      }
+    }
+  ],
+  "state_description": {
+    "internal_temp_k": "Current temperature of the reactant mixture in Kelvin.",
+    "pressure_kpa": "Internal pressure of the reactor vessel in kiloPascals.",
+    "liquid_volume_l": "Volume of the liquid currently in the reactor in Liters.",
+    "reactant_a_conc": "Concentration of Reactant A in mol/L.",
+    "product_c_conc": "Concentration of the target Product C in mol/L.",
+    "agitator_status": "Status of the internal mixer (e.g., 'off', 'low', 'high').",
+    "jacket_temp_k": "Temperature of the cooling/heating jacket fluid in Kelvin.",
+    "elapsed_time_min": "Total time elapsed since the start of the batch process in minutes."
+  },
+  "task_initial_state": {
+    "internal_temp_k": 402.5,
+    "pressure_kpa": 125.0,
+    "liquid_volume_l": 800.0,
+    "reactant_a_conc": 7.5,
+    "product_c_conc": 2.5,
+    "agitator_status": "high",
+    "jacket_temp_k": 400.0,
+    "elapsed_time_min": 180
+  }
+}

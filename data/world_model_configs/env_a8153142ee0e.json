@@ -1,0 +1,169 @@
+{
+  "environment_name": "env_a8153142ee0e",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: You are a simulator for a CI/CD Pipeline Failure Recovery environment. Based on the current internal state $s_t$ and the action $a_t$ executed by the Agent, your task is to simulate the internal evolution of the pipeline environment and predict the resulting observation $o_{{t+1}}$ obtained by the Agent.\n- **Emphasis**: You do not perform actual code execution or infrastructure changes. Your role is to calculate state transitions and generate realistic logs, system outputs, and configuration changes that would occur in a real DevOps environment.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions between the World Model and the Agent must maintain strict context consistency. If an action modifies a configuration file or restarts a service, subsequent observations must reflect these changes until the state evolves further.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object containing:\n- `\"name\"`: Specifies the name of the action function to execute.\n- The remaining fields are the parameters required by that function.\n\nExample:\n```json\n{{\n \"name\": \"restart_pipeline_job\",\n \"arguments\": {{\n    \"job_id\": \"build-123\",\n    \"clear_cache\": true\n  }}\n}}\n```\n\nYou must parse this input and simulate the environment's response based on the logic of CI/CD systems (e.g., dependency resolution, environment variables, resource availability).\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nIf the Agent attempts an invalid operation (e.g., referencing a non-existent job, providing malformed YAML configuration, or attempting to deploy to a locked environment), return a structured error message:\n`{{\"error\": \"Description of why the action failed\"}}`.\nDo not fabricate successful responses for logically impossible actions.\n\n##### Output Assembly\nFor every action call, return a structured JSON object containing **ONLY** the return fields declared in that action function's definition. \n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the internal state `$s_t$`, the `new_state`, or any hidden state variables. The state maintenance is handled internally by your simulation. The Agent must only receive the specific Observation defined in the action function.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to JSON for all outputs.\n- **Factuality**: Simulate realistic CI/CD outcomes (e.g., a fix in the YAML should realistically resolve a syntax error but might trigger a new dependency conflict).\n- **Consistency**: The internal state must remain self-consistent across multiple interaction steps.\n- **Realism**: Logs should look like standard CI/CD output (e.g., GitHub Actions, Jenkins, or GitLab CI logs).\n- **Quality**: Ensure error messages and logs provide enough information for an Agent to reason about the next step.\n- **Encapsulation**: Strictly hide the internal state structure from the output. Only expose the specific observation result of the action function.\n{{initial_state}}: {{\n  \"pipeline_status\": \"failed\",\n  \"failed_job_id\": \"regional-health-monitor-01\",\n  \"error_log_tail\": \"CRITICAL: Connection to us-east-1 (Primary) lost. Heartbeat failed.\\nPatroni: Standby node 'cluster-02-west' is healthy. Current Replication Lag: 642 seconds.\\nInfrastructure: STONITH confirmed for us-east-1. All primary nodes isolated.\",\n  \"config_files\": {{\n    \"deployment.yaml\": \"region: us-west-2\\ncontrol_plane:\\n  database_mode: standby\\n  dns_alias: ci-primary.internal.company.com\\nstorage:\\n  artifact_endpoint: s3.us-east-1.amazonaws.com\\n  backup_bucket: artifacts-us-west-2-dr\",\n    \"network.json\": \"{{\\\"lb_primary\\\": \\\"10.0.1.50\\\", \\\"lb_standby\\\": \\\"10.0.50.50\\\", \\\"active_lb\\\": \\\"10.0.1.50\\\"}}\"\n  }},\n  \"infrastructure_state\": {{\n    \"us_east_1_status\": \"disconnected\",\n    \"us_west_2_db\": \"read_only_replica\",\n    \"us_west_2_nodes\": \"online\",\n    \"s3_replication\": \"synced\"\n  }},\n  \"environment_variables\": {{\n    \"RPO_SLA_SECONDS\": \"900\",\n    \"LOCAL_REGION\": \"us-west-2\",\n    \"LOCAL_STORAGE_ENDPOINT\": \"s3.us-west-2.amazonaws.com\"\n  }}\n}}\n{{state_descriptions}}: {{\n  \"pipeline_status\": \"The current status of the CI/CD pipeline (e.g., 'failed', 'running', 'success', 'pending').\",\n  \"failed_job_id\": \"The identifier of the specific job or stage where the failure occurred.\",\n  \"error_log_tail\": \"The last few lines of the execution log showing the error message.\",\n  \"config_files\": \"A dictionary of filename-content pairs representing the pipeline configuration (e.g., .yaml files).\",\n  \"infrastructure_state\": \"The status of runners, containers, or servers involved in the pipeline.\",\n  \"environment_variables\": \"Key-value pairs of environment variables currently loaded in the pipeline context.\"\n}}\n{action_set_definitions}: {\n  \"get_environment_details\": {\n    \"description\": \"Retrieves the current state of the environment, including configuration, environment variables, and logs.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"requested_keys\": {\n          \"type\": \"array\",\n          \"items\": {\n            \"type\": \"string\",\n            \"enum\": [\n              \"pipeline_status\",\n              \"failed_job_id\",\n              \"error_log_tail\",\n              \"config_files\",\n              \"infrastructure_state\",\n              \"environment_variables\"\n            ]\n          },\n          \"description\": \"List of state keys to retrieve.\"\n        }\n      },\n      \"required\": [\n        \"requested_keys\"\n      ]\n    },\n    \"example_output\": {\n      \"error_log_tail\": \"Replication lag: 45s\",\n      \"environment_variables\": {\n        \"RPO_SLA_SECONDS\": \"900\"\n      }\n    }\n  },\n  \"discover_regional_resources\": {\n    \"description\": \"Scans a specific region for available infrastructure resources like databases and load balancers.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"region\": {\n          \"type\": \"string\",\n          \"description\": \"The AWS region to scan (e.g., 'us-west-2').\"\n        },\n        \"resource_type\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"database\",\n            \"load_balancer\"\n          ]\n        }\n      },\n      \"required\": [\n        \"region\",\n        \"resource_type\"\n      ]\n    },\n    \"example_output\": {\n      \"resources\": [\n        {\n          \"id\": \"db-cluster-west\",\n          \"endpoint\": \"db.us-west-2.aws.com\"\n        }\n      ]\n    }\n  },\n  \"promote_standby_database\": {\n    \"description\": \"Promotes a standby database in a target region to primary status.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"database_id\": {\n          \"type\": \"string\",\n          \"description\": \"The identifier of the database to promote.\"\n        }\n      },\n      \"required\": [\n        \"database_id\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"promoting\"\n    }\n  },\n  \"update_routing_policy\": {\n    \"description\": \"Updates the global DNS or traffic management routing to point to a new regional endpoint.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"target_endpoint\": {\n          \"type\": \"string\",\n          \"description\": \"The new endpoint URL to receive traffic.\"\n        }\n      },\n      \"required\": [\n        \"target_endpoint\"\n      ]\n    },\n    \"example_output\": {\n      \"propagation\": \"initiated\"\n    }\n  },\n  \"update_pipeline_env_vars\": {\n    \"description\": \"Updates the environment variables used by the CI/CD control plane.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"variables\": {\n          \"type\": \"object\",\n          \"description\": \"Key-value pairs of environment variables to set.\"\n        }\n      },\n      \"required\": [\n        \"variables\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"success\"\n    }\n  },\n  \"validate_service_operations\": {\n    \"description\": \"Runs tests to verify database connectivity and artifact storage (PUT/GET) functionality.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"database_connected\": true,\n      \"artifact_storage_retrieval\": \"PASS\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_environment_details",
+      "description": "Retrieves the current state of the environment, including configuration, environment variables, and logs.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "requested_keys": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "pipeline_status",
+                "failed_job_id",
+                "error_log_tail",
+                "config_files",
+                "infrastructure_state",
+                "environment_variables"
+              ]
+            },
+            "description": "List of state keys to retrieve."
+          }
+        },
+        "required": [
+          "requested_keys"
+        ]
+      },
+      "example_output": {
+        "error_log_tail": "Replication lag: 45s",
+        "environment_variables": {
+          "RPO_SLA_SECONDS": "900"
+        }
+      }
+    },
+    {
+      "name": "discover_regional_resources",
+      "description": "Scans a specific region for available infrastructure resources like databases and load balancers.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "region": {
+            "type": "string",
+            "description": "The AWS region to scan (e.g., 'us-west-2')."
+          },
+          "resource_type": {
+            "type": "string",
+            "enum": [
+              "database",
+              "load_balancer"
+            ]
+          }
+        },
+        "required": [
+          "region",
+          "resource_type"
+        ]
+      },
+      "example_output": {
+        "resources": [
+          {
+            "id": "db-cluster-west",
+            "endpoint": "db.us-west-2.aws.com"
+          }
+        ]
+      }
+    },
+    {
+      "name": "promote_standby_database",
+      "description": "Promotes a standby database in a target region to primary status.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "database_id": {
+            "type": "string",
+            "description": "The identifier of the database to promote."
+          }
+        },
+        "required": [
+          "database_id"
+        ]
+      },
+      "example_output": {
+        "status": "promoting"
+      }
+    },
+    {
+      "name": "update_routing_policy",
+      "description": "Updates the global DNS or traffic management routing to point to a new regional endpoint.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "target_endpoint": {
+            "type": "string",
+            "description": "The new endpoint URL to receive traffic."
+          }
+        },
+        "required": [
+          "target_endpoint"
+        ]
+      },
+      "example_output": {
+        "propagation": "initiated"
+      }
+    },
+    {
+      "name": "update_pipeline_env_vars",
+      "description": "Updates the environment variables used by the CI/CD control plane.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "variables": {
+            "type": "object",
+            "description": "Key-value pairs of environment variables to set."
+          }
+        },
+        "required": [
+          "variables"
+        ]
+      },
+      "example_output": {
+        "status": "success"
+      }
+    },
+    {
+      "name": "validate_service_operations",
+      "description": "Runs tests to verify database connectivity and artifact storage (PUT/GET) functionality.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "database_connected": true,
+        "artifact_storage_retrieval": "PASS"
+      }
+    }
+  ],
+  "state_description": {
+    "pipeline_status": "The current status of the CI/CD pipeline (e.g., 'failed', 'running', 'success', 'pending').",
+    "failed_job_id": "The identifier of the specific job or stage where the failure occurred.",
+    "error_log_tail": "The last few lines of the execution log showing the error message.",
+    "config_files": "A dictionary of filename-content pairs representing the pipeline configuration (e.g., .yaml files).",
+    "infrastructure_state": "The status of runners, containers, or servers involved in the pipeline.",
+    "environment_variables": "Key-value pairs of environment variables currently loaded in the pipeline context."
+  },
+  "task_initial_state": {
+    "pipeline_status": "failed",
+    "failed_job_id": "regional-health-monitor-01",
+    "error_log_tail": "CRITICAL: Connection to us-east-1 (Primary) lost. Heartbeat failed.\nPatroni: Standby node 'cluster-02-west' is healthy. Current Replication Lag: 642 seconds.\nInfrastructure: STONITH confirmed for us-east-1. All primary nodes isolated.",
+    "config_files": {
+      "deployment.yaml": "region: us-west-2\ncontrol_plane:\n  database_mode: standby\n  dns_alias: ci-primary.internal.company.com\nstorage:\n  artifact_endpoint: s3.us-east-1.amazonaws.com\n  backup_bucket: artifacts-us-west-2-dr",
+      "network.json": "{\"lb_primary\": \"10.0.1.50\", \"lb_standby\": \"10.0.50.50\", \"active_lb\": \"10.0.1.50\"}"
+    },
+    "infrastructure_state": {
+      "us_east_1_status": "disconnected",
+      "us_west_2_db": "read_only_replica",
+      "us_west_2_nodes": "online",
+      "s3_replication": "synced"
+    },
+    "environment_variables": {
+      "RPO_SLA_SECONDS": "900",
+      "LOCAL_REGION": "us-west-2",
+      "LOCAL_STORAGE_ENDPOINT": "s3.us-west-2.amazonaws.com"
+    }
+  }
+}

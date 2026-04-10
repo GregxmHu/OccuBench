@@ -1,0 +1,180 @@
+{
+  "environment_name": "env_63df3770b404",
+  "world_model_system_prompt": "# 1. Role and Objective\n\n**Role**: Language World Model (LWM) for Runway Arrival Sequencing\n\n**Core Objective**: You act as the backend environment for an Air Traffic Control (ATC) sequencing task. Based on the current internal state $s_t$ (representing the airspace and runway status) and the action $a_t$ executed by the Agent (the Sequencer), you must simulate the evolution of the environment and predict the resulting observation $o_{{t+1}}$.\n\n**Emphasis**: You are not the decision-maker. You are the simulator. You do not suggest actions; you calculate the physical and logical consequences of the Agent's actions, such as updating Estimated Times of Arrival (ETA), calculating separation violations, or updating runway occupancy.\n\n# 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nYou must maintain strict temporal and logical consistency. Each interaction must build upon the state resulting from the previous action. You track the movement of aircraft, the passage of time, and the consumption of runway capacity internally.\n\n# 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. You must parse this JSON to determine the transition logic:\n- `\"name\"`: The name of the sequencing or tactical action (e.g., assign_runway, change_speed).\n- Parameters: Specific values like `aircraft_id`, `assigned_time`, or `runway_id`.\n\nExample Input:\n```json\n{{\n \"name\": \"assign_landing_slot\",\n \"arguments\": {{\n    \"aircraft_id\": \"BAW123\",\n    \"target_runway\": \"09L\",\n    \"scheduled_time\": 1640512800\n  }}\n}}\n```\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\n- If an action refers to an `aircraft_id` not in the current state, return: `{{\"error\": \"Aircraft ID not found\"}}`.\n- If an action violates physical constraints (e.g., scheduling a landing time earlier than the current ETA), return an observation reflecting the conflict or an error message.\n- Do not fabricate aircraft or environmental data not present in the internal state logic.\n\n##### Output Assembly\nFor every action function call, you must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition. \n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, the updated state, or any hidden variables. You are an interface: the Agent only sees the Observation (the result of the action), not the internal database updates.\n\n# 4. Key Principles\n- **Format**: Strictly adhere to specified JSON and text formats.\n- **Factuality**: Use standard aviation separation logic (e.g., wake turbulence categories) if implied by the scenario dynamics.\n- **Consistency**: If an aircraft is sequenced to land at time $T$, it remains occupied at time $T$ in future steps until the simulation clears it.\n- **Realism**: Arrival sequencing involves delays and constraints; ensure the observations reflect the realistic constraints of runway throughput.\n- **Encapsulation**: Strictly hide the internal state structure from the output. Only expose information that is explicitly returned by the action function.\n{{initial_state}}: {{\n  \"aircraft_queue\": [\n    {{\n      \"id\": \"BAW45\",\n      \"category\": \"Super\",\n      \"telemetry\": {{\n        \"distance_to_threshold_nm\": 7.0,\n        \"indicated_airspeed_kts\": 145,\n        \"ground_speed_kts\": 90\n      }}\n    }},\n    {{\n      \"id\": \"VIR21\",\n      \"category\": \"Heavy\",\n      \"telemetry\": {{\n        \"distance_to_threshold_nm\": 13.5,\n        \"indicated_airspeed_kts\": 145,\n        \"ground_speed_kts\": 90\n      }}\n    }}\n  ],\n  \"runway_status\": {{\n    \"27L\": {{\n      \"active_separation_logic\": \"DISTANCE_BASED\",\n      \"atis_code\": \"Hotel\",\n      \"tbs_ready\": true,\n      \"last_landing_timestamp\": 1640512000\n    }}\n  }},\n  \"simulation_clock\": 1640512200,\n  \"separation_requirements\": {{\n    \"headwind_component\": 55,\n    \"min_radar_sep_nm\": 2.5,\n    \"standard_dbs_super_heavy_nm\": 6.0,\n    \"target_tbs_interval_sec\": 150,\n    \"system_configuration\": {{\n      \"aman_mode\": \"LEGACY\",\n      \"broadcast_status\": \"DBS_IN_USE\"\n    }}\n  }}\n}}\n{{state_descriptions}}: {{\n  \"aircraft_queue\": \"List of aircraft currently in the arrival sector, including their ID, wake turbulence category, and current flight telemetry.\",\n  \"runway_status\": \"The current occupancy and last landing timestamp for each available runway to calculate separation.\",\n  \"simulation_clock\": \"The current simulation time in seconds (Unix timestamp or relative seconds).\",\n  \"separation_requirements\": \"Matrix defining the minimum time/distance separation required between different aircraft types (e.g., Heavy following Medium).\"\n}}\n{action_set_definitions}: {\n  \"fetch_simulation_state\": {\n    \"description\": \"Retrieves the current state of the environment, including the simulation clock, weather conditions (wind speed/direction), and telemetry for all aircraft in the queue.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"requested_fields\": {\n          \"type\": \"array\",\n          \"items\": {\n            \"type\": \"string\"\n          },\n          \"description\": \"Specific fields to retrieve: 'aircraft_queue', 'runway_status', 'simulation_clock', 'weather'.\"\n        }\n      },\n      \"required\": [\n        \"requested_fields\"\n      ]\n    },\n    \"example_output\": {\n      \"simulation_clock\": 1715230000,\n      \"weather\": {\n        \"headwind_knots\": 55,\n        \"visibility_nm\": 5\n      },\n      \"aircraft_queue\": [\n        {\n          \"callsign\": \"BAW45\",\n          \"type\": \"Super\",\n          \"distance_to_threshold_nm\": 12.5,\n          \"ground_speed_kt\": 160\n        }\n      ]\n    }\n  },\n  \"fetch_separation_standards\": {\n    \"description\": \"Retrieves the required time and distance separation standards between different aircraft wake categories.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"lead_category\": {\n          \"type\": \"string\",\n          \"description\": \"The wake category of the leading aircraft (e.g., 'Super').\"\n        },\n        \"follower_category\": {\n          \"type\": \"string\",\n          \"description\": \"The wake category of the following aircraft (e.g., 'Heavy').\"\n        }\n      },\n      \"required\": [\n        \"lead_category\",\n        \"follower_category\"\n      ]\n    },\n    \"example_output\": {\n      \"min_time_separation_seconds\": 150,\n      \"min_distance_separation_nm\": 2.5\n    }\n  },\n  \"issue_tactical_command\": {\n    \"description\": \"Executes a tactical control instruction (speed, heading, or altitude) to a specific aircraft to adjust its arrival timing.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"callsign\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier of the aircraft.\"\n        },\n        \"command_type\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"speed\",\n            \"heading\",\n            \"altitude\"\n          ],\n          \"description\": \"The type of tactical adjustment.\"\n        },\n        \"value\": {\n          \"type\": \"number\",\n          \"description\": \"The target value for the command (e.g., knots for speed, degrees for heading).\"\n        }\n      },\n      \"required\": [\n        \"callsign\",\n        \"command_type\",\n        \"value\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"command_issued\",\n      \"new_estimated_arrival\": 1715230500\n    }\n  },\n  \"update_airport_systems\": {\n    \"description\": \"Synchronizes the sequence changes with the AMAN (Arrival Management) system and updates the terminal broadcast notifications.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"runway\": {\n          \"type\": \"string\",\n          \"description\": \"The runway identifier (e.g., '27L').\"\n        },\n        \"sequence_order\": {\n          \"type\": \"array\",\n          \"items\": {\n            \"type\": \"string\"\n          },\n          \"description\": \"The ordered list of callsigns for the arrival sequence.\"\n        },\n        \"broadcast_message\": {\n          \"type\": \"string\",\n          \"description\": \"The notification text for the terminal broadcast.\"\n        }\n      },\n      \"required\": [\n        \"runway\",\n        \"sequence_order\",\n        \"broadcast_message\"\n      ]\n    },\n    \"example_output\": {\n      \"aman_status\": \"synced\",\n      \"broadcast_timestamp\": \"2023-10-27T10:00:00Z\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "fetch_simulation_state",
+      "description": "Retrieves the current state of the environment, including the simulation clock, weather conditions (wind speed/direction), and telemetry for all aircraft in the queue.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "requested_fields": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Specific fields to retrieve: 'aircraft_queue', 'runway_status', 'simulation_clock', 'weather'."
+          }
+        },
+        "required": [
+          "requested_fields"
+        ]
+      },
+      "example_output": {
+        "simulation_clock": 1715230000,
+        "weather": {
+          "headwind_knots": 55,
+          "visibility_nm": 5
+        },
+        "aircraft_queue": [
+          {
+            "callsign": "BAW45",
+            "type": "Super",
+            "distance_to_threshold_nm": 12.5,
+            "ground_speed_kt": 160
+          }
+        ]
+      }
+    },
+    {
+      "name": "fetch_separation_standards",
+      "description": "Retrieves the required time and distance separation standards between different aircraft wake categories.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "lead_category": {
+            "type": "string",
+            "description": "The wake category of the leading aircraft (e.g., 'Super')."
+          },
+          "follower_category": {
+            "type": "string",
+            "description": "The wake category of the following aircraft (e.g., 'Heavy')."
+          }
+        },
+        "required": [
+          "lead_category",
+          "follower_category"
+        ]
+      },
+      "example_output": {
+        "min_time_separation_seconds": 150,
+        "min_distance_separation_nm": 2.5
+      }
+    },
+    {
+      "name": "issue_tactical_command",
+      "description": "Executes a tactical control instruction (speed, heading, or altitude) to a specific aircraft to adjust its arrival timing.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "callsign": {
+            "type": "string",
+            "description": "The unique identifier of the aircraft."
+          },
+          "command_type": {
+            "type": "string",
+            "enum": [
+              "speed",
+              "heading",
+              "altitude"
+            ],
+            "description": "The type of tactical adjustment."
+          },
+          "value": {
+            "type": "number",
+            "description": "The target value for the command (e.g., knots for speed, degrees for heading)."
+          }
+        },
+        "required": [
+          "callsign",
+          "command_type",
+          "value"
+        ]
+      },
+      "example_output": {
+        "status": "command_issued",
+        "new_estimated_arrival": 1715230500
+      }
+    },
+    {
+      "name": "update_airport_systems",
+      "description": "Synchronizes the sequence changes with the AMAN (Arrival Management) system and updates the terminal broadcast notifications.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "runway": {
+            "type": "string",
+            "description": "The runway identifier (e.g., '27L')."
+          },
+          "sequence_order": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "The ordered list of callsigns for the arrival sequence."
+          },
+          "broadcast_message": {
+            "type": "string",
+            "description": "The notification text for the terminal broadcast."
+          }
+        },
+        "required": [
+          "runway",
+          "sequence_order",
+          "broadcast_message"
+        ]
+      },
+      "example_output": {
+        "aman_status": "synced",
+        "broadcast_timestamp": "2023-10-27T10:00:00Z"
+      }
+    }
+  ],
+  "state_description": {
+    "aircraft_queue": "List of aircraft currently in the arrival sector, including their ID, wake turbulence category, and current flight telemetry.",
+    "runway_status": "The current occupancy and last landing timestamp for each available runway to calculate separation.",
+    "simulation_clock": "The current simulation time in seconds (Unix timestamp or relative seconds).",
+    "separation_requirements": "Matrix defining the minimum time/distance separation required between different aircraft types (e.g., Heavy following Medium)."
+  },
+  "task_initial_state": {
+    "aircraft_queue": [
+      {
+        "id": "BAW45",
+        "category": "Super",
+        "telemetry": {
+          "distance_to_threshold_nm": 7.0,
+          "indicated_airspeed_kts": 145,
+          "ground_speed_kts": 90
+        }
+      },
+      {
+        "id": "VIR21",
+        "category": "Heavy",
+        "telemetry": {
+          "distance_to_threshold_nm": 13.5,
+          "indicated_airspeed_kts": 145,
+          "ground_speed_kts": 90
+        }
+      }
+    ],
+    "runway_status": {
+      "27L": {
+        "active_separation_logic": "DISTANCE_BASED",
+        "atis_code": "Hotel",
+        "tbs_ready": true,
+        "last_landing_timestamp": 1640512000
+      }
+    },
+    "simulation_clock": 1640512200,
+    "separation_requirements": {
+      "headwind_component": 55,
+      "min_radar_sep_nm": 2.5,
+      "standard_dbs_super_heavy_nm": 6.0,
+      "target_tbs_interval_sec": 150,
+      "system_configuration": {
+        "aman_mode": "LEGACY",
+        "broadcast_status": "DBS_IN_USE"
+      }
+    }
+  }
+}

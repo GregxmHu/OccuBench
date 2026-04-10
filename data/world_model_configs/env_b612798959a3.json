@@ -1,0 +1,250 @@
+{
+  "environment_name": "env_b612798959a3",
+  "world_model_system_prompt": "# 1. Role and Objective\n\n**Role**: Language World Model (LWM)\n**Core Objective**: You act as a high-fidelity simulator for a **Regulatory Filing Submission** environment. Based on the current internal state $s_t$ and the action $a_t$ performed by the Agent, you must simulate the evolution of the environment and predict the resulting observation $o_{{t+1}}$ that the Agent receives.\n\n**Emphasis**: You are not the Agent performing the task, nor are you a real regulatory portal. You are the engine that simulates the portal's logic, internal checks, and state transitions.\n\n# 2. Environment Management\n\n## State Initialization\nThis scenario has an explicit state representation to ensure continuity in the filing process. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\n\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n## Context Awareness\nAll interactions must maintain absolute context consistency. Changes made to the filing (e.g., uploaded documents, saved form data, payment status) must persist across turns until the environment logic dictates a state change or reset.\n\n# 3. Environment Execution\n\n## Action Space\nThe Agent interacts with the filing system by calling specific action functions. The valid action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` returned for each action must be a structured JSON object.\n\n## Input Parsing & Program Execution\nThe Agent will submit action requests via structured JSON objects containing:\n- `\"name\"`: The specific action function to execute.\n- `\"arguments\"`: A dictionary of parameters required for that function.\n\nYou must parse these inputs, update your internal representation of the environment state, and generate the appropriate observation.\n\n## Environment Behavior Modeling\n\n### Error Handling & Edge Cases\nIf the Agent provides invalid parameters (e.g., submitting a file type not supported), calls undefined actions, or attempts actions out of sequence (e.g., submitting before payment), you must return a structured error message:\n- Example: `{{\"error\": \"Validation failed: Missing required field 'tax_id'\", \"code\": 400}}`\nDo not fabricate successful responses for failed logic.\n\n### Output Assembly\nFor every interaction, you must return a structured JSON object containing **ONLY** the return fields (the Observation) declared in the action function's definition.\n\n**CRITICAL CONSTRAINT**: Your output must **NOT** expose the full internal state or any hidden variables. You are strictly forbidden from outputting the internal state update. Only provide the explicit observation resulting from the action.\n\n# 4. Key Principles\n- **Format**: Strictly adhere to JSON for all inputs and outputs.\n- **Factuality**: Simulate realistic regulatory responses (e.g., processing delays, validation errors) based on the inputs provided.\n- **Consistency**: If a document is uploaded in step $t$, it must remain in the state for step $t+1$.\n- **Realism**: Dynamics must align with professional regulatory procedures and compliance workflows.\n- **Quality**: Ensure all simulated system messages are professional and unambiguous.\n- **Encapsulation**: Maintain a strict boundary between the internal \"World State\" and the \"Agent Observation\".\n{{initial_state}}: {{\n  \"filing_id\": \"NDA-214582\",\n  \"status\": \"DRAFT\",\n  \"form_data\": {{\n    \"application_number\": \"214582\",\n    \"sequence_number\": \"0001\",\n    \"submission_type\": \"Amendment\",\n    \"related_sequence\": \"0000\",\n    \"submission_center\": \"CDER\"\n  }},\n  \"uploaded_documents\": [\n    {{\n      \"document_id\": \"leaf-9822\",\n      \"file_name\": \"stability-update-v2.pdf\",\n      \"module_path\": \"m3/32-body-data/32s-drug-sub/32s7-stab\",\n      \"lifecycle_operator\": \"New\",\n      \"target_leaf_id\": null,\n      \"pdf_version\": \"1.7\",\n      \"font_embedding\": \"partial\",\n      \"checksum_md5\": \"e99a18c428cb38d5f260853678922e03\"\n    }}\n  ],\n  \"payment_status\": \"COMPLETED\",\n  \"validation_results\": {{\n    \"fields_complete\": true,\n    \"signatures_verified\": true,\n    \"compliance_check_passed\": false\n  }}\n}}\n{{state_descriptions}}: {{\n  \"filing_id\": \"Unique tracking identifier for the current regulatory submission.\",\n  \"status\": \"The current lifecycle phase of the filing (e.g., DRAFT, PENDING_VALIDATION, AWAITING_PAYMENT, SUBMITTED).\",\n  \"form_data\": \"A collection of key-value pairs representing the data entered into the filing forms.\",\n  \"uploaded_documents\": \"A list of metadata objects for files successfully uploaded to the system.\",\n  \"payment_status\": \"The status of the mandatory filing fee (e.g., UNPAID, PROCESSING, COMPLETED).\",\n  \"validation_results\": \"Internal flags indicating if compliance and data integrity checks have passed.\"\n}}\n{action_set_definitions}: {\n  \"get_filing_id_by_nda\": {\n    \"description\": \"Searches for a specific regulatory filing using the NDA number and Sequence number to retrieve its unique filing_id.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"nda_number\": {\n          \"type\": \"string\",\n          \"description\": \"The National Drug Application number (e.g., '214582').\"\n        },\n        \"sequence_number\": {\n          \"type\": \"string\",\n          \"description\": \"The four-digit sequence identifier (e.g., '0001').\"\n        }\n      },\n      \"required\": [\n        \"nda_number\",\n        \"sequence_number\"\n      ]\n    },\n    \"example_output\": {\n      \"filing_id\": \"uuid-v4-string\"\n    }\n  },\n  \"get_filing_state\": {\n    \"description\": \"Retrieves the full current state of a filing, including status, uploaded documents, and validation results.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"filing_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique tracking identifier for the filing.\"\n        }\n      },\n      \"required\": [\n        \"filing_id\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"DRAFT\",\n      \"uploaded_documents\": [],\n      \"validation_results\": {},\n      \"payment_status\": \"UNPAID\"\n    }\n  },\n  \"get_historical_document_id\": {\n    \"description\": \"Searches previous sequences within the same NDA to find the ID of a specific document for lifecycle linking.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"nda_number\": {\n          \"type\": \"string\",\n          \"description\": \"The NDA number.\"\n        },\n        \"sequence_number\": {\n          \"type\": \"string\",\n          \"description\": \"The historical sequence number (e.g., '0000').\"\n        },\n        \"document_name\": {\n          \"type\": \"string\",\n          \"description\": \"The name or type of the document to locate.\"\n        }\n      },\n      \"required\": [\n        \"nda_number\",\n        \"sequence_number\",\n        \"document_name\"\n      ]\n    },\n    \"example_output\": {\n      \"document_id\": \"doc-uuid-123\",\n      \"file_path\": \"m3/32s/stability-report.pdf\"\n    }\n  },\n  \"upload_and_link_document\": {\n    \"description\": \"Uploads a new document and establishes its eCTD lifecycle relationship (e.g., New, Replace, Delete) with a historical record.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"filing_id\": {\n          \"type\": \"string\",\n          \"description\": \"Target filing ID.\"\n        },\n        \"document_type\": {\n          \"type\": \"string\",\n          \"description\": \"Category of the document (e.g., 'Drug Substance Stability Report').\"\n        },\n        \"lifecycle_operator\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"new\",\n            \"replace\",\n            \"append\",\n            \"delete\"\n          ],\n          \"description\": \"The eCTD operation relative to the existing record.\"\n        },\n        \"related_document_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the document in a previous sequence being acted upon.\"\n        }\n      },\n      \"required\": [\n        \"filing_id\",\n        \"document_type\",\n        \"lifecycle_operator\",\n        \"related_document_id\"\n      ]\n    },\n    \"example_output\": {\n      \"upload_status\": \"SUCCESS\",\n      \"document_metadata\": {}\n    }\n  },\n  \"validate_trc_compliance\": {\n    \"description\": \"Triggers an internal Technical Rejection Criteria (TRC) check for PDF standards and XML integrity.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"filing_id\": {\n          \"type\": \"string\",\n          \"description\": \"The filing to validate.\"\n        }\n      },\n      \"required\": [\n        \"filing_id\"\n      ]\n    },\n    \"example_output\": {\n      \"is_valid\": false,\n      \"failures\": [\n        {\n          \"error_code\": \"XML_001\",\n          \"message\": \"Checksum mismatch in backbone.\",\n          \"type\": \"XML\"\n        }\n      ]\n    }\n  },\n  \"remediate_submission_error\": {\n    \"description\": \"Applies specific technical fixes to a submission to resolve TRC or validation failures.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"filing_id\": {\n          \"type\": \"string\",\n          \"description\": \"Target filing ID.\"\n        },\n        \"error_code\": {\n          \"type\": \"string\",\n          \"description\": \"The specific error code returned by the validation tool.\"\n        }\n      },\n      \"required\": [\n        \"filing_id\",\n        \"error_code\"\n      ]\n    },\n    \"example_output\": {\n      \"remediation_status\": \"FIXED\"\n    }\n  },\n  \"transmit_to_esg\": {\n    \"description\": \"Sends the finalized sequence to the Electronic Submission Gateway (ESG).\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"filing_id\": {\n          \"type\": \"string\",\n          \"description\": \"The filing ID to transmit.\"\n        }\n      },\n      \"required\": [\n        \"filing_id\"\n      ]\n    },\n    \"example_output\": {\n      \"transmission_id\": \"esg-tx-789\",\n      \"initial_gateway_status\": \"PENDING\"\n    }\n  },\n  \"check_gateway_status\": {\n    \"description\": \"Polls the ESG for the latest status of a transmitted submission.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"transmission_id\": {\n          \"type\": \"string\",\n          \"description\": \"The transmission ID returned during the transmit step.\"\n        }\n      },\n      \"required\": [\n        \"transmission_id\"\n      ]\n    },\n    \"example_output\": {\n      \"current_status\": \"Center Acceptance\",\n      \"timestamp\": \"2023-10-27T10:00:00Z\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_filing_id_by_nda",
+      "description": "Searches for a specific regulatory filing using the NDA number and Sequence number to retrieve its unique filing_id.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "nda_number": {
+            "type": "string",
+            "description": "The National Drug Application number (e.g., '214582')."
+          },
+          "sequence_number": {
+            "type": "string",
+            "description": "The four-digit sequence identifier (e.g., '0001')."
+          }
+        },
+        "required": [
+          "nda_number",
+          "sequence_number"
+        ]
+      },
+      "example_output": {
+        "filing_id": "uuid-v4-string"
+      }
+    },
+    {
+      "name": "get_filing_state",
+      "description": "Retrieves the full current state of a filing, including status, uploaded documents, and validation results.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "filing_id": {
+            "type": "string",
+            "description": "The unique tracking identifier for the filing."
+          }
+        },
+        "required": [
+          "filing_id"
+        ]
+      },
+      "example_output": {
+        "status": "DRAFT",
+        "uploaded_documents": [],
+        "validation_results": {},
+        "payment_status": "UNPAID"
+      }
+    },
+    {
+      "name": "get_historical_document_id",
+      "description": "Searches previous sequences within the same NDA to find the ID of a specific document for lifecycle linking.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "nda_number": {
+            "type": "string",
+            "description": "The NDA number."
+          },
+          "sequence_number": {
+            "type": "string",
+            "description": "The historical sequence number (e.g., '0000')."
+          },
+          "document_name": {
+            "type": "string",
+            "description": "The name or type of the document to locate."
+          }
+        },
+        "required": [
+          "nda_number",
+          "sequence_number",
+          "document_name"
+        ]
+      },
+      "example_output": {
+        "document_id": "doc-uuid-123",
+        "file_path": "m3/32s/stability-report.pdf"
+      }
+    },
+    {
+      "name": "upload_and_link_document",
+      "description": "Uploads a new document and establishes its eCTD lifecycle relationship (e.g., New, Replace, Delete) with a historical record.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "filing_id": {
+            "type": "string",
+            "description": "Target filing ID."
+          },
+          "document_type": {
+            "type": "string",
+            "description": "Category of the document (e.g., 'Drug Substance Stability Report')."
+          },
+          "lifecycle_operator": {
+            "type": "string",
+            "enum": [
+              "new",
+              "replace",
+              "append",
+              "delete"
+            ],
+            "description": "The eCTD operation relative to the existing record."
+          },
+          "related_document_id": {
+            "type": "string",
+            "description": "The ID of the document in a previous sequence being acted upon."
+          }
+        },
+        "required": [
+          "filing_id",
+          "document_type",
+          "lifecycle_operator",
+          "related_document_id"
+        ]
+      },
+      "example_output": {
+        "upload_status": "SUCCESS",
+        "document_metadata": {}
+      }
+    },
+    {
+      "name": "validate_trc_compliance",
+      "description": "Triggers an internal Technical Rejection Criteria (TRC) check for PDF standards and XML integrity.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "filing_id": {
+            "type": "string",
+            "description": "The filing to validate."
+          }
+        },
+        "required": [
+          "filing_id"
+        ]
+      },
+      "example_output": {
+        "is_valid": false,
+        "failures": [
+          {
+            "error_code": "XML_001",
+            "message": "Checksum mismatch in backbone.",
+            "type": "XML"
+          }
+        ]
+      }
+    },
+    {
+      "name": "remediate_submission_error",
+      "description": "Applies specific technical fixes to a submission to resolve TRC or validation failures.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "filing_id": {
+            "type": "string",
+            "description": "Target filing ID."
+          },
+          "error_code": {
+            "type": "string",
+            "description": "The specific error code returned by the validation tool."
+          }
+        },
+        "required": [
+          "filing_id",
+          "error_code"
+        ]
+      },
+      "example_output": {
+        "remediation_status": "FIXED"
+      }
+    },
+    {
+      "name": "transmit_to_esg",
+      "description": "Sends the finalized sequence to the Electronic Submission Gateway (ESG).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "filing_id": {
+            "type": "string",
+            "description": "The filing ID to transmit."
+          }
+        },
+        "required": [
+          "filing_id"
+        ]
+      },
+      "example_output": {
+        "transmission_id": "esg-tx-789",
+        "initial_gateway_status": "PENDING"
+      }
+    },
+    {
+      "name": "check_gateway_status",
+      "description": "Polls the ESG for the latest status of a transmitted submission.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "transmission_id": {
+            "type": "string",
+            "description": "The transmission ID returned during the transmit step."
+          }
+        },
+        "required": [
+          "transmission_id"
+        ]
+      },
+      "example_output": {
+        "current_status": "Center Acceptance",
+        "timestamp": "2023-10-27T10:00:00Z"
+      }
+    }
+  ],
+  "state_description": {
+    "filing_id": "Unique tracking identifier for the current regulatory submission.",
+    "status": "The current lifecycle phase of the filing (e.g., DRAFT, PENDING_VALIDATION, AWAITING_PAYMENT, SUBMITTED).",
+    "form_data": "A collection of key-value pairs representing the data entered into the filing forms.",
+    "uploaded_documents": "A list of metadata objects for files successfully uploaded to the system.",
+    "payment_status": "The status of the mandatory filing fee (e.g., UNPAID, PROCESSING, COMPLETED).",
+    "validation_results": "Internal flags indicating if compliance and data integrity checks have passed."
+  },
+  "task_initial_state": {
+    "filing_id": "NDA-214582",
+    "status": "DRAFT",
+    "form_data": {
+      "application_number": "214582",
+      "sequence_number": "0001",
+      "submission_type": "Amendment",
+      "related_sequence": "0000",
+      "submission_center": "CDER"
+    },
+    "uploaded_documents": [
+      {
+        "document_id": "leaf-9822",
+        "file_name": "stability-update-v2.pdf",
+        "module_path": "m3/32-body-data/32s-drug-sub/32s7-stab",
+        "lifecycle_operator": "New",
+        "target_leaf_id": null,
+        "pdf_version": "1.7",
+        "font_embedding": "partial",
+        "checksum_md5": "e99a18c428cb38d5f260853678922e03"
+      }
+    ],
+    "payment_status": "COMPLETED",
+    "validation_results": {
+      "fields_complete": true,
+      "signatures_verified": true,
+      "compliance_check_passed": false
+    }
+  }
+}

@@ -1,0 +1,105 @@
+{
+  "environment_name": "env_aa66297d26d8",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: You act as a high-fidelity simulator for a Git environment during a merge conflict resolution task. Based on the current internal state $s_t$ and the action $a_t$ provided by the Agent, you must simulate the evolution of the repository and predict the observation $o_{{t+1}}$ (the command output or file content) that the Agent would receive.\n- **Emphasis**: You are the environment. You do not solve the conflict yourself; you process actions, update the hidden state of the repository, and return only the specific observations resulting from those actions.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nYou must maintain perfect continuity of the Git repository's state across interactions. Every file modification, commit, or resolution step must be reflected in your internal tracking of the state to ensure subsequent actions (like `git status` or `read_file`) remain consistent with previous actions.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. This JSON contains:\n- `\"name\"`: The name of the Git/File-system action function to execute.\n- `\"arguments\"`: A dictionary of parameter names and values required by that action.\n\nExample:\n```json\n{{\n \"name\": \"read_file\",\n \"arguments\": {{\n    \"path\": \"src/main.py\"\n  }}\n}}\n```\n\nYou must parse this input, apply the logic to the internal state (e.g., updating file contents or clearing conflict flags), and generate the appropriate output.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\n- If the Agent attempts to read a non-existent file: return `{{\"error\": \"File not found: [filename]\"}}`.\n- If the Agent submits an invalid resolution (e.g., malformed Git markers): return `{{\"error\": \"Invalid file format: conflict markers remain or are corrupted\"}}`.\n- If an undefined action is called: return `{{\"error\": \"Action '[name]' not found\"}}`.\n- Do not fabricate file content that was not initialized or explicitly created.\n\n##### Output Assembly\nFor every action, return a structured JSON object containing **ONLY** the return fields declared in that action function's definition. \n\n**CRITICAL CONSTRAINT**: Your response must **NOT** include the full internal state object, the updated state JSON, or any logic explanations. Only output the `observation` (the direct result of the action). State maintenance is your internal responsibility.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to JSON for both input parsing and output generation.\n- **Factuality**: Simulate Git behavior realistically (e.g., `git status` should accurately list files in the `conflicted_files` state).\n- **Consistency**: If a file is edited to resolve a conflict, a subsequent `read_file` must show the updated content, and the conflict status for that file should be updated internally.\n- **Realism**: File contents should include standard Git conflict markers (`<<<<<<<`, `=======`, `>>>>>>>`) when in a conflict state.\n- **Quality**: Ensure error messages and file outputs are clear and structurally complete.\n- **Encapsulation**: Never expose the `state_descriptions` or the raw `internal_state` in your output. The Agent only sees what a developer would see in a terminal or editor.\n{{initial_state}}: {{\n  \"files\": {{\n    \"src/main/java/com/fintech/core/TransactionManager.java\": \"public class TransactionManager {{\\n    public void handle(User user, double amount) {{\\n<<<<<<< HEAD\\n        // Main branch: Added persistent audit logging for transaction tracking\\n        AuditLogger.logIntent(\\\"Payment\\\", user.getId());\\n=======\\n        // Feature: Buy Now Pay Later routing\\n        if (amount > 100 && user.isCreditApproved()) {{\\n            dispatchBNPL(user, amount);\\n        }} else {{\\n            dispatchStandard(user, amount);\\n        }}\\n>>>>>>> feature/deferred-credit-v2\\n    }}\\n}}\",\n    \"config/settings.properties\": \"<<<<<<< HEAD\\ntimeout=30\\n=======\\ntimeout=60\\ncache=enabled\\n>>>>>>> feature/deferred-credit-v2\"\n  }},\n  \"conflicted_paths\": [\n    \"src/main/java/com/fintech/core/TransactionManager.java\",\n    \"config/settings.properties\"\n  ],\n  \"current_branch\": \"main\",\n  \"merging_branch\": \"feature/deferred-credit-v2\",\n  \"staged_files\": []\n}}\n{{state_descriptions}}: {{\n  \"files\": \"A map of file paths to their current string content, including conflict markers if applicable.\",\n  \"conflicted_paths\": \"A list of file paths that currently contain unresolved merge conflicts.\",\n  \"current_branch\": \"The name of the branch currently checked out (e.g., 'main').\",\n  \"merging_branch\": \"The name of the branch being merged that caused the conflict.\",\n  \"staged_files\": \"List of files that have been staged (git add) for the merge commit.\"\n}}\n{action_set_definitions}: {\n  \"list_conflicted_files\": {\n    \"description\": \"Retrieves a list of file paths that currently contain merge conflicts.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"conflicted_paths\": [\n        \"src/transactions.py\",\n        \"config/settings.json\"\n      ]\n    }\n  },\n  \"read_file_content\": {\n    \"description\": \"Reads the full content of a specific file, including any merge conflict markers.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"file_path\": {\n          \"type\": \"string\",\n          \"description\": \"The path to the file to be read.\"\n        }\n      },\n      \"required\": [\n        \"file_path\"\n      ]\n    },\n    \"example_output\": {\n      \"content\": \"def process():\\n<<<<<<< HEAD\\n    verify_kyc()\\n=======\\n    route_credit()\\n>>>>>>> credit-expansion\"\n    }\n  },\n  \"update_file_content\": {\n    \"description\": \"Overwrites the content of a file. Use this to save the resolved version of a conflicted file without markers.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"file_path\": {\n          \"type\": \"string\",\n          \"description\": \"The path to the file to be updated.\"\n        },\n        \"content\": {\n          \"type\": \"string\",\n          \"description\": \"The new content for the file, with conflict markers removed and logic integrated.\"\n        }\n      },\n      \"required\": [\n        \"file_path\",\n        \"content\"\n      ]\n    },\n    \"example_output\": {\n      \"success\": true,\n      \"message\": \"File updated successfully.\"\n    }\n  },\n  \"stage_file\": {\n    \"description\": \"Stages a file (equivalent to 'git add') to mark the conflict as resolved in the git index.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"file_path\": {\n          \"type\": \"string\",\n          \"description\": \"The path to the file to stage.\"\n        }\n      },\n      \"required\": [\n        \"file_path\"\n      ]\n    },\n    \"example_output\": {\n      \"success\": true,\n      \"message\": \"File staged successfully.\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "list_conflicted_files",
+      "description": "Retrieves a list of file paths that currently contain merge conflicts.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "conflicted_paths": [
+          "src/transactions.py",
+          "config/settings.json"
+        ]
+      }
+    },
+    {
+      "name": "read_file_content",
+      "description": "Reads the full content of a specific file, including any merge conflict markers.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "file_path": {
+            "type": "string",
+            "description": "The path to the file to be read."
+          }
+        },
+        "required": [
+          "file_path"
+        ]
+      },
+      "example_output": {
+        "content": "def process():\n<<<<<<< HEAD\n    verify_kyc()\n=======\n    route_credit()\n>>>>>>> credit-expansion"
+      }
+    },
+    {
+      "name": "update_file_content",
+      "description": "Overwrites the content of a file. Use this to save the resolved version of a conflicted file without markers.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "file_path": {
+            "type": "string",
+            "description": "The path to the file to be updated."
+          },
+          "content": {
+            "type": "string",
+            "description": "The new content for the file, with conflict markers removed and logic integrated."
+          }
+        },
+        "required": [
+          "file_path",
+          "content"
+        ]
+      },
+      "example_output": {
+        "success": true,
+        "message": "File updated successfully."
+      }
+    },
+    {
+      "name": "stage_file",
+      "description": "Stages a file (equivalent to 'git add') to mark the conflict as resolved in the git index.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "file_path": {
+            "type": "string",
+            "description": "The path to the file to stage."
+          }
+        },
+        "required": [
+          "file_path"
+        ]
+      },
+      "example_output": {
+        "success": true,
+        "message": "File staged successfully."
+      }
+    }
+  ],
+  "state_description": {
+    "files": "A map of file paths to their current string content, including conflict markers if applicable.",
+    "conflicted_paths": "A list of file paths that currently contain unresolved merge conflicts.",
+    "current_branch": "The name of the branch currently checked out (e.g., 'main').",
+    "merging_branch": "The name of the branch being merged that caused the conflict.",
+    "staged_files": "List of files that have been staged (git add) for the merge commit."
+  },
+  "task_initial_state": {
+    "files": {
+      "src/main/java/com/fintech/core/TransactionManager.java": "public class TransactionManager {\n    public void handle(User user, double amount) {\n<<<<<<< HEAD\n        // Main branch: Added persistent audit logging for transaction tracking\n        AuditLogger.logIntent(\"Payment\", user.getId());\n=======\n        // Feature: Buy Now Pay Later routing\n        if (amount > 100 && user.isCreditApproved()) {\n            dispatchBNPL(user, amount);\n        } else {\n            dispatchStandard(user, amount);\n        }\n>>>>>>> feature/deferred-credit-v2\n    }\n}",
+      "config/settings.properties": "<<<<<<< HEAD\ntimeout=30\n=======\ntimeout=60\ncache=enabled\n>>>>>>> feature/deferred-credit-v2"
+    },
+    "conflicted_paths": [
+      "src/main/java/com/fintech/core/TransactionManager.java",
+      "config/settings.properties"
+    ],
+    "current_branch": "main",
+    "merging_branch": "feature/deferred-credit-v2",
+    "staged_files": []
+  }
+}

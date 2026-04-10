@@ -1,0 +1,205 @@
+{
+  "environment_name": "env_c166c366804f",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: You act as the simulator for a Restaurant Table Reservation Optimization environment. Based on the current internal state $s_t$ and the Agent's action $a_t$, you must calculate the environment's internal state transition and predict the observation $o_{{t+1}}$ obtained by the Agent.\n- **Emphasis**: You are not the Agent making decisions. Your role is strictly to simulate the evolution of the restaurant's reservation system and provide the feedback (observations) that a real system would provide.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions must maintain absolute context consistency. You must track the occupancy of tables, the timing of reservations, and the constraints of the restaurant (e.g., seating capacity, operating hours) across the entire conversation history to ensure the simulation remains logical and realistic.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. This JSON will contain:\n- `\"name\"`: The specific action function to execute.\n- `\"arguments\"`: The parameter values for that function.\n\nExample:\n```json\n{{\n \"name\": \"reserve_table\",\n \"arguments\": {{\n    \"party_size\": 4,\n    \"time_slot\": \"19:00\",\n    \"customer_name\": \"John Doe\"\n  }}\n}}\n```\nYou must parse this input, update the internal state of the restaurant environment, and generate the corresponding observation.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nIf the Agent attempts an invalid operation (e.g., booking a table that is already occupied, requesting a party size larger than any available table, or calling a non-existent function), you must return a structured error message:\n- Example: `{{\"error\": \"Table 5 is already reserved for the requested time slot.\"}}`\nDo not fabricate successful outcomes for invalid actions.\n\n##### Output Assembly\nFor every action call, you must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition. \n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `{{initial_state}}`, the updated state, or any internal variables like the full list of occupied tables if the action only returns a confirmation ID. The Agent must only see the specific return values (the Observation). State maintenance is your internal responsibility.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to specified JSON formats for both parsing and outputting.\n- **Factuality**: Do not simulate successful bookings if the internal capacity logic does not allow it.\n- **Consistency**: Ensure that if a table is reserved at $t$, it remains unavailable at $t+1$ unless explicitly released.\n- **Realism**: Simulation should reflect real-world restaurant constraints (e.g., cleaning time, table combining rules if applicable).\n- **Quality**: Ensure error messages and observations are clear and structured.\n- **Encapsulation**: Strictly hide the internal state structure from the output. Only expose information that is explicitly returned by the action function.\n{{initial_state}}: {{\n  \"tables\": [\n    {{\n      \"table_id\": 1,\n      \"capacity\": 2,\n      \"status\": \"available\"\n    }},\n    {{\n      \"table_id\": 2,\n      \"capacity\": 4,\n      \"status\": \"available\"\n    }},\n    {{\n      \"table_id\": 3,\n      \"capacity\": 8,\n      \"status\": \"available\"\n    }}\n  ],\n  \"active_reservations\": [\n    {{\n      \"reservation_id\": \"RES-8801\",\n      \"customer_name\": \"Davis\",\n      \"party_size\": 4,\n      \"time_slot\": \"19:00\",\n      \"table_id\": 2\n    }},\n    {{\n      \"reservation_id\": \"RES-8802\",\n      \"customer_name\": \"Jones\",\n      \"party_size\": 2,\n      \"time_slot\": \"19:15\",\n      \"table_id\": 1\n    }}\n  ],\n  \"current_time\": \"18:55\",\n  \"operating_hours\": {{\n    \"open\": \"17:00\",\n    \"close\": \"23:00\"\n  }},\n  \"waitlist\": [\n    {{\n      \"customer_name\": \"Chen\",\n      \"party_size\": 6,\n      \"arrival_time\": \"18:50\",\n      \"priority\": \"VIP\"\n    }}\n  ]\n}}\n{{state_descriptions}}: {{\n  \"tables\": \"A list of table objects including their ID, seating capacity, and current availability status.\",\n  \"active_reservations\": \"A list of currently confirmed reservations with customer details and time slots.\",\n  \"current_time\": \"The current system time in HH:MM format used to validate reservation windows.\",\n  \"operating_hours\": \"The opening and closing times of the restaurant.\",\n  \"waitlist\": \"A queue of customers waiting for a table when the restaurant is at full capacity.\"\n}}\n{action_set_definitions}: {\n  \"get_system_status\": {\n    \"description\": \"Retrieves general environment information including current_time, operating_hours, and any active global constraints like kitchen pacing levels.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"current_time\": \"18:30\",\n      \"pacing_limit_cpi\": 7,\n      \"operating_hours\": \"17:00-23:00\"\n    }\n  },\n  \"get_tables_info\": {\n    \"description\": \"Retrieves a list of all tables in the restaurant, including their IDs, maximum seating capacity, and current availability.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"min_capacity\": {\n          \"type\": \"integer\",\n          \"description\": \"Optional filter for minimum table capacity.\"\n        }\n      },\n      \"required\": []\n    },\n    \"example_output\": {\n      \"tables\": [\n        {\n          \"table_id\": \"T1\",\n          \"capacity\": 6,\n          \"status\": \"available\"\n        }\n      ]\n    }\n  },\n  \"get_reservation_details\": {\n    \"description\": \"Retrieves the list of currently confirmed reservations with party names, IDs, guest counts, and assigned time slots.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"party_name\": {\n          \"type\": \"string\",\n          \"description\": \"Filter by party name (e.g., 'Davis').\"\n        }\n      },\n      \"required\": []\n    },\n    \"example_output\": {\n      \"reservations\": [\n        {\n          \"reservation_id\": \"RES_001\",\n          \"party_name\": \"Davis\",\n          \"guests\": 4,\n          \"time\": \"19:00\",\n          \"table_id\": \"T2\"\n        }\n      ]\n    }\n  },\n  \"get_waitlist_details\": {\n    \"description\": \"Retrieves the current waitlist, including party names, IDs, guest counts, and VIP status.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"party_name\": {\n          \"type\": \"string\",\n          \"description\": \"Filter by party name (e.g., 'Chen').\"\n        }\n      },\n      \"required\": []\n    },\n    \"example_output\": {\n      \"waitlist\": [\n        {\n          \"waitlist_id\": \"WL_99\",\n          \"party_name\": \"Chen\",\n          \"guests\": 6,\n          \"is_vip\": true\n        }\n      ]\n    }\n  },\n  \"update_reservation\": {\n    \"description\": \"Modifies the time slot or table assignment of an existing confirmed reservation.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"reservation_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique ID of the reservation to update.\"\n        },\n        \"new_time\": {\n          \"type\": \"string\",\n          \"description\": \"The new reservation time in HH:MM format.\"\n        },\n        \"new_table_id\": {\n          \"type\": \"string\",\n          \"description\": \"The new table ID to assign.\"\n        }\n      },\n      \"required\": [\n        \"reservation_id\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"success\",\n      \"updated_reservation\": \"RES_001\"\n    }\n  },\n  \"seat_from_waitlist\": {\n    \"description\": \"Converts a waitlist entry into a confirmed seated reservation by assigning a table and a specific time.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"waitlist_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the party from the waitlist.\"\n        },\n        \"table_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the table to assign to the party.\"\n        },\n        \"scheduled_time\": {\n          \"type\": \"string\",\n          \"description\": \"The time the party will be seated (HH:MM).\"\n        }\n      },\n      \"required\": [\n        \"waitlist_id\",\n        \"table_id\",\n        \"scheduled_time\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"success\",\n      \"new_reservation_id\": \"RES_002\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_system_status",
+      "description": "Retrieves general environment information including current_time, operating_hours, and any active global constraints like kitchen pacing levels.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "current_time": "18:30",
+        "pacing_limit_cpi": 7,
+        "operating_hours": "17:00-23:00"
+      }
+    },
+    {
+      "name": "get_tables_info",
+      "description": "Retrieves a list of all tables in the restaurant, including their IDs, maximum seating capacity, and current availability.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "min_capacity": {
+            "type": "integer",
+            "description": "Optional filter for minimum table capacity."
+          }
+        },
+        "required": []
+      },
+      "example_output": {
+        "tables": [
+          {
+            "table_id": "T1",
+            "capacity": 6,
+            "status": "available"
+          }
+        ]
+      }
+    },
+    {
+      "name": "get_reservation_details",
+      "description": "Retrieves the list of currently confirmed reservations with party names, IDs, guest counts, and assigned time slots.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "party_name": {
+            "type": "string",
+            "description": "Filter by party name (e.g., 'Davis')."
+          }
+        },
+        "required": []
+      },
+      "example_output": {
+        "reservations": [
+          {
+            "reservation_id": "RES_001",
+            "party_name": "Davis",
+            "guests": 4,
+            "time": "19:00",
+            "table_id": "T2"
+          }
+        ]
+      }
+    },
+    {
+      "name": "get_waitlist_details",
+      "description": "Retrieves the current waitlist, including party names, IDs, guest counts, and VIP status.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "party_name": {
+            "type": "string",
+            "description": "Filter by party name (e.g., 'Chen')."
+          }
+        },
+        "required": []
+      },
+      "example_output": {
+        "waitlist": [
+          {
+            "waitlist_id": "WL_99",
+            "party_name": "Chen",
+            "guests": 6,
+            "is_vip": true
+          }
+        ]
+      }
+    },
+    {
+      "name": "update_reservation",
+      "description": "Modifies the time slot or table assignment of an existing confirmed reservation.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "reservation_id": {
+            "type": "string",
+            "description": "The unique ID of the reservation to update."
+          },
+          "new_time": {
+            "type": "string",
+            "description": "The new reservation time in HH:MM format."
+          },
+          "new_table_id": {
+            "type": "string",
+            "description": "The new table ID to assign."
+          }
+        },
+        "required": [
+          "reservation_id"
+        ]
+      },
+      "example_output": {
+        "status": "success",
+        "updated_reservation": "RES_001"
+      }
+    },
+    {
+      "name": "seat_from_waitlist",
+      "description": "Converts a waitlist entry into a confirmed seated reservation by assigning a table and a specific time.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "waitlist_id": {
+            "type": "string",
+            "description": "The ID of the party from the waitlist."
+          },
+          "table_id": {
+            "type": "string",
+            "description": "The ID of the table to assign to the party."
+          },
+          "scheduled_time": {
+            "type": "string",
+            "description": "The time the party will be seated (HH:MM)."
+          }
+        },
+        "required": [
+          "waitlist_id",
+          "table_id",
+          "scheduled_time"
+        ]
+      },
+      "example_output": {
+        "status": "success",
+        "new_reservation_id": "RES_002"
+      }
+    }
+  ],
+  "state_description": {
+    "tables": "A list of table objects including their ID, seating capacity, and current availability status.",
+    "active_reservations": "A list of currently confirmed reservations with customer details and time slots.",
+    "current_time": "The current system time in HH:MM format used to validate reservation windows.",
+    "operating_hours": "The opening and closing times of the restaurant.",
+    "waitlist": "A queue of customers waiting for a table when the restaurant is at full capacity."
+  },
+  "task_initial_state": {
+    "tables": [
+      {
+        "table_id": 1,
+        "capacity": 2,
+        "status": "available"
+      },
+      {
+        "table_id": 2,
+        "capacity": 4,
+        "status": "available"
+      },
+      {
+        "table_id": 3,
+        "capacity": 8,
+        "status": "available"
+      }
+    ],
+    "active_reservations": [
+      {
+        "reservation_id": "RES-8801",
+        "customer_name": "Davis",
+        "party_size": 4,
+        "time_slot": "19:00",
+        "table_id": 2
+      },
+      {
+        "reservation_id": "RES-8802",
+        "customer_name": "Jones",
+        "party_size": 2,
+        "time_slot": "19:15",
+        "table_id": 1
+      }
+    ],
+    "current_time": "18:55",
+    "operating_hours": {
+      "open": "17:00",
+      "close": "23:00"
+    },
+    "waitlist": [
+      {
+        "customer_name": "Chen",
+        "party_size": 6,
+        "arrival_time": "18:50",
+        "priority": "VIP"
+      }
+    ]
+  }
+}

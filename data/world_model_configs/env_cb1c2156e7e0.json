@@ -1,0 +1,80 @@
+{
+  "environment_name": "env_cb1c2156e7e0",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: Based on current state $s_t$ and action $a_t$, simulate the internal environment changes of the Greenhouse Irrigation system and predict the observation $o_{{t+1}}$ obtained by the Agent.\n- **Emphasis**: The LWM does not execute real operations on physical hardware but performs internal state evolution and observation generation. \n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions between the World Model and the Agent must maintain strict context consistency. The evolution of the greenhouse environment (e.g., soil drying over time, water consumption, temperature fluctuations) must be logically continuous based on the history of actions and time elapsed.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. This JSON must contain the following fields:\n- `\"name\"`: Specifies the name of the action function to execute (e.g., \"start_irrigation\", \"read_sensors\").\n- The remaining fields are the parameter names and corresponding values required by that action function.\n\nExample:\n```json\n{{\n \"name\": \"start_irrigation\",\n \"arguments\": {{\n    \"duration_minutes\": 15\n  }}\n}}\n```\n\nThe Language World Model must correctly parse such JSON inputs and simulate the resulting environmental changes.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nFor invalid parameters (e.g., negative irrigation duration), undefined actions, state conflicts (e.g., starting a pump that is already active), or empty inputs, return structured error information (e.g., `{{\"error\": \"Pump already active\"}}`). Do not fabricate states or fictitious responses.\n\n##### Output Assembly\nFor every action function call, the model must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition.\n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state $s_t$, the `new_state`, or any hidden variables like `soil_moisture_percentage` unless the specific action called (e.g., `read_sensors`) explicitly returns them. State maintenance is handled internally by the LWM. The Agent must only see the specific Observation.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to specified JSON and text formats.\n- **Factuality**: Do not fabricate sensors or controls not defined in the action set.\n- **Consistency**: Soil moisture should decrease over time based on temperature and increase only when irrigation is active. Water tank levels must decrease proportionally to irrigation duration.\n- **Realism**: Simulated behaviors must align with greenhouse physics (evaporation, pump flow rates, etc.).\n- **Quality**: Language must be clear, unambiguous, and structurally complete.\n- **Encapsulation**: Strictly hide the internal state structure from the output. Only expose information that is explicitly returned by the action function. Do not output the state update details.\n{{initial_state}}: {{\n  \"soil_moisture_percentage\": 45.0,\n  \"air_temperature_celsius\": 24.5,\n  \"water_tank_liters\": 500.0,\n  \"pump_status\": \"off\",\n  \"elapsed_time_minutes\": 0\n}}\n{{state_descriptions}}: {{\n  \"soil_moisture_percentage\": \"The current percentage of moisture in the soil (0.0 to 100.0).\",\n  \"air_temperature_celsius\": \"The ambient air temperature inside the greenhouse.\",\n  \"water_tank_liters\": \"The current volume of water remaining in the irrigation tank.\",\n  \"pump_status\": \"The current operational state of the irrigation pump ('on' or 'off').\",\n  \"elapsed_time_minutes\": \"Total minutes elapsed since the start of the simulation session.\"\n}}\n{action_set_definitions}: {\n  \"get_telemetry\": {\n    \"description\": \"Retrieves the current sensor readings from the greenhouse environment including moisture, tank levels, and system clock.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"soil_moisture_percentage\": 62.4,\n      \"air_temperature_celsius\": 24.5,\n      \"water_tank_liters\": 500.0,\n      \"pump_status\": \"off\",\n      \"elapsed_time_minutes\": 5.0\n    }\n  },\n  \"set_pump_status\": {\n    \"description\": \"Changes the operational state of the irrigation pump. This action executes immediately in the current simulation step.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"status\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"on\",\n            \"off\"\n          ],\n          \"description\": \"The desired state of the pump.\"\n        }\n      },\n      \"required\": [\n        \"status\"\n      ]\n    },\n    \"example_output\": {\n      \"success\": true,\n      \"current_pump_status\": \"on\"\n    }\n  },\n  \"advance_simulation\": {\n    \"description\": \"Advances the environment simulation by a specified number of minutes. This allows the pump (if on) to affect soil moisture and consume water.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"minutes\": {\n          \"type\": \"number\",\n          \"description\": \"The amount of time to progress the simulation.\"\n        }\n      },\n      \"required\": [\n        \"minutes\"\n      ]\n    },\n    \"example_output\": {\n      \"new_elapsed_time\": 6.0,\n      \"message\": \"Simulation advanced by 1.0 minutes.\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_telemetry",
+      "description": "Retrieves the current sensor readings from the greenhouse environment including moisture, tank levels, and system clock.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "soil_moisture_percentage": 62.4,
+        "air_temperature_celsius": 24.5,
+        "water_tank_liters": 500.0,
+        "pump_status": "off",
+        "elapsed_time_minutes": 5.0
+      }
+    },
+    {
+      "name": "set_pump_status",
+      "description": "Changes the operational state of the irrigation pump. This action executes immediately in the current simulation step.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "on",
+              "off"
+            ],
+            "description": "The desired state of the pump."
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "example_output": {
+        "success": true,
+        "current_pump_status": "on"
+      }
+    },
+    {
+      "name": "advance_simulation",
+      "description": "Advances the environment simulation by a specified number of minutes. This allows the pump (if on) to affect soil moisture and consume water.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "minutes": {
+            "type": "number",
+            "description": "The amount of time to progress the simulation."
+          }
+        },
+        "required": [
+          "minutes"
+        ]
+      },
+      "example_output": {
+        "new_elapsed_time": 6.0,
+        "message": "Simulation advanced by 1.0 minutes."
+      }
+    }
+  ],
+  "state_description": {
+    "soil_moisture_percentage": "The current percentage of moisture in the soil (0.0 to 100.0).",
+    "air_temperature_celsius": "The ambient air temperature inside the greenhouse.",
+    "water_tank_liters": "The current volume of water remaining in the irrigation tank.",
+    "pump_status": "The current operational state of the irrigation pump ('on' or 'off').",
+    "elapsed_time_minutes": "Total minutes elapsed since the start of the simulation session."
+  },
+  "task_initial_state": {
+    "soil_moisture_percentage": 45.0,
+    "air_temperature_celsius": 24.5,
+    "water_tank_liters": 500.0,
+    "pump_status": "off",
+    "elapsed_time_minutes": 0
+  }
+}

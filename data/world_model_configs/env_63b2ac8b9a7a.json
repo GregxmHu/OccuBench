@@ -1,0 +1,68 @@
+{
+  "environment_name": "env_63b2ac8b9a7a",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM) for Renewable Energy Dispatch Optimization.\n- **Core Objective**: Based on the current power system state $s_t$ and the dispatch action $a_t$ taken by the Agent, simulate the evolution of the energy environment and predict the resulting observation $o_{{t+1}}$.\n- **Emphasis**: You are the simulator of the energy grid and market dynamics. You do not optimize the dispatch yourself; you calculate the physical and financial consequences of the Agent's decisions (e.g., battery degradation, grid stability, cost) and update the internal environment state.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions between the World Model and the Agent must maintain temporal and physical consistency. The state must evolve realistically across time steps (e.g., battery levels must persist, and weather-driven generation should follow logical patterns).\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. This JSON must contain the following fields:\n- `\"name\"`: Specifies the name of the dispatch or market action to execute.\n- The remaining fields are the parameter names and values (e.g., discharge_rate, purchase_volume).\n\nExample:\n```json\n{{\n \"name\": \"dispatch_battery\",\n \"arguments\": {{\n    \"power_mw\": -5.0,\n    \"duration_min\": 15\n  }}\n}}\n```\n\nYou must parse these inputs and calculate the transition based on energy conservation laws and grid constraints.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nFor physical violations (e.g., discharging an empty battery, exceeding line capacity), invalid parameters, or undefined actions, return structured error information: `{{\"error\": \"Description of physical or logic constraint violation\"}}`. Do not fabricate successful states for impossible operations.\n\n##### Output Assembly\nFor every action call, return a structured JSON object containing **ONLY** the return fields declared in the action function's definition (the Observation).\n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, the `new_state`, or hidden system variables like cumulative wear-and-tear unless they are explicitly part of the action's observation return fields. State maintenance is handled internally by your memory of the history. \n\n### 4. Key Principles\n- **Format**: Strictly adhere to JSON for all observations.\n- **Factuality**: Use realistic power system physics (Efficiency losses, Load-Generation balance).\n- **Consistency**: The State of Charge (SoC) and grid frequency must evolve logically from the previous step.\n- **Realism**: Simulated renewable fluctuations and market price volatility should align with typical energy sector dynamics.\n- **Quality**: Responses must be precise, providing only the data requested by the observation schema.\n- **Encapsulation**: Hide the full state vector. The Agent only sees what the meters or SCADA system would report.\n{{initial_state}}: {{\n  \"timestamp\": \"2025-07-10T11:00:00Z\",\n  \"battery_soc_kwh\": 350.0,\n  \"net_load_mw\": -1.5,\n  \"grid_buy_price\": -5.0,\n  \"grid_sell_price\": -42.0,\n  \"weather_irradiance\": 950.0,\n  \"cumulative_operational_cost\": 0.0\n}}\n{{state_descriptions}}: {{\n  \"timestamp\": \"The current simulation time in ISO 8601 format.\",\n  \"battery_soc_kwh\": \"Current energy stored in the Battery Energy Storage System (BESS) in kWh.\",\n  \"net_load_mw\": \"Current demand minus non-controllable renewable generation in Megawatts.\",\n  \"grid_buy_price\": \"The current cost to purchase 1 MWh from the main grid.\",\n  \"grid_sell_price\": \"The current revenue for exporting 1 MWh to the main grid.\",\n  \"weather_irradiance\": \"Current solar irradiance (W/m^2) affecting PV generation.\",\n  \"cumulative_operational_cost\": \"Total financial cost incurred since the start of the simulation episode.\"\n}}\n{action_set_definitions}: {\n  \"get_current_environment_state\": {\n    \"description\": \"Retrieves the current telemetry from the renewable energy system, including battery SOC, market pricing, and net load data. This must be called at the start of each decision cycle.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"timestamp\": \"2024-05-01T12:00:00Z\",\n      \"battery_soc_kwh\": 450.0,\n      \"net_load_mw\": -0.5,\n      \"grid_buy_price\": 50.0,\n      \"grid_sell_price\": -36.0,\n      \"weather_irradiance\": 900.0,\n      \"cumulative_operational_cost\": 5000.0\n    }\n  },\n  \"execute_dispatch_action\": {\n    \"description\": \"Submits the power dispatch commands for the current 15-minute (0.25h) interval. This updates the battery state and manages renewable curtailment to meet grid constraints.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"battery_charge_kw\": {\n          \"type\": \"number\",\n          \"description\": \"The power rate for the battery in kW. Positive values represent charging (absorbing energy); negative values represent discharging. Must respect calculated power limits based on SOC.\"\n        },\n        \"curtailment_kw\": {\n          \"type\": \"number\",\n          \"description\": \"The amount of renewable power to intentionally shed (kW) to prevent grid injection during prohibited periods when the battery is unable to absorb the surplus.\"\n        }\n      },\n      \"required\": [\n        \"battery_charge_kw\",\n        \"curtailment_kw\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"success\",\n      \"new_soc_kwh\": 462.5,\n      \"cost_incurred\": 0.0\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_current_environment_state",
+      "description": "Retrieves the current telemetry from the renewable energy system, including battery SOC, market pricing, and net load data. This must be called at the start of each decision cycle.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "timestamp": "2024-05-01T12:00:00Z",
+        "battery_soc_kwh": 450.0,
+        "net_load_mw": -0.5,
+        "grid_buy_price": 50.0,
+        "grid_sell_price": -36.0,
+        "weather_irradiance": 900.0,
+        "cumulative_operational_cost": 5000.0
+      }
+    },
+    {
+      "name": "execute_dispatch_action",
+      "description": "Submits the power dispatch commands for the current 15-minute (0.25h) interval. This updates the battery state and manages renewable curtailment to meet grid constraints.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "battery_charge_kw": {
+            "type": "number",
+            "description": "The power rate for the battery in kW. Positive values represent charging (absorbing energy); negative values represent discharging. Must respect calculated power limits based on SOC."
+          },
+          "curtailment_kw": {
+            "type": "number",
+            "description": "The amount of renewable power to intentionally shed (kW) to prevent grid injection during prohibited periods when the battery is unable to absorb the surplus."
+          }
+        },
+        "required": [
+          "battery_charge_kw",
+          "curtailment_kw"
+        ]
+      },
+      "example_output": {
+        "status": "success",
+        "new_soc_kwh": 462.5,
+        "cost_incurred": 0.0
+      }
+    }
+  ],
+  "state_description": {
+    "timestamp": "The current simulation time in ISO 8601 format.",
+    "battery_soc_kwh": "Current energy stored in the Battery Energy Storage System (BESS) in kWh.",
+    "net_load_mw": "Current demand minus non-controllable renewable generation in Megawatts.",
+    "grid_buy_price": "The current cost to purchase 1 MWh from the main grid.",
+    "grid_sell_price": "The current revenue for exporting 1 MWh to the main grid.",
+    "weather_irradiance": "Current solar irradiance (W/m^2) affecting PV generation.",
+    "cumulative_operational_cost": "Total financial cost incurred since the start of the simulation episode."
+  },
+  "task_initial_state": {
+    "timestamp": "2025-07-10T11:00:00Z",
+    "battery_soc_kwh": 350.0,
+    "net_load_mw": -1.5,
+    "grid_buy_price": -5.0,
+    "grid_sell_price": -42.0,
+    "weather_irradiance": 950.0,
+    "cumulative_operational_cost": 0.0
+  }
+}

@@ -1,0 +1,211 @@
+{
+  "environment_name": "env_3a5f461f6e07",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM) for Loan Risk Assessment.\n- **Core Objective**: Based on the current internal state $s_t$ and the Agent's action $a_t$, simulate the environment's internal evolution and generate the resulting observation $o_{{t+1}}$ for the Agent. \n- **Emphasis**: You are the environment itself. You do not make decisions on behalf of the Agent; you simulate the banking system, credit bureaus, and applicant data repositories. Your goal is to provide realistic, consistent, and logically sound responses to actions taken during a loan underwriting process.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions between the World Model and the Agent must maintain strict context consistency. Any data retrieved or modified (e.g., credit scores updated, verification flags set) must persist in the internal state and influence subsequent observations.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. This JSON must contain the following fields:\n- `\"name\"`: Specifies the name of the action function to execute.\n- The remaining fields are the parameter names and corresponding values required by that action function.\n\nThe Language World Model must parse this input, update its internal state $s_t$ to $s_{{t+1}}$ according to banking logic (e.g., checking internal databases), and return the observation.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nIf the Agent requests an undefined action, provides invalid data types, or attempts to access records for a non-existent applicant ID, return a structured error: `{{\"error\": \"Description of the issue\"}}`. Do not fabricate successful responses for invalid inputs.\n\n##### Output Assembly\nFor every action function call, return a structured JSON object containing **ONLY** the specific return fields declared in that action function's definition. \n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state $s_t$ or any updated state fields. You must strictly encapsulate the environment. The Agent only sees the Observation (the return value of the function).\n\n### 4. Key Principles\n- **Format**: Strictly adhere to specified JSON and text formats.\n- **Factuality**: Do not fabricate non-existent functions or applicant data not implied by the state logic.\n- **Consistency**: If a credit report is generated once, subsequent queries for the same applicant must remain consistent unless an event (like a new loan) changes it.\n- **Realism**: Simulated behaviors (e.g., debt-to-income calculations, risk scoring outcomes) must align with standard financial risk assessment dynamics.\n- **Quality**: Language must be professional, clear, and structurally complete.\n- **Encapsulation**: Strictly hide the internal state structure from the output. Only expose information explicitly returned by the action function.\n{{initial_state}}: {{\n  \"applicant_data\": {{\n    \"name\": \"Midwest Ag-Ventures\",\n    \"entity_id\": \"AG-2024-CROP\",\n    \"production_plan\": {{\n      \"crop\": \"Corn\",\n      \"acres\": 3000,\n      \"aph_yield_bu_per_acre\": 180,\n      \"total_projected_input_costs\": 2430000\n    }},\n    \"biological_assets\": {{\n      \"livestock_type\": \"Feeder Cattle\",\n      \"current_headcount\": 1500,\n      \"year_to_date_deaths\": 54,\n      \"avg_weight_lbs\": 750\n    }},\n    \"insurance_policies\": [\n      {{\n        \"type\": \"Revenue Protection\",\n        \"coverage_level\": 0.7,\n        \"assignment_of_indemnity\": false\n      }}\n    ]\n  }},\n  \"credit_bureau_records\": {{\n    \"fico_score\": 685,\n    \"existing_term_debt\": 450000,\n    \"payment_history\": \"Satisfactory\",\n    \"recent_inquiries\": 1\n  }},\n  \"application_metadata\": {{\n    \"loan_id\": \"L-99882\",\n    \"request_amount\": 1800000,\n    \"purpose\": \"Annual Operating Inputs\",\n    \"proposed_term\": \"12 months\"\n  }},\n  \"verification_status\": {{\n    \"identity_verified\": true,\n    \"income_verified\": false,\n    \"employment_verified\": true\n  }},\n  \"system_risk_config\": {{\n    \"min_score\": 650,\n    \"base_rate\": 0.065,\n    \"max_allowable_mortality\": 0.02,\n    \"target_rp_coverage\": 0.75,\n    \"current_market_futures_price_corn\": 4.35,\n    \"local_basis_adjustment\": -0.15,\n    \"max_advance_rate_livestock\": 0.65\n  }}\n}}\n{{state_descriptions}}: {{\n  \"applicant_data\": \"Comprehensive internal records of the loan applicant, including identity, income, and employment history.\",\n  \"credit_bureau_records\": \"External-simulated credit history, including historical defaults, current credit lines, and credit scores.\",\n  \"application_metadata\": \"Details of the current loan request, such as amount, purpose, and term duration.\",\n  \"verification_status\": \"Internal flags tracking which parts of the application (e.g., identity, income) have been successfully verified.\",\n  \"system_risk_config\": \"Global parameters used for risk simulation, such as minimum score thresholds or current market interest rates.\"\n}}\n{action_set_definitions}: {\n  \"get_loan_application_details\": {\n    \"description\": \"Retrieves the core metadata and applicant ID associated with a specific loan request.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"loan_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the loan application.\"\n        }\n      },\n      \"required\": [\n        \"loan_id\"\n      ]\n    },\n    \"example_output\": {\n      \"applicant_id\": \"CUST-9921\",\n      \"loan_amount\": 1800000,\n      \"loan_purpose\": \"Operating Line Renewal\",\n      \"verification_status\": \"Partial\"\n    }\n  },\n  \"get_credit_bureau_report\": {\n    \"description\": \"Fetches external credit history and risk scores for a specific applicant.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"applicant_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the applicant/borrower.\"\n        }\n      },\n      \"required\": [\n        \"applicant_id\"\n      ]\n    },\n    \"example_output\": {\n      \"credit_score\": 720,\n      \"historical_defaults\": 0,\n      \"existing_lines_of_credit\": 2\n    }\n  },\n  \"get_agricultural_operational_data\": {\n    \"description\": \"Retrieves real-time biological asset health (mortality) and crop production data for the borrower.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"loan_id\": {\n          \"type\": \"string\",\n          \"description\": \"The loan ID to correlate with specific farm operations.\"\n        }\n      },\n      \"required\": [\n        \"loan_id\"\n      ]\n    },\n    \"example_output\": {\n      \"ytd_mortality_rate\": 0.045,\n      \"current_crop_yield_projection\": \"180 bushels/acre\",\n      \"input_costs_per_acre\": 650.0\n    }\n  },\n  \"get_risk_policy_standards\": {\n    \"description\": \"Queries the Handbook of Agricultural Credit Risk Management for specific underwriting thresholds.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"category\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"crop_margin\",\n            \"livestock_mortality\",\n            \"credit_score_min\",\n            \"liquidity_ratios\"\n          ],\n          \"description\": \"The policy category to retrieve standards for.\"\n        }\n      },\n      \"required\": [\n        \"category\"\n      ]\n    },\n    \"example_output\": {\n      \"threshold_value\": 0.05,\n      \"standard_description\": \"Maximum allowable YTD mortality for swine operations.\"\n    }\n  },\n  \"get_market_pricing_data\": {\n    \"description\": \"Provides current market prices for commodities to assist in breakeven and margin calculations.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"commodity\": {\n          \"type\": \"string\",\n          \"description\": \"The name of the crop or livestock (e.g., 'Corn', 'Soybeans').\"\n        }\n      },\n      \"required\": [\n        \"commodity\"\n      ]\n    },\n    \"example_output\": {\n      \"current_market_price\": 4.5,\n      \"unit\": \"bushel\"\n    }\n  },\n  \"submit_underwriting_decision\": {\n    \"description\": \"Submits the final credit decision and formal report to the system.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"loan_id\": {\n          \"type\": \"string\"\n        },\n        \"decision\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"Approve\",\n            \"Deny\",\n            \"Conditional Approval\"\n          ]\n        },\n        \"analysis_report\": {\n          \"type\": \"string\",\n          \"description\": \"Detailed justification covering crop margin and biological health.\"\n        },\n        \"covenants\": {\n          \"type\": \"array\",\n          \"items\": {\n            \"type\": \"string\"\n          },\n          \"description\": \"Required insurance adjustments or monitoring requirements.\"\n        }\n      },\n      \"required\": [\n        \"loan_id\",\n        \"decision\",\n        \"analysis_report\"\n      ]\n    },\n    \"example_output\": null\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_loan_application_details",
+      "description": "Retrieves the core metadata and applicant ID associated with a specific loan request.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "loan_id": {
+            "type": "string",
+            "description": "The unique identifier for the loan application."
+          }
+        },
+        "required": [
+          "loan_id"
+        ]
+      },
+      "example_output": {
+        "applicant_id": "CUST-9921",
+        "loan_amount": 1800000,
+        "loan_purpose": "Operating Line Renewal",
+        "verification_status": "Partial"
+      }
+    },
+    {
+      "name": "get_credit_bureau_report",
+      "description": "Fetches external credit history and risk scores for a specific applicant.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "applicant_id": {
+            "type": "string",
+            "description": "The unique identifier for the applicant/borrower."
+          }
+        },
+        "required": [
+          "applicant_id"
+        ]
+      },
+      "example_output": {
+        "credit_score": 720,
+        "historical_defaults": 0,
+        "existing_lines_of_credit": 2
+      }
+    },
+    {
+      "name": "get_agricultural_operational_data",
+      "description": "Retrieves real-time biological asset health (mortality) and crop production data for the borrower.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "loan_id": {
+            "type": "string",
+            "description": "The loan ID to correlate with specific farm operations."
+          }
+        },
+        "required": [
+          "loan_id"
+        ]
+      },
+      "example_output": {
+        "ytd_mortality_rate": 0.045,
+        "current_crop_yield_projection": "180 bushels/acre",
+        "input_costs_per_acre": 650.0
+      }
+    },
+    {
+      "name": "get_risk_policy_standards",
+      "description": "Queries the Handbook of Agricultural Credit Risk Management for specific underwriting thresholds.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "category": {
+            "type": "string",
+            "enum": [
+              "crop_margin",
+              "livestock_mortality",
+              "credit_score_min",
+              "liquidity_ratios"
+            ],
+            "description": "The policy category to retrieve standards for."
+          }
+        },
+        "required": [
+          "category"
+        ]
+      },
+      "example_output": {
+        "threshold_value": 0.05,
+        "standard_description": "Maximum allowable YTD mortality for swine operations."
+      }
+    },
+    {
+      "name": "get_market_pricing_data",
+      "description": "Provides current market prices for commodities to assist in breakeven and margin calculations.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "commodity": {
+            "type": "string",
+            "description": "The name of the crop or livestock (e.g., 'Corn', 'Soybeans')."
+          }
+        },
+        "required": [
+          "commodity"
+        ]
+      },
+      "example_output": {
+        "current_market_price": 4.5,
+        "unit": "bushel"
+      }
+    },
+    {
+      "name": "submit_underwriting_decision",
+      "description": "Submits the final credit decision and formal report to the system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "loan_id": {
+            "type": "string"
+          },
+          "decision": {
+            "type": "string",
+            "enum": [
+              "Approve",
+              "Deny",
+              "Conditional Approval"
+            ]
+          },
+          "analysis_report": {
+            "type": "string",
+            "description": "Detailed justification covering crop margin and biological health."
+          },
+          "covenants": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Required insurance adjustments or monitoring requirements."
+          }
+        },
+        "required": [
+          "loan_id",
+          "decision",
+          "analysis_report"
+        ]
+      },
+      "example_output": null
+    }
+  ],
+  "state_description": {
+    "applicant_data": "Comprehensive internal records of the loan applicant, including identity, income, and employment history.",
+    "credit_bureau_records": "External-simulated credit history, including historical defaults, current credit lines, and credit scores.",
+    "application_metadata": "Details of the current loan request, such as amount, purpose, and term duration.",
+    "verification_status": "Internal flags tracking which parts of the application (e.g., identity, income) have been successfully verified.",
+    "system_risk_config": "Global parameters used for risk simulation, such as minimum score thresholds or current market interest rates."
+  },
+  "task_initial_state": {
+    "applicant_data": {
+      "name": "Midwest Ag-Ventures",
+      "entity_id": "AG-2024-CROP",
+      "production_plan": {
+        "crop": "Corn",
+        "acres": 3000,
+        "aph_yield_bu_per_acre": 180,
+        "total_projected_input_costs": 2430000
+      },
+      "biological_assets": {
+        "livestock_type": "Feeder Cattle",
+        "current_headcount": 1500,
+        "year_to_date_deaths": 54,
+        "avg_weight_lbs": 750
+      },
+      "insurance_policies": [
+        {
+          "type": "Revenue Protection",
+          "coverage_level": 0.7,
+          "assignment_of_indemnity": false
+        }
+      ]
+    },
+    "credit_bureau_records": {
+      "fico_score": 685,
+      "existing_term_debt": 450000,
+      "payment_history": "Satisfactory",
+      "recent_inquiries": 1
+    },
+    "application_metadata": {
+      "loan_id": "L-99882",
+      "request_amount": 1800000,
+      "purpose": "Annual Operating Inputs",
+      "proposed_term": "12 months"
+    },
+    "verification_status": {
+      "identity_verified": true,
+      "income_verified": false,
+      "employment_verified": true
+    },
+    "system_risk_config": {
+      "min_score": 650,
+      "base_rate": 0.065,
+      "max_allowable_mortality": 0.02,
+      "target_rp_coverage": 0.75,
+      "current_market_futures_price_corn": 4.35,
+      "local_basis_adjustment": -0.15,
+      "max_advance_rate_livestock": 0.65
+    }
+  }
+}

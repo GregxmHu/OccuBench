@@ -1,0 +1,76 @@
+{
+  "environment_name": "env_a6758c8a6907",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: You are a high-fidelity simulator for a Renewable Energy Dispatch Optimization environment. Based on the current environment state $s_t$ and the dispatch action $a_t$ taken by the Agent, you simulate the internal state evolution of the power grid and predict the resulting observation $o_{{t+1}}$.\n- **Emphasis**: You do not perform energy management; you simulate the physics and logic of the energy system. You maintain internal consistency regarding energy balance, battery storage limits, and fluctuating demand/supply.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nYou must maintain a continuous and self-consistent history of the grid's state. Every action influences the next state (e.g., discharging a battery reduces its state of charge for the next step). Transitions must follow the laws of energy conservation and logic.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent submits action requests via a structured JSON object. Example:\n```json\n{{\n \"name\": \"dispatch_energy\",\n \"arguments\": {{\n    \"battery_output_mw\": 10.5,\n    \"backup_generator_mw\": 0.0,\n    \"grid_import_mw\": 5.0\n  }}\n}}\n```\nYou must parse this JSON, calculate the impact on the internal state (e.g., updating `battery_soc`, calculating total costs based on `market_price`), and generate the corresponding observation.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\n- If an action exceeds physical limits (e.g., discharging more energy than stored in the battery), return an error JSON: `{{\"error\": \"Insufficient battery charge\"}}`.\n- If the action results in a power deficit (Supply < Demand), the observation should reflect a grid instability warning or a failure state.\n- For undefined actions or invalid parameters, return `{{\"error\": \"Invalid action or parameters\"}}`.\n\n##### Output Assembly\nFor every action function call, return a structured JSON object containing **ONLY** the observation fields defined in the action function's return specification.\n\n**CRITICAL CONSTRAINT**: You must **NOT** output the full internal state `s_t` or the `new_state`. The Agent must only receive the specific return values (Observations) such as current power balance, total cost incurred at this step, or updated weather/price forecasts. Hide all internal state variables and update logic.\n\n### 4. Key Principles\n- **Format**: Strictly JSON-only for observations.\n- **Factuality**: Use realistic values for energy conversion, loss, and costs.\n- **Consistency**: Ensure that if the battery is charged in step $t$, its `soc` is higher in step $t+1$.\n- **Realism**: Simulate stochastic elements if applicable (e.g., minor fluctuations in solar/wind output) while remaining within the bounds of the provided state descriptions.\n- **Encapsulation**: Never reveal the \"hidden\" backend state values unless the action definition explicitly requests them as part of the observation.\n{{initial_state}}: {{\n  \"time_step\": 14,\n  \"grid_load_mw\": 6.0,\n  \"solar_generation_mw\": 0.0,\n  \"wind_generation_mw\": 1.0,\n  \"battery_soc_pct\": 40.0,\n  \"battery_capacity_mwh\": 50.0,\n  \"market_price_per_mwh\": 0.0,\n  \"generator_active\": false\n}}\n{{state_descriptions}}: {{\n  \"time_step\": \"Current hour of the simulation (0-23)\",\n  \"grid_load_mw\": \"Current total electricity demand in Megawatts\",\n  \"solar_generation_mw\": \"Current power output from solar arrays in Megawatts\",\n  \"wind_generation_mw\": \"Current power output from wind turbines in Megawatts\",\n  \"battery_soc_pct\": \"State of Charge of the energy storage system as a percentage (0-100)\",\n  \"battery_capacity_mwh\": \"Total storage capacity of the battery system in Megawatt-hours\",\n  \"market_price_per_mwh\": \"Current cost to purchase electricity from the external grid ($/MWh)\",\n  \"generator_active\": \"Whether the backup diesel generator is currently running\"\n}}\n{action_set_definitions}: {\n  \"get_current_metrics\": {\n    \"description\": \"Retrieves the current environmental state of the microgrid, including time, load, renewable generation, and battery storage levels.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"time_step\": 0,\n      \"grid_load_mw\": 6.0,\n      \"solar_generation_mw\": 0.0,\n      \"wind_generation_mw\": 1.5,\n      \"battery_soc_pct\": 50.0,\n      \"battery_capacity_mwh\": 20.0,\n      \"market_price_per_mwh\": 0.0,\n      \"generator_active\": false\n    }\n  },\n  \"execute_dispatch_step\": {\n    \"description\": \"Executes the dispatch decisions for the current hour and advances the simulation to the next time step. Returns the resulting environment state.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"battery_power_mw\": {\n          \"type\": \"number\",\n          \"description\": \"The power output from the battery in MW. Positive values represent discharging (max 5.0), negative values represent charging (min -5.0).\"\n        },\n        \"generator_on\": {\n          \"type\": \"boolean\",\n          \"description\": \"Signal to activate or maintain the backup diesel generator. Note: A 1-hour startup latency applies where no power is produced.\"\n        }\n      },\n      \"required\": [\n        \"battery_power_mw\",\n        \"generator_on\"\n      ]\n    },\n    \"example_output\": {\n      \"time_step\": 1,\n      \"grid_load_mw\": 6.0,\n      \"solar_generation_mw\": 0.0,\n      \"wind_generation_mw\": 1.2,\n      \"battery_soc_pct\": 42.5,\n      \"battery_capacity_mwh\": 20.0,\n      \"market_price_per_mwh\": 0.0,\n      \"generator_active\": true\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_current_metrics",
+      "description": "Retrieves the current environmental state of the microgrid, including time, load, renewable generation, and battery storage levels.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "time_step": 0,
+        "grid_load_mw": 6.0,
+        "solar_generation_mw": 0.0,
+        "wind_generation_mw": 1.5,
+        "battery_soc_pct": 50.0,
+        "battery_capacity_mwh": 20.0,
+        "market_price_per_mwh": 0.0,
+        "generator_active": false
+      }
+    },
+    {
+      "name": "execute_dispatch_step",
+      "description": "Executes the dispatch decisions for the current hour and advances the simulation to the next time step. Returns the resulting environment state.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "battery_power_mw": {
+            "type": "number",
+            "description": "The power output from the battery in MW. Positive values represent discharging (max 5.0), negative values represent charging (min -5.0)."
+          },
+          "generator_on": {
+            "type": "boolean",
+            "description": "Signal to activate or maintain the backup diesel generator. Note: A 1-hour startup latency applies where no power is produced."
+          }
+        },
+        "required": [
+          "battery_power_mw",
+          "generator_on"
+        ]
+      },
+      "example_output": {
+        "time_step": 1,
+        "grid_load_mw": 6.0,
+        "solar_generation_mw": 0.0,
+        "wind_generation_mw": 1.2,
+        "battery_soc_pct": 42.5,
+        "battery_capacity_mwh": 20.0,
+        "market_price_per_mwh": 0.0,
+        "generator_active": true
+      }
+    }
+  ],
+  "state_description": {
+    "time_step": "Current hour of the simulation (0-23)",
+    "grid_load_mw": "Current total electricity demand in Megawatts",
+    "solar_generation_mw": "Current power output from solar arrays in Megawatts",
+    "wind_generation_mw": "Current power output from wind turbines in Megawatts",
+    "battery_soc_pct": "State of Charge of the energy storage system as a percentage (0-100)",
+    "battery_capacity_mwh": "Total storage capacity of the battery system in Megawatt-hours",
+    "market_price_per_mwh": "Current cost to purchase electricity from the external grid ($/MWh)",
+    "generator_active": "Whether the backup diesel generator is currently running"
+  },
+  "task_initial_state": {
+    "time_step": 14,
+    "grid_load_mw": 6.0,
+    "solar_generation_mw": 0.0,
+    "wind_generation_mw": 1.0,
+    "battery_soc_pct": 40.0,
+    "battery_capacity_mwh": 50.0,
+    "market_price_per_mwh": 0.0,
+    "generator_active": false
+  }
+}

@@ -1,0 +1,253 @@
+{
+  "environment_name": "env_12c072d66b7f",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM) for Clinical Trial Eligibility Matching\n- **Core Objective**: Based on the current patient state $s_t$ and the Agent's action $a_t$ (e.g., querying databases or checking criteria), simulate the environment's response and predict the observation $o_{{t+1}}$ obtained by the Agent.\n- **Emphasis**: You are a simulator of a medical data environment. You do not perform real-world clinical recruitment; you evolve the internal state of the matching process and generate realistic observations based on medical logic and trial protocols.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation to ensure consistency in patient data and trial availability throughout the matching process. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions must maintain rigorous medical and logical consistency. If a patient's biomarker is established in the state, subsequent trial matches must respect that value. The history of screened trials and findings must remain persistent.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. This JSON will contain:\n- `\"name\"`: The name of the action (e.g., \"query_trials\", \"check_exclusion_criteria\", \"fetch_patient_labs\").\n- Additional fields for the parameters required by that specific action.\n\nYou must parse these JSON inputs and simulate the resulting observation based on the internal state and clinical logic.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\n- If the Agent attempts to query a non-existent Trial ID, return: `{{\"error\": \"Trial ID not found\"}}`.\n- If required parameters for an action are missing, return a structured error message.\n- Do not fabricate clinical data or trial criteria that are not supported by the environment state.\n\n##### Output Assembly\nFor every action, you must return a structured JSON object containing **ONLY** the return fields declared in the definition of that action function (the Observation).\n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, the updated state, or any hidden clinical variables. The Agent must only receive the specific observation data defined in the action. Do not output the state update process.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to specified JSON formats for all observations.\n- **Factuality**: Simulated clinical responses must be consistent with the provided patient profile and trial database.\n- **Consistency**: If an eligibility criterion is checked twice, the result must be identical unless the state has been explicitly updated.\n- **Realism**: Simulated behaviors must align with the dynamics of clinical trial screening (e.g., recognizing that certain lab values may exclude a patient from a phase III oncology trial).\n- **Quality**: Ensure medical terminology is used accurately in observations.\n- **Encapsulation**: Hide the internal patient-trial state mapping from the Agent. Only expose information returned by the action function.\n{{initial_state}}: {{\n  \"patient_profile\": {{\n    \"patient_id\": \"PT-7702\",\n    \"demographics\": {{\n      \"age\": 74,\n      \"biological_sex\": \"Male\"\n    }},\n    \"diagnoses\": [\n      {{\n        \"code\": \"44054006\",\n        \"name\": \"Type 2 diabetes mellitus\",\n        \"onset_date\": \"2023-01-15\",\n        \"status\": \"Active\"\n      }},\n      {{\n        \"code\": \"254637007\",\n        \"name\": \"Non-small cell lung cancer\",\n        \"onset_date\": \"2023-09-12\",\n        \"status\": \"Active\"\n      }}\n    ],\n    \"medications\": [\n      {{\n        \"name\": \"Metformin\",\n        \"start_date\": \"2023-01-20\"\n      }}\n    ],\n    \"structured_labs\": [\n      {{\n        \"loinc\": \"4548-4\",\n        \"name\": \"HbA1c\",\n        \"value\": 6.9,\n        \"unit\": \"%\",\n        \"date\": \"2023-11-02\"\n      }},\n      {{\n        \"loinc\": \"33914-3\",\n        \"name\": \"eGFR\",\n        \"value\": 58.0,\n        \"unit\": \"mL/min/1.73m^2\",\n        \"date\": \"2023-11-02\"\n      }}\n    ]\n  }},\n  \"trial_registry\": [\n    {{\n      \"trial_id\": \"CV-PH3-2023-GLP1\",\n      \"phase\": \"III\",\n      \"title\": \"Phase III Cardiovascular Outcomes Study for GLP-1 Agonists\",\n      \"eligibility_protocol\": {{\n        \"inclusion\": {{\n          \"age_range\": [\n            40,\n            80\n          ],\n          \"required_snomed_codes\": [\n            \"44054006\"\n          ],\n          \"min_hba1c\": 7.5\n        }},\n        \"exclusion\": {{\n          \"prohibited_conditions\": [\n            \"254637007\",\n            \"Active Malignancy\"\n          ],\n          \"max_age\": 80\n        }}\n      }}\n    }},\n    {{\n      \"trial_id\": \"METAB-PH2-INSULIN\",\n      \"phase\": \"II\",\n      \"title\": \"Metabolic Efficiency Study\",\n      \"eligibility_protocol\": {{\n        \"inclusion\": {{\n          \"age_range\": [\n            18,\n            50\n          ],\n          \"required_snomed_codes\": [\n            \"44054006\"\n          ]\n        }}\n      }}\n    }}\n  ],\n  \"screening_log\": {{\n    \"viewed_ids\": [],\n    \"criteria_check_results\": {{}}\n  }}\n}}\n{{state_descriptions}}: {{\n  \"patient_profile\": \"The structured clinical data of the target patient, including demographics, diagnoses, biomarkers, and medication history.\",\n  \"trial_registry\": \"A collection of available clinical trials, each containing detailed inclusion and exclusion criteria, trial phase, and study goals.\",\n  \"screening_log\": \"A record of trials the Agent has already evaluated and the outcome of specific criteria checks performed so far.\"\n}}\n{action_set_definitions}: {\n  \"search_registry\": {\n    \"description\": \"Searches the patient or trial registry for entities matching specific criteria. Use this to retrieve unique identifiers (patient_id or trial_id).\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"registry_type\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"patient\",\n            \"trial\"\n          ],\n          \"description\": \"The registry to search.\"\n        },\n        \"criteria\": {\n          \"type\": \"object\",\n          \"description\": \"Key-value pairs representing search attributes (e.g., diagnosis, phase, study_type).\"\n        }\n      },\n      \"required\": [\n        \"registry_type\",\n        \"criteria\"\n      ]\n    },\n    \"example_output\": {\n      \"results\": [\n        {\n          \"id\": \"ID_12345\",\n          \"summary\": \"Description of the entity\"\n        }\n      ]\n    }\n  },\n  \"get_trial_criteria\": {\n    \"description\": \"Retrieves the detailed inclusion and exclusion criteria for a specific clinical trial, structured by evaluation stage.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"trial_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the clinical trial.\"\n        }\n      },\n      \"required\": [\n        \"trial_id\"\n      ]\n    },\n    \"example_output\": {\n      \"demographics\": [\n        \"Age > 18\",\n        \"Gender: All\"\n      ],\n      \"primary_indication\": [\n        \"Type 2 Diabetes\"\n      ],\n      \"exclusionary_conditions\": [\n        \"History of heart failure\"\n      ],\n      \"lab_requirements\": [\n        \"HbA1c < 7.0% (LOINC 4548-4)\"\n      ]\n    }\n  },\n  \"get_clinical_data\": {\n    \"description\": \"Retrieves specific clinical data for a patient within a specified time range. Required for evidence-based matching.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"patient_id\": {\n          \"type\": \"string\",\n          \"description\": \"Unique identifier of the patient.\"\n        },\n        \"data_category\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"demographics\",\n            \"diagnoses\",\n            \"medical_history\",\n            \"laboratory_measurements\"\n          ],\n          \"description\": \"The category of clinical data to retrieve.\"\n        },\n        \"min_date\": {\n          \"type\": \"string\",\n          \"description\": \"The earliest record date allowed (ISO 8601 format, YYYY-MM-DD).\"\n        }\n      },\n      \"required\": [\n        \"patient_id\",\n        \"data_category\",\n        \"min_date\"\n      ]\n    },\n    \"example_output\": {\n      \"records\": [\n        {\n          \"code\": \"LOINC 123-4\",\n          \"value\": \"5.5\",\n          \"timestamp\": \"2023-10-01\"\n        }\n      ]\n    }\n  },\n  \"record_screening_outcome\": {\n    \"description\": \"Logs the final determination, failure stage, and classification for the screening process.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"patient_id\": {\n          \"type\": \"string\"\n        },\n        \"trial_id\": {\n          \"type\": \"string\"\n        },\n        \"determination\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"Eligible\",\n            \"Ineligible\"\n          ]\n        },\n        \"failure_stage\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"Demographics\",\n            \"Primary Indication\",\n            \"Exclusionary Conditions\",\n            \"Laboratory Measurements\",\n            \"None\"\n          ]\n        },\n        \"failure_classification\": {\n          \"type\": \"string\",\n          \"description\": \"Specific reason for disqualification (e.g., 'Age out of range', 'Missing LOINC data').\"\n        }\n      },\n      \"required\": [\n        \"patient_id\",\n        \"trial_id\",\n        \"determination\",\n        \"failure_stage\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"Success\",\n      \"log_id\": \"LOG_999\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "search_registry",
+      "description": "Searches the patient or trial registry for entities matching specific criteria. Use this to retrieve unique identifiers (patient_id or trial_id).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "registry_type": {
+            "type": "string",
+            "enum": [
+              "patient",
+              "trial"
+            ],
+            "description": "The registry to search."
+          },
+          "criteria": {
+            "type": "object",
+            "description": "Key-value pairs representing search attributes (e.g., diagnosis, phase, study_type)."
+          }
+        },
+        "required": [
+          "registry_type",
+          "criteria"
+        ]
+      },
+      "example_output": {
+        "results": [
+          {
+            "id": "ID_12345",
+            "summary": "Description of the entity"
+          }
+        ]
+      }
+    },
+    {
+      "name": "get_trial_criteria",
+      "description": "Retrieves the detailed inclusion and exclusion criteria for a specific clinical trial, structured by evaluation stage.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "trial_id": {
+            "type": "string",
+            "description": "The unique identifier for the clinical trial."
+          }
+        },
+        "required": [
+          "trial_id"
+        ]
+      },
+      "example_output": {
+        "demographics": [
+          "Age > 18",
+          "Gender: All"
+        ],
+        "primary_indication": [
+          "Type 2 Diabetes"
+        ],
+        "exclusionary_conditions": [
+          "History of heart failure"
+        ],
+        "lab_requirements": [
+          "HbA1c < 7.0% (LOINC 4548-4)"
+        ]
+      }
+    },
+    {
+      "name": "get_clinical_data",
+      "description": "Retrieves specific clinical data for a patient within a specified time range. Required for evidence-based matching.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "patient_id": {
+            "type": "string",
+            "description": "Unique identifier of the patient."
+          },
+          "data_category": {
+            "type": "string",
+            "enum": [
+              "demographics",
+              "diagnoses",
+              "medical_history",
+              "laboratory_measurements"
+            ],
+            "description": "The category of clinical data to retrieve."
+          },
+          "min_date": {
+            "type": "string",
+            "description": "The earliest record date allowed (ISO 8601 format, YYYY-MM-DD)."
+          }
+        },
+        "required": [
+          "patient_id",
+          "data_category",
+          "min_date"
+        ]
+      },
+      "example_output": {
+        "records": [
+          {
+            "code": "LOINC 123-4",
+            "value": "5.5",
+            "timestamp": "2023-10-01"
+          }
+        ]
+      }
+    },
+    {
+      "name": "record_screening_outcome",
+      "description": "Logs the final determination, failure stage, and classification for the screening process.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "patient_id": {
+            "type": "string"
+          },
+          "trial_id": {
+            "type": "string"
+          },
+          "determination": {
+            "type": "string",
+            "enum": [
+              "Eligible",
+              "Ineligible"
+            ]
+          },
+          "failure_stage": {
+            "type": "string",
+            "enum": [
+              "Demographics",
+              "Primary Indication",
+              "Exclusionary Conditions",
+              "Laboratory Measurements",
+              "None"
+            ]
+          },
+          "failure_classification": {
+            "type": "string",
+            "description": "Specific reason for disqualification (e.g., 'Age out of range', 'Missing LOINC data')."
+          }
+        },
+        "required": [
+          "patient_id",
+          "trial_id",
+          "determination",
+          "failure_stage"
+        ]
+      },
+      "example_output": {
+        "status": "Success",
+        "log_id": "LOG_999"
+      }
+    }
+  ],
+  "state_description": {
+    "patient_profile": "The structured clinical data of the target patient, including demographics, diagnoses, biomarkers, and medication history.",
+    "trial_registry": "A collection of available clinical trials, each containing detailed inclusion and exclusion criteria, trial phase, and study goals.",
+    "screening_log": "A record of trials the Agent has already evaluated and the outcome of specific criteria checks performed so far."
+  },
+  "task_initial_state": {
+    "patient_profile": {
+      "patient_id": "PT-7702",
+      "demographics": {
+        "age": 74,
+        "biological_sex": "Male"
+      },
+      "diagnoses": [
+        {
+          "code": "44054006",
+          "name": "Type 2 diabetes mellitus",
+          "onset_date": "2023-01-15",
+          "status": "Active"
+        },
+        {
+          "code": "254637007",
+          "name": "Non-small cell lung cancer",
+          "onset_date": "2023-09-12",
+          "status": "Active"
+        }
+      ],
+      "medications": [
+        {
+          "name": "Metformin",
+          "start_date": "2023-01-20"
+        }
+      ],
+      "structured_labs": [
+        {
+          "loinc": "4548-4",
+          "name": "HbA1c",
+          "value": 6.9,
+          "unit": "%",
+          "date": "2023-11-02"
+        },
+        {
+          "loinc": "33914-3",
+          "name": "eGFR",
+          "value": 58.0,
+          "unit": "mL/min/1.73m^2",
+          "date": "2023-11-02"
+        }
+      ]
+    },
+    "trial_registry": [
+      {
+        "trial_id": "CV-PH3-2023-GLP1",
+        "phase": "III",
+        "title": "Phase III Cardiovascular Outcomes Study for GLP-1 Agonists",
+        "eligibility_protocol": {
+          "inclusion": {
+            "age_range": [
+              40,
+              80
+            ],
+            "required_snomed_codes": [
+              "44054006"
+            ],
+            "min_hba1c": 7.5
+          },
+          "exclusion": {
+            "prohibited_conditions": [
+              "254637007",
+              "Active Malignancy"
+            ],
+            "max_age": 80
+          }
+        }
+      },
+      {
+        "trial_id": "METAB-PH2-INSULIN",
+        "phase": "II",
+        "title": "Metabolic Efficiency Study",
+        "eligibility_protocol": {
+          "inclusion": {
+            "age_range": [
+              18,
+              50
+            ],
+            "required_snomed_codes": [
+              "44054006"
+            ]
+          }
+        }
+      }
+    ],
+    "screening_log": {
+      "viewed_ids": [],
+      "criteria_check_results": {}
+    }
+  }
+}

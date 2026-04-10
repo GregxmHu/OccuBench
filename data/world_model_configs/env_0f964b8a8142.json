@@ -1,0 +1,210 @@
+{
+  "environment_name": "env_0f964b8a8142",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: You act as a high-fidelity simulation of a GDPR Data Deletion Request Processing environment. Based on the current internal state $s_t$ and the action $a_t$ executed by the Agent, you must simulate the internal evolution of the system and predict the resulting observation $o_{{t+1}}$ that the Agent would receive.\n- **Emphasis**: You are a simulator, not an executor. You do not perform real-world database deletions; you calculate and return the logical consequences of actions within this simulated environment.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation to track user data, request statuses, and compliance requirements. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nYou must maintain strict context consistency across all turns. Every action must influence the internal state (e.g., updating a request status from 'pending' to 'processed'), and subsequent observations must reflect these changes to ensure a coherent simulation.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. You must parse this JSON to determine the intended operation. The JSON will contain:\n- `\"name\"`: The action function name.\n- Remaining fields: Parameters for the function.\n\nExample input you might receive:\n```json\n{{\n \"name\": \"verify_user_identity\",\n \"arguments\": {{\n    \"request_id\": \"REQ-123\",\n    \"verification_token\": \"TOKEN_ABC_456\"\n  }}\n}}\n```\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nIf the Agent provides invalid parameters (e.g., a non-existent `request_id`), attempts to delete data under a 'legal hold', or calls an undefined action, you must return a structured error message:\n- Example: `{{\"error\": \"User ID 'user_01' is currently under legal hold and cannot be deleted.\"}}`\nDo not fabricate successful responses for invalid operations.\n\n##### Output Assembly\nFor every action function call, return a structured JSON object containing **ONLY** the return fields declared in that action's definition. \n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, the updated `new_state`, or any metadata not explicitly defined as an observation. Hide all internal mechanics (like the full database list) from the Agent unless a specific action (like `list_requests`) explicitly returns it.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to JSON for observations.\n- **Factuality**: Simulate based on GDPR logic; do not invent data or statuses not supported by the current state.\n- **Consistency**: If a user is deleted in state $s_t$, they must remain deleted in $s_{{t+1}}$ unless a restoration action occurs.\n- **Realism**: Simulate realistic delays or multi-step verification if the action definitions imply them.\n- **Quality**: Ensure clear, unambiguous observations.\n- **Encapsulation**: Never reveal the raw state structure in the final output string; only provide the observation.\n{{initial_state}}: {{\n  \"user_records\": {{\n    \"USR-99482\": {{\n      \"full_name\": \"Marcus Vane\",\n      \"email\": \"m.vane@example.com\",\n      \"account_status\": \"closed\",\n      \"system_location\": \"LegacyPay_Isolated_OnPrem\",\n      \"data_categories\": [\n        \"marketing_profile\",\n        \"behavioral_analytics\",\n        \"financial_transaction_ledger\"\n      ],\n      \"last_transaction_date\": \"2021-03-15\"\n    }}\n  }},\n  \"pending_requests\": [\n    {{\n      \"request_id\": \"REQ-8821\",\n      \"user_id\": \"USR-99482\",\n      \"status\": \"pending\",\n      \"received_at\": \"2023-11-01T09:00:00Z\"\n    }}\n  ],\n  \"legal_holds\": [\n    \"USR-99482\"\n  ],\n  \"audit_trail\": [\n    {{\n      \"timestamp\": \"2023-11-01T09:00:05Z\",\n      \"action\": \"request_intake\",\n      \"result\": \"REQ-8821 created for USR-99482\"\n    }}\n  ]\n}}\n{{state_descriptions}}: {{\n  \"user_records\": \"A mapping of user IDs to their profile information, including PII and account status.\",\n  \"pending_requests\": \"A list of active GDPR 'Right to Erasure' requests waiting for processing.\",\n  \"legal_holds\": \"A list of user IDs whose data must be preserved for legal or regulatory reasons, preventing deletion.\",\n  \"audit_trail\": \"An internal log of all processed actions for compliance auditing.\"\n}}\n{action_set_definitions}: {\n  \"get_request_details\": {\n    \"description\": \"Retrieves the user ID and specific details for a given GDPR request ID.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"request_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier of the GDPR request (e.g., 'REQ-8821').\"\n        }\n      },\n      \"required\": [\n        \"request_id\"\n      ]\n    },\n    \"example_output\": {\n      \"user_id\": \"USR-99482\",\n      \"request_type\": \"Erasure\",\n      \"current_status\": \"OPEN\"\n    }\n  },\n  \"check_legal_hold\": {\n    \"description\": \"Checks the legal hold registry to see if a user's data is exempt from deletion due to statutory obligations.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"user_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the user.\"\n        }\n      },\n      \"required\": [\n        \"user_id\"\n      ]\n    },\n    \"example_output\": {\n      \"has_hold\": false,\n      \"hold_type\": null\n    }\n  },\n  \"fetch_user_data_inventory\": {\n    \"description\": \"Retrieves the categories of data held for a specific user within the LegacyPay system (e.g., PII, Financial, Logs).\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"user_id\": {\n          \"type\": \"string\",\n          \"description\": \"The user ID.\"\n        }\n      },\n      \"required\": [\n        \"user_id\"\n      ]\n    },\n    \"example_output\": {\n      \"data_categories\": [\n        \"PII\",\n        \"Transaction_Records\",\n        \"Login_History\"\n      ]\n    }\n  },\n  \"get_ropa_disposition_rules\": {\n    \"description\": \"Queries the Record of Processing Activities (RoPA) for the required technical treatment (Hard Delete, Anonymize, or Mask) for specific data categories to maintain referential integrity.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"categories\": {\n          \"type\": \"array\",\n          \"items\": {\n            \"type\": \"string\"\n          },\n          \"description\": \"List of data categories found in the user inventory.\"\n        }\n      },\n      \"required\": [\n        \"categories\"\n      ]\n    },\n    \"example_output\": {\n      \"rules\": [\n        {\n          \"category\": \"PII\",\n          \"method\": \"HARD_DELETE\"\n        },\n        {\n          \"category\": \"Transaction_Records\",\n          \"method\": \"ANONYMIZE\"\n        }\n      ]\n    }\n  },\n  \"execute_data_erasure\": {\n    \"description\": \"Applies the specified erasure methods to the user's data in the environment.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"user_id\": {\n          \"type\": \"string\",\n          \"description\": \"The user ID.\"\n        },\n        \"disposition_map\": {\n          \"type\": \"array\",\n          \"items\": {\n            \"type\": \"object\",\n            \"properties\": {\n              \"category\": {\n                \"type\": \"string\"\n              },\n              \"method\": {\n                \"type\": \"string\"\n              }\n            }\n          },\n          \"description\": \"The specific methods to apply to each category.\"\n        }\n      },\n      \"required\": [\n        \"user_id\",\n        \"disposition_map\"\n      ]\n    },\n    \"example_output\": {\n      \"execution_status\": \"SUCCESS\",\n      \"timestamp\": \"2023-10-27T10:00:00Z\"\n    }\n  },\n  \"close_request_with_audit\": {\n    \"description\": \"Updates the request status to completed and records the final compliance audit entry.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"request_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the request to close.\"\n        },\n        \"audit_note\": {\n          \"type\": \"string\",\n          \"description\": \"A detailed note explaining the compliance outcome, including methods used or exemptions applied.\"\n        },\n        \"status\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"COMPLETED\",\n            \"DENIED_LEGAL_HOLD\"\n          ]\n        }\n      },\n      \"required\": [\n        \"request_id\",\n        \"audit_note\",\n        \"status\"\n      ]\n    },\n    \"example_output\": {\n      \"request_status\": \"CLOSED\",\n      \"audit_id\": \"AUDIT-10293\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_request_details",
+      "description": "Retrieves the user ID and specific details for a given GDPR request ID.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "request_id": {
+            "type": "string",
+            "description": "The unique identifier of the GDPR request (e.g., 'REQ-8821')."
+          }
+        },
+        "required": [
+          "request_id"
+        ]
+      },
+      "example_output": {
+        "user_id": "USR-99482",
+        "request_type": "Erasure",
+        "current_status": "OPEN"
+      }
+    },
+    {
+      "name": "check_legal_hold",
+      "description": "Checks the legal hold registry to see if a user's data is exempt from deletion due to statutory obligations.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string",
+            "description": "The unique identifier for the user."
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      },
+      "example_output": {
+        "has_hold": false,
+        "hold_type": null
+      }
+    },
+    {
+      "name": "fetch_user_data_inventory",
+      "description": "Retrieves the categories of data held for a specific user within the LegacyPay system (e.g., PII, Financial, Logs).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string",
+            "description": "The user ID."
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      },
+      "example_output": {
+        "data_categories": [
+          "PII",
+          "Transaction_Records",
+          "Login_History"
+        ]
+      }
+    },
+    {
+      "name": "get_ropa_disposition_rules",
+      "description": "Queries the Record of Processing Activities (RoPA) for the required technical treatment (Hard Delete, Anonymize, or Mask) for specific data categories to maintain referential integrity.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "categories": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "List of data categories found in the user inventory."
+          }
+        },
+        "required": [
+          "categories"
+        ]
+      },
+      "example_output": {
+        "rules": [
+          {
+            "category": "PII",
+            "method": "HARD_DELETE"
+          },
+          {
+            "category": "Transaction_Records",
+            "method": "ANONYMIZE"
+          }
+        ]
+      }
+    },
+    {
+      "name": "execute_data_erasure",
+      "description": "Applies the specified erasure methods to the user's data in the environment.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string",
+            "description": "The user ID."
+          },
+          "disposition_map": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "category": {
+                  "type": "string"
+                },
+                "method": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "The specific methods to apply to each category."
+          }
+        },
+        "required": [
+          "user_id",
+          "disposition_map"
+        ]
+      },
+      "example_output": {
+        "execution_status": "SUCCESS",
+        "timestamp": "2023-10-27T10:00:00Z"
+      }
+    },
+    {
+      "name": "close_request_with_audit",
+      "description": "Updates the request status to completed and records the final compliance audit entry.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "request_id": {
+            "type": "string",
+            "description": "The ID of the request to close."
+          },
+          "audit_note": {
+            "type": "string",
+            "description": "A detailed note explaining the compliance outcome, including methods used or exemptions applied."
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "COMPLETED",
+              "DENIED_LEGAL_HOLD"
+            ]
+          }
+        },
+        "required": [
+          "request_id",
+          "audit_note",
+          "status"
+        ]
+      },
+      "example_output": {
+        "request_status": "CLOSED",
+        "audit_id": "AUDIT-10293"
+      }
+    }
+  ],
+  "state_description": {
+    "user_records": "A mapping of user IDs to their profile information, including PII and account status.",
+    "pending_requests": "A list of active GDPR 'Right to Erasure' requests waiting for processing.",
+    "legal_holds": "A list of user IDs whose data must be preserved for legal or regulatory reasons, preventing deletion.",
+    "audit_trail": "An internal log of all processed actions for compliance auditing."
+  },
+  "task_initial_state": {
+    "user_records": {
+      "USR-99482": {
+        "full_name": "Marcus Vane",
+        "email": "m.vane@example.com",
+        "account_status": "closed",
+        "system_location": "LegacyPay_Isolated_OnPrem",
+        "data_categories": [
+          "marketing_profile",
+          "behavioral_analytics",
+          "financial_transaction_ledger"
+        ],
+        "last_transaction_date": "2021-03-15"
+      }
+    },
+    "pending_requests": [
+      {
+        "request_id": "REQ-8821",
+        "user_id": "USR-99482",
+        "status": "pending",
+        "received_at": "2023-11-01T09:00:00Z"
+      }
+    ],
+    "legal_holds": [
+      "USR-99482"
+    ],
+    "audit_trail": [
+      {
+        "timestamp": "2023-11-01T09:00:05Z",
+        "action": "request_intake",
+        "result": "REQ-8821 created for USR-99482"
+      }
+    ]
+  }
+}

@@ -1,0 +1,196 @@
+{
+  "environment_name": "env_13e4e449a6e0",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: Based on the current internal state $s_t$ and the action $a_t$ provided by the Agent, simulate the evolution of the Sprint Backlog environment and predict the resulting observation $o_{{t+1}}$.\n- **Emphasis**: You are a simulator of project management dynamics. You do not execute real-world code or manage actual projects; you perform internal state transitions and generate the resulting observations for the Agent to process.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions between the World Model and the Agent must maintain context consistency. Every action depends on the history of previous transitions to ensure that task IDs, sprint capacities, and priority levels remain consistent over time.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. This JSON must contain the following fields:\n- `\"name\"`: Specifies the name of the action function to execute (e.g., \"update_task_priority\").\n- The remaining fields are the parameter names and corresponding values required by that action function.\n\nExample:\n```json\n{{\n \"name\": \"move_to_sprint\",\n \"arguments\": {{\n    \"task_id\": \"TASK-101\",\n    \"sprint_number\": 5\n  }}\n}}\n```\n\nYou must parse these JSON inputs and simulate the resulting change in the project backlog environment.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nFor invalid parameters (e.g., non-existent task IDs), undefined actions, state conflicts (e.g., exceeding sprint capacity), or empty inputs, return structured error information (e.g., `{{\"error\": \"Task ID 'TASK-999' not found\"}}`). Do not fabricate states or fictitious responses outside the logic of the backlog environment.\n\n##### Output Assembly\nFor every action function call, the model must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition.\n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, `new_state`, or any hidden variables. You must maintain the state internally. The Agent must only see the specific return values (the Observation) defined in the action.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to specified JSON and text formats.\n- **Factuality**: Do not fabricate non-existent functions or project data not present in the state.\n- **Consistency**: Logic (e.g., total story points vs. capacity) must be self-consistent.\n- **Realism**: Simulated behaviors must align with Agile/Scrum principles (e.g., tasks cannot be in two sprints at once).\n- **Quality**: Observations should be clear and structurally complete.\n- **Encapsulation**: Strictly hide the internal state structure from the output. Only expose information explicitly returned by the action function.\n{{initial_state}}: {{\n  \"backlog_items\": [\n    {{\n      \"id\": \"PAY-101\",\n      \"title\": \"[PRODUCTION] Legacy Ledger Connector [Provider | VF: 0.35]\",\n      \"priority\": 1,\n      \"effort_points\": 7,\n      \"business_value\": 500,\n      \"status\": \"unassigned\"\n    }},\n    {{\n      \"id\": \"PAY-101-OLD\",\n      \"title\": \"[DEPRECATED] Legacy Ledger Connector v1\",\n      \"priority\": 1,\n      \"effort_points\": 5,\n      \"business_value\": 0,\n      \"status\": \"unassigned\"\n    }},\n    {{\n      \"id\": \"PAY-202\",\n      \"title\": \"[PRODUCTION] Mobile UI for Payments [Consumer of PAY-101]\",\n      \"priority\": 1,\n      \"effort_points\": 12,\n      \"business_value\": 450,\n      \"status\": \"unassigned\"\n    }},\n    {{\n      \"id\": \"PAY-202-MOCK\",\n      \"title\": \"[PROTOTYPE] Mobile UI Mockup\",\n      \"priority\": 2,\n      \"effort_points\": 3,\n      \"business_value\": 10,\n      \"status\": \"unassigned\"\n    }},\n    {{\n      \"id\": \"PAY-303\",\n      \"title\": \"Regulatory Compliance Audit\",\n      \"priority\": 1,\n      \"effort_points\": 10,\n      \"business_value\": 600,\n      \"status\": \"unassigned\"\n    }},\n    {{\n      \"id\": \"PAY-304\",\n      \"title\": \"Automated Clearing House (ACH) Integration\",\n      \"priority\": 1,\n      \"effort_points\": 8,\n      \"business_value\": 400,\n      \"status\": \"unassigned\"\n    }}\n  ],\n  \"sprints\": [\n    {{\n      \"sprint_id\": 1,\n      \"capacity\": 20,\n      \"assigned_task_ids\": []\n    }},\n    {{\n      \"sprint_id\": 2,\n      \"capacity\": 20,\n      \"assigned_task_ids\": []\n    }}\n  ],\n  \"project_metadata\": {{\n    \"total_capacity_limit\": 20\n  }}\n}}\n{{state_descriptions}}: {{\n  \"backlog_items\": \"A list of all user stories and tasks in the backlog.\",\n  \"sprints\": \"A list of sprint objects containing their capacity and assigned tasks.\",\n  \"project_metadata\": \"General project constraints and information.\"\n}}\n{action_set_definitions}: {\n  \"get_project_metadata\": {\n    \"description\": \"Retrieves global project constraints, including the Volatility Factor and general sprint settings.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"volatility_factor\": 0.4,\n      \"max_sprint_capacity\": 20,\n      \"points_per_day\": 2\n    }\n  },\n  \"search_backlog\": {\n    \"description\": \"Searches for backlog items filtering by feature name and priority level.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"feature\": {\n          \"type\": \"string\",\n          \"description\": \"The name of the feature (e.g., 'Cross-Border Payments').\"\n        },\n        \"priority\": {\n          \"type\": \"integer\",\n          \"description\": \"The priority level to filter by (e.g., 1).\"\n        }\n      },\n      \"required\": [\n        \"feature\",\n        \"priority\"\n      ]\n    },\n    \"example_output\": {\n      \"items\": [\n        {\n          \"id\": \"TASK-101\",\n          \"title\": \"Legacy Ledger Connector\"\n        },\n        {\n          \"id\": \"TASK-102\",\n          \"title\": \"Mobile UI\"\n        }\n      ]\n    }\n  },\n  \"get_item_details\": {\n    \"description\": \"Retrieves detailed information for a specific backlog item, including effort points, status, tags, and dependencies.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"item_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier of the backlog item.\"\n        }\n      },\n      \"required\": [\n        \"item_id\"\n      ]\n    },\n    \"example_output\": {\n      \"id\": \"TASK-101\",\n      \"title\": \"Legacy Ledger Connector\",\n      \"effort_points\": 8,\n      \"type\": \"production\",\n      \"dependencies\": [],\n      \"description\": \"...\"\n    }\n  },\n  \"get_sprint_status\": {\n    \"description\": \"Retrieves the current state of a specific sprint, including allocated points and available capacity.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"sprint_number\": {\n          \"type\": \"integer\",\n          \"description\": \"The ID or sequence number of the sprint (1 or 2).\"\n        }\n      },\n      \"required\": [\n        \"sprint_number\"\n      ]\n    },\n    \"example_output\": {\n      \"sprint_id\": \"SPRINT-01\",\n      \"current_total_points\": 0,\n      \"max_capacity\": 20,\n      \"assigned_item_ids\": []\n    }\n  },\n  \"assign_item_to_sprint\": {\n    \"description\": \"Assigns a specific backlog item to a designated sprint.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"item_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the task to assign.\"\n        },\n        \"sprint_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the target sprint.\"\n        }\n      },\n      \"required\": [\n        \"item_id\",\n        \"sprint_id\"\n      ]\n    },\n    \"example_output\": {\n      \"success\": true,\n      \"message\": \"Item TASK-101 assigned to SPRINT-01\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_project_metadata",
+      "description": "Retrieves global project constraints, including the Volatility Factor and general sprint settings.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "volatility_factor": 0.4,
+        "max_sprint_capacity": 20,
+        "points_per_day": 2
+      }
+    },
+    {
+      "name": "search_backlog",
+      "description": "Searches for backlog items filtering by feature name and priority level.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "feature": {
+            "type": "string",
+            "description": "The name of the feature (e.g., 'Cross-Border Payments')."
+          },
+          "priority": {
+            "type": "integer",
+            "description": "The priority level to filter by (e.g., 1)."
+          }
+        },
+        "required": [
+          "feature",
+          "priority"
+        ]
+      },
+      "example_output": {
+        "items": [
+          {
+            "id": "TASK-101",
+            "title": "Legacy Ledger Connector"
+          },
+          {
+            "id": "TASK-102",
+            "title": "Mobile UI"
+          }
+        ]
+      }
+    },
+    {
+      "name": "get_item_details",
+      "description": "Retrieves detailed information for a specific backlog item, including effort points, status, tags, and dependencies.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "item_id": {
+            "type": "string",
+            "description": "The unique identifier of the backlog item."
+          }
+        },
+        "required": [
+          "item_id"
+        ]
+      },
+      "example_output": {
+        "id": "TASK-101",
+        "title": "Legacy Ledger Connector",
+        "effort_points": 8,
+        "type": "production",
+        "dependencies": [],
+        "description": "..."
+      }
+    },
+    {
+      "name": "get_sprint_status",
+      "description": "Retrieves the current state of a specific sprint, including allocated points and available capacity.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "sprint_number": {
+            "type": "integer",
+            "description": "The ID or sequence number of the sprint (1 or 2)."
+          }
+        },
+        "required": [
+          "sprint_number"
+        ]
+      },
+      "example_output": {
+        "sprint_id": "SPRINT-01",
+        "current_total_points": 0,
+        "max_capacity": 20,
+        "assigned_item_ids": []
+      }
+    },
+    {
+      "name": "assign_item_to_sprint",
+      "description": "Assigns a specific backlog item to a designated sprint.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "item_id": {
+            "type": "string",
+            "description": "The ID of the task to assign."
+          },
+          "sprint_id": {
+            "type": "string",
+            "description": "The ID of the target sprint."
+          }
+        },
+        "required": [
+          "item_id",
+          "sprint_id"
+        ]
+      },
+      "example_output": {
+        "success": true,
+        "message": "Item TASK-101 assigned to SPRINT-01"
+      }
+    }
+  ],
+  "state_description": {
+    "backlog_items": "A list of all user stories and tasks in the backlog.",
+    "sprints": "A list of sprint objects containing their capacity and assigned tasks.",
+    "project_metadata": "General project constraints and information."
+  },
+  "task_initial_state": {
+    "backlog_items": [
+      {
+        "id": "PAY-101",
+        "title": "[PRODUCTION] Legacy Ledger Connector [Provider | VF: 0.35]",
+        "priority": 1,
+        "effort_points": 7,
+        "business_value": 500,
+        "status": "unassigned"
+      },
+      {
+        "id": "PAY-101-OLD",
+        "title": "[DEPRECATED] Legacy Ledger Connector v1",
+        "priority": 1,
+        "effort_points": 5,
+        "business_value": 0,
+        "status": "unassigned"
+      },
+      {
+        "id": "PAY-202",
+        "title": "[PRODUCTION] Mobile UI for Payments [Consumer of PAY-101]",
+        "priority": 1,
+        "effort_points": 12,
+        "business_value": 450,
+        "status": "unassigned"
+      },
+      {
+        "id": "PAY-202-MOCK",
+        "title": "[PROTOTYPE] Mobile UI Mockup",
+        "priority": 2,
+        "effort_points": 3,
+        "business_value": 10,
+        "status": "unassigned"
+      },
+      {
+        "id": "PAY-303",
+        "title": "Regulatory Compliance Audit",
+        "priority": 1,
+        "effort_points": 10,
+        "business_value": 600,
+        "status": "unassigned"
+      },
+      {
+        "id": "PAY-304",
+        "title": "Automated Clearing House (ACH) Integration",
+        "priority": 1,
+        "effort_points": 8,
+        "business_value": 400,
+        "status": "unassigned"
+      }
+    ],
+    "sprints": [
+      {
+        "sprint_id": 1,
+        "capacity": 20,
+        "assigned_task_ids": []
+      },
+      {
+        "sprint_id": 2,
+        "capacity": 20,
+        "assigned_task_ids": []
+      }
+    ],
+    "project_metadata": {
+      "total_capacity_limit": 20
+    }
+  }
+}

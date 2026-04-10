@@ -1,0 +1,183 @@
+{
+  "environment_name": "env_f4920ad91dbe",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: Based on the current internal state $s_t$ and the action $a_t$ provided by the Agent, simulate the internal evolution of the Employee Onboarding Workflow and predict the resulting observation $o_{{t+1}}$.\n- **Emphasis**: As the LWM, you do not perform actual HR or IT operations. You simulate the environment's logic, maintain state consistency, and generate the feedback (observation) that an HR system or employee would provide in response to an action.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nYou must maintain the continuity of the onboarding process. Every action affects the internal state (e.g., updating a checklist, changing a candidate's status, or triggering downstream dependencies). Ensure that if a task is marked as completed in one step, it remains completed unless an explicit action reverts it.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. You must parse this JSON to determine the intended transition:\n- `\"name\"`: The name of the onboarding action (e.g., `verify_documents`, `provision_it_account`).\n- `\"arguments\"`: The specific data required for the action.\n\nExample Input:\n```json\n{{\n \"name\": \"issue_security_badge\",\n \"arguments\": {{\n    \"employee_id\": \"EMP-123\",\n    \"access_level\": \"Level_3\"\n  }}\n}}\n```\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nIf the Agent attempts an action that is logically impossible (e.g., trying to `finalize_onboarding` before `it_setup` is complete), or provides invalid parameters, you must return a structured error message:\n- Example: `{{\"error\": \"Onboarding cannot be finalized: IT setup is still pending.\"}}`\nDo not fabricate successful outcomes for failed logic.\n\n##### Output Assembly\nFor every action, you must return a structured JSON object containing **ONLY** the return fields (Observations) declared in that action's definition.\n\n**CRITICAL CONSTRAINT**: You must **NOT** output the updated internal state `$s_{{t+1}}$`, the `{{initial_state}}` block, or any hidden variables in your response. The Agent should only receive the specific return values defined for the action. State maintenance is your internal responsibility.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to JSON for all observations and errors.\n- **Factuality**: Only simulate outcomes based on the provided action definitions and the current workflow state.\n- **Consistency**: The onboarding journey must follow a logical progression (e.g., an employee cannot have a payroll account before they are registered in the system).\n- **Realism**: Simulate realistic delays or specific failure modes if the action definition implies them.\n- **Encapsulation**: Never reveal the full internal state JSON to the Agent. Only show what the action's \"Observation\" allows.\n{{initial_state}}: {{\n  \"employee_id\": \"APPLICANT_RV_9021\",\n  \"onboarding_step\": \"Documentation\",\n  \"checklist_completion\": {{\n    \"contract_signed\": true,\n    \"identity_verified\": true,\n    \"it_hardware_delivered\": false,\n    \"email_created\": false,\n    \"security_training_done\": false\n  }},\n  \"hr_system_status\": \"Inactive\",\n  \"access_permissions\": []\n}}\n{{state_descriptions}}: {{\n  \"employee_id\": \"Unique identifier for the new hire.\",\n  \"onboarding_step\": \"The current phase of the onboarding process (e.g., 'Documentation', 'IT_Provisioning', 'Orientation', 'Completed').\",\n  \"checklist_completion\": \"A boolean map of specific onboarding tasks and their completion status.\",\n  \"hr_system_status\": \"The status of the employee record in the central HRIS (e.g., 'Inactive', 'Active', 'Pending_Sync').\",\n  \"access_permissions\": \"List of systems or physical areas the employee currently has access to.\"\n}}\n{action_set_definitions}: {\n  \"search_employee_records\": {\n    \"description\": \"Searches the HR database for existing or historical records matching a name to prevent duplicate identity creation and retrieve the unique employee_id.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"full_name\": {\n          \"type\": \"string\",\n          \"description\": \"The full legal name of the employee.\"\n        }\n      },\n      \"required\": [\n        \"full_name\"\n      ]\n    },\n    \"example_output\": {\n      \"matches\": [\n        {\n          \"employee_id\": \"EMP-12345\",\n          \"status\": \"Inactive\",\n          \"is_historical\": true\n        }\n      ]\n    }\n  },\n  \"get_onboarding_details\": {\n    \"description\": \"Retrieves the current state of an employee's onboarding process, including their phase, checklist completion, and current permissions.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"employee_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the employee.\"\n        }\n      },\n      \"required\": [\n        \"employee_id\"\n      ]\n    },\n    \"example_output\": {\n      \"onboarding_step\": \"Documentation\",\n      \"checklist_completion\": {\n        \"identity_verified\": true,\n        \"hardware_assigned\": false\n      },\n      \"hr_system_status\": \"Pending_Sync\",\n      \"access_permissions\": []\n    }\n  },\n  \"update_hr_record\": {\n    \"description\": \"Updates specific fields in the HR system for an employee, such as preferred name, onboarding status, or HR status.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"employee_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the employee.\"\n        },\n        \"updates\": {\n          \"type\": \"object\",\n          \"properties\": {\n            \"preferred_name\": {\n              \"type\": \"string\"\n            },\n            \"onboarding_step\": {\n              \"type\": \"string\"\n            },\n            \"hr_system_status\": {\n              \"type\": \"string\"\n            }\n          },\n          \"description\": \"Key-value pairs of fields to update.\"\n        }\n      },\n      \"required\": [\n        \"employee_id\",\n        \"updates\"\n      ]\n    },\n    \"example_output\": {\n      \"success\": true,\n      \"updated_fields\": [\n        \"preferred_name\",\n        \"hr_system_status\"\n      ]\n    }\n  },\n  \"allocate_hardware_assets\": {\n    \"description\": \"Provisions hardware (laptops, peripherals) based on the employee's department and job profile.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"employee_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the employee.\"\n        },\n        \"profile\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"Engineering\",\n            \"Sales\",\n            \"HR\",\n            \"Marketing\"\n          ],\n          \"description\": \"The department profile used to determine the hardware package.\"\n        },\n        \"is_remote\": {\n          \"type\": \"boolean\",\n          \"description\": \"Whether the hardware needs to be configured for remote use.\"\n        }\n      },\n      \"required\": [\n        \"employee_id\",\n        \"profile\",\n        \"is_remote\"\n      ]\n    },\n    \"example_output\": {\n      \"asset_tag\": \"HW-9981\",\n      \"status\": \"Allocated\"\n    }\n  },\n  \"provision_system_access\": {\n    \"description\": \"Grants birthright and department-specific digital permissions to the employee.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"employee_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the employee.\"\n        },\n        \"permission_tiers\": {\n          \"type\": \"array\",\n          \"items\": {\n            \"type\": \"string\"\n          },\n          \"description\": \"List of access tiers to grant (e.g., 'birthright', 'engineering_admin', 'vpn_access').\"\n        }\n      },\n      \"required\": [\n        \"employee_id\",\n        \"permission_tiers\"\n      ]\n    },\n    \"example_output\": {\n      \"granted_permissions\": [\n        \"email\",\n        \"slack\",\n        \"github_repo\"\n      ],\n      \"status\": \"Success\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "search_employee_records",
+      "description": "Searches the HR database for existing or historical records matching a name to prevent duplicate identity creation and retrieve the unique employee_id.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "full_name": {
+            "type": "string",
+            "description": "The full legal name of the employee."
+          }
+        },
+        "required": [
+          "full_name"
+        ]
+      },
+      "example_output": {
+        "matches": [
+          {
+            "employee_id": "EMP-12345",
+            "status": "Inactive",
+            "is_historical": true
+          }
+        ]
+      }
+    },
+    {
+      "name": "get_onboarding_details",
+      "description": "Retrieves the current state of an employee's onboarding process, including their phase, checklist completion, and current permissions.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "employee_id": {
+            "type": "string",
+            "description": "The unique identifier for the employee."
+          }
+        },
+        "required": [
+          "employee_id"
+        ]
+      },
+      "example_output": {
+        "onboarding_step": "Documentation",
+        "checklist_completion": {
+          "identity_verified": true,
+          "hardware_assigned": false
+        },
+        "hr_system_status": "Pending_Sync",
+        "access_permissions": []
+      }
+    },
+    {
+      "name": "update_hr_record",
+      "description": "Updates specific fields in the HR system for an employee, such as preferred name, onboarding status, or HR status.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "employee_id": {
+            "type": "string",
+            "description": "The unique identifier for the employee."
+          },
+          "updates": {
+            "type": "object",
+            "properties": {
+              "preferred_name": {
+                "type": "string"
+              },
+              "onboarding_step": {
+                "type": "string"
+              },
+              "hr_system_status": {
+                "type": "string"
+              }
+            },
+            "description": "Key-value pairs of fields to update."
+          }
+        },
+        "required": [
+          "employee_id",
+          "updates"
+        ]
+      },
+      "example_output": {
+        "success": true,
+        "updated_fields": [
+          "preferred_name",
+          "hr_system_status"
+        ]
+      }
+    },
+    {
+      "name": "allocate_hardware_assets",
+      "description": "Provisions hardware (laptops, peripherals) based on the employee's department and job profile.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "employee_id": {
+            "type": "string",
+            "description": "The unique identifier for the employee."
+          },
+          "profile": {
+            "type": "string",
+            "enum": [
+              "Engineering",
+              "Sales",
+              "HR",
+              "Marketing"
+            ],
+            "description": "The department profile used to determine the hardware package."
+          },
+          "is_remote": {
+            "type": "boolean",
+            "description": "Whether the hardware needs to be configured for remote use."
+          }
+        },
+        "required": [
+          "employee_id",
+          "profile",
+          "is_remote"
+        ]
+      },
+      "example_output": {
+        "asset_tag": "HW-9981",
+        "status": "Allocated"
+      }
+    },
+    {
+      "name": "provision_system_access",
+      "description": "Grants birthright and department-specific digital permissions to the employee.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "employee_id": {
+            "type": "string",
+            "description": "The unique identifier for the employee."
+          },
+          "permission_tiers": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "List of access tiers to grant (e.g., 'birthright', 'engineering_admin', 'vpn_access')."
+          }
+        },
+        "required": [
+          "employee_id",
+          "permission_tiers"
+        ]
+      },
+      "example_output": {
+        "granted_permissions": [
+          "email",
+          "slack",
+          "github_repo"
+        ],
+        "status": "Success"
+      }
+    }
+  ],
+  "state_description": {
+    "employee_id": "Unique identifier for the new hire.",
+    "onboarding_step": "The current phase of the onboarding process (e.g., 'Documentation', 'IT_Provisioning', 'Orientation', 'Completed').",
+    "checklist_completion": "A boolean map of specific onboarding tasks and their completion status.",
+    "hr_system_status": "The status of the employee record in the central HRIS (e.g., 'Inactive', 'Active', 'Pending_Sync').",
+    "access_permissions": "List of systems or physical areas the employee currently has access to."
+  },
+  "task_initial_state": {
+    "employee_id": "APPLICANT_RV_9021",
+    "onboarding_step": "Documentation",
+    "checklist_completion": {
+      "contract_signed": true,
+      "identity_verified": true,
+      "it_hardware_delivered": false,
+      "email_created": false,
+      "security_training_done": false
+    },
+    "hr_system_status": "Inactive",
+    "access_permissions": []
+  }
+}

@@ -1,0 +1,161 @@
+{
+  "environment_name": "env_631056cfc617",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: You are the internal simulation engine for a Library Catalog Search and Reservation system. Based on the current environment state $s_t$ and the Agent's action $a_t$, you must calculate the transition to the next internal state $s_{{t+1}}$ and generate the specific observation $o_{{t+1}}$ that the Agent receives.\n- **Emphasis**: You do not perform real-world database operations. You simulate the logic of a library system, including catalog filtering, inventory availability updates, and reservation rules.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nYou must maintain the continuity of the library environment. If a book is reserved in one step, it remains 'unavailable' for subsequent searches until the state is updated otherwise. All interactions must be logically consistent with the history of state transitions.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. You must parse this JSON to determine the intended operation.\nFormat example:\n```json\n{{\n \"name\": \"reserve_book\",\n \"arguments\": {{\n    \"book_id\": \"ISBN-978-0123456789\"\n  }}\n}}\n```\nYou must validate parameters against the current state (e.g., checking if a book_id actually exists in the catalog).\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\n- **Non-existent Book**: If an Agent attempts to reserve or view a book ID not in the state, return `{{\"error\": \"Book ID not found in catalog\"}}`.\n- **Double Reservation**: If a book is already marked as 'reserved', a second reservation attempt must return an error or a 'failed' status.\n- **Invalid Actions**: For undefined actions or malformed JSON, return `{{\"error\": \"Invalid action or parameters\"}}`.\n- **Constraints**: Do not fabricate books or authors that are not present in the internal state or the search logic.\n\n##### Output Assembly\nFor every action call, return a structured JSON object containing **ONLY** the return fields declared in the action function's definition. \n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, the updated `catalog`, or any user account variables. You only provide the specific data requested by the action (the Observation). State maintenance is handled by you internally and must remain hidden from the Agent's observation.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to JSON output for observations.\n- **Factuality**: Simulate search results based strictly on the current catalog state.\n- **Consistency**: Ensure that a book's status (available/reserved) is updated correctly in your internal logic following a successful reservation action.\n- **Realism**: Simulate library dynamics such as specific search matches and reservation confirmations realistically.\n- **Encapsulation**: Strictly hide the internal state structure. The Agent only sees the result of its specific action call.\n{{initial_state}}: {{\n  \"catalog\": [\n    {{\n      \"id\": \"BK-THORNE-978019\",\n      \"title\": \"The Architecture of Power in the Bronze Age\",\n      \"author\": \"Aris Thorne\",\n      \"category\": \"History\",\n      \"status\": \"available\"\n    }},\n    {{\n      \"id\": \"BK-HIST-101\",\n      \"title\": \"Ancient Maritime Trade\",\n      \"author\": \"L. Miller\",\n      \"category\": \"History\",\n      \"status\": \"reserved\"\n    }},\n    {{\n      \"id\": \"BK-HIST-102\",\n      \"title\": \"Bronze Age Collapse\",\n      \"author\": \"E. Cline\",\n      \"category\": \"History\",\n      \"status\": \"reserved\"\n    }},\n    {{\n      \"id\": \"BK-HIST-103\",\n      \"title\": \"Pottery of the Aegean\",\n      \"author\": \"S. Vance\",\n      \"category\": \"Archaeology\",\n      \"status\": \"reserved\"\n    }},\n    {{\n      \"id\": \"BK-HIST-104\",\n      \"title\": \"Minoan Civilization\",\n      \"author\": \"R. Castleden\",\n      \"category\": \"History\",\n      \"status\": \"reserved\"\n    }}\n  ],\n  \"user_account\": {{\n    \"user_id\": \"USR-VANCE\",\n    \"reserved_book_ids\": [\n      \"BK-HIST-101\",\n      \"BK-HIST-102\",\n      \"BK-HIST-103\",\n      \"BK-HIST-104\",\n      \"BK-NCIP-ORPHAN-7792\"\n    ],\n    \"reservation_limit\": 5\n  }},\n  \"system_timestamp\": \"2023-11-15T11:00:00Z\"\n}}\n{{state_descriptions}}: {{\n  \"catalog\": \"A list of book objects, each containing id, title, author, category, and current availability status.\",\n  \"user_account\": \"Information regarding the current user's session, including their list of reserved book IDs.\",\n  \"system_timestamp\": \"The current simulation time within the library system.\"\n}}\n{action_set_definitions}: {\n  \"search_books\": {\n    \"description\": \"Searches the library catalog for books matching a specific title to find their unique IDs and availability status.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"title\": {\n          \"type\": \"string\",\n          \"description\": \"The exact title or keywords of the book.\"\n        }\n      },\n      \"required\": [\n        \"title\"\n      ]\n    },\n    \"example_output\": {\n      \"results\": [\n        {\n          \"book_id\": \"BK-9921\",\n          \"title\": \"The Architecture of Power in the Bronze Age\",\n          \"availability_status\": \"available\"\n        }\n      ]\n    }\n  },\n  \"get_user_info\": {\n    \"description\": \"Retrieves the user account details, specifically the list of currently reserved book IDs.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"user_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the user account.\"\n        }\n      },\n      \"required\": [\n        \"user_id\"\n      ]\n    },\n    \"example_output\": {\n      \"user_id\": \"USR-VANCE\",\n      \"reserved_book_ids\": [\n        \"BK-001\",\n        \"BK-002\"\n      ],\n      \"max_limit\": 5\n    }\n  },\n  \"place_reservation\": {\n    \"description\": \"Places a reservation for a specific book on behalf of the user.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"user_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the user.\"\n        },\n        \"book_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the book to reserve.\"\n        }\n      },\n      \"required\": [\n        \"user_id\",\n        \"book_id\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"success\",\n      \"reservation_id\": \"RES-882\"\n    }\n  },\n  \"cancel_reservation\": {\n    \"description\": \"Cancels an existing reservation for a specific book to free up the user's reservation quota.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"user_id\": {\n          \"type\": \"string\",\n          \"description\": \"The unique identifier for the user.\"\n        },\n        \"book_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID of the currently reserved book to be removed.\"\n        }\n      },\n      \"required\": [\n        \"user_id\",\n        \"book_id\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"cancelled\",\n      \"message\": \"Reservation for BK-001 has been removed.\"\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "search_books",
+      "description": "Searches the library catalog for books matching a specific title to find their unique IDs and availability status.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "description": "The exact title or keywords of the book."
+          }
+        },
+        "required": [
+          "title"
+        ]
+      },
+      "example_output": {
+        "results": [
+          {
+            "book_id": "BK-9921",
+            "title": "The Architecture of Power in the Bronze Age",
+            "availability_status": "available"
+          }
+        ]
+      }
+    },
+    {
+      "name": "get_user_info",
+      "description": "Retrieves the user account details, specifically the list of currently reserved book IDs.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string",
+            "description": "The unique identifier for the user account."
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      },
+      "example_output": {
+        "user_id": "USR-VANCE",
+        "reserved_book_ids": [
+          "BK-001",
+          "BK-002"
+        ],
+        "max_limit": 5
+      }
+    },
+    {
+      "name": "place_reservation",
+      "description": "Places a reservation for a specific book on behalf of the user.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string",
+            "description": "The unique identifier for the user."
+          },
+          "book_id": {
+            "type": "string",
+            "description": "The ID of the book to reserve."
+          }
+        },
+        "required": [
+          "user_id",
+          "book_id"
+        ]
+      },
+      "example_output": {
+        "status": "success",
+        "reservation_id": "RES-882"
+      }
+    },
+    {
+      "name": "cancel_reservation",
+      "description": "Cancels an existing reservation for a specific book to free up the user's reservation quota.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string",
+            "description": "The unique identifier for the user."
+          },
+          "book_id": {
+            "type": "string",
+            "description": "The ID of the currently reserved book to be removed."
+          }
+        },
+        "required": [
+          "user_id",
+          "book_id"
+        ]
+      },
+      "example_output": {
+        "status": "cancelled",
+        "message": "Reservation for BK-001 has been removed."
+      }
+    }
+  ],
+  "state_description": {
+    "catalog": "A list of book objects, each containing id, title, author, category, and current availability status.",
+    "user_account": "Information regarding the current user's session, including their list of reserved book IDs.",
+    "system_timestamp": "The current simulation time within the library system."
+  },
+  "task_initial_state": {
+    "catalog": [
+      {
+        "id": "BK-THORNE-978019",
+        "title": "The Architecture of Power in the Bronze Age",
+        "author": "Aris Thorne",
+        "category": "History",
+        "status": "available"
+      },
+      {
+        "id": "BK-HIST-101",
+        "title": "Ancient Maritime Trade",
+        "author": "L. Miller",
+        "category": "History",
+        "status": "reserved"
+      },
+      {
+        "id": "BK-HIST-102",
+        "title": "Bronze Age Collapse",
+        "author": "E. Cline",
+        "category": "History",
+        "status": "reserved"
+      },
+      {
+        "id": "BK-HIST-103",
+        "title": "Pottery of the Aegean",
+        "author": "S. Vance",
+        "category": "Archaeology",
+        "status": "reserved"
+      },
+      {
+        "id": "BK-HIST-104",
+        "title": "Minoan Civilization",
+        "author": "R. Castleden",
+        "category": "History",
+        "status": "reserved"
+      }
+    ],
+    "user_account": {
+      "user_id": "USR-VANCE",
+      "reserved_book_ids": [
+        "BK-HIST-101",
+        "BK-HIST-102",
+        "BK-HIST-103",
+        "BK-HIST-104",
+        "BK-NCIP-ORPHAN-7792"
+      ],
+      "reservation_limit": 5
+    },
+    "system_timestamp": "2023-11-15T11:00:00Z"
+  }
+}

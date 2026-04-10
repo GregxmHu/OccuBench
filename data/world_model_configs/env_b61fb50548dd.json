@@ -1,0 +1,458 @@
+{
+  "environment_name": "env_b61fb50548dd",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM) for Hotel Room Revenue Management.\n- **Core Objective**: Act as a sophisticated simulation engine for a hotel's revenue ecosystem. Based on the current internal state $s_t$ (inventory, dates, market trends) and the Agent's action $a_t$ (pricing adjustments, inventory controls), you will calculate the internal state transition to $s_{{t+1}}$ and generate the resulting observation $o_{{t+1}}$ (e.g., booking confirmations, revenue reports, demand signals).\n- **Emphasis**: You do not manage a real hotel. You simulate the mathematical and behavioral logic of guests and markets to provide realistic feedback to the Agent.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions must maintain strict temporal and logic consistency. If a room is booked in step $t$, it remains occupied for the duration of the stay in step $t+1$. Prices set by the Agent persist until explicitly changed. The simulation must track the 'Current Date' and 'Days to Arrival' accurately.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object with a `\"name\"` field and an `\"arguments\"` field. You must parse this, update the internal state based on revenue management logic (e.g., price elasticity, demand curves, and inventory availability), and generate the result.\n\nExample Input:\n```json\n{{\n \"name\": \"set_room_price\",\n \"arguments\": {{\n    \"room_category\": \"Deluxe\",\n    \"new_price\": 245.00\n  }}\n}}\n```\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\n- If an Agent sets a negative price or targets a non-existent room category, return: `{{\"error\": \"Invalid parameter value\"}}`.\n- If an action is attempted on a past date, return: `{{\"error\": \"Cannot modify historical data\"}}`.\n- Do not fabricate data; if the logic dictates zero bookings due to high prices, report zero bookings.\n\n##### Output Assembly\nFor every action, return a structured JSON object containing **ONLY** the return fields declared in the action function's definition. \n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `{{initial_state}}`, the updated state, or any hidden variables like internal demand coefficients. You must strictly hide the internal state structure from the output. Only expose the specific observation (e.g., `\"success\": true` or `\"bookings_received\": 5`).\n\n### 4. Key Principles\n- **Format**: Strictly JSON-only for observations.\n- **Factuality**: Simulations must reflect realistic hospitality dynamics (e.g., higher prices generally lower demand).\n- **Consistency**: The number of rooms occupied cannot exceed total inventory unless an 'overbooking' policy is explicitly state-managed.\n- **Realism**: Incorporate 'noise' or stochasticity in demand if the scenario logic suggests it, but remain deterministic if the state transition requires it.\n- **Encapsulation**: Never reveal the backend state values in the final response to the Agent.\n{{initial_state}}: {{\n  \"current_simulation_date\": \"2024-11-10\",\n  \"room_inventory\": {{\n    \"Standard\": {{\n      \"total\": 100,\n      \"occupied\": 0\n    }},\n    \"Deluxe\": {{\n      \"total\": 50,\n      \"occupied\": 0\n    }},\n    \"Suite\": {{\n      \"total\": 10,\n      \"occupied\": 0\n    }}\n  }},\n  \"current_rates\": {{\n    \"Standard\": 200.0,\n    \"Deluxe\": 350.0,\n    \"Suite\": 600.0\n  }},\n  \"market_demand_multiplier\": 2.0,\n  \"booking_ledger\": [\n    {{\n      \"booking_id\": \"BK-001\",\n      \"check_in\": \"2024-11-22\",\n      \"check_out\": \"2024-11-24\",\n      \"room_category\": \"Standard\",\n      \"rate_paid\": 200.0\n    }},\n    {{\n      \"booking_id\": \"BK-002\",\n      \"check_in\": \"2024-11-22\",\n      \"check_out\": \"2024-11-24\",\n      \"room_category\": \"Standard\",\n      \"rate_paid\": 200.0\n    }},\n    {{\n      \"booking_id\": \"BK-003\",\n      \"check_in\": \"2024-11-22\",\n      \"check_out\": \"2024-11-24\",\n      \"room_category\": \"Standard\",\n      \"rate_paid\": 200.0\n    }},\n    {{\n      \"booking_id\": \"BK-004\",\n      \"check_in\": \"2024-11-22\",\n      \"check_out\": \"2024-11-24\",\n      \"room_category\": \"Standard\",\n      \"rate_paid\": 200.0\n    }},\n    {{\n      \"booking_id\": \"BK-005\",\n      \"check_in\": \"2024-11-22\",\n      \"check_out\": \"2024-11-24\",\n      \"room_category\": \"Standard\",\n      \"rate_paid\": 200.0\n    }},\n    {{\n      \"booking_id\": \"BK-006\",\n      \"check_in\": \"2024-11-22\",\n      \"check_out\": \"2024-11-24\",\n      \"room_category\": \"Standard\",\n      \"rate_paid\": 200.0\n    }},\n    {{\n      \"booking_id\": \"BK-007\",\n      \"check_in\": \"2024-11-22\",\n      \"check_out\": \"2024-11-24\",\n      \"room_category\": \"Standard\",\n      \"rate_paid\": 200.0\n    }},\n    {{\n      \"booking_id\": \"BK-008\",\n      \"check_in\": \"2024-11-22\",\n      \"check_out\": \"2024-11-24\",\n      \"room_category\": \"Standard\",\n      \"rate_paid\": 200.0\n    }},\n    {{\n      \"booking_id\": \"BK-009\",\n      \"check_in\": \"2024-11-22\",\n      \"check_out\": \"2024-11-24\",\n      \"room_category\": \"Standard\",\n      \"rate_paid\": 200.0\n    }},\n    {{\n      \"booking_id\": \"BK-010\",\n      \"check_in\": \"2024-11-22\",\n      \"check_out\": \"2024-11-24\",\n      \"room_category\": \"Standard\",\n      \"rate_paid\": 200.0\n    }},\n    {{\n      \"booking_id\": \"BK-011\",\n      \"check_in\": \"2024-11-22\",\n      \"check_out\": \"2024-11-24\",\n      \"room_category\": \"Standard\",\n      \"rate_paid\": 200.0\n    }},\n    {{\n      \"booking_id\": \"BK-012\",\n      \"check_in\": \"2024-11-22\",\n      \"check_out\": \"2024-11-24\",\n      \"room_category\": \"Standard\",\n      \"rate_paid\": 200.0\n    }},\n    {{\n      \"booking_id\": \"BK-013\",\n      \"check_in\": \"2024-11-22\",\n      \"check_out\": \"2024-11-24\",\n      \"room_category\": \"Standard\",\n      \"rate_paid\": 200.0\n    }},\n    {{\n      \"booking_id\": \"BK-014\",\n      \"check_in\": \"2024-11-22\",\n      \"check_out\": \"2024-11-24\",\n      \"room_category\": \"Standard\",\n      \"rate_paid\": 200.0\n    }},\n    {{\n      \"booking_id\": \"BK-015\",\n      \"check_in\": \"2024-11-22\",\n      \"check_out\": \"2024-11-24\",\n      \"room_category\": \"Standard\",\n      \"rate_paid\": 200.0\n    }},\n    {{\n      \"booking_id\": \"BK-016\",\n      \"check_in\": \"2024-11-22\",\n      \"check_out\": \"2024-11-24\",\n      \"room_category\": \"Standard\",\n      \"rate_paid\": 200.0\n    }},\n    {{\n      \"booking_id\": \"BK-017\",\n      \"check_in\": \"2024-11-22\",\n      \"check_out\": \"2024-11-24\",\n      \"room_category\": \"Standard\",\n      \"rate_paid\": 200.0\n    }},\n    {{\n      \"booking_id\": \"BK-018\",\n      \"check_in\": \"2024-11-22\",\n      \"check_out\": \"2024-11-24\",\n      \"room_category\": \"Standard\",\n      \"rate_paid\": 200.0\n    }},\n    {{\n      \"booking_id\": \"BK-019\",\n      \"check_in\": \"2024-11-22\",\n      \"check_out\": \"2024-11-24\",\n      \"room_category\": \"Standard\",\n      \"rate_paid\": 200.0\n    }},\n    {{\n      \"booking_id\": \"BK-020\",\n      \"check_in\": \"2024-11-22\",\n      \"check_out\": \"2024-11-24\",\n      \"room_category\": \"Standard\",\n      \"rate_paid\": 200.0\n    }},\n    {{\n      \"booking_id\": \"BK-021\",\n      \"check_in\": \"2024-11-22\",\n      \"check_out\": \"2024-11-24\",\n      \"room_category\": \"Standard\",\n      \"rate_paid\": 200.0\n    }},\n    {{\n      \"booking_id\": \"BK-022\",\n      \"check_in\": \"2024-11-22\",\n      \"check_out\": \"2024-11-24\",\n      \"room_category\": \"Standard\",\n      \"rate_paid\": 200.0\n    }},\n    {{\n      \"booking_id\": \"BK-023\",\n      \"check_in\": \"2024-11-22\",\n      \"check_out\": \"2024-11-24\",\n      \"room_category\": \"Standard\",\n      \"rate_paid\": 200.0\n    }},\n    {{\n      \"booking_id\": \"BK-024\",\n      \"check_in\": \"2024-11-22\",\n      \"check_out\": \"2024-11-24\",\n      \"room_category\": \"Standard\",\n      \"rate_paid\": 200.0\n    }},\n    {{\n      \"booking_id\": \"BK-025\",\n      \"check_in\": \"2024-11-22\",\n      \"check_out\": \"2024-11-24\",\n      \"room_category\": \"Standard\",\n      \"rate_paid\": 200.0\n    }},\n    {{\n      \"booking_id\": \"BK-026\",\n      \"check_in\": \"2024-11-22\",\n      \"check_out\": \"2024-11-24\",\n      \"room_category\": \"Standard\",\n      \"rate_paid\": 200.0\n    }},\n    {{\n      \"booking_id\": \"BK-027\",\n      \"check_in\": \"2024-11-22\",\n      \"check_out\": \"2024-11-24\",\n      \"room_category\": \"Standard\",\n      \"rate_paid\": 200.0\n    }},\n    {{\n      \"booking_id\": \"BK-028\",\n      \"check_in\": \"2024-11-22\",\n      \"check_out\": \"2024-11-24\",\n      \"room_category\": \"Standard\",\n      \"rate_paid\": 200.0\n    }},\n    {{\n      \"booking_id\": \"BK-029\",\n      \"check_in\": \"2024-11-22\",\n      \"check_out\": \"2024-11-24\",\n      \"room_category\": \"Standard\",\n      \"rate_paid\": 200.0\n    }},\n    {{\n      \"booking_id\": \"BK-030\",\n      \"check_in\": \"2024-11-22\",\n      \"check_out\": \"2024-11-24\",\n      \"room_category\": \"Standard\",\n      \"rate_paid\": 200.0\n    }},\n    {{\n      \"booking_id\": \"BK-031\",\n      \"check_in\": \"2024-11-22\",\n      \"check_out\": \"2024-11-24\",\n      \"room_category\": \"Standard\",\n      \"rate_paid\": 200.0\n    }},\n    {{\n      \"booking_id\": \"BK-032\",\n      \"check_in\": \"2024-11-22\",\n      \"check_out\": \"2024-11-24\",\n      \"room_category\": \"Standard\",\n      \"rate_paid\": 200.0\n    }},\n    {{\n      \"booking_id\": \"BK-033\",\n      \"check_in\": \"2024-11-22\",\n      \"check_out\": \"2024-11-24\",\n      \"room_category\": \"Standard\",\n      \"rate_paid\": 200.0\n    }},\n    {{\n      \"booking_id\": \"BK-034\",\n      \"check_in\": \"2024-11-22\",\n      \"check_out\": \"2024-11-24\",\n      \"room_category\": \"Standard\",\n      \"rate_paid\": 200.0\n    }},\n    {{\n      \"booking_id\": \"BK-035\",\n      \"check_in\": \"2024-11-22\",\n      \"check_out\": \"2024-11-24\",\n      \"room_category\": \"Standard\",\n      \"rate_paid\": 200.0\n    }},\n    {{\n      \"booking_id\": \"BK-036\",\n      \"check_in\": \"2024-11-22\",\n      \"check_out\": \"2024-11-24\",\n      \"room_category\": \"Standard\",\n      \"rate_paid\": 200.0\n    }},\n    {{\n      \"booking_id\": \"BK-037\",\n      \"check_in\": \"2024-11-22\",\n      \"check_out\": \"2024-11-24\",\n      \"room_category\": \"Standard\",\n      \"rate_paid\": 200.0\n    }},\n    {{\n      \"booking_id\": \"BK-038\",\n      \"check_in\": \"2024-11-22\",\n      \"check_out\": \"2024-11-24\",\n      \"room_category\": \"Standard\",\n      \"rate_paid\": 200.0\n    }},\n    {{\n      \"booking_id\": \"BK-039\",\n      \"check_in\": \"2024-11-22\",\n      \"check_out\": \"2024-11-24\",\n      \"room_category\": \"Standard\",\n      \"rate_paid\": 200.0\n    }},\n    {{\n      \"booking_id\": \"BK-040\",\n      \"check_in\": \"2024-11-22\",\n      \"check_out\": \"2024-11-24\",\n      \"room_category\": \"Standard\",\n      \"rate_paid\": 200.0\n    }}\n  ],\n  \"cumulative_revenue\": 0.0\n}}\n{{state_descriptions}}: {{\n  \"current_simulation_date\": \"The current date in the simulation (YYYY-MM-DD format).\",\n  \"room_inventory\": \"Mapping of room categories to their total capacity and current physical occupancy.\",\n  \"current_rates\": \"The active selling price for each room category.\",\n  \"market_demand_multiplier\": \"A factor representing external market demand (e.g., 1.0 is normal, 1.5 is high season).\",\n  \"booking_ledger\": \"Internal list of confirmed future bookings including check-in, check-out, and rate paid.\",\n  \"cumulative_revenue\": \"Total revenue earned since the start of the simulation.\"\n}}\n{action_set_definitions}: {\n  \"get_market_status\": {\n    \"description\": \"Retrieves the current simulation date, active market demand multiplier, and current public rates for all room categories.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"simulation_date\": \"2024-11-10\",\n      \"market_demand_multiplier\": 1.5,\n      \"current_rates\": {\n        \"Standard\": 180.0,\n        \"Deluxe\": 350.0,\n        \"Suite\": 600.0\n      }\n    }\n  },\n  \"get_booking_summary\": {\n    \"description\": \"Retrieves the current total occupancy and accumulated revenue for a specific room category over a specified date range.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"room_category\": {\n          \"type\": \"string\",\n          \"description\": \"The category of the room (e.g., 'Standard').\"\n        },\n        \"start_date\": {\n          \"type\": \"string\",\n          \"description\": \"Start date of the stay period (YYYY-MM-DD).\"\n        },\n        \"end_date\": {\n          \"type\": \"string\",\n          \"description\": \"End date of the stay period (YYYY-MM-DD).\"\n        }\n      },\n      \"required\": [\n        \"room_category\",\n        \"start_date\",\n        \"end_date\"\n      ]\n    },\n    \"example_output\": {\n      \"total_occupied_room_nights\": 40,\n      \"total_revenue_to_date\": 8200.5,\n      \"daily_breakdown\": [\n        {\n          \"date\": \"2024-11-22\",\n          \"occupancy\": 20,\n          \"revenue\": 4100.0\n        },\n        {\n          \"date\": \"2024-11-23\",\n          \"occupancy\": 20,\n          \"revenue\": 4100.5\n        }\n      ]\n    }\n  },\n  \"update_room_rate\": {\n    \"description\": \"Sets a new public selling price for a specific room category. Note: This action has restricted usage frequency for certain categories.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"room_category\": {\n          \"type\": \"string\",\n          \"description\": \"The category to update (e.g., 'Standard').\"\n        },\n        \"new_rate\": {\n          \"type\": \"number\",\n          \"description\": \"The new price in USD. Must be at least 200.00 for Standard rooms.\"\n        }\n      },\n      \"required\": [\n        \"room_category\",\n        \"new_rate\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"success\",\n      \"new_rate\": 225.0\n    }\n  },\n  \"set_inventory_limit\": {\n    \"description\": \"Restricts the maximum number of rooms available for booking for a specific category on specific dates to maintain maintenance buffers.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"room_category\": {\n          \"type\": \"string\",\n          \"description\": \"The category to restrict.\"\n        },\n        \"max_capacity\": {\n          \"type\": \"integer\",\n          \"description\": \"The maximum number of rooms that can be occupied.\"\n        },\n        \"dates\": {\n          \"type\": \"array\",\n          \"items\": {\n            \"type\": \"string\"\n          },\n          \"description\": \"List of dates (YYYY-MM-DD) to apply the limit.\"\n        }\n      },\n      \"required\": [\n        \"room_category\",\n        \"max_capacity\",\n        \"dates\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"limit_applied\",\n      \"max_capacity\": 92\n    }\n  },\n  \"advance_simulation\": {\n    \"description\": \"Advances the simulation clock to a specific future date to process bookings and realize revenue.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"target_date\": {\n          \"type\": \"string\",\n          \"description\": \"The date to advance to (YYYY-MM-DD).\"\n        }\n      },\n      \"required\": [\n        \"target_date\"\n      ]\n    },\n    \"example_output\": {\n      \"new_simulation_date\": \"2024-11-24\",\n      \"final_cumulative_revenue\": 45000.0\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_market_status",
+      "description": "Retrieves the current simulation date, active market demand multiplier, and current public rates for all room categories.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "simulation_date": "2024-11-10",
+        "market_demand_multiplier": 1.5,
+        "current_rates": {
+          "Standard": 180.0,
+          "Deluxe": 350.0,
+          "Suite": 600.0
+        }
+      }
+    },
+    {
+      "name": "get_booking_summary",
+      "description": "Retrieves the current total occupancy and accumulated revenue for a specific room category over a specified date range.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "room_category": {
+            "type": "string",
+            "description": "The category of the room (e.g., 'Standard')."
+          },
+          "start_date": {
+            "type": "string",
+            "description": "Start date of the stay period (YYYY-MM-DD)."
+          },
+          "end_date": {
+            "type": "string",
+            "description": "End date of the stay period (YYYY-MM-DD)."
+          }
+        },
+        "required": [
+          "room_category",
+          "start_date",
+          "end_date"
+        ]
+      },
+      "example_output": {
+        "total_occupied_room_nights": 40,
+        "total_revenue_to_date": 8200.5,
+        "daily_breakdown": [
+          {
+            "date": "2024-11-22",
+            "occupancy": 20,
+            "revenue": 4100.0
+          },
+          {
+            "date": "2024-11-23",
+            "occupancy": 20,
+            "revenue": 4100.5
+          }
+        ]
+      }
+    },
+    {
+      "name": "update_room_rate",
+      "description": "Sets a new public selling price for a specific room category. Note: This action has restricted usage frequency for certain categories.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "room_category": {
+            "type": "string",
+            "description": "The category to update (e.g., 'Standard')."
+          },
+          "new_rate": {
+            "type": "number",
+            "description": "The new price in USD. Must be at least 200.00 for Standard rooms."
+          }
+        },
+        "required": [
+          "room_category",
+          "new_rate"
+        ]
+      },
+      "example_output": {
+        "status": "success",
+        "new_rate": 225.0
+      }
+    },
+    {
+      "name": "set_inventory_limit",
+      "description": "Restricts the maximum number of rooms available for booking for a specific category on specific dates to maintain maintenance buffers.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "room_category": {
+            "type": "string",
+            "description": "The category to restrict."
+          },
+          "max_capacity": {
+            "type": "integer",
+            "description": "The maximum number of rooms that can be occupied."
+          },
+          "dates": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "List of dates (YYYY-MM-DD) to apply the limit."
+          }
+        },
+        "required": [
+          "room_category",
+          "max_capacity",
+          "dates"
+        ]
+      },
+      "example_output": {
+        "status": "limit_applied",
+        "max_capacity": 92
+      }
+    },
+    {
+      "name": "advance_simulation",
+      "description": "Advances the simulation clock to a specific future date to process bookings and realize revenue.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "target_date": {
+            "type": "string",
+            "description": "The date to advance to (YYYY-MM-DD)."
+          }
+        },
+        "required": [
+          "target_date"
+        ]
+      },
+      "example_output": {
+        "new_simulation_date": "2024-11-24",
+        "final_cumulative_revenue": 45000.0
+      }
+    }
+  ],
+  "state_description": {
+    "current_simulation_date": "The current date in the simulation (YYYY-MM-DD format).",
+    "room_inventory": "Mapping of room categories to their total capacity and current physical occupancy.",
+    "current_rates": "The active selling price for each room category.",
+    "market_demand_multiplier": "A factor representing external market demand (e.g., 1.0 is normal, 1.5 is high season).",
+    "booking_ledger": "Internal list of confirmed future bookings including check-in, check-out, and rate paid.",
+    "cumulative_revenue": "Total revenue earned since the start of the simulation."
+  },
+  "task_initial_state": {
+    "current_simulation_date": "2024-11-10",
+    "room_inventory": {
+      "Standard": {
+        "total": 100,
+        "occupied": 0
+      },
+      "Deluxe": {
+        "total": 50,
+        "occupied": 0
+      },
+      "Suite": {
+        "total": 10,
+        "occupied": 0
+      }
+    },
+    "current_rates": {
+      "Standard": 200.0,
+      "Deluxe": 350.0,
+      "Suite": 600.0
+    },
+    "market_demand_multiplier": 2.0,
+    "booking_ledger": [
+      {
+        "booking_id": "BK-001",
+        "check_in": "2024-11-22",
+        "check_out": "2024-11-24",
+        "room_category": "Standard",
+        "rate_paid": 200.0
+      },
+      {
+        "booking_id": "BK-002",
+        "check_in": "2024-11-22",
+        "check_out": "2024-11-24",
+        "room_category": "Standard",
+        "rate_paid": 200.0
+      },
+      {
+        "booking_id": "BK-003",
+        "check_in": "2024-11-22",
+        "check_out": "2024-11-24",
+        "room_category": "Standard",
+        "rate_paid": 200.0
+      },
+      {
+        "booking_id": "BK-004",
+        "check_in": "2024-11-22",
+        "check_out": "2024-11-24",
+        "room_category": "Standard",
+        "rate_paid": 200.0
+      },
+      {
+        "booking_id": "BK-005",
+        "check_in": "2024-11-22",
+        "check_out": "2024-11-24",
+        "room_category": "Standard",
+        "rate_paid": 200.0
+      },
+      {
+        "booking_id": "BK-006",
+        "check_in": "2024-11-22",
+        "check_out": "2024-11-24",
+        "room_category": "Standard",
+        "rate_paid": 200.0
+      },
+      {
+        "booking_id": "BK-007",
+        "check_in": "2024-11-22",
+        "check_out": "2024-11-24",
+        "room_category": "Standard",
+        "rate_paid": 200.0
+      },
+      {
+        "booking_id": "BK-008",
+        "check_in": "2024-11-22",
+        "check_out": "2024-11-24",
+        "room_category": "Standard",
+        "rate_paid": 200.0
+      },
+      {
+        "booking_id": "BK-009",
+        "check_in": "2024-11-22",
+        "check_out": "2024-11-24",
+        "room_category": "Standard",
+        "rate_paid": 200.0
+      },
+      {
+        "booking_id": "BK-010",
+        "check_in": "2024-11-22",
+        "check_out": "2024-11-24",
+        "room_category": "Standard",
+        "rate_paid": 200.0
+      },
+      {
+        "booking_id": "BK-011",
+        "check_in": "2024-11-22",
+        "check_out": "2024-11-24",
+        "room_category": "Standard",
+        "rate_paid": 200.0
+      },
+      {
+        "booking_id": "BK-012",
+        "check_in": "2024-11-22",
+        "check_out": "2024-11-24",
+        "room_category": "Standard",
+        "rate_paid": 200.0
+      },
+      {
+        "booking_id": "BK-013",
+        "check_in": "2024-11-22",
+        "check_out": "2024-11-24",
+        "room_category": "Standard",
+        "rate_paid": 200.0
+      },
+      {
+        "booking_id": "BK-014",
+        "check_in": "2024-11-22",
+        "check_out": "2024-11-24",
+        "room_category": "Standard",
+        "rate_paid": 200.0
+      },
+      {
+        "booking_id": "BK-015",
+        "check_in": "2024-11-22",
+        "check_out": "2024-11-24",
+        "room_category": "Standard",
+        "rate_paid": 200.0
+      },
+      {
+        "booking_id": "BK-016",
+        "check_in": "2024-11-22",
+        "check_out": "2024-11-24",
+        "room_category": "Standard",
+        "rate_paid": 200.0
+      },
+      {
+        "booking_id": "BK-017",
+        "check_in": "2024-11-22",
+        "check_out": "2024-11-24",
+        "room_category": "Standard",
+        "rate_paid": 200.0
+      },
+      {
+        "booking_id": "BK-018",
+        "check_in": "2024-11-22",
+        "check_out": "2024-11-24",
+        "room_category": "Standard",
+        "rate_paid": 200.0
+      },
+      {
+        "booking_id": "BK-019",
+        "check_in": "2024-11-22",
+        "check_out": "2024-11-24",
+        "room_category": "Standard",
+        "rate_paid": 200.0
+      },
+      {
+        "booking_id": "BK-020",
+        "check_in": "2024-11-22",
+        "check_out": "2024-11-24",
+        "room_category": "Standard",
+        "rate_paid": 200.0
+      },
+      {
+        "booking_id": "BK-021",
+        "check_in": "2024-11-22",
+        "check_out": "2024-11-24",
+        "room_category": "Standard",
+        "rate_paid": 200.0
+      },
+      {
+        "booking_id": "BK-022",
+        "check_in": "2024-11-22",
+        "check_out": "2024-11-24",
+        "room_category": "Standard",
+        "rate_paid": 200.0
+      },
+      {
+        "booking_id": "BK-023",
+        "check_in": "2024-11-22",
+        "check_out": "2024-11-24",
+        "room_category": "Standard",
+        "rate_paid": 200.0
+      },
+      {
+        "booking_id": "BK-024",
+        "check_in": "2024-11-22",
+        "check_out": "2024-11-24",
+        "room_category": "Standard",
+        "rate_paid": 200.0
+      },
+      {
+        "booking_id": "BK-025",
+        "check_in": "2024-11-22",
+        "check_out": "2024-11-24",
+        "room_category": "Standard",
+        "rate_paid": 200.0
+      },
+      {
+        "booking_id": "BK-026",
+        "check_in": "2024-11-22",
+        "check_out": "2024-11-24",
+        "room_category": "Standard",
+        "rate_paid": 200.0
+      },
+      {
+        "booking_id": "BK-027",
+        "check_in": "2024-11-22",
+        "check_out": "2024-11-24",
+        "room_category": "Standard",
+        "rate_paid": 200.0
+      },
+      {
+        "booking_id": "BK-028",
+        "check_in": "2024-11-22",
+        "check_out": "2024-11-24",
+        "room_category": "Standard",
+        "rate_paid": 200.0
+      },
+      {
+        "booking_id": "BK-029",
+        "check_in": "2024-11-22",
+        "check_out": "2024-11-24",
+        "room_category": "Standard",
+        "rate_paid": 200.0
+      },
+      {
+        "booking_id": "BK-030",
+        "check_in": "2024-11-22",
+        "check_out": "2024-11-24",
+        "room_category": "Standard",
+        "rate_paid": 200.0
+      },
+      {
+        "booking_id": "BK-031",
+        "check_in": "2024-11-22",
+        "check_out": "2024-11-24",
+        "room_category": "Standard",
+        "rate_paid": 200.0
+      },
+      {
+        "booking_id": "BK-032",
+        "check_in": "2024-11-22",
+        "check_out": "2024-11-24",
+        "room_category": "Standard",
+        "rate_paid": 200.0
+      },
+      {
+        "booking_id": "BK-033",
+        "check_in": "2024-11-22",
+        "check_out": "2024-11-24",
+        "room_category": "Standard",
+        "rate_paid": 200.0
+      },
+      {
+        "booking_id": "BK-034",
+        "check_in": "2024-11-22",
+        "check_out": "2024-11-24",
+        "room_category": "Standard",
+        "rate_paid": 200.0
+      },
+      {
+        "booking_id": "BK-035",
+        "check_in": "2024-11-22",
+        "check_out": "2024-11-24",
+        "room_category": "Standard",
+        "rate_paid": 200.0
+      },
+      {
+        "booking_id": "BK-036",
+        "check_in": "2024-11-22",
+        "check_out": "2024-11-24",
+        "room_category": "Standard",
+        "rate_paid": 200.0
+      },
+      {
+        "booking_id": "BK-037",
+        "check_in": "2024-11-22",
+        "check_out": "2024-11-24",
+        "room_category": "Standard",
+        "rate_paid": 200.0
+      },
+      {
+        "booking_id": "BK-038",
+        "check_in": "2024-11-22",
+        "check_out": "2024-11-24",
+        "room_category": "Standard",
+        "rate_paid": 200.0
+      },
+      {
+        "booking_id": "BK-039",
+        "check_in": "2024-11-22",
+        "check_out": "2024-11-24",
+        "room_category": "Standard",
+        "rate_paid": 200.0
+      },
+      {
+        "booking_id": "BK-040",
+        "check_in": "2024-11-22",
+        "check_out": "2024-11-24",
+        "room_category": "Standard",
+        "rate_paid": 200.0
+      }
+    ],
+    "cumulative_revenue": 0.0
+  }
+}

@@ -1,0 +1,134 @@
+{
+  "environment_name": "env_e07caddf87f2",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM) for General Ledger Reconciliation.\n- **Core Objective**: Based on the current internal financial state $s_t$ and the reconciliation action $a_t$ performed by the Agent, simulate the evolution of the ledger and bank records, and predict the resulting observation $o_{{t+1}}$.\n- **Emphasis**: You are a simulator of a financial accounting system. You do not perform actual accounting tasks; you calculate and return the results of those tasks (observations) while maintaining a consistent internal record of accounts, balances, and transaction statuses.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation representing the current books, bank statements, and reconciliation progress. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nYou must maintain strict continuity of the financial records. If a transaction is marked as 'reconciled' in one step, it must remain reconciled in subsequent steps unless an explicit 'unmatch' or 'correction' action is taken. The internal balance must update mathematically based on the actions performed.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. This JSON contains:\n- `\"name\"`: The name of the reconciliation action (e.g., \"match_transactions\", \"query_ledger\").\n- The parameters required for that specific action.\n\nExample:\n```json\n{{\n \"name\": \"match_transactions\",\n \"arguments\": {{\n    \"ledger_id\": \"L-1001\",\n    \"bank_id\": \"B-5502\"\n  }}\n}}\n```\n\nYou must parse this input, update the internal (hidden) financial state, and generate the corresponding observation.\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\n- If the Agent attempts to match IDs that do not exist: Return `{{\"error\": \"Transaction ID not found\"}}`.\n- If the Agent attempts to match transactions that are already reconciled: Return `{{\"status\": \"already_reconciled\"}}`.\n- If amounts do not match in a reconciliation attempt: Return an observation indicating the discrepancy amount.\n- For empty inputs or malformed JSON, return structured error info.\n- Do not fabricate data; if a query returns no results, return an empty list.\n\n##### Output Assembly\nFor every action function call, you must return a structured JSON object containing **ONLY** the return fields declared in that action function's definition.\n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, the `new_state`, or list of all ledger entries unless specifically requested by a 'get' action. The Agent must only see the specific return values (Observations) defined for the action. Hide all internal tracking variables.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to JSON for all inputs and outputs.\n- **Factuality**: Use the provided state as the single source of truth for financial data.\n- **Consistency**: Ensure the sum of reconciled items and unreconciled items always equals the total ledger/bank balance.\n- **Realism**: Simulate accounting logic (e.g., date-based filtering, partial matches, or timing differences) realistically.\n- **Quality**: Provide clear, unambiguous observations that an accountant or RL agent can use for the next decision step.\n- **Encapsulation**: Do not output the updated state structure. Only output the observation result of the action.\n{{initial_state}}: {{\n  \"ledger_entries\": [\n    {{\n      \"id\": \"L-SAT99-101\",\n      \"date\": \"2023-11-01\",\n      \"description\": \"Concrete Works - SAT-99\",\n      \"amount\": 7200000.0\n    }},\n    {{\n      \"id\": \"L-SAT98-101\",\n      \"date\": \"2023-11-02\",\n      \"description\": \"Concrete Works - SAT-98\",\n      \"amount\": 3000000.0\n    }},\n    {{\n      \"id\": \"L-SAT99-102\",\n      \"date\": \"2023-11-05\",\n      \"description\": \"Steel Procurement SAT-99\",\n      \"amount\": 8800000.0\n    }},\n    {{\n      \"id\": \"L-SAT99-102-B\",\n      \"date\": \"2023-11-05\",\n      \"description\": \"Steel Procurement SAT-99\",\n      \"amount\": 8800000.0\n    }},\n    {{\n      \"id\": \"L-SAT99-102-R\",\n      \"date\": \"2023-11-06\",\n      \"description\": \"Reversal of Duplicate Steel Entry\",\n      \"amount\": -8800000.0\n    }},\n    {{\n      \"id\": \"L-ASSET-401\",\n      \"date\": \"2023-11-10\",\n      \"description\": \"Summit Asset Corp - Maintenance\",\n      \"amount\": 1100000.0\n    }},\n    {{\n      \"id\": \"L-SAT99-103\",\n      \"date\": \"2023-11-15\",\n      \"description\": \"Subcontractor Draw 1\",\n      \"amount\": 2500000.0\n    }},\n    {{\n      \"id\": \"L-SAT99-103-ADJ\",\n      \"date\": \"2023-11-16\",\n      \"description\": \"Adjustment to Subcontractor Draw 1\",\n      \"amount\": -500000.0\n    }}\n  ],\n  \"bank_statement_entries\": [\n    {{\n      \"id\": \"G-SAT99-P1\",\n      \"date\": \"2023-11-02\",\n      \"description\": \"Vendor Pymt: Concrete SAT-99\",\n      \"amount\": 7200000.0\n    }},\n    {{\n      \"id\": \"G-SAT98-P1\",\n      \"date\": \"2023-11-03\",\n      \"description\": \"Vendor Pymt: Concrete SAT-98\",\n      \"amount\": 3000000.0\n    }},\n    {{\n      \"id\": \"G-SAT99-P2\",\n      \"date\": \"2023-11-07\",\n      \"description\": \"Vendor Pymt: Steel SAT-99\",\n      \"amount\": 8800000.0\n    }},\n    {{\n      \"id\": \"G-SAT99-P3\",\n      \"date\": \"2023-11-20\",\n      \"description\": \"Vendor Pymt: Subcon Draw\",\n      \"amount\": 1500000.0\n    }}\n  ],\n  \"reconciled_pairs\": [],\n  \"ledger_balance\": 22300000.0,\n  \"bank_balance\": 20500000.0,\n  \"discrepancies\": []\n}}\n{{state_descriptions}}: {{\n  \"ledger_entries\": \"List of internal company transactions containing id, date, description, and amount.\",\n  \"bank_statement_entries\": \"List of transactions reported by the bank containing id, date, description, and amount.\",\n  \"reconciled_pairs\": \"Mappings of ledger_id to bank_id that have been successfully matched.\",\n  \"ledger_balance\": \"Current total balance calculated from the ledger entries.\",\n  \"bank_balance\": \"Current ending balance reported by the bank statement.\",\n  \"discrepancies\": \"List of items flagged as errors or timing differences requiring adjustment.\"\n}}\n{action_set_definitions}: {\n  \"get_ledger_records\": {\n    \"description\": \"Retrieves the full list of internal company ledger transactions containing id, date, description, and amount for cost analysis.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"ledger_entries\": [\n        {\n          \"id\": \"TXN-99-001\",\n          \"date\": \"2023-11-01\",\n          \"description\": \"Materials - SAT-99\",\n          \"amount\": 450000.0\n        }\n      ]\n    }\n  },\n  \"get_internal_discrepancies\": {\n    \"description\": \"Retrieves the list of flagged errors, timing differences, and internal cost reversals requiring adjustment in the ledger reconciliation.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"discrepancies\": [\n        {\n          \"id\": \"DISC-01\",\n          \"ledger_id\": \"TXN-99-001\",\n          \"reason\": \"Internal Cost Reversal\",\n          \"adjustment_amount\": -50000.0\n        }\n      ]\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_ledger_records",
+      "description": "Retrieves the full list of internal company ledger transactions containing id, date, description, and amount for cost analysis.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "ledger_entries": [
+          {
+            "id": "TXN-99-001",
+            "date": "2023-11-01",
+            "description": "Materials - SAT-99",
+            "amount": 450000.0
+          }
+        ]
+      }
+    },
+    {
+      "name": "get_internal_discrepancies",
+      "description": "Retrieves the list of flagged errors, timing differences, and internal cost reversals requiring adjustment in the ledger reconciliation.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "discrepancies": [
+          {
+            "id": "DISC-01",
+            "ledger_id": "TXN-99-001",
+            "reason": "Internal Cost Reversal",
+            "adjustment_amount": -50000.0
+          }
+        ]
+      }
+    }
+  ],
+  "state_description": {
+    "ledger_entries": "List of internal company transactions containing id, date, description, and amount.",
+    "bank_statement_entries": "List of transactions reported by the bank containing id, date, description, and amount.",
+    "reconciled_pairs": "Mappings of ledger_id to bank_id that have been successfully matched.",
+    "ledger_balance": "Current total balance calculated from the ledger entries.",
+    "bank_balance": "Current ending balance reported by the bank statement.",
+    "discrepancies": "List of items flagged as errors or timing differences requiring adjustment."
+  },
+  "task_initial_state": {
+    "ledger_entries": [
+      {
+        "id": "L-SAT99-101",
+        "date": "2023-11-01",
+        "description": "Concrete Works - SAT-99",
+        "amount": 7200000.0
+      },
+      {
+        "id": "L-SAT98-101",
+        "date": "2023-11-02",
+        "description": "Concrete Works - SAT-98",
+        "amount": 3000000.0
+      },
+      {
+        "id": "L-SAT99-102",
+        "date": "2023-11-05",
+        "description": "Steel Procurement SAT-99",
+        "amount": 8800000.0
+      },
+      {
+        "id": "L-SAT99-102-B",
+        "date": "2023-11-05",
+        "description": "Steel Procurement SAT-99",
+        "amount": 8800000.0
+      },
+      {
+        "id": "L-SAT99-102-R",
+        "date": "2023-11-06",
+        "description": "Reversal of Duplicate Steel Entry",
+        "amount": -8800000.0
+      },
+      {
+        "id": "L-ASSET-401",
+        "date": "2023-11-10",
+        "description": "Summit Asset Corp - Maintenance",
+        "amount": 1100000.0
+      },
+      {
+        "id": "L-SAT99-103",
+        "date": "2023-11-15",
+        "description": "Subcontractor Draw 1",
+        "amount": 2500000.0
+      },
+      {
+        "id": "L-SAT99-103-ADJ",
+        "date": "2023-11-16",
+        "description": "Adjustment to Subcontractor Draw 1",
+        "amount": -500000.0
+      }
+    ],
+    "bank_statement_entries": [
+      {
+        "id": "G-SAT99-P1",
+        "date": "2023-11-02",
+        "description": "Vendor Pymt: Concrete SAT-99",
+        "amount": 7200000.0
+      },
+      {
+        "id": "G-SAT98-P1",
+        "date": "2023-11-03",
+        "description": "Vendor Pymt: Concrete SAT-98",
+        "amount": 3000000.0
+      },
+      {
+        "id": "G-SAT99-P2",
+        "date": "2023-11-07",
+        "description": "Vendor Pymt: Steel SAT-99",
+        "amount": 8800000.0
+      },
+      {
+        "id": "G-SAT99-P3",
+        "date": "2023-11-20",
+        "description": "Vendor Pymt: Subcon Draw",
+        "amount": 1500000.0
+      }
+    ],
+    "reconciled_pairs": [],
+    "ledger_balance": 22300000.0,
+    "bank_balance": 20500000.0,
+    "discrepancies": []
+  }
+}

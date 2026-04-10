@@ -1,0 +1,94 @@
+{
+  "environment_name": "env_af1d319a307a",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: Based on the current state $s_t$ and the action $a_t$ performed by the Agent, you are responsible for simulating the internal biological, chemical, and physical transitions within the Wastewater Treatment Plant (WWTP) environment. You must predict the resulting observation $o_{{t+1}}$ obtained by the Agent.\n- **Emphasis**: The LWM does not execute real-world physical operations. It serves as a simulator that performs internal state evolution and generates realistic sensor observations and process feedback.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nAll interactions between the World Model and the Agent must maintain rigorous context consistency. The evolution of the wastewater treatment process (e.g., pollutant degradation, sludge growth, energy accumulation) must be continuous and dependent on previous states and actions.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. This JSON must contain the following fields:\n- `\"name\"`: Specifies the name of the action function to execute (e.g., \"adjust_aeration\", \"add_chemical\").\n- Additional fields: The specific parameters required by the function.\n\nExample input:\n```json\n{{\n \"name\": \"adjust_aeration_rate\",\n \"arguments\": {{\n    \"tank_id\": \"aeration_tank_1\",\n    \"airflow_m3h\": 450.5\n  }}\n}}\n```\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nIf the Agent provides invalid parameters (e.g., aeration rates outside physical limits), undefined actions, or if the system reaches a state conflict (e.g., trying to pump from an empty tank), return a structured error response: `{{\"error\": \"Reason for failure\"}}`. Do not fabricate successful responses for invalid operations.\n\n##### Output Assembly\nFor every action function call, the model must return a structured JSON object containing **ONLY** the return fields (Observations) declared in that action function's definition.\n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state `s_t`, `new_state`, or any hidden variables such as underlying biological coefficients or global system states. The state maintenance is managed internally by the World Model history. The Agent must only receive the specific `observation` data (e.g., sensor readings, flow rates, or status flags) defined in the action's return signature.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to specified JSON and text formats.\n- **Factuality**: Do not fabricate sensors, equipment, or chemical behaviors that do not exist within the scenario logic.\n- **Consistency**: The wastewater dynamics (e.g., Dissolved Oxygen levels reacting to aeration changes) must be self-consistent and logically continuous.\n- **Realism**: Simulated behaviors must align with wastewater engineering principles (e.g., higher flow rates might decrease hydraulic retention time; excessive aeration increases energy costs).\n- **Quality**: Observations must be precise, clear, and structurally complete.\n- **Encapsulation**: Strictly hide the internal state structure from the output. Only expose information explicitly returned as an observation.\n{{initial_state}}: {{\n  \"influent_flow_rate\": 420.0,\n  \"dissolved_oxygen_concentration\": 2.7,\n  \"mlss_level\": 3600.0,\n  \"internal_recycle_flow\": 1600.0,\n  \"effluent_nitrogen_content\": 13.8,\n  \"chemical_tank_storage\": 80.0,\n  \"cumulative_energy_kwh\": 0.0\n}}\n{{state_descriptions}}: {{\n  \"influent_flow_rate\": \"The current rate of wastewater entering the plant in cubic meters per hour (m³/h).\",\n  \"dissolved_oxygen_concentration\": \"Concentration of oxygen in the aeration tank (mg/L). Affects microbial activity.\",\n  \"mlss_level\": \"Mixed Liquor Suspended Solids (mg/L), representing the concentration of biomass in the system.\",\n  \"internal_recycle_flow\": \"The flow rate of nitrate-rich liquor recycled from the aerobic to the anoxic zone (m³/h).\",\n  \"effluent_nitrogen_content\": \"Current concentration of Total Nitrogen in the treated water (mg/L).\",\n  \"chemical_tank_storage\": \"Remaining percentage of flocculant/carbon source in the storage tank (%).\",\n  \"cumulative_energy_kwh\": \"Total energy consumed by pumps and aerators during the current operation cycle.\"\n}}\n{action_set_definitions}: {\n  \"get_comprehensive_status\": {\n    \"description\": \"Queries the current operational state of the wastewater treatment plant. Essential for identifying initial conditions and monitoring progress.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"dissolved_oxygen_concentration\": 2.4,\n      \"effluent_nitrogen_content\": 12.5,\n      \"internal_recycle_flow\": 180.0,\n      \"cumulative_energy_kwh\": 4.5,\n      \"aeration_output_percent\": 75.0\n    }\n  },\n  \"update_aeration_output\": {\n    \"description\": \"Adjusts the aeration blower output by a specific percentage change to control Dissolved Oxygen (DO) levels.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"delta_percent\": {\n          \"type\": \"number\",\n          \"description\": \"The percentage points to add or subtract from the current aeration output (e.g., -5.0 to decrease output by 5%).\"\n        }\n      },\n      \"required\": [\n        \"delta_percent\"\n      ]\n    },\n    \"example_output\": {\n      \"new_output_percent\": 70.0,\n      \"status\": \"adjustment_applied\"\n    }\n  },\n  \"update_recycle_flow\": {\n    \"description\": \"Adjusts the internal recycle flow rate to manage the denitrification process.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"delta_flow\": {\n          \"type\": \"number\",\n          \"description\": \"The amount to change the flow rate by in m³/h (e.g., 10.0 to increase flow by 10 units).\"\n        }\n      },\n      \"required\": [\n        \"delta_flow\"\n      ]\n    },\n    \"example_output\": {\n      \"new_flow_rate\": 190.0,\n      \"status\": \"flow_updated\"\n    }\n  },\n  \"step_simulation\": {\n    \"description\": \"Advances the plant simulation by one time step to allow process changes to stabilize and to observe the resulting state.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"dissolved_oxygen_concentration\": 2.2,\n      \"effluent_nitrogen_content\": 11.8,\n      \"cumulative_energy_kwh\": 6.2\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_comprehensive_status",
+      "description": "Queries the current operational state of the wastewater treatment plant. Essential for identifying initial conditions and monitoring progress.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "dissolved_oxygen_concentration": 2.4,
+        "effluent_nitrogen_content": 12.5,
+        "internal_recycle_flow": 180.0,
+        "cumulative_energy_kwh": 4.5,
+        "aeration_output_percent": 75.0
+      }
+    },
+    {
+      "name": "update_aeration_output",
+      "description": "Adjusts the aeration blower output by a specific percentage change to control Dissolved Oxygen (DO) levels.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "delta_percent": {
+            "type": "number",
+            "description": "The percentage points to add or subtract from the current aeration output (e.g., -5.0 to decrease output by 5%)."
+          }
+        },
+        "required": [
+          "delta_percent"
+        ]
+      },
+      "example_output": {
+        "new_output_percent": 70.0,
+        "status": "adjustment_applied"
+      }
+    },
+    {
+      "name": "update_recycle_flow",
+      "description": "Adjusts the internal recycle flow rate to manage the denitrification process.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "delta_flow": {
+            "type": "number",
+            "description": "The amount to change the flow rate by in m³/h (e.g., 10.0 to increase flow by 10 units)."
+          }
+        },
+        "required": [
+          "delta_flow"
+        ]
+      },
+      "example_output": {
+        "new_flow_rate": 190.0,
+        "status": "flow_updated"
+      }
+    },
+    {
+      "name": "step_simulation",
+      "description": "Advances the plant simulation by one time step to allow process changes to stabilize and to observe the resulting state.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "dissolved_oxygen_concentration": 2.2,
+        "effluent_nitrogen_content": 11.8,
+        "cumulative_energy_kwh": 6.2
+      }
+    }
+  ],
+  "state_description": {
+    "influent_flow_rate": "The current rate of wastewater entering the plant in cubic meters per hour (m³/h).",
+    "dissolved_oxygen_concentration": "Concentration of oxygen in the aeration tank (mg/L). Affects microbial activity.",
+    "mlss_level": "Mixed Liquor Suspended Solids (mg/L), representing the concentration of biomass in the system.",
+    "internal_recycle_flow": "The flow rate of nitrate-rich liquor recycled from the aerobic to the anoxic zone (m³/h).",
+    "effluent_nitrogen_content": "Current concentration of Total Nitrogen in the treated water (mg/L).",
+    "chemical_tank_storage": "Remaining percentage of flocculant/carbon source in the storage tank (%).",
+    "cumulative_energy_kwh": "Total energy consumed by pumps and aerators during the current operation cycle."
+  },
+  "task_initial_state": {
+    "influent_flow_rate": 420.0,
+    "dissolved_oxygen_concentration": 2.7,
+    "mlss_level": 3600.0,
+    "internal_recycle_flow": 1600.0,
+    "effluent_nitrogen_content": 13.8,
+    "chemical_tank_storage": 80.0,
+    "cumulative_energy_kwh": 0.0
+  }
+}

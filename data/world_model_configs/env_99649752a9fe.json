@@ -1,0 +1,148 @@
+{
+  "environment_name": "env_99649752a9fe",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM) for Game Strategy Simulation.\n- **Core Objective**: Based on the current internal state $s_t$ and the action $a_t$ chosen by the Agent, simulate the evolution of the game world. You must determine the next state $s_{{t+1}}$ internally and generate the corresponding observation $o_{{t+1}}$ that the Agent would receive.\n- **Emphasis**: You are the engine of the game world. You do not offer advice or play the game; you calculate the consequences of actions (e.g., damage dealt, items consumed, movement results) and provide the sensory feedback (observation) to the Agent.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nYou must maintain a consistent world state across the interaction history. Every action taken by the Agent permanently modifies the internal environment state. Ensure that if an Agent uses a potion at time $t$, that potion is no longer in the inventory at time $t+1$.\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. This JSON contains:\n- `\"name\"`: The name of the game action to execute.\n- Parameters required by that specific action.\n\nExample Input:\n```json\n{{\n \"name\": \"move_to\",\n \"arguments\": {{\n    \"destination\": \"Shadow Cave\",\n    \"path_type\": \"stealthy\"\n  }}\n}}\n```\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nIf the Agent attempts an illegal move (e.g., attacking a dead target, moving to a locked area without a key, or calling an undefined action), you must return a structured error response: `{{\"error\": \"Description of why the action failed\"}}`. Do not allow the state to transition in ways that violate game logic.\n\n##### Output Assembly\nFor every action executed, return a JSON object containing **ONLY** the return fields (Observations) declared in the action function's definition.\n\n**CRITICAL CONSTRAINT**: You must **NOT** output the internal state object, the updated JSON state, or any technical transition logs. The Agent must only receive the specific Observation fields. Your internal state management remains hidden.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to the JSON response format. No conversational filler.\n- **Factuality**: Only use the items, locations, and entities present in the current world state.\n- **Consistency**: Numerical values (HP, Gold, XP) must be calculated accurately based on game rules.\n- **Realism**: The environment's response must align with the logic of a strategic game (e.g., enemies counter-attack, resources deplete).\n- **Encapsulation**: Never reveal the full `s_t` dictionary to the Agent. Only show what the Agent would \"see\" or \"perceive\" through the action's return values.\n{{initial_state}}: {{\n  \"player_stats\": {{\n    \"hp\": 100,\n    \"max_hp\": 100,\n    \"mp\": 50,\n    \"level\": 1\n  }},\n  \"inventory\": [\n    \"Realism_Sliders_v2.1\",\n    \"Standard_Game_HUD\",\n    \"EITT_Protocol_Manual\"\n  ],\n  \"current_location\": \"Digital_Sim_Lab\",\n  \"currency\": 120,\n  \"quest_progress\": {{\n    \"main_quest_stage\": 1,\n    \"side_quests\": [\n      \"Sim_Session_Ongoing\"\n    ]\n  }},\n  \"world_clock\": 5\n}}\n{{state_descriptions}}: {{\n  \"player_stats\": \"Current health, mana, and level of the player character.\",\n  \"inventory\": \"List of items currently held by the player.\",\n  \"current_location\": \"The name of the current map area.\",\n  \"currency\": \"Total gold or credits available for trading.\",\n  \"quest_progress\": \"Status of active and completed quests.\",\n  \"world_clock\": \"The current turn number or elapsed game time units.\"\n}}\n{action_set_definitions}: {\n  \"get_current_state\": {\n    \"description\": \"Retrieves the full current environment state, including player stats, inventory, location, quest progress (adherence score), and world clock.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"player_stats\": {\n        \"fatigue\": 0\n      },\n      \"inventory\": [\n        \"EITT_Protocol_Manual\",\n        \"Realism_Sliders_v2.1\"\n      ],\n      \"current_location\": \"Sim Lab\",\n      \"quest_progress\": {\n        \"tactical_adherence_score\": 0.5\n      },\n      \"world_clock\": 0\n    }\n  },\n  \"use_training_enhancer\": {\n    \"description\": \"Applies an item from the inventory (e.g., 'EITT_Protocol_Manual') to the environment. Successfully applying an enhancer modifies the world model's simulation logic, increasing the 'score_gain' to 0.3 or reducing 'time_cost' per drill for subsequent 'run_tactical_simulation' calls.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"item_id\": {\n          \"type\": \"string\",\n          \"description\": \"The exact name of the item to be used from the inventory.\"\n        }\n      },\n      \"required\": [\n        \"item_id\"\n      ]\n    },\n    \"example_output\": {\n      \"status\": \"applied\",\n      \"effect\": \"Score gain per high-intensity drill increased to 0.30\"\n    }\n  },\n  \"run_tactical_simulation\": {\n    \"description\": \"Executes a tactical drill in the simulator. Requires the athlete to be in the 'Sim Lab'. Higher intensity yields faster adherence gains but consumes more clock units.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"tactic\": {\n          \"type\": \"string\",\n          \"description\": \"The tactical curriculum to run (e.g., '4-3-3 High Press').\"\n        },\n        \"intensity\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"Standard\",\n            \"High\"\n          ],\n          \"description\": \"The effort level. 'High' intensity provides higher score gains (baseline 0.20, or 0.30 if enhancers are used).\"\n        }\n      },\n      \"required\": [\n        \"tactic\",\n        \"intensity\"\n      ]\n    },\n    \"example_output\": {\n      \"new_score\": 0.7,\n      \"time_elapsed\": 5\n    }\n  },\n  \"change_location\": {\n    \"description\": \"Transfers the agent/athlete to a new specified location. Travel consumes world clock units.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"destination\": {\n          \"type\": \"string\",\n          \"description\": \"The target map area (e.g., 'Sim Lab', 'Outdoor Training Pitch').\"\n        }\n      },\n      \"required\": [\n        \"destination\"\n      ]\n    },\n    \"example_output\": {\n      \"current_location\": \"Outdoor Training Pitch\",\n      \"travel_time\": 2\n    }\n  },\n  \"conduct_physical_training\": {\n    \"description\": \"Executes the mandatory physical translation phase on the Outdoor Training Pitch. This consumes exactly 30 units of the world clock and marks the session for conclusion.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"duration\": {\n          \"type\": \"integer\",\n          \"description\": \"Fixed duration of 30 minutes/units.\"\n        }\n      },\n      \"required\": [\n        \"duration\"\n      ]\n    },\n    \"example_output\": {\n      \"session_status\": \"Success\",\n      \"final_clock\": 44\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_current_state",
+      "description": "Retrieves the full current environment state, including player stats, inventory, location, quest progress (adherence score), and world clock.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "player_stats": {
+          "fatigue": 0
+        },
+        "inventory": [
+          "EITT_Protocol_Manual",
+          "Realism_Sliders_v2.1"
+        ],
+        "current_location": "Sim Lab",
+        "quest_progress": {
+          "tactical_adherence_score": 0.5
+        },
+        "world_clock": 0
+      }
+    },
+    {
+      "name": "use_training_enhancer",
+      "description": "Applies an item from the inventory (e.g., 'EITT_Protocol_Manual') to the environment. Successfully applying an enhancer modifies the world model's simulation logic, increasing the 'score_gain' to 0.3 or reducing 'time_cost' per drill for subsequent 'run_tactical_simulation' calls.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "item_id": {
+            "type": "string",
+            "description": "The exact name of the item to be used from the inventory."
+          }
+        },
+        "required": [
+          "item_id"
+        ]
+      },
+      "example_output": {
+        "status": "applied",
+        "effect": "Score gain per high-intensity drill increased to 0.30"
+      }
+    },
+    {
+      "name": "run_tactical_simulation",
+      "description": "Executes a tactical drill in the simulator. Requires the athlete to be in the 'Sim Lab'. Higher intensity yields faster adherence gains but consumes more clock units.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "tactic": {
+            "type": "string",
+            "description": "The tactical curriculum to run (e.g., '4-3-3 High Press')."
+          },
+          "intensity": {
+            "type": "string",
+            "enum": [
+              "Standard",
+              "High"
+            ],
+            "description": "The effort level. 'High' intensity provides higher score gains (baseline 0.20, or 0.30 if enhancers are used)."
+          }
+        },
+        "required": [
+          "tactic",
+          "intensity"
+        ]
+      },
+      "example_output": {
+        "new_score": 0.7,
+        "time_elapsed": 5
+      }
+    },
+    {
+      "name": "change_location",
+      "description": "Transfers the agent/athlete to a new specified location. Travel consumes world clock units.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "destination": {
+            "type": "string",
+            "description": "The target map area (e.g., 'Sim Lab', 'Outdoor Training Pitch')."
+          }
+        },
+        "required": [
+          "destination"
+        ]
+      },
+      "example_output": {
+        "current_location": "Outdoor Training Pitch",
+        "travel_time": 2
+      }
+    },
+    {
+      "name": "conduct_physical_training",
+      "description": "Executes the mandatory physical translation phase on the Outdoor Training Pitch. This consumes exactly 30 units of the world clock and marks the session for conclusion.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "duration": {
+            "type": "integer",
+            "description": "Fixed duration of 30 minutes/units."
+          }
+        },
+        "required": [
+          "duration"
+        ]
+      },
+      "example_output": {
+        "session_status": "Success",
+        "final_clock": 44
+      }
+    }
+  ],
+  "state_description": {
+    "player_stats": "Current health, mana, and level of the player character.",
+    "inventory": "List of items currently held by the player.",
+    "current_location": "The name of the current map area.",
+    "currency": "Total gold or credits available for trading.",
+    "quest_progress": "Status of active and completed quests.",
+    "world_clock": "The current turn number or elapsed game time units."
+  },
+  "task_initial_state": {
+    "player_stats": {
+      "hp": 100,
+      "max_hp": 100,
+      "mp": 50,
+      "level": 1
+    },
+    "inventory": [
+      "Realism_Sliders_v2.1",
+      "Standard_Game_HUD",
+      "EITT_Protocol_Manual"
+    ],
+    "current_location": "Digital_Sim_Lab",
+    "currency": 120,
+    "quest_progress": {
+      "main_quest_stage": 1,
+      "side_quests": [
+        "Sim_Session_Ongoing"
+      ]
+    },
+    "world_clock": 5
+  }
+}

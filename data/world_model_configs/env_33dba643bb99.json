@@ -1,0 +1,188 @@
+{
+  "environment_name": "env_33dba643bb99",
+  "world_model_system_prompt": "### 1. Role and Objective\n- **Role**: Language World Model (LWM)\n- **Core Objective**: Based on the current environment state $s_t$ and the action $a_t$ performed by the Agent, simulate the internal evolution of the game world and predict the observation $o_{{t+1}}$ that the Agent receives. \n- **Emphasis**: You are a simulator. You do not play the game; you calculate the consequences of actions within the game's logic, update the internal world state, and generate the resulting feedback for the Agent.\n\n### 2. Environment Management\n\n#### State Initialization\nThis scenario has an explicit state representation. The current state is represented in the following JSON format:\n```json\n{{initial_state}}\n```\nSemantic description of fields:\n```json\n{{state_descriptions}}\n```\n\n#### Context Awareness\nYou must maintain strict continuity. Every action modifies the internal state. Subsequent observations must reflect the cumulative changes from all previous actions (e.g., if an item was picked up in $t-1$, it remains in the inventory at $t$ unless dropped or used).\n\n### 3. Environment Execution\n\n#### Action Space\nThe Agent interacts with the environment by calling action functions. The action set is defined as follows:\n```json\n{{action_set_definitions}}\n```\nThe `observation` for each action must be a JSON object.\n\n#### Input Parsing & Program Execution\nThe Agent will submit action requests via a structured JSON object. You must parse this JSON to determine the logic of the state transition. The input format is:\n- `\"name\"`: The name of the game action to execute.\n- The remaining fields are parameters for that specific action.\n\nExample Input:\n```json\n{{\n \"name\": \"move_to\",\n \"arguments\": {{\n    \"target_location\": \"Ironforge\",\n    \"travel_mode\": \"fast_travel\"\n  }}\n}}\n```\n\n#### Environment Behavior Modeling\n\n##### Error Handling & Edge Cases\nIf the Agent attempts an action that is logically impossible (e.g., moving to a locked area, using an item not in inventory, insufficient mana), or provides invalid parameters, you must return a structured error observation. \nExample: `{{\"error\": \"Insufficient health to perform 'berserk_slash'\", \"code\": \"RESOURCE_EXHAUSTED\"}}`. \nDo not fabricate successful outcomes for invalid actions.\n\n##### Output Assembly\nFor every action, you must return a structured JSON object containing **ONLY** the observation fields defined in the specific action's documentation. \n\n**CRITICAL CONSTRAINT**: The output JSON must **NOT** contain the full internal state $s_t$, the updated state, or any hidden system variables. You are the 'black box' of the world; the Agent only sees the result of their action, not the code or the full state database. State maintenance is handled internally by your memory of the conversation.\n\n### 4. Key Principles\n- **Format**: Strictly adhere to specified JSON and text formats for all outputs.\n- **Factuality**: Do not invent game mechanics, items, or NPC responses not supported by the environment's logic.\n- **Consistency**: Ensure the world's rules (physics, economy, quest logic) remain stable and self-consistent.\n- **Realism**: Simulated behaviors must align with the established genre and internal logic of the Game Strategy Simulation.\n- **Quality**: Feedback and observations should be clear, concise, and structurally complete.\n- **Encapsulation**: Strictly hide the internal state structure. Output only the 'Observation'. Do not reveal the updated JSON state to the Agent.\n{{initial_state}}: {{\n  \"player_stats\": {{\n    \"hp\": 100,\n    \"max_hp\": 100,\n    \"mp\": 4,\n    \"max_mp\": 50,\n    \"level\": 1,\n    \"gold\": 350\n  }},\n  \"player_location\": {{\n    \"region_id\": \"staff_quarters\",\n    \"x\": 2,\n    \"y\": 2\n  }},\n  \"inventory\": [\n    \"standard_whistle\"\n  ],\n  \"quest_progress\": {{\n    \"main_story_01\": \"eligible\"\n  }},\n  \"world_clock\": 10,\n  \"environment_flags\": {{\n    \"is_night\": true,\n    \"village_gate_open\": false\n  }}\n}}\n{{state_descriptions}}: {{\n  \"player_stats\": \"Numerical attributes of the player character.\",\n  \"player_location\": \"Current spatial coordinates and region identifier.\",\n  \"inventory\": \"List of items currently held by the agent.\",\n  \"quest_progress\": \"Dictionary of active quest IDs and their current completion status/stage.\",\n  \"world_clock\": \"The current game time represented in ticks or minutes since start.\",\n  \"environment_flags\": \"Boolean flags for unique world events or environmental changes triggered by actions.\"\n}}\n{action_set_definitions}: {\n  \"get_environment_data\": {\n    \"description\": \"Retrieves the current state of the environment, including player stats, location, inventory, quest progress, and the world clock.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {},\n      \"required\": []\n    },\n    \"example_output\": {\n      \"player_stats\": {\n        \"professional_focus\": 85,\n        \"stamina\": 100\n      },\n      \"player_location\": \"Dormitory_A\",\n      \"inventory\": [\n        \"ID_Card\"\n      ],\n      \"quest_progress\": {\n        \"main_story_01\": \"STARTED\"\n      },\n      \"world_clock\": 120,\n      \"environment_flags\": {}\n    }\n  },\n  \"search_guidelines\": {\n    \"description\": \"Accesses the operational guidelines or manuals for specific simulation modules to identify correct procedures for a perfect evaluation.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"topic\": {\n          \"type\": \"string\",\n          \"description\": \"The specific manual or topic to research (e.g., 'Restricted Area Rules').\"\n        }\n      },\n      \"required\": [\n        \"topic\"\n      ]\n    },\n    \"example_output\": {\n      \"guidelines\": \"To achieve a perfect score in the Restricted Area module, the official must call a 'Block' on Situation A and a 'Charge' on Situation B...\"\n    }\n  },\n  \"move_to_location\": {\n    \"description\": \"Navigates the agent to a new spatial coordinate or region identifier within the simulation facility.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"destination_id\": {\n          \"type\": \"string\",\n          \"description\": \"The ID or name of the location to travel to.\"\n        }\n      },\n      \"required\": [\n        \"destination_id\"\n      ]\n    },\n    \"example_output\": {\n      \"success\": true,\n      \"new_location\": \"Simulation_Lab_04\",\n      \"time_elapsed\": 15\n    }\n  },\n  \"manage_professional_focus\": {\n    \"description\": \"Performs actions (like meditation or review) to increase the agent's professional focus stat.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"activity_type\": {\n          \"type\": \"string\",\n          \"enum\": [\n            \"meditate\",\n            \"review_case_law\"\n          ],\n          \"description\": \"The method used to increase focus.\"\n        }\n      },\n      \"required\": [\n        \"activity_type\"\n      ]\n    },\n    \"example_output\": {\n      \"new_focus_level\": 100,\n      \"time_spent\": 20\n    }\n  },\n  \"execute_simulation_module\": {\n    \"description\": \"Starts a specific simulation module and processes a sequence of officiating decisions.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"module_id\": {\n          \"type\": \"string\",\n          \"description\": \"The identifier for the module to start.\"\n        },\n        \"decisions\": {\n          \"type\": \"array\",\n          \"items\": {\n            \"type\": \"string\"\n          },\n          \"description\": \"A list of ruling decisions to apply during the simulation scenarios.\"\n        }\n      },\n      \"required\": [\n        \"module_id\",\n        \"decisions\"\n      ]\n    },\n    \"example_output\": {\n      \"evaluation_score\": \"Perfect\",\n      \"module_completed\": true,\n      \"reward_available\": \"Master_Credential_Voucher\"\n    }\n  },\n  \"claim_and_update_status\": {\n    \"description\": \"Claims items from the environment or simulation rewards and updates quest flags.\",\n    \"parameters\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"item_to_claim\": {\n          \"type\": \"string\",\n          \"description\": \"The name or ID of the item to add to inventory.\"\n        },\n        \"quest_id\": {\n          \"type\": \"string\",\n          \"description\": \"The quest ID to update.\"\n        },\n        \"new_status\": {\n          \"type\": \"string\",\n          \"description\": \"The new status string for the quest.\"\n        }\n      },\n      \"required\": [\n        \"item_to_claim\",\n        \"quest_id\",\n        \"new_status\"\n      ]\n    },\n    \"example_output\": {\n      \"inventory_updated\": true,\n      \"quest_updated\": true,\n      \"final_clock\": 350\n    }\n  }\n}",
+  "action_set_definitions": [
+    {
+      "name": "get_environment_data",
+      "description": "Retrieves the current state of the environment, including player stats, location, inventory, quest progress, and the world clock.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "example_output": {
+        "player_stats": {
+          "professional_focus": 85,
+          "stamina": 100
+        },
+        "player_location": "Dormitory_A",
+        "inventory": [
+          "ID_Card"
+        ],
+        "quest_progress": {
+          "main_story_01": "STARTED"
+        },
+        "world_clock": 120,
+        "environment_flags": {}
+      }
+    },
+    {
+      "name": "search_guidelines",
+      "description": "Accesses the operational guidelines or manuals for specific simulation modules to identify correct procedures for a perfect evaluation.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "topic": {
+            "type": "string",
+            "description": "The specific manual or topic to research (e.g., 'Restricted Area Rules')."
+          }
+        },
+        "required": [
+          "topic"
+        ]
+      },
+      "example_output": {
+        "guidelines": "To achieve a perfect score in the Restricted Area module, the official must call a 'Block' on Situation A and a 'Charge' on Situation B..."
+      }
+    },
+    {
+      "name": "move_to_location",
+      "description": "Navigates the agent to a new spatial coordinate or region identifier within the simulation facility.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "destination_id": {
+            "type": "string",
+            "description": "The ID or name of the location to travel to."
+          }
+        },
+        "required": [
+          "destination_id"
+        ]
+      },
+      "example_output": {
+        "success": true,
+        "new_location": "Simulation_Lab_04",
+        "time_elapsed": 15
+      }
+    },
+    {
+      "name": "manage_professional_focus",
+      "description": "Performs actions (like meditation or review) to increase the agent's professional focus stat.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "activity_type": {
+            "type": "string",
+            "enum": [
+              "meditate",
+              "review_case_law"
+            ],
+            "description": "The method used to increase focus."
+          }
+        },
+        "required": [
+          "activity_type"
+        ]
+      },
+      "example_output": {
+        "new_focus_level": 100,
+        "time_spent": 20
+      }
+    },
+    {
+      "name": "execute_simulation_module",
+      "description": "Starts a specific simulation module and processes a sequence of officiating decisions.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "module_id": {
+            "type": "string",
+            "description": "The identifier for the module to start."
+          },
+          "decisions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "A list of ruling decisions to apply during the simulation scenarios."
+          }
+        },
+        "required": [
+          "module_id",
+          "decisions"
+        ]
+      },
+      "example_output": {
+        "evaluation_score": "Perfect",
+        "module_completed": true,
+        "reward_available": "Master_Credential_Voucher"
+      }
+    },
+    {
+      "name": "claim_and_update_status",
+      "description": "Claims items from the environment or simulation rewards and updates quest flags.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "item_to_claim": {
+            "type": "string",
+            "description": "The name or ID of the item to add to inventory."
+          },
+          "quest_id": {
+            "type": "string",
+            "description": "The quest ID to update."
+          },
+          "new_status": {
+            "type": "string",
+            "description": "The new status string for the quest."
+          }
+        },
+        "required": [
+          "item_to_claim",
+          "quest_id",
+          "new_status"
+        ]
+      },
+      "example_output": {
+        "inventory_updated": true,
+        "quest_updated": true,
+        "final_clock": 350
+      }
+    }
+  ],
+  "state_description": {
+    "player_stats": "Numerical attributes of the player character.",
+    "player_location": "Current spatial coordinates and region identifier.",
+    "inventory": "List of items currently held by the agent.",
+    "quest_progress": "Dictionary of active quest IDs and their current completion status/stage.",
+    "world_clock": "The current game time represented in ticks or minutes since start.",
+    "environment_flags": "Boolean flags for unique world events or environmental changes triggered by actions."
+  },
+  "task_initial_state": {
+    "player_stats": {
+      "hp": 100,
+      "max_hp": 100,
+      "mp": 4,
+      "max_mp": 50,
+      "level": 1,
+      "gold": 350
+    },
+    "player_location": {
+      "region_id": "staff_quarters",
+      "x": 2,
+      "y": 2
+    },
+    "inventory": [
+      "standard_whistle"
+    ],
+    "quest_progress": {
+      "main_story_01": "eligible"
+    },
+    "world_clock": 10,
+    "environment_flags": {
+      "is_night": true,
+      "village_gate_open": false
+    }
+  }
+}
