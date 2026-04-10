@@ -204,6 +204,15 @@ Each line in `results.jsonl` contains:
 
 ## Citation
 
+```bibtex
+@inproceedings{hu2026occubench,
+  title={OccuBench: Evaluating AI Agents on Real-World Professional Tasks via Language World Models},
+  author={Hu, Xiaomeng and Zhang, Yinger and Huang, Fei and Tu, Jianhong and Su, Yang and Deng, Lianghao and Liu, Dayiheng and Ho, Tsung-Yi},
+  booktitle={Conference on Language Modeling (COLM)},
+  year={2026}
+}
+```
+
 ## License
 
 Apache 2.0
