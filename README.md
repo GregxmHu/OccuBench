@@ -205,14 +205,11 @@ Each line in `results.jsonl` contains:
 ## Citation
 
 ```bibtex
-@misc{hu2026occubenchevaluatingaiagents,
-      title={OccuBench: Evaluating AI Agents on Real-World Professional Tasks via Language World Models}, 
-      author={Xiaomeng Hu and Yinger Zhang and Fei Huang and Jianhong Tu and Yang Su and Lianghao Deng and Yuxuan Liu and Yantao Liu and Dayiheng Liu and Tsung-Yi Ho},
-      year={2026},
-      eprint={2604.10866},
-      archivePrefix={arXiv},
-      primaryClass={cs.CL},
-      url={https://arxiv.org/abs/2604.10866}, 
+@article{hu2026occubench,
+  title={OccuBench: Evaluating AI Agents on Real-World Professional Tasks via Language World Models},
+  author={Xiaomeng Hu and Yinger Zhang and Fei Huang and Jianhong Tu and Yang Su and Lianghao Deng and Yuxuan Liu and Yantao Liu and Dayiheng Liu and Tsung-Yi Ho},
+  journal={arXiv preprint arXiv:2604.10866},
+  year={2026}
 }
 ```
 
