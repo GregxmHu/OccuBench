@@ -208,7 +208,7 @@ Each line in `results.jsonl` contains:
 @article{hu2026occubench,
   title={OccuBench: Evaluating AI Agents on Real-World Professional Tasks via Language World Models},
   author={Hu, Xiaomeng and Zhang, Yinger and Huang, Fei and Tu, Jianhong and Su, Yang and Deng, Lianghao and Liu, Dayiheng and Ho, Tsung-Yi},
-  journal={arXiv preprint arXiv:2506.xxxxx},
+  journal={arXiv preprint arXiv:2604.10866},
   year={2025}
 }
 ```
